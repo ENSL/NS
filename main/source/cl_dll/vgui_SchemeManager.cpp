@@ -408,6 +408,18 @@ buildDefaultFont:
 
 			if(g_CV_BitmapFonts && g_CV_BitmapFonts->value)
 			{
+				int fontRes = 640;
+				if (m_xRes >= 1600)
+					fontRes = 1600;
+				else if (m_xRes >= 1280)
+					fontRes = 1280;
+				else if (m_xRes >= 1152)
+					fontRes = 1152;
+				else if (m_xRes >= 1024)
+					fontRes = 1024;
+				else if (m_xRes >= 800)
+					fontRes = 800;
+
 				sprintf(fontFilename, "gfx\\vgui\\fonts\\%d_%s.tga", m_xRes, m_pSchemeList[i].schemeName);
 				pFontData = gEngfuncs.COM_LoadFile( fontFilename, 5, &fontFileLength );
 				if(!pFontData)
