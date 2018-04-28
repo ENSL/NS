@@ -420,7 +420,7 @@ buildDefaultFont:
 				else if (m_xRes >= 800)
 					fontRes = 800;
 
-				sprintf(fontFilename, "gfx\\vgui\\fonts\\%d_%s.tga", m_xRes, m_pSchemeList[i].schemeName);
+				sprintf(fontFilename, "gfx/vgui/fonts/%d_%s.tga", fontRes, m_pSchemeList[i].schemeName);
 				pFontData = gEngfuncs.COM_LoadFile( fontFilename, 5, &fontFileLength );
 				if(!pFontData)
 					gEngfuncs.Con_Printf("Missing bitmap font: %s\n", fontFilename);
