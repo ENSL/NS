@@ -5659,7 +5659,7 @@ string AvHHud::GetRankTitle(bool inShowUnspentLevels) const
 {
 	string theText;
 
-	char* theTeamName = this->GetIsMarine() ? "Marine" : "Alien";
+	char const* theTeamName = this->GetIsMarine() ? "Marine" : "Alien";
 	int theCurrentLevel = this->GetHUDExperienceLevel();
 
 	char theCharArray[512];

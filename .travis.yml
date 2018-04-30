@@ -1,0 +1,23 @@
+language: cpp
+
+matrix:
+  include:
+    - os: linux
+      compiler: gcc
+      script: cd main/source/linux && make
+      env: OPJ_CI_ARCH=i386
+      addons:
+        apt:
+          packages:
+            - gcc-multilib
+            - g++-multilib
+            - libc6-i386
+            - libcurl4-openssl-dev:i386
+            - libpng12-dev:i386
+
+    - os: osx
+      compiler: clang
+      before_script:
+      - export CC=clang
+      - export CPLUS=clang++
+      script: cd main/source/linux && make

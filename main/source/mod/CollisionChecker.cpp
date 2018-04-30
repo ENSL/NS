@@ -454,7 +454,8 @@ void CollisionChecker::SetIgnoreEntityClass(int ignore_entity_class)
 
 int CollisionChecker::GetContentsAtPoint(const nspoint_t& point) const
 {
-	return GetContents(&PointCollisionTest(point));
+	PointCollisionTest tmp = PointCollisionTest(point);
+	return GetContents(&tmp);
 }
 
 //-------------------------------------------------------------------
@@ -468,14 +469,16 @@ int CollisionChecker::GetWorldContentsAtPoint(const nspoint_t& point) const
 
 int CollisionChecker::GetAllEntityContentsAtPoint(const nspoint_t& point) const
 {
-	return GetAllEntityContents(&PointCollisionTest(point));
+	PointCollisionTest tmp = PointCollisionTest(point);
+	return GetAllEntityContents(&tmp);
 }
 
 //-------------------------------------------------------------------
 
 int CollisionChecker::GetSingleEntityContentsAtPoint(const nspoint_t& point, int entity_index) const
 {
-	return GetSingleEntityContents(&PointCollisionTest(point),entity_index);
+	PointCollisionTest tmp = PointCollisionTest(point);
+	return GetSingleEntityContents(&tmp, entity_index);
 }
 
 //-------------------------------------------------------------------
@@ -486,28 +489,32 @@ const static nspoint_t CYLINDER_UP_DEFAULT = {0,0,1.0f};
 
 int CollisionChecker::GetContentsInCylinder(const nspoint_t& base, float radius, float height) const
 {
-	return GetContents(&CylinderCollisionTest(CYLINDER_UP_DEFAULT,base,radius,height));
+	CylinderCollisionTest tmp = CylinderCollisionTest(CYLINDER_UP_DEFAULT,base,radius,height);
+	return GetContents(&tmp);
 }
 
 //-------------------------------------------------------------------
 
 int CollisionChecker::GetWorldContentsInCylinder(const nspoint_t& base, float radius, float height) const
 {
-	return GetSingleEntityContents(&CylinderCollisionTest(CYLINDER_UP_DEFAULT,base,radius,height),WORLD_ENTITY);
+	CylinderCollisionTest tmp = CylinderCollisionTest(CYLINDER_UP_DEFAULT,base,radius,height);
+	return GetSingleEntityContents(&tmp, WORLD_ENTITY);
 }
 
 //-------------------------------------------------------------------
 
 int CollisionChecker::GetAllEntityContentsInCylinder(const nspoint_t& base, float radius, float height) const
 {
-	return GetAllEntityContents(&CylinderCollisionTest(CYLINDER_UP_DEFAULT,base,radius,height));
+	CylinderCollisionTest tmp = CylinderCollisionTest(CYLINDER_UP_DEFAULT,base,radius,height);
+	return GetAllEntityContents(&tmp);
 }
 
 //-------------------------------------------------------------------
 
 int CollisionChecker::GetSingleEntityContentsInCylinder(const nspoint_t& base, float radius, float height, int entity_index) const
 {
-	return GetSingleEntityContents(&CylinderCollisionTest(CYLINDER_UP_DEFAULT,base,radius,height),entity_index);
+	CylinderCollisionTest tmp = CylinderCollisionTest(CYLINDER_UP_DEFAULT,base,radius,height);
+	return GetSingleEntityContents(&tmp,entity_index);
 }
 
 //-------------------------------------------------------------------
@@ -516,28 +523,32 @@ int CollisionChecker::GetSingleEntityContentsInCylinder(const nspoint_t& base, f
 
 int CollisionChecker::GetContentsInAABB(const nspoint_t& mins, const nspoint_t& maxs) const
 {
-	return GetContents(&AABBCollisionTest(mins,maxs));
+	AABBCollisionTest tmp = AABBCollisionTest(mins,maxs);
+	return GetContents(&tmp);
 }
 
 //-------------------------------------------------------------------
 
 int CollisionChecker::GetWorldContentsInAABB(const nspoint_t& mins, const nspoint_t& maxs) const
 {
-	return GetSingleEntityContents(&AABBCollisionTest(mins,maxs),WORLD_ENTITY);
+	AABBCollisionTest tmp = AABBCollisionTest(mins,maxs);
+	return GetSingleEntityContents(&tmp, WORLD_ENTITY);
 }
 
 //-------------------------------------------------------------------
 
 int CollisionChecker::GetAllEntityContentsInAABB(const nspoint_t& mins, const nspoint_t& maxs) const
 {
-	return GetAllEntityContents(&AABBCollisionTest(mins,maxs));
+	AABBCollisionTest tmp = AABBCollisionTest(mins,maxs);
+	return GetAllEntityContents(&tmp);
 }
 
 //-------------------------------------------------------------------
 
 int CollisionChecker::GetSingleEntityContentsInAABB(const nspoint_t& mins, const nspoint_t& maxs, int entity_index) const
 {
-	return GetSingleEntityContents(&AABBCollisionTest(mins,maxs),entity_index);
+	AABBCollisionTest tmp = AABBCollisionTest(mins,maxs);
+	return GetSingleEntityContents(&tmp,entity_index);
 }
 
 //-------------------------------------------------------------------

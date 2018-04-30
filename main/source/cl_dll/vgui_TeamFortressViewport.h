@@ -35,7 +35,6 @@
 
 using namespace vgui;
 
-class Cursor;
 class ScorePanel;
 class SpectatorPanel;
 class CCommandMenu;

@@ -183,7 +183,7 @@ const char *CHalfLifeTeamplay::SetDefaultPlayerTeam( CBasePlayer *pPlayer )
 	// update the current player of the team he is joining
 	const char* theTeamName = pPlayer->TeamID();
 
-	if ( theTeamName == '\0' || !IsValidTeam( theTeamName ) || defaultteam.value )
+	if ( (int)(size_t)theTeamName == '\0' || !IsValidTeam( theTeamName ) || defaultteam.value )
 	{
 		const char *pTeamName = NULL;
 		

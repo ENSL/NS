@@ -9,9 +9,16 @@
 #ifdef WIN32
 // This is for something in gl.h.
 #include <windows.h>
+#else
+#define NULL 0
 #endif
 
+#ifdef __APPLE__
+#include <OpenGL/gl.h>
+#else
 #include <GL/gl.h>
+#endif
+
 // XXX #include <iostream.h>
 
 // Emit OpenGL calls to draw the particles. These are drawn with

@@ -133,7 +133,7 @@ void loadImages( const int icon_number, std::vector<vgui::BitmapTGA*>& images )
 	std::string extension = ".tga";
 	std::string icon_name;
 
-	unsigned char icon_bytes[2] = { (icon_number >> 8) & 0xFF, icon_number & 0xFF };
+	unsigned char icon_bytes[2] = { static_cast<unsigned char>((icon_number >> 8) & 0xFF), static_cast<unsigned char>(icon_number & 0xFF )};
 	MakeHexPairsFromBytes(icon_bytes,icon_name,2);
 	icon_name = "0x" + icon_name;
 

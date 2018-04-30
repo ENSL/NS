@@ -30,7 +30,12 @@ MOD_INCLUDEDIRS=-I$(UTIL_SRC_DIR) -I$(GAME_SHARED_SRC_DIR) -I$(HLDLL_SRC_DIR) -I
 UTIL_INCLUDEDIRS = -I../ -I../util
 TEXTREP_INCLUDEDIRS=..
 
+ifeq ($(OS),Darwin)
+LDFLAGS=-lm -lcurl -lstdc++ -L. libparticles.dylib
+else
 LDFLAGS=-lm -lcurl -lstdc++ -L. libparticleMP.a
+endif
+
 DO_HLDLL_CC=$(CC) $(HLDLL_INCLUDEDIRS) $(CFLAGS) -o $@ -c $<
 DO_PM_CC=$(CC) $(PM_INCLUDEDIRS) $(CFLAGS) -o $@ -c $<
 DO_GAME_SHARED_CC=$(CC) $(GAME_SHARED_INCLUDEDIRS) $(CFLAGS) -o $@ -c $<

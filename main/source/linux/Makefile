@@ -60,10 +60,10 @@ ifeq ($(OS),Darwin)
 	ifeq ($(origin CC), default)
 		CC ="$(COMPILER_BIN_DIR)/clang -Qunused-arguments -isysroot $(SDKROOT) -mmacosx-version-min=10.5 -fasm-blocks -I$(SDKROOT)/usr/include/malloc $(ARCH_FLAGS)"
 	endif
-	ifeq ($(origin CXX), default)
+	ifeq ($(origin CPLUS), default)
 		CPLUS ="$(COMPILER_BIN_DIR)/clang++ -Qunused-arguments -isysroot $(SDKROOT) -mmacosx-version-min=10.5 -fasm-blocks -I$(SDKROOT)/usr/include/malloc $(ARCH_FLAGS)"
 	endif
-	LINK ?= $(CXX)
+	LINK ?= $(CPLUS)
 endif
 
 CLINK=$(CC)
@@ -88,9 +88,9 @@ endif
 
 ifeq ($(OS),Darwin)
 # force 387 for FP math so the precision between win32 and linux and osx match
-ARCH_CFLAGS_I486+=-march=pentium-m -mfpmath=387
-ARCH_CFLAGS_I686+=-march=pentium-m -mfpmath=387
-ARCH_CFLAGS_AMD+=-mfpmath=387
+ARCH_CFLAGS_I486+=-mno-sse -mfpmath=387 -target i386-apple-darwin -DCMAKE_OSX_ARCHITECTURES=i386
+ARCH_CFLAGS_I686+=-mno-sse -mfpmath=387 -target i386-apple-darwin -DCMAKE_OSX_ARCHITECTURES=i386
+ARCH_CFLAGS_AMD+=-mno-sse -mfpmath=387 -target i386-apple-darwin -DCMAKE_OSX_ARCHITECTURES=i386
 endif
 
 
@@ -100,7 +100,7 @@ BASE_CFLAGS=-fpermissive -fno-strict-aliasing -DNDEBUG -DPOSIX -D_POSIX -DLINUX 
 BASE_CFLAGS+=-w
 
 ifeq ($(OS),Darwin)
-	BASE_CFLAGS += -DOSX -D_OSX -fvisibility=hidden
+	BASE_CFLAGS += -DOSX -D_OSX -fvisibility=hidden -target i386-apple-darwin -DCMAKE_OSX_ARCHITECTURES=i386
 else
 	BASE_CFLAGS+= -DLINUX -D_LINUX
 endif
@@ -109,7 +109,7 @@ DEDICATED_CFLAGS="-DDEDICATED -DSWDS"
 ifeq ($(OS),Darwin)
 SHLIBEXT=dylib
 SHLIBCFLAGS=
-SHLIBLDFLAGS="-shared -gdwarf-2 -g2"
+SHLIBLDFLAGS="-shared -gdwarf-2 -g2 -DCMAKE_OSX_ARCHITECTURES=i386 -target i386-apple-darwin"
 else
 SHLIBEXT=so
 SHLIBCFLAGS=
@@ -131,7 +131,8 @@ all: build_dir targets
 TARGETS=
 
 TARGETS+= \
- 	ns \
+	particles \
+	ns \
 	hl_cdll \
 
 build_dir:
@@ -140,6 +141,8 @@ build_dir:
 
 targets: $(TARGETS)
 
+particles:
+	cd ../particles && make && cd ../linux && cp ../particles/libpart* .
 
 hl_cdll: build_dir
 	$(MAKE_hl_cdll) ARCH=i686 CC=$(CC) CPLUS=$(CPLUS) CPP_LIB="$(CPP_LIB)" BUILD_DIR=$(BUILD_DIR) BUILD_OBJ_DIR=$(BUILD_OBJ_DIR) SOURCE_DIR=$(SOURCE_DIR) ENGINE_SRC_DIR=$(ENGINE_SRC_DIR) MOD_SRC_DIR=$(MOD_SRC_DIR) COMMON_SRC_DIR=$(COMMON_SRC_DIR) BASE_CFLAGS="$(BASE_CFLAGS)" PUBLIC_SRC_DIR=$(PUBLIC_SRC_DIR) DBG_SRC_DIR=$(DBG_SRC_DIR) ARCH_CFLAGS="$(ARCH_CFLAGS_I686)" GAME_SHARED_SRC_DIR=$(GAME_SHARED_SRC_DIR) CLINK=$(CLINK) PM_SRC_DIR=$(PM_SRC_DIR) SHLIBEXT=$(SHLIBEXT) SHLIBCFLAGS=$(SHLIBCFLAGS) SHLIBLDFLAGS=$(SHLIBLDFLAGS) CFG=$(CFG) OS=$(OS)
@@ -148,4 +151,5 @@ ns: build_dir
 	$(MAKE_HL_LIB) CC=$(CC) ARCH=$(ARCH) CPP_LIB="$(CPP_LIB)" BUILD_DIR=$(BUILD_DIR) BUILD_OBJ_DIR=$(BUILD_OBJ_DIR) SOURCE_DIR=$(SOURCE_DIR) ENGINE_SRC_DIR=$(ENGINE_SRC_DIR) COMMON_SRC_DIR=$(COMMON_SRC_DIR) PM_SRC_DIR=$(PM_SRC_DIR) GAME_SHARED_SRC_DIR=$(GAME_SHARED_SRC_DIR) GAMEDB_SRC_DIR=$(GAMEDB_SRC_DIR) BASE_CFLAGS="$(BASE_CFLAGS)" SHLIBEXT=$(SHLIBEXT) SHLIBCFLAGS=$(SHLIBCFLAGS) SHLIBLDFLAGS=$(SHLIBLDFLAGS) PUBLIC_SRC_DIR=$(PUBLIC_SRC_DIR) CFG=$(CFG) OS=$(OS) ARCH_CFLAGS="$(ARCH_CFLAGS_I686)" 
 
 clean:
+	make -f ../particles/Makefile clean
 	-rm -rf $(BUILD_OBJ_DIR)
