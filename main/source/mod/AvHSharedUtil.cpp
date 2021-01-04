@@ -872,8 +872,8 @@ void AvHSHUGetMinBuildRadiusViolations(AvHMessageID inMessageID, vec3_t& inLocat
 			        vec3_t theXYInLocation = inLocation;
                     vec3_t theXYTheLocation = theLocation;
 
-                    theXYInLocation.z = 0;
-                    theXYTheLocation.z = 0;
+                    //theXYInLocation.z = 0;
+                    //theXYTheLocation.z = 0;
 
                     float theDistance = VectorDistance((float*)&theXYInLocation, (float*)&theXYTheLocation);
 					// : 0000291
