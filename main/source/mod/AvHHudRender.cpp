@@ -2791,7 +2791,7 @@ void AvHHud::RenderCommonUI()
     if (!mSteamUIActive)
     {
         
-		if (gHUD.GetServerVariableFloat("sv_cheats") != 0 ) {
+		//if (gHUD.GetServerVariableFloat("sv_cheats") != 0 ) {
 			static int maxSpeed=0, maxGroundSpeed=0, maxClimb=0, maxDive=0;
 			if ( CVAR_GET_FLOAT("cl_showspeed") != 0) {
 
@@ -2827,7 +2827,7 @@ void AvHHud::RenderCommonUI()
 				maxSpeed=0, maxGroundSpeed=0, maxClimb=0, maxDive=0;
 				speedMeasured = false;
 			}
-         }
+         //}
 
         DrawInfoLocationText();
         DrawHUDStructureNotification();
