@@ -215,7 +215,7 @@ bool AvHSelectionHelper::SelectUnitsInRegion(const Vector& inPointOfView, const 
 {
 #ifdef AVH_SERVER
 	// Assumes that entities won't be too far away
-	float theRadius = GetGameRules()->GetMapExtents().GetTopDownCullDistance()*2;
+	float theRadius = GetGameRules()->GetMapExtents().GetTopDownCullDistance()*4;
 
 	CBaseEntity* theBaseEntity = NULL;
 	while((theBaseEntity = UTIL_FindEntityInSphere(theBaseEntity, inPointOfView, theRadius)) != NULL)
