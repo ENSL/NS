@@ -2388,7 +2388,7 @@ int	TeamFortressViewport::KeyInput( int down, int keynum, const char *pszCurrent
     if (m_chatPanel->isVisible())
     {
         // Don't let the game handle the input while the user is typing in the chat window.
-		m_chatPanel->KeyEvent();
+		m_chatPanel->KeyEvent(down);
         return 0;
     }
     

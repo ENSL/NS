@@ -20,7 +20,7 @@ public:
 
     void CancelChat();
     void SetChatMode(std::string sChatMode);
-	void KeyEvent();
+	void KeyEvent(int iKeydown);
     void KeyDown(int virtualKey, int scanCode);
 
     // Checks if a key was pushed since the chat window was opened.
