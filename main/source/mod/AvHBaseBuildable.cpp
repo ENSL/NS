@@ -821,7 +821,36 @@ void AvHBaseBuildable::RecycleComplete()
 		bool theIsEnergyTech = AvHSHUGetDoesTechCostEnergy(this->mMessageID);
 		ASSERT(!theIsEnergyTech);
 
-		float thePointsBack = GetGameRules()->GetCostForMessageID(this->mMessageID)*thePercentage;
+		float thePointsBack = this->mMessageID;
+
+		switch (this->mMessageID)
+		{
+			// Marine Structures
+			case BUILD_INFANTRYPORTAL:		thePointsBack = BALANCE_VAR(kInfantryPortalCost); break;
+			case BUILD_RESOURCES:			thePointsBack = BALANCE_VAR(kResourceTowerCost); break;
+			case BUILD_TURRET_FACTORY:		thePointsBack = BALANCE_VAR(kTurretFactoryCost); break;
+			case TURRET_FACTORY_UPGRADE:	thePointsBack = BALANCE_VAR(kTurretFactoryUpgradeCost) + BALANCE_VAR(kTurretFactoryCost); break;
+			case BUILD_ARMSLAB:				thePointsBack = BALANCE_VAR(kArmsLabCost); break;
+			case BUILD_PROTOTYPE_LAB:		thePointsBack = BALANCE_VAR(kPrototypeLabCost); break;
+			case BUILD_ARMORY:				thePointsBack = BALANCE_VAR(kArmoryCost); break;
+			case ARMORY_UPGRADE:			thePointsBack = BALANCE_VAR(kArmoryUpgradeCost) + BALANCE_VAR(kArmoryCost); break;
+			case BUILD_OBSERVATORY:			thePointsBack = BALANCE_VAR(kObservatoryCost); break;
+			case BUILD_PHASEGATE:			thePointsBack = BALANCE_VAR(kPhaseGateCost); break;
+			case BUILD_TURRET:				thePointsBack = BALANCE_VAR(kSentryCost); break;
+			case BUILD_SIEGE:				thePointsBack = BALANCE_VAR(kSiegeCost); break;
+			case BUILD_COMMANDSTATION:		thePointsBack = BALANCE_VAR(kCommandStationCost); break;
+		}
+
+		if (GetHasUpgrade(this->pev->iuser4, MASK_UPGRADE_11))
+		{
+			thePointsBack += BALANCE_VAR(kElectricalUpgradeResearchCost);
+		}
+
+		thePointsBack = thePointsBack * thePercentage;
+
+		//The old way of calculating Resource Costs for marine structures did not take into account upgrades that the building had and it's original value
+		//float thePointsBack = GetGameRules()->GetCostForMessageID(this->mMessageID)*thePercentage;
+
 		theTeam->SetTeamResources(theTeam->GetTeamResources() + thePointsBack);
 
         // Play "+ resources" event
