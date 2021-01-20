@@ -397,16 +397,16 @@ void AvHOverviewMap::GetColorForEntity(const DrawableEntity& entity, float& outR
 			int f2 = theStructEntity->curstate.fuser2;
 			int f3 = theStructEntity->curstate.fuser3;
 			int f4 = theStructEntity->curstate.fuser4;
-			ConsolePrint("--------------------------------\n");
-			ConsolePrint(("ENTITY ID : " + to_string(entity.mEntityNumber)).c_str());
-			ConsolePrint("--------------------------------\n");
-			ConsolePrint(("health " +to_string(health)+"\n").c_str());
-			ConsolePrint(("solid " + to_string(solid) + "\n").c_str());
-			ConsolePrint(("f1 " + to_string(f1) + "\n").c_str());
-			ConsolePrint(("f2 " + to_string(f2) + "\n").c_str());
-			ConsolePrint(("f3 " + to_string(f4) + "\n").c_str());
-			ConsolePrint(("f4 " + to_string(f4) + "\n").c_str());
-			ConsolePrint("--------------------------------\n");
+			//ConsolePrint("--------------------------------\n");
+			//ConsolePrint(("ENTITY ID : " + to_string(entity.mEntityNumber)).c_str());
+			//ConsolePrint("--------------------------------\n");
+			//ConsolePrint(("health " +to_string(health)+"\n").c_str());
+			//ConsolePrint(("solid " + to_string(solid) + "\n").c_str());
+			//ConsolePrint(("f1 " + to_string(f1) + "\n").c_str());
+			//ConsolePrint(("f2 " + to_string(f2) + "\n").c_str());
+			//ConsolePrint(("f3 " + to_string(f4) + "\n").c_str());
+			//ConsolePrint(("f4 " + to_string(f4) + "\n").c_str());
+			//ConsolePrint("--------------------------------\n");
 	
 
 			if (entity.mTeam == TEAM_ONE) {

@@ -80,6 +80,8 @@
 #include "../common/vector_util.h"
 #include "AvHMarineWeapons.h"
 #include "AvHPlayerUpgrade.h"
+#include "AvHServerUtil.h"
+#include "AvHSharedUtil.h"
 
 // Anim key:
 const int kShotgunAnimIdle = 0;
@@ -91,7 +93,8 @@ const int kShotgunAnimShoot = 5;
 const int kShotgunAnimShootEmpty = 6;
 const int kShotgunAnimDraw = 7;
 const float kShotgunAnimDrawLength = .9f;
-const float kShotgunGotoReloadLength = 1.1f;
+//const float kShotgunGotoReloadLength = 1.1f;
+const float kShotgunGotoReloadLength = 1.6f;
 const float kShotgunReloadShellLength = .9f;
 const float kShotgunEndReloadLength = 1.8f;
 
@@ -210,7 +213,16 @@ void AvHSonicGun::FireProjectiles(void)
 	
     // Fire the bullets and apply damage
 	//this->m_pPlayer->FireBullets(kSGBulletsPerShot, vecSrc, vecAiming, this->GetProjectileSpread(), this->mRange, 0, 0, theDamage);
-	this->m_pPlayer->FireBulletsPlayer(BALANCE_VAR(kSGBulletsPerShot), vecSrc, vecAiming, this->GetProjectileSpread(), this->mRange, BULLET_PLAYER_BUCKSHOT, 0, theDamage, 0, this->m_pPlayer->random_seed);
+
+	bool oldshotty = (CVAR_GET_FLOAT("sv_nsversion") < 323.0f);
+	if (oldshotty)
+	{
+		this->m_pPlayer->FireBulletsPlayer(10, vecSrc, vecAiming, this->GetProjectileSpread(), this->mRange, BULLET_PLAYER_BUCKSHOT, 0, 17, 0, this->m_pPlayer->random_seed);
+	}
+	else
+	{
+		this->m_pPlayer->FireBulletsPlayer(BALANCE_VAR(kSGBulletsPerShot), vecSrc, vecAiming, this->GetProjectileSpread(), this->mRange, BULLET_PLAYER_BUCKSHOT, 0, theDamage, 0, this->m_pPlayer->random_seed);
+	}
 }
 
 bool AvHSonicGun::GetHasMuzzleFlash() const

@@ -16,10 +16,10 @@ clientdata_t none
 	DEFINE_DELTA( origin[2], DT_SIGNED | DT_FLOAT, 21, 128.0 ),
 	DEFINE_DELTA( velocity[2], DT_SIGNED | DT_FLOAT, 16, 8.0 ),
 
-	DEFINE_DELTA( ammo_nails, DT_SIGNED | DT_INTEGER, 10, 1.0 ),
-	DEFINE_DELTA( ammo_shells, DT_SIGNED | DT_INTEGER, 10, 1.0 ),
-	DEFINE_DELTA( ammo_cells, DT_SIGNED | DT_INTEGER, 10, 1.0 ),
-	DEFINE_DELTA( ammo_rockets, DT_SIGNED | DT_INTEGER, 10, 1.0 ),
+	DEFINE_DELTA( ammo_nails, DT_SIGNED | DT_INTEGER, 10, 1.0 ), 		// m_iPrimaryAmmoType
+	DEFINE_DELTA( ammo_shells, DT_SIGNED | DT_INTEGER, 10, 1.0 ), 		// m_iSecondaryAmmoType - not used in any weapon. I think this is for alt fire ammo (ex mp5 grenade).
+	DEFINE_DELTA( ammo_cells, DT_SIGNED | DT_INTEGER, 10, 1.0 ),		// m_rgAmmo[ pCurrent->m_iPrimaryAmmoType ]
+	DEFINE_DELTA( ammo_rockets, DT_SIGNED | DT_INTEGER, 10, 1.0 ), 		// m_rgAmmo[ pCurrent->m_iSecondaryAmmoType ] - not used in any weapon
 
 	DEFINE_DELTA( m_iId, DT_INTEGER, 8, 1.0 ),
 
@@ -237,7 +237,7 @@ weapon_data_t none
 	DEFINE_DELTA( m_flNextSecondaryAttack, DT_FLOAT | DT_SIGNED, 22, 1000.0 ),
 	DEFINE_DELTA( m_iClip, DT_SIGNED | DT_INTEGER, 10, 1.0 ),
 //  DEFINE_DELTA( m_flPumpTime, DT_FLOAT | DT_SIGNED, 22, 1000.0 ),
-//  DEFINE_DELTA( m_fInSpecialReload, DT_INTEGER, 2, 1.0 ),
+	DEFINE_DELTA( m_fInSpecialReload, DT_INTEGER, 3, 1.0 ),
 	DEFINE_DELTA( m_fReloadTime, DT_FLOAT, 16, 100.0 ),
 	DEFINE_DELTA( m_fInReload, DT_INTEGER, 1, 1.0 ),
 //  DEFINE_DELTA( m_fAimedDamage, DT_FLOAT, 6, 0.1 ),

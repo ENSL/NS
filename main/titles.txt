@@ -1576,6 +1576,11 @@ MustBeBuilder
 You must be a Gorge to build this structure.
 }
 
+MustBeStarted
+{
+The game must be started to build this structure.
+}
+
 UpgradeNotAvailable
 {
 This upgrade isn't available at this time.

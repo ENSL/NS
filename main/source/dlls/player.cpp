@@ -3156,15 +3156,20 @@ void CBasePlayer::Spawn( void )
 	g_engfuncs.pfnSetPhysicsKeyValue( edict(), "slj", "0" );
 	g_engfuncs.pfnSetPhysicsKeyValue( edict(), "hl", "1" );
 
-	if (avh_jumpmode.value == 2)
+	if (avh_jumpmode.value == 2 && avh_version.value > 321)
 		g_engfuncs.pfnSetPhysicsKeyValue(edict(), "jm2", "1");
 	else
 		g_engfuncs.pfnSetPhysicsKeyValue(edict(), "jm2", "0");
 
-	if (avh_jumpmode.value == 1)
+	if (avh_jumpmode.value == 1 && avh_version.value > 321)
 		g_engfuncs.pfnSetPhysicsKeyValue(edict(), "jm1", "1");
 	else
 		g_engfuncs.pfnSetPhysicsKeyValue(edict(), "jm1", "0");
+
+	if (avh_version.value > 321)
+		g_engfuncs.pfnSetPhysicsKeyValue(edict(), "jp", "1");
+	else
+		g_engfuncs.pfnSetPhysicsKeyValue(edict(), "jp", "0");
 
 	pev->fov = m_iFOV				= 0;// init field of view.
 	m_iClientFOV		= -1; // make sure fov reset is sent

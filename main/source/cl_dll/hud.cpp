@@ -204,7 +204,7 @@ void CHud :: Init( void )
 	// :
 
 	CVAR_CREATE( "zoom_sensitivity_ratio", "1", 0 );
-	default_fov = CVAR_CREATE( "default_fov", "90", 0 );
+	//default_fov = CVAR_CREATE( "default_fov", "90", 0 );
 	m_pCvarStealMouse = CVAR_CREATE( "hud_capturemouse", "1", FCVAR_ARCHIVE );
 	m_pCvarDraw = CVAR_CREATE( "hud_draw", "1", FCVAR_ARCHIVE );
 	cl_lw = gEngfuncs.pfnGetCvarPointer( "cl_lw" );
@@ -528,7 +528,7 @@ int CHud::MsgFunc_SetFOV(const char *pszName,  int iSize, void *pbuf)
 {
 	int newfov;
 	NetMsg_SetFOV( pbuf, iSize, newfov );
-	int def_fov = CVAR_GET_FLOAT( "default_fov" );
+	//int def_fov = CVAR_GET_FLOAT( "default_fov" );
 
 	//Weapon prediction already takes care of changing the fog. ( g_lastFOV ).
 	if ( cl_lw && cl_lw->value )
@@ -538,7 +538,8 @@ int CHud::MsgFunc_SetFOV(const char *pszName,  int iSize, void *pbuf)
 
 	if ( newfov == 0 )
 	{
-		m_iFOV = def_fov;
+		//m_iFOV = def_fov;
+		m_iFOV = 90;
 	}
 	else
 	{
@@ -548,7 +549,8 @@ int CHud::MsgFunc_SetFOV(const char *pszName,  int iSize, void *pbuf)
 	// the clients fov is actually set in the client data update section of the hud
 
 	// Set a new sensitivity
-	if ( m_iFOV == def_fov || CVAR_GET_FLOAT("senslock") == 1.0f)
+	//if ( m_iFOV == def_fov || CVAR_GET_FLOAT("senslock") == 1.0f)
+	if (m_iFOV == 90 || CVAR_GET_FLOAT("senslock") == 1.0f)
 	{  
 		// reset to saved sensitivity
 		m_flMouseSensitivity = 0;
@@ -556,7 +558,8 @@ int CHud::MsgFunc_SetFOV(const char *pszName,  int iSize, void *pbuf)
 	else
 	{  
 		// set a new sensitivity that is proportional to the change from the FOV default
-		m_flMouseSensitivity = sensitivity->value * ((float)newfov / (float)def_fov) * CVAR_GET_FLOAT("zoom_sensitivity_ratio");
+		//m_flMouseSensitivity = sensitivity->value * ((float)newfov / (float)def_fov) * CVAR_GET_FLOAT("zoom_sensitivity_ratio");
+		m_flMouseSensitivity = sensitivity->value * ((float)newfov / 90.0f) * CVAR_GET_FLOAT("zoom_sensitivity_ratio");
 	}
 
 	return 1;

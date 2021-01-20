@@ -72,9 +72,9 @@ public:
 protected:
     virtual void	Init();
 
-private:
-    int				mSpecialReload;
-    float			mNextReload;
+//private:
+//    int				mSpecialReload;
+//    float			mNextReload;
 };
 
 #endif

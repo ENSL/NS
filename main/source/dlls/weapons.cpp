@@ -757,7 +757,8 @@ CBasePlayerItem::IsUseable( void )
 void CBasePlayerItem :: FallInit( void )
 {
 	pev->movetype = MOVETYPE_TOSS;
-	pev->solid = SOLID_BBOX;
+	//SOLID_BBOX caused weapons to get stuck on eachother and float in air
+	pev->solid = SOLID_BSP;
 
 	UTIL_SetOrigin( pev, pev->origin );
 	UTIL_SetSize(pev, Vector( 0, 0, 0), Vector(0, 0, 0) );//pointsize until it lands on the ground.
@@ -778,6 +779,8 @@ void CBasePlayerItem :: FallInit( void )
 void CBasePlayerItem::FallThink ( void )
 {
 	pev->nextthink = gpGlobals->time + 0.1;
+	//timer for weapons stuck floating in air
+	pev->fuser4 += 0.1;
 
 	if ( pev->flags & FL_ONGROUND )
 	{
@@ -793,7 +796,14 @@ void CBasePlayerItem::FallThink ( void )
 		pev->angles.x = 0;
 		pev->angles.z = 0;
 
-		Materialize(); 
+		Materialize();
+		pev->fuser4 = 0;
+	}
+	//weapons in air for too long from collision issues with other entities change to SOLID_TRIGGER to fall to ground
+	if ((pev->fuser4 > 0.7))
+	{
+		pev->solid = SOLID_TRIGGER;
+		pev->fuser4 = 0;
 	}
 }
 
@@ -917,6 +927,15 @@ void CBasePlayerItem::DefaultTouch( CBaseEntity *pOther )
 	}
 
 	SUB_UseTargets( pOther, USE_TOGGLE, 0 ); // UNDONE: when should this happen?
+
+	// Haven't had the crash but adding this in case due to weapons being able to turn to SOLID_TRIGGER before touching the ground with 2021 weapon collision fix.
+	// https://github.com/ValveSoftware/halflife/pull/1599
+	// If the item is falling and its Think remains FallItem after the player picks it up,
+	// then after the item touches the ground its Touch will be set back to DefaultTouch,
+	// so the player will pick it up again, this time Kill-ing the item (since we already have it in the inventory),
+	// which will make the pointer bad and crash the game.
+	if (m_pfnThink == &CBasePlayerItem::FallThink)
+		SetThink(NULL);
 }
 
 BOOL CanAttack( float attack_time, float curtime, BOOL isPredicted )
@@ -972,17 +991,24 @@ void CBasePlayerWeapon::ItemPostFrame( void )
 	}
     else 
 */
-	if ( theAttackPressed && CanAttack( m_flNextPrimaryAttack, gpGlobals->time, UseDecrement() ) )
+
+	if ( theAttackPressed && m_pPlayer->GetCanUseWeapon())
 	{
-        if (m_pPlayer->GetCanUseWeapon())
+		//bool oldsg = (CVAR_GET_FLOAT("sv_nsversion") < 323.0f);
+		if ((m_fInSpecialReload == 1 || m_fInSpecialReload == 2) && m_iClip != 0 && (CVAR_GET_FLOAT("sv_nsversion") > 322.0f))
+		{
+			m_fInSpecialReload = 3;
+			Reload();
+		}
+		else if (CanAttack(m_flNextPrimaryAttack, gpGlobals->time, UseDecrement()))
         {
             if ( (m_iClip == 0 && pszAmmo1()) || (iMaxClip() == -1 && !m_pPlayer->m_rgAmmo[PrimaryAmmoIndex()] ) )
 		    {
 			    m_fFireOnEmpty = TRUE;
 		    }
 
-		    m_pPlayer->TabulateAmmo();
-		    PrimaryAttack();
+			m_pPlayer->TabulateAmmo();
+			PrimaryAttack();
         }
 	}
 	else if ( m_pPlayer->pev->button & IN_RELOAD && iMaxClip() != WEAPON_NOCLIP && !m_fInReload ) 

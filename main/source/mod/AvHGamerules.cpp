@@ -229,6 +229,7 @@ extern cvar_t							avh_gametime;
 extern cvar_t							avh_ironman;
 extern cvar_t                           avh_mapvoteratio;
 extern cvar_t							avh_structurelimit;
+extern cvar_t							avh_version;
 
 BOOL IsSpawnPointValid( CBaseEntity *pPlayer, CBaseEntity *pSpot );
 inline int FNullEnt( CBaseEntity *ent ) { return (ent == NULL) || FNullEnt( ent->edict() ); }
@@ -336,6 +337,7 @@ AvHGamerules::AvHGamerules() : mTeamA(TEAM_ONE), mTeamB(TEAM_TWO)
     RegisterServerVariable(&avh_team4damagepercent);
     RegisterServerVariable(avh_cheats);
     RegisterServerVariable(&avh_structurelimit);
+	RegisterServerVariable(&avh_version);
 
 	g_VoiceGameMgr.Init(&gVoiceHelper, gpGlobals->maxClients);
 
@@ -4356,6 +4358,7 @@ int	AvHGamerules::GetCostForMessageID(AvHMessageID inMessageID) const
 {
 	// This is point cost or energy cost in NS, or number of levels in Combat
 	int	cost = 0;
+	bool theGameStarted = GetGameRules()->GetGameStarted();
 
 	if(this->GetIsCombatMode())
     {
@@ -4407,6 +4410,18 @@ int	AvHGamerules::GetCostForMessageID(AvHMessageID inMessageID) const
 			break;
         }
     }
+	else if (!theGameStarted)
+	{
+		switch (inMessageID)
+		{
+		case ALIEN_LIFEFORM_TWO:
+		case ALIEN_LIFEFORM_THREE:
+		case ALIEN_LIFEFORM_FOUR:
+		case ALIEN_LIFEFORM_FIVE:
+			cost = 0;
+			break;
+		}
+	}
     else
 	{
 		switch(inMessageID)

@@ -92,6 +92,7 @@
 #define kNeedThreeHivesForStructure		"NeedThreeHivesForStructure"
 #define kNeedsAnotherHiveForStructure	"NeedsAnotherHiveForStructure"
 #define kMustBeBuilder					"MustBeBuilder"
+#define kMustBeStarted					"MustBeStarted"
 #define kUpgradeNotAvailable			"UpgradeNotAvailable"
 #define kTooManyStructuresInArea		"TooManyStructuresInArea"
 #define kTooManyStructuresOfThisTypeNearby	"TooManyStructuresOfThisTypeNearby"

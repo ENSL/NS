@@ -6339,6 +6339,8 @@ void PM_Jetpack()
 	bool theIsDevoured = GetHasUpgrade(pmove->iuser4, MASK_DIGESTING);
     // Turn off jetpack by default
     gIsJetpacking[pmove->player_index] = false;
+
+	bool newjp = atoi(pmove->PM_Info_ValueForKey(pmove->physinfo, "jp"));
     
     if(!pmove->dead && theHasJetpackUpgrade && !theIsDevoured)
     {
@@ -6376,10 +6378,18 @@ void PM_Jetpack()
 			// Old lateral jetpack code - acceleration scales with framerate
 			//pmove->velocity[0] += (theWishVelocity[0]/pmove->clientmaxspeed)*kJetpackLateralScalar;
 			//pmove->velocity[1] += (theWishVelocity[1]/pmove->clientmaxspeed)*kJetpackLateralScalar;
-
-			pmove->velocity[0] += (theWishVelocity[0] / pmove->clientmaxspeed) * (theTimePassed * theWeightScalar*kJetpackForce);
-			pmove->velocity[1] += (theWishVelocity[1] / pmove->clientmaxspeed) * (theTimePassed * theWeightScalar*kJetpackForce);
-            pmove->velocity[2] += theTimePassed*theWeightScalar*kJetpackForce;
+			if (!newjp)
+			{
+				pmove->velocity[0] += (theWishVelocity[0]/pmove->clientmaxspeed)*12.0f;
+				pmove->velocity[1] += (theWishVelocity[1]/pmove->clientmaxspeed)*12.0f;
+				pmove->velocity[2] += theTimePassed * theWeightScalar*kJetpackForce;
+			}
+			else
+			{
+				pmove->velocity[0] += (theWishVelocity[0] / pmove->clientmaxspeed) * (theTimePassed * theWeightScalar*kJetpackForce);
+				pmove->velocity[1] += (theWishVelocity[1] / pmove->clientmaxspeed) * (theTimePassed * theWeightScalar*kJetpackForce);
+				pmove->velocity[2] += theTimePassed*theWeightScalar*kJetpackForce;
+			}
 
 			//FPS independent jetpack event. Scales with FPS without timer.
 			JpEventTimer += pmove->cmd.msec;

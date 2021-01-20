@@ -477,23 +477,24 @@ void CBasePlayerWeapon::ItemPostFrame( void )
 	if (this->m_flLastAnimationPlayed >= 3.0f * BALANCE_VAR(kLeapROF) + gpGlobals->time)
 		this->m_flLastAnimationPlayed = 0.0f;
 
-	if ((m_fInReload) && (m_pPlayer->m_flNextAttack <= 0.0))
-	{
-///////////////////////////////////////////////////////////////////////////////////////////////////////
-// Put code in here to predict reloads (ie, have the ammo on screen update before we get a response) //
-///////////////////////////////////////////////////////////////////////////////////////////////////////
-//#if 0 // FIXME, need ammo on client to make this work right
-//		// complete the reload. 
-//		int j = min( iMaxClip() - m_iClip, m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType]);	
-//
-//		// Add them to the clip
-//		m_iClip += j;
-//		m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= j;
-//#else	
-//		m_iClip += 10;
-//#endif
-		m_fInReload = FALSE;
-	}
+//	if ((m_fInReload) && (m_pPlayer->m_flNextAttack <= 0.0))
+//	{
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+//// Put code in here to predict reloads (ie, have the ammo on screen update before we get a response) //
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+////#if 0 // FIXME, need ammo on client to make this work right
+////		// complete the reload. 
+////		int j = min( iMaxClip() - m_iClip, m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType]);	
+////
+////		// Add them to the clip
+////		m_iClip += j;
+////		m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= j;
+////		ALERT(at_console, "hlweappredictreload\n");
+////#else	
+////		m_iClip += 10;
+////#endif
+//		m_fInReload = FALSE;
+//	}
 
 	// Properly propagate the end animation
 	if (this->PrevAttack2Status == true && !(m_pPlayer->pev->button & IN_ATTACK2))
@@ -518,9 +519,14 @@ void CBasePlayerWeapon::ItemPostFrame( void )
 		}
 	}
 
-	if ( (m_pPlayer->pev->button & IN_ATTACK) && !(m_pPlayer->pev->button & IN_ATTACK2) && (m_flNextPrimaryAttack <= 0.0) )
+	if ( (m_pPlayer->pev->button & IN_ATTACK) && !(m_pPlayer->pev->button & IN_ATTACK2))
 	{
-        if (GetCanUseWeapon())
+		if ((m_fInSpecialReload == 1 || m_fInSpecialReload == 2) && m_iClip != 0 && (CVAR_GET_FLOAT("sv_nsversion") > 322.0f))
+		{
+			m_fInSpecialReload = 3;
+			Reload();
+		}
+        else if (GetCanUseWeapon() && (m_flNextPrimaryAttack <= 0.0))
         {
 		    if ( (m_iClip == 0 && pszAmmo1()) || 
 			    (iMaxClip() == -1 && !m_pPlayer->m_rgAmmo[PrimaryAmmoIndex()] ) )
@@ -661,15 +667,16 @@ void CBasePlayerWeapon::ItemPostFrame( void )
 		    // no fire buttons down
 
 		    m_fFireOnEmpty = FALSE;
-
+			
 		    // weapon is useable. Reload if empty and weapon has waited as long as it has to after firing
 		    if ( m_iClip == 0 && !(iFlags() & ITEM_FLAG_NOAUTORELOAD) && m_flNextPrimaryAttack < 0.0 )
 		    {
 			    // << CGC >> Only reload if we have more ammo to reload with
-			    if(m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] > 0)
+				// Client doesn't know autoreload flag and knife ammo is infinite with networked ammo. Check if knife to prevent reload.
+			    if(m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] > 0 && !(gHUD.GetCurrentWeaponID() == AVH_WEAPON_KNIFE))
 			    {
-				    Reload();
-				    return;
+						Reload();
+						return;
 			    }
 		    }
 
@@ -1233,9 +1240,15 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 		pCurrent->pev->iuser3			= pfrom->iuser3;
 	
 //		pCurrent->m_iSecondaryAmmoType		= (int)from->client.vuser3[2];
-		pCurrent->m_iPrimaryAmmoType		= (int)from->client.vuser4[0];
+//		pCurrent->m_iPrimaryAmmoType		= (int)from->client.vuser4[0];
 //		player.m_rgAmmo[ pCurrent->m_iPrimaryAmmoType ]	= (int)from->client.vuser4[1];
 //		player.m_rgAmmo[ pCurrent->m_iSecondaryAmmoType ]	= (int)from->client.vuser4[2];
+
+		// Ammo networking 2021
+		pCurrent->m_iPrimaryAmmoType						= from->client.ammo_nails;
+		pCurrent->m_iSecondaryAmmoType						= from->client.ammo_shells; 
+		player.m_rgAmmo[ pCurrent->m_iPrimaryAmmoType ]		= from->client.ammo_cells;
+		player.m_rgAmmo[pCurrent->m_iSecondaryAmmoType] = from->client.ammo_rockets;
 	}
 
 	// For random weapon events, use this seed to seed random # generator
@@ -1287,11 +1300,11 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 		player.m_pActiveItem = g_pWpns[ from->client.m_iId ];
 	}
 
-	if ( player.m_pActiveItem->m_iId == WEAPON_RPG )
-	{
-		 ( ( CRpg * )player.m_pActiveItem)->m_fSpotActive = (int)from->client.vuser2[ 1 ];
-		 ( ( CRpg * )player.m_pActiveItem)->m_cActiveRockets = (int)from->client.vuser2[ 2 ];
-	}
+	//if ( player.m_pActiveItem->m_iId == WEAPON_RPG )
+	//{
+	//	 ( ( CRpg * )player.m_pActiveItem)->m_fSpotActive = (int)from->client.vuser2[ 1 ];
+	//	 ( ( CRpg * )player.m_pActiveItem)->m_cActiveRockets = (int)from->client.vuser2[ 2 ];
+	//}
 
     // Don't go firing anything if we have died.
 	// Or if we don't have a weapon model deployed
@@ -1363,11 +1376,11 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 //	to->client.vuser2[0]				= player.ammo_hornets;
 //	to->client.ammo_rockets				= player.ammo_rockets;
 
-	if ( player.m_pActiveItem->m_iId == WEAPON_RPG )
-	{
-		 from->client.vuser2[ 1 ] = ( ( CRpg * )player.m_pActiveItem)->m_fSpotActive;
-		 from->client.vuser2[ 2 ] = ( ( CRpg * )player.m_pActiveItem)->m_cActiveRockets;
-	}
+	//if ( player.m_pActiveItem->m_iId == WEAPON_RPG )
+	//{
+	//	 from->client.vuser2[ 1 ] = ( ( CRpg * )player.m_pActiveItem)->m_fSpotActive;
+	//	 from->client.vuser2[ 2 ] = ( ( CRpg * )player.m_pActiveItem)->m_cActiveRockets;
+	//}
 
 	// Make sure that weapon animation matches what the game .dll is telling us
 	//  over the wire ( fixes some animation glitches )
@@ -1419,11 +1432,17 @@ void HUD_WeaponsPostThink( local_state_s *from, local_state_s *to, usercmd_t *cm
 		pto->m_flTimeWeaponIdle			-= cmd->msec / 1000.0;
 		pto->fuser1						-= cmd->msec / 1000.0;
 
-		to->client.vuser3[2]				= pCurrent->m_iSecondaryAmmoType;
+		//to->client.vuser3[2]				= pCurrent->m_iSecondaryAmmoType;
 		to->client.vuser4 = pCurrent->pev->vuser4;
 //		to->client.vuser4[0]				= pCurrent->m_iPrimaryAmmoType;
 //		to->client.vuser4[1]				= player.m_rgAmmo[ pCurrent->m_iPrimaryAmmoType ];
 //		to->client.vuser4[2]				= player.m_rgAmmo[ pCurrent->m_iSecondaryAmmoType ];
+
+		// Ammo networking 2021
+		to->client.ammo_nails				= pCurrent->m_iPrimaryAmmoType;
+		to->client.ammo_shells				= pCurrent->m_iSecondaryAmmoType;
+		to->client.ammo_cells				= player.m_rgAmmo[ pCurrent->m_iPrimaryAmmoType ];
+		to->client.ammo_rockets				= player.m_rgAmmo[ pCurrent->m_iSecondaryAmmoType ];
 
 /*		if ( pto->m_flPumpTime != -9999 )
 		{

@@ -121,7 +121,7 @@
 #define kGameHDSpaceNeeded 300
 #define kGameVersionMajor 3
 #define kGameVersionMinor 2
-#define kGameVersionRevision 2
+#define kGameVersionRevision 3
 #define kGestateBaseArmor 150
 #define kGestateHealth 200
 #define kGorgeArmorUpgrade 50
@@ -246,8 +246,8 @@
 #define kResourceTowerBuildTime 15
 #define kResourceTowerCost 15
 #define kResourceTowerHealth 5500
-#define kSGBulletsPerShot 10
-#define kSGDamage 17
+#define kSGBulletsPerShot 17
+#define kSGDamage 10
 #define kSGMaxAmmo 40
 #define kSGMaxClip 8
 #define kScanDuration 10

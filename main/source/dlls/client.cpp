@@ -1227,6 +1227,10 @@ void ClientPrecache( void )
 	PRECACHE_UNMODIFIED_GENERIC("ns.wad");
 	PRECACHE_UNMODIFIED_GENERIC("ns2.wad");
 	PRECACHE_UNMODIFIED_GENERIC("v_wad.wad");
+	PRECACHE_UNMODIFIED_GENERIC("dlls/ns.dll");
+	PRECACHE_UNMODIFIED_GENERIC("cl_dlls/client.dll");
+	PRECACHE_UNMODIFIED_GENERIC("dlls/ns.so");
+	PRECACHE_UNMODIFIED_GENERIC("cl_dlls/client.so");
 /*	PRECACHE_UNMODIFIED_GENERIC("maps/co_angst_detail.txt");
 	PRECACHE_UNMODIFIED_GENERIC("maps/co_core_detail.txt");
 	PRECACHE_UNMODIFIED_GENERIC("maps/co_daimos_detail.txt");
@@ -2089,7 +2093,7 @@ int GetWeaponData( struct edict_s *player, struct weapon_data_s *info )
 
 						//thePlayer->SetDebugCSP(item);
 
-						//item->m_fInSpecialReload		= gun->m_fInSpecialReload;
+						item->m_fInSpecialReload		= gun->m_fInSpecialReload;
 						//item->fuser1					= max( gun->pev->fuser1, -0.001 );
 						item->fuser2					= gun->m_flStartThrow;
 						item->fuser3					= gun->m_flReleaseThrow;
@@ -2200,6 +2204,13 @@ void UpdateClientData ( const struct edict_s *ent, int sendweapons, struct clien
 //					cd->vuser4.x	= gun->m_iPrimaryAmmoType;
 //					cd->vuser4.y	= pl->m_rgAmmo[gun->m_iPrimaryAmmoType];
 //					cd->vuser4.z	= pl->m_rgAmmo[gun->m_iSecondaryAmmoType];
+					
+					// Ammo networking 2021
+					cd->ammo_nails = gun->m_iPrimaryAmmoType;
+					cd->ammo_shells = gun->m_iSecondaryAmmoType;
+					cd->ammo_cells = pl->m_rgAmmo[gun->m_iPrimaryAmmoType];
+					cd->ammo_rockets = pl->m_rgAmmo[gun->m_iSecondaryAmmoType];
+
 //					
 //					if ( pl->m_pActiveItem->m_iId == WEAPON_RPG )
 //					{
@@ -2365,10 +2376,6 @@ static char *ignoreInConsistencyCheck[] = {
 
 int	InconsistentFile( const edict_t *player, const char *filename, char *disconnect_message )
 {
-	// Server doesn't care?
-	if ( CVAR_GET_FLOAT( "mp_consistency" ) != 1 )
-		return 0;
-
 	int i=0;
 	while ( ignoreInConsistencyCheck[i] != 0 ) {
 		if ( !strcmp(ignoreInConsistencyCheck[i], filename) ) 
@@ -2385,11 +2392,24 @@ int	InconsistentFile( const edict_t *player, const char *filename, char *disconn
 		}
 	}*/
 
-	// Default behavior is to kick the player
-	sprintf( disconnect_message, "Server is enforcing file consistency for %s\n", filename );
+	if (strstr(filename, "dlls/") != NULL) {
+		sprintf(disconnect_message, "(%s) Your NS version differs from the server's. Go to github.com/ENSL/NS#downloads or run Natural Launcher for the latest version.\n", filename);
+		//sprintf(disconnect_message, "(%s) This server is running an experimental NS build. Enable experimental build in Natural Launcher settings. github.com/ENSL/NS#downloads\n", filename);
+		return 1;
+	}
 
-	// Kick now with specified disconnect message.
-	return 1;
+	if (CVAR_GET_FLOAT("mp_consistency") > 1)
+	{
+		// Default behavior is to kick the player
+		sprintf(disconnect_message, "Server is enforcing file consistency for %s. Files available at github.com/ENSL/NS#downloads\n", filename);
+
+		// Kick now with specified disconnect message.
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 /*

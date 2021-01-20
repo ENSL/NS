@@ -729,18 +729,19 @@ void AvHHud::AddCommands()
     gEngfuncs.pfnAddCommand ("+mousepopupmenu", AvHPieMenuHandler::OpenPieMenu);
 	gEngfuncs.pfnAddCommand ("-mousepopupmenu", AvHPieMenuHandler::ClosePieMenu);
 	
+	////Key scrolling now handled in input.cpp
 	// Add scrolling commands
-    gEngfuncs.pfnAddCommand ("+scrollup", AvHScrollHandler::KeyScrollUp);
-    gEngfuncs.pfnAddCommand ("-scrollup", AvHScrollHandler::KeyScrollUpStop);
+    //gEngfuncs.pfnAddCommand ("+scrollup", AvHScrollHandler::KeyScrollUp);
+    //gEngfuncs.pfnAddCommand ("-scrollup", AvHScrollHandler::KeyScrollUpStop);
 	
-    gEngfuncs.pfnAddCommand ("+scrolldown", AvHScrollHandler::KeyScrollDown);
-    gEngfuncs.pfnAddCommand ("-scrolldown", AvHScrollHandler::KeyScrollDownStop);
+    //gEngfuncs.pfnAddCommand ("+scrolldown", AvHScrollHandler::KeyScrollDown);
+    //gEngfuncs.pfnAddCommand ("-scrolldown", AvHScrollHandler::KeyScrollDownStop);
 	
-    gEngfuncs.pfnAddCommand ("+scrollleft", AvHScrollHandler::KeyScrollLeft);
-    gEngfuncs.pfnAddCommand ("-scrollleft", AvHScrollHandler::KeyScrollLeftStop);
+    //gEngfuncs.pfnAddCommand ("+scrollleft", AvHScrollHandler::KeyScrollLeft);
+    //gEngfuncs.pfnAddCommand ("-scrollleft", AvHScrollHandler::KeyScrollLeftStop);
 	
-    gEngfuncs.pfnAddCommand ("+scrollright", AvHScrollHandler::KeyScrollRight);
-    gEngfuncs.pfnAddCommand ("-scrollright", AvHScrollHandler::KeyScrollRightStop);
+    //gEngfuncs.pfnAddCommand ("+scrollright", AvHScrollHandler::KeyScrollRight);
+    //gEngfuncs.pfnAddCommand ("-scrollright", AvHScrollHandler::KeyScrollRightStop);
 
     gEngfuncs.pfnAddCommand ("toggleeditps", AvHParticleEditorHandler::ToggleEdit);
 
@@ -2194,7 +2195,6 @@ void AvHHud::ResetComponentsForUser3()
 	{
 		bool theIsCombatMode = (this->mMapMode == MAP_MODE_CO);
 		bool theIsNSMode = (this->mMapMode == MAP_MODE_NS);
-	
 		if((this->GetHUDPlayMode() == PLAYMODE_PLAYING) && !this->GetIsNotInControl() && !gViewPort->IsOptionsMenuVisible())
 		{
 			switch(this->GetHUDUser3())
@@ -2204,7 +2204,7 @@ void AvHHud::ResetComponentsForUser3()
 				{
 					this->mPieMenuControl = kSoldierCombatMenu;
 				}
-				else if(theIsNSMode)
+				else/* if(theIsNSMode) */
 				{
 					this->mPieMenuControl = kSoldierMenu;
 				}
@@ -2250,7 +2250,7 @@ void AvHHud::ResetComponentsForUser3()
 				{
 					this->mPieMenuControl = kAlienCombatMenu;
 				}
-				else if(theIsNSMode)
+				else/* if(theIsNSMode)*/
 				{
 					this->mPieMenuControl = kAlienMenu;
 				}

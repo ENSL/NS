@@ -37,12 +37,12 @@ extern int g_iVisibleMouse;
 float HUD_GetFOV( void );
 
 extern cvar_t *sensitivity;
-extern cvar_t *cl_forcedefaultfov;
+//extern cvar_t *cl_forcedefaultfov;
 
 // Think
 void CHud::Think(void)
 {
-	int newfov;
+	float newfov;
 	HUDLIST *pList = m_pHudList;
 
 	while (pList)
@@ -55,22 +55,24 @@ void CHud::Think(void)
 	newfov = HUD_GetFOV();
 	if ( newfov == 0 )
 	{
-		m_iFOV = default_fov->value;
+//		m_iFOV = default_fov->value;
+		m_iFOV = 90;
 	}
 	else
 	{
 		m_iFOV = newfov;
 	}
 
-	if(cl_forcedefaultfov->value)
-	{
-		m_iFOV = 90;
-	}
+	//if(cl_forcedefaultfov->value)
+	//{
+	//	m_iFOV = 90;
+	//}
 
 	// the clients fov is actually set in the client data update section of the hud
 
 	// Set a new sensitivity
-	if ( m_iFOV == default_fov->value || CVAR_GET_FLOAT("senslock") == 1.0f)
+	//if ( m_iFOV == default_fov->value || CVAR_GET_FLOAT("senslock") == 1.0f)
+	if (m_iFOV == 90 || CVAR_GET_FLOAT("senslock") == 1.0f)
 	{  
 		// reset to saved sensitivity
 		m_flMouseSensitivity = 0;
@@ -78,13 +80,15 @@ void CHud::Think(void)
 	else
 	{  
 		// set a new sensitivity that is proportional to the change from the FOV default
-		m_flMouseSensitivity = sensitivity->value * ((float)newfov / (float)default_fov->value) * CVAR_GET_FLOAT("zoom_sensitivity_ratio");
+		//m_flMouseSensitivity = sensitivity->value * ((float)newfov / (float)default_fov->value) * CVAR_GET_FLOAT("zoom_sensitivity_ratio");
+		m_flMouseSensitivity = sensitivity->value * (newfov / 90.0f ) * CVAR_GET_FLOAT("zoom_sensitivity_ratio");
 	}
 
 	// think about default fov
 	if ( m_iFOV == 0 )
 	{  // only let players adjust up in fov,  and only if they are not overriden by something else
-		m_iFOV = max( default_fov->value, 90 );  
+		//m_iFOV = max( default_fov->value, 90 );
+		m_iFOV = 90;
 	}
 }
 

@@ -116,9 +116,9 @@ cvar_t	*lookspring;
 cvar_t	*cl_pitchup;
 cvar_t	*cl_pitchdown;
 cvar_t	*cl_upspeed;
-cvar_t	*cl_forwardspeed;
-cvar_t	*cl_backspeed;
-cvar_t	*cl_sidespeed;
+//cvar_t	*cl_forwardspeed;
+//cvar_t	*cl_backspeed;
+//cvar_t	*cl_sidespeed;
 cvar_t	*cl_movespeedkey;
 cvar_t	*cl_yawspeed;
 cvar_t	*cl_pitchspeed;
@@ -133,7 +133,7 @@ cvar_t  *cl_musicdir;
 cvar_t	*cl_quickselecttime;
 cvar_t	*cl_highdetail;
 cvar_t	*cl_cmhotkeys;
-cvar_t	*cl_forcedefaultfov;
+//cvar_t	*cl_forcedefaultfov;
 cvar_t	*cl_dynamiclights;
 cvar_t	*r_dynamic;
 cvar_t	*cl_buildmessages;
@@ -143,6 +143,7 @@ cvar_t	*cl_ambientsound;
 cvar_t	*senslock;
 cvar_t	*hud_style;
 cvar_t	*cl_chatbeep;
+cvar_t	*cl_mutemenu;
 
 /*
 ===============================================================================
@@ -191,6 +192,10 @@ kbutton_t	in_alt1;
 kbutton_t	in_score;
 kbutton_t	in_break;
 kbutton_t	in_graph;  // Display the netgraph
+kbutton_t	in_scrollup;
+kbutton_t	in_scrolldown;
+kbutton_t	in_scrollleft;
+kbutton_t	in_scrollright;
 
 typedef struct kblist_s
 {
@@ -616,6 +621,18 @@ int CL_DLLEXPORT HUD_Key_Event( int down, int keynum, const char *pszCurrentBind
 
 				theProcessKeyBinding = 0;
 			}
+		////Commander arrow key scroll hardcoding so keys can be used out of comm chair without config change. Add as cvar option?
+		//	if (keynum == K_UPARROW){KeyDown(&in_scrollup); theProcessKeyBinding = 0;}
+		//	if (keynum == K_DOWNARROW){KeyDown(&in_scrolldown); theProcessKeyBinding = 0;}
+		//	if (keynum == K_LEFTARROW){KeyDown(&in_scrollleft);	theProcessKeyBinding = 0;}
+		//	if (keynum == K_RIGHTARROW){KeyDown(&in_scrollright);theProcessKeyBinding = 0;}
+		//}
+		//else if((keynum != 0) && !(down))
+		//{
+		//	if (keynum == K_UPARROW){KeyUp(&in_scrollup);theProcessKeyBinding = 0;}
+		//	if (keynum == K_DOWNARROW){KeyUp(&in_scrolldown);theProcessKeyBinding = 0;}
+		//	if (keynum == K_LEFTARROW){KeyUp(&in_scrollleft);theProcessKeyBinding = 0;}
+		//	if (keynum == K_RIGHTARROW){KeyUp(&in_scrollright); theProcessKeyBinding = 0;}
 		}
 	}
 
@@ -671,6 +688,14 @@ void IN_LeftDown(void) {KeyDown(&in_left);}
 void IN_LeftUp(void) {KeyUp(&in_left);}
 void IN_RightDown(void) {KeyDown(&in_right);}
 void IN_RightUp(void) {KeyUp(&in_right);}
+void IN_ScrollUpDown(void) { KeyDown(&in_scrollup);}
+void IN_ScrollUpUp(void) { KeyUp(&in_scrollup); }
+void IN_ScrollDownDown(void) { KeyDown(&in_scrolldown); }
+void IN_ScrollDownUp(void) { KeyUp(&in_scrolldown); }
+void IN_ScrollLeftDown(void) { KeyDown(&in_scrollleft); }
+void IN_ScrollLeftUp(void) { KeyUp(&in_scrollleft); }
+void IN_ScrollRightDown(void) { KeyDown(&in_scrollright); }
+void IN_ScrollRightUp(void) { KeyUp(&in_scrollright); }
 
 void IN_ForwardDown(void)
 {
@@ -1070,11 +1095,16 @@ void CL_DLLEXPORT CL_CreateMove ( float frametime, struct usercmd_s *cmd, int ac
 				// Scroll the view if the HUD tells us to, otherwise use normal key presses
 				int theScrollX = 0, theScrollY = 0, theScrollZ = 0;
 				gHUD.GetAndClearTopDownScrollAmount(theScrollX, theScrollY, theScrollZ);
+				//Arrow key scrolling. Binds not needed. Hardcoded in HUD_Key_Event.
+				theScrollY += CL_KeyState(&in_scrollup);
+				theScrollY -= CL_KeyState(&in_scrolldown);
+				theScrollX -= CL_KeyState(&in_scrollleft);
+				theScrollX += CL_KeyState(&in_scrollright);
 				
 				if(theScrollX || theScrollY || theScrollZ)
 				{
 					// Commander move speed
-					float kCommanderMoveSpeed = 1000;					
+					float kCommanderMoveSpeed = 1000;
 					cmd->upmove += kCommanderMoveSpeed * theScrollY;
 					cmd->sidemove += kCommanderMoveSpeed * theScrollX;
 					cmd->forwardmove += kCommanderMoveSpeed * theScrollZ;
@@ -1181,20 +1211,26 @@ void CL_DLLEXPORT CL_CreateMove ( float frametime, struct usercmd_s *cmd, int ac
 		{
 		if ( in_strafe.state & 1 )
 			{
-				cmd->sidemove += cl_sidespeed->value * CL_KeyState (&in_right);
-				cmd->sidemove -= cl_sidespeed->value * CL_KeyState (&in_left);
+				//cmd->sidemove += cl_sidespeed->value * CL_KeyState (&in_right);
+				//cmd->sidemove -= cl_sidespeed->value * CL_KeyState (&in_left);
+				cmd->sidemove += kSideSpeed * CL_KeyState (&in_right);
+				cmd->sidemove -= kSideSpeed * CL_KeyState (&in_left);
 			}
 
-			cmd->sidemove += cl_sidespeed->value * CL_KeyState (&in_moveright);
-			cmd->sidemove -= cl_sidespeed->value * CL_KeyState (&in_moveleft);
+			//cmd->sidemove += cl_sidespeed->value * CL_KeyState (&in_moveright);
+			//cmd->sidemove -= cl_sidespeed->value * CL_KeyState (&in_moveleft);
+			cmd->sidemove += kSideSpeed * CL_KeyState (&in_moveright);
+			cmd->sidemove -= kSideSpeed * CL_KeyState (&in_moveleft);
 
 			cmd->upmove += cl_upspeed->value * CL_KeyState (&in_up);
 			cmd->upmove -= cl_upspeed->value * CL_KeyState (&in_down);
 
 			if ( !(in_klook.state & 1 ) )
 			{	
-				cmd->forwardmove += cl_forwardspeed->value * CL_KeyState (&in_forward);
-				cmd->forwardmove -= cl_backspeed->value * CL_KeyState (&in_back);
+				//cmd->forwardmove += cl_forwardspeed->value * CL_KeyState (&in_forward);
+				cmd->forwardmove += kForwardSpeed * CL_KeyState(&in_forward);
+				//cmd->forwardmove -= cl_backspeed->value * CL_KeyState (&in_back);
+				cmd->forwardmove -= kBackSpeed * CL_KeyState(&in_back);
 			}		
 		}
 		
@@ -1515,6 +1551,14 @@ void InitInput (void)
 	gEngfuncs.pfnAddCommand ("-graph", IN_GraphUp);
 	gEngfuncs.pfnAddCommand ("+break",IN_BreakDown);
 	gEngfuncs.pfnAddCommand ("-break",IN_BreakUp);
+	gEngfuncs.pfnAddCommand("+scrollup", IN_ScrollUpDown);
+	gEngfuncs.pfnAddCommand("-scrollup", IN_ScrollUpUp);
+	gEngfuncs.pfnAddCommand("+scrolldown", IN_ScrollDownDown);
+	gEngfuncs.pfnAddCommand("-scrolldown", IN_ScrollDownUp);
+	gEngfuncs.pfnAddCommand("+scrollleft", IN_ScrollLeftDown);
+	gEngfuncs.pfnAddCommand("-scrollleft", IN_ScrollLeftUp);
+	gEngfuncs.pfnAddCommand("+scrollright", IN_ScrollRightDown);
+	gEngfuncs.pfnAddCommand("-scrollright", IN_ScrollRightUp);
 
 	lookstrafe			= gEngfuncs.pfnRegisterVariable ( "lookstrafe", "0", FCVAR_ARCHIVE );
 	lookspring			= gEngfuncs.pfnRegisterVariable ( "lookspring", "0", FCVAR_ARCHIVE );
@@ -1522,9 +1566,9 @@ void InitInput (void)
 	cl_yawspeed			= gEngfuncs.pfnRegisterVariable ( "cl_yawspeed", "210", 0 );
 	cl_pitchspeed		= gEngfuncs.pfnRegisterVariable ( "cl_pitchspeed", "225", 0 );
 	cl_upspeed			= gEngfuncs.pfnRegisterVariable ( "cl_upspeed", "320", 0 );
-	cl_forwardspeed		= gEngfuncs.pfnRegisterVariable ( "cl_forwardspeed", "400", FCVAR_ARCHIVE );
-	cl_backspeed		= gEngfuncs.pfnRegisterVariable ( "cl_backspeed", "400", FCVAR_ARCHIVE );
-	cl_sidespeed		= gEngfuncs.pfnRegisterVariable ( "cl_sidespeed", "400", 0 );
+	//cl_forwardspeed		= gEngfuncs.pfnRegisterVariable ( "cl_forwardspeed", "400", FCVAR_ARCHIVE );
+	//cl_backspeed		= gEngfuncs.pfnRegisterVariable ( "cl_backspeed", "400", FCVAR_ARCHIVE );
+	//cl_sidespeed		= gEngfuncs.pfnRegisterVariable ( "cl_sidespeed", "400", 0 );
 	cl_movespeedkey		= gEngfuncs.pfnRegisterVariable ( "cl_movespeedkey", "0.3", 0 );
 	cl_pitchup			= gEngfuncs.pfnRegisterVariable ( "cl_pitchup", "89", 0 );
 	cl_pitchdown		= gEngfuncs.pfnRegisterVariable ( "cl_pitchdown", "89", 0 );
@@ -1542,19 +1586,19 @@ void InitInput (void)
 	cl_musicvolume		= gEngfuncs.pfnRegisterVariable ( kvMusicVolume, "155", FCVAR_ARCHIVE );
 	cl_musicdir			= gEngfuncs.pfnRegisterVariable ( kvMusicDirectory, "", FCVAR_ARCHIVE);
 	cl_musicdelay		= gEngfuncs.pfnRegisterVariable ( kvMusicDelay, "90", FCVAR_ARCHIVE);
-	cl_forcedefaultfov	= gEngfuncs.pfnRegisterVariable ( kvForceDefaultFOV, "0", FCVAR_ARCHIVE );
 	cl_dynamiclights	= gEngfuncs.pfnRegisterVariable ( kvDynamicLights, "1", FCVAR_ARCHIVE );
 	cl_buildmessages	= gEngfuncs.pfnRegisterVariable ( kvBuildMessages, "1", FCVAR_ARCHIVE);
 	cl_quickselecttime	= gEngfuncs.pfnRegisterVariable ( kvQuickSelectTime, ".15", FCVAR_ARCHIVE );
 	cl_highdetail		= gEngfuncs.pfnRegisterVariable ( kvHighDetail, "1", FCVAR_ARCHIVE );
 	cl_cmhotkeys		= gEngfuncs.pfnRegisterVariable ( kvCMHotkeys, "qwerasdfzxcv", FCVAR_ARCHIVE );
-	cl_forcedefaultfov	= gEngfuncs.pfnRegisterVariable ( kvForceDefaultFOV, "0", FCVAR_ARCHIVE );
+	//cl_forcedefaultfov	= gEngfuncs.pfnRegisterVariable ( kvForceDefaultFOV, "0", FCVAR_ARCHIVE );
 	cl_particleinfo		= gEngfuncs.pfnRegisterVariable ( kvParticleInfo, "0", FCVAR_ARCHIVE );
 	cl_widescreen		= gEngfuncs.pfnRegisterVariable	( kvWidescreen, "1", FCVAR_ARCHIVE );
 	cl_ambientsound		= gEngfuncs.pfnRegisterVariable	( kvAmbientSound, "0", FCVAR_ARCHIVE);
 	senslock			= gEngfuncs.pfnRegisterVariable	("senslock", "0", FCVAR_ARCHIVE);
 	hud_style			= gEngfuncs.pfnRegisterVariable	("hud_style", "1", FCVAR_ARCHIVE);
 	cl_chatbeep			= gEngfuncs.pfnRegisterVariable	("cl_chatbeep", "1", FCVAR_ARCHIVE);
+	cl_mutemenu			= gEngfuncs.pfnRegisterVariable ("cl_mutemenu", "3", FCVAR_ARCHIVE);
 
 	// Initialize third person camera controls.
 	CAM_Init();

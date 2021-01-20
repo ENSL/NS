@@ -73,7 +73,7 @@ entities sent from the server may not include everything in the pvs, especially
 when crossing a water boudnary.
 */
 
-extern cvar_t	*cl_forwardspeed;
+//extern cvar_t	*cl_forwardspeed;
 extern cvar_t	*chase_active;
 extern cvar_t	*scr_ofsx, *scr_ofsy, *scr_ofsz;
 extern cvar_t	*cl_vsmoothing;

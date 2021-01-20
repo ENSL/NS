@@ -176,9 +176,13 @@ SBColumnInfo g_ColumnInfo[NUM_COLUMNS] =
 
 void ScorePanel::HitTestPanel::internalMousePressed(MouseCode code)
 {
-	for(int i=0;i<_inputSignalDar.getCount();i++)
+	int mutebutton = (int)CVAR_GET_FLOAT("cl_mutemenu") - 1;
+	if (code == mutebutton)
 	{
-		_inputSignalDar[i]->mousePressed(code,this);
+		for (int i = 0; i < _inputSignalDar.getCount(); i++)
+		{
+			_inputSignalDar[i]->mousePressed(code,this);
+		}
 	}
 }
 
@@ -372,7 +376,7 @@ ScorePanel::ScorePanel(int x, int y, int wide, int tall) : Panel(x, y, wide, tal
 		m_PlayerList.AddItem(pGridRow);
 	}
 
-
+	
 	// Add the hit test panel. It is invisible and traps mouse clicks so we can go into squelch mode.
 	m_HitTestPanel.setBgColor(0,0,0,255);
 	m_HitTestPanel.setParent(this);

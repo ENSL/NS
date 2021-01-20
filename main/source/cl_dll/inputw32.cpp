@@ -55,8 +55,8 @@ extern cvar_t *lookspring;
 extern cvar_t *cl_pitchdown;
 extern cvar_t *cl_pitchup;
 extern cvar_t *cl_yawspeed;
-extern cvar_t *cl_sidespeed;
-extern cvar_t *cl_forwardspeed;
+//extern cvar_t *cl_sidespeed;
+//extern cvar_t *cl_forwardspeed;
 extern cvar_t *cl_pitchspeed;
 extern cvar_t *cl_movespeedkey;
 
@@ -1130,7 +1130,8 @@ void IN_JoyMove ( float frametime, usercmd_t *cmd )
 				// user wants forward control to be forward control
 				if (fabs(fAxisValue) > joy_forwardthreshold->value)
 				{
-					cmd->forwardmove += (fAxisValue * joy_forwardsensitivity->value) * speed * cl_forwardspeed->value;
+					//cmd->forwardmove += (fAxisValue * joy_forwardsensitivity->value) * speed * cl_forwardspeed->value;
+					cmd->forwardmove += (fAxisValue * joy_forwardsensitivity->value) * speed * kForwardSpeed;
 				}
 			}
 			break;
@@ -1138,7 +1139,8 @@ void IN_JoyMove ( float frametime, usercmd_t *cmd )
 		case AxisSide:
 			if (fabs(fAxisValue) > joy_sidethreshold->value)
 			{
-				cmd->sidemove += (fAxisValue * joy_sidesensitivity->value) * speed * cl_sidespeed->value;
+				//cmd->sidemove += (fAxisValue * joy_sidesensitivity->value) * speed * cl_sidespeed->value;
+				cmd->sidemove += (fAxisValue * joy_sidesensitivity->value) * speed * kSideSpeed;
 			}
 			break;
 
@@ -1148,7 +1150,8 @@ void IN_JoyMove ( float frametime, usercmd_t *cmd )
 				// user wants turn control to become side control
 				if (fabs(fAxisValue) > joy_sidethreshold->value)
 				{
-					cmd->sidemove -= (fAxisValue * joy_sidesensitivity->value) * speed * cl_sidespeed->value;
+					//cmd->sidemove -= (fAxisValue * joy_sidesensitivity->value) * speed * cl_sidespeed->value;
+					cmd->sidemove -= (fAxisValue * joy_sidesensitivity->value) * speed * kSideSpeed;
 				}
 			}
 			else

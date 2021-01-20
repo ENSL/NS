@@ -21,14 +21,15 @@ public:
 	bool			GetMouseTwoDown() const;
 	
 	static void		ClearScrollHeight();
-	static void		KeyScrollLeft();
-	static void		KeyScrollRight();
-	static void		KeyScrollUp();
-	static void		KeyScrollDown();
-	static void		KeyScrollLeftStop();
-	static void		KeyScrollRightStop();
-	static void		KeyScrollUpStop();
-	static void		KeyScrollDownStop();
+	////Key scrolling now handled in input.cpp
+	//static void		KeyScrollLeft();
+	//static void		KeyScrollRight();
+	//static void		KeyScrollUp();
+	//static void		KeyScrollDown();
+	//static void		KeyScrollLeftStop();
+	//static void		KeyScrollRightStop();
+	//static void		KeyScrollUpStop();
+	//static void		KeyScrollDownStop();
 	static void		ScrollLeft();
 	static void		ScrollRight();
 	static void		ScrollUp();

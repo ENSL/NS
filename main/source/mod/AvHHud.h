@@ -362,6 +362,7 @@ public:
 	void			RenderNoZBuffering();
 
     void            Render();
+	void            RenderShowSpeed();
     void            RenderCommonUI();
     void            RenderMarineUI();
     void            RenderCommanderUI();

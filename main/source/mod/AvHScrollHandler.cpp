@@ -65,61 +65,62 @@ void AvHScrollHandler::ClearScrollHeight()
 	sScrollZ = 0;
 }
 
-void AvHScrollHandler::KeyScrollLeft()
-{
-	if ( sKeyDown < 0 ) sKeyDown=0;
-	sKeyDown++;
-	ScrollLeft();
-}
-
-void AvHScrollHandler::KeyScrollRight()
-{
-	if ( sKeyDown < 0 ) sKeyDown=0;
-	sKeyDown++;
-	ScrollRight();
-}
-
-void AvHScrollHandler::KeyScrollUp()
-{
-	if ( sKeyDown < 0 ) sKeyDown=0;
-	sKeyDown++;
-	ScrollUp();
-}
-
-void AvHScrollHandler::KeyScrollDown()
-{
-	if ( sKeyDown < 0 ) sKeyDown=0;
-	sKeyDown++;
-	ScrollDown();
-}
-
-void AvHScrollHandler::KeyScrollUpStop()
-{
-	sKeyDown--;
-	if ( sKeyDown < 0 ) sKeyDown=0;
-	sScrollY=0;
-}
-
-void AvHScrollHandler::KeyScrollDownStop()
-{
-	sKeyDown--;
-	if ( sKeyDown < 0 ) sKeyDown=0;
-	sScrollY=0;
-}
-
-void AvHScrollHandler::KeyScrollLeftStop()
-{
-	sKeyDown--;
-	if ( sKeyDown < 0 ) sKeyDown=0;
-	sScrollX=0;
-}
-
-void AvHScrollHandler::KeyScrollRightStop()
-{
-	sKeyDown--;
-	if ( sKeyDown < 0 ) sKeyDown=0;
-	sScrollX=0;
-}
+////Key scrolling now handled in input.cpp
+//void AvHScrollHandler::KeyScrollLeft()
+//{
+//	if ( sKeyDown < 0 ) sKeyDown=0;
+//	sKeyDown++;
+//	ScrollLeft();
+//}
+//
+//void AvHScrollHandler::KeyScrollRight()
+//{
+//	if ( sKeyDown < 0 ) sKeyDown=0;
+//	sKeyDown++;
+//	ScrollRight();
+//}
+//
+//void AvHScrollHandler::KeyScrollUp()
+//{
+//	if ( sKeyDown < 0 ) sKeyDown=0;
+//	sKeyDown++;
+//	ScrollUp();
+//}
+//
+//void AvHScrollHandler::KeyScrollDown()
+//{
+//	if ( sKeyDown < 0 ) sKeyDown=0;
+//	sKeyDown++;
+//	ScrollDown();
+//}
+//
+//void AvHScrollHandler::KeyScrollUpStop()
+//{
+//	sKeyDown--;
+//	if ( sKeyDown < 0 ) sKeyDown=0;
+//	sScrollY=0;
+//}
+//
+//void AvHScrollHandler::KeyScrollDownStop()
+//{
+//	sKeyDown--;
+//	if ( sKeyDown < 0 ) sKeyDown=0;
+//	sScrollY=0;
+//}
+//
+//void AvHScrollHandler::KeyScrollLeftStop()
+//{
+//	sKeyDown--;
+//	if ( sKeyDown < 0 ) sKeyDown=0;
+//	sScrollX=0;
+//}
+//
+//void AvHScrollHandler::KeyScrollRightStop()
+//{
+//	sKeyDown--;
+//	if ( sKeyDown < 0 ) sKeyDown=0;
+//	sScrollX=0;
+//}
 
 
 void AvHScrollHandler::ScrollLeft()

@@ -266,7 +266,7 @@ BOOL AvHBasePlayerWeapon::DefaultReload( int iClipSize, int iAnim, float fDelay,
 		return TRUE;
 	// :
 
-	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0)
+	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0 || m_iId == AVH_WEAPON_KNIFE)
 		return FALSE;
 
 	// Don't reload while we're resupplying
@@ -284,12 +284,15 @@ BOOL AvHBasePlayerWeapon::DefaultReload( int iClipSize, int iAnim, float fDelay,
 	
 	//!!UNDONE -- reload sound goes here !!!
 	//SendWeaponAnim( iAnim, UseDecrement() ? 1 : 0 );
-	this->SendWeaponAnim(iAnim);
+	//// 2021 Ammo networking. Commented below - client was getting sent extra reload animations causing visual stutter.
+	//this->SendWeaponAnim(iAnim);
 
 	// Send reload to all players.  Reloads are initiated server-side, so send down to local client as well
-	this->m_pPlayer->pev->weaponanim = iAnim;
+	//// 2021 Ammo networking. Commented below - client was getting sent extra reload animations causing visual stutter.
+	//this->m_pPlayer->pev->weaponanim = iAnim;
 	this->PlaybackEvent(this->mWeaponAnimationEvent, iAnim, FEV_RELIABLE);
 
+	//ALERT(at_console, "defaultreload nextattack:%g\n", m_pPlayer->m_flNextAttack);
 	// Player model reload animation
 	this->m_pPlayer->SetAnimation(PLAYER_RELOAD);
 	
@@ -742,11 +745,12 @@ bool AvHBasePlayerWeapon::ProcessValidAttack(void)
 			ASSERT(this->m_iPrimaryAmmoType >= 0);
 			if(this->m_iClip > 0)
 			{
-				if(this->m_flNextPrimaryAttack <= 0)
+				if((this->m_flNextPrimaryAttack <= 0) && !this->m_fInSpecialReload)
 				{
 					if(!this->GetMustPressTriggerForEachShot() || (!this->mAttackButtonDownLastFrame))
 					{
-						theAttackIsValid = true;
+							//ALERT(at_console, "trueattack1 primammo:%d primatype:%d secammo:%d secatype:%d\n", this->m_pPlayer->m_rgAmmo[this->m_iPrimaryAmmoType], this->m_iPrimaryAmmoType, this->m_pPlayer->m_rgAmmo[this->m_iSecondaryAmmoType], this->m_iSecondaryAmmoType);
+							theAttackIsValid = true;
 					}
 				}
 			}
@@ -757,14 +761,15 @@ bool AvHBasePlayerWeapon::ProcessValidAttack(void)
 				
 				BOOL theHasAmmo = 0;
 				
-				if ( pszAmmo1() )
-				{
+				//// 2021 Ammo networking - Client can't check pszAmmo, removing check since every gun in NS uses pszAmmo1 and it was causing theHasAmmo to fail on client when the player had ammo.
+				//if ( pszAmmo1() )
+				//{
 					theHasAmmo |= (this->m_pPlayer->m_rgAmmo[this->m_iPrimaryAmmoType] != 0);
-				}
-				if ( pszAmmo2() )
-				{
-					theHasAmmo |= (this->m_pPlayer->m_rgAmmo[this->m_iSecondaryAmmoType] != 0);
-				}
+				//}
+				//if ( pszAmmo2() )
+				//{
+					//theHasAmmo |= (this->m_pPlayer->m_rgAmmo[this->m_iSecondaryAmmoType] != 0);
+				//}
 				if (this->m_iClip > 0)
 				{
 					theHasAmmo |= 1;
@@ -774,12 +779,16 @@ bool AvHBasePlayerWeapon::ProcessValidAttack(void)
 				{
 					// Trigger reload
 					this->Reload();
+					//ALERT(at_console, "hasammo m_iprimary:  %i\n", this->m_pPlayer->m_rgAmmo[this->m_iPrimaryAmmoType]);
+					//ALERT(at_console, "hasammo m_iptype:  %i\n", m_iPrimaryAmmoType);
 				}
 				else
 				{
 					this->PlayEmptySound();
 
 					this->SendWeaponAnim(this->GetEmptyShootAnimation());
+					//ALERT(at_console, "noammo m_iprimary:  %i\n", this->m_pPlayer->m_rgAmmo[this->m_iPrimaryAmmoType]);
+					//ALERT(at_console, "noammo m_iptype:  %i\n", m_iPrimaryAmmoType);
 
 					//this->m_pPlayer->SetAnimation(PLAYER_ATTACK1);
 				}

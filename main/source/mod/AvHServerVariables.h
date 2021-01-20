@@ -95,8 +95,7 @@ extern cvar_t *violence_hgibs;
 extern cvar_t *violence_agibs;
 extern cvar_t avh_killdelay;
 extern cvar_t *showtriggers;
-
-extern cvar_t *showtriggers;
+extern cvar_t avh_version;
 
 char	*ns_cvar_string(const cvar_t *cvar);
 int		ns_cvar_int(const cvar_t *cvar);
@@ -145,5 +144,6 @@ float	ns_cvar_float(const cvar_t *cvar);
 
 #define kvBlockScripts              "mp_blockscripts"
 #define kvJumpMode					"sv_jumpmode"
+#define kvVersion					"sv_nsversion"
 
 #endif
