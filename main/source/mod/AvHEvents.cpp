@@ -937,7 +937,15 @@ void EV_SonicGun(struct event_args_s* args)
 //			AvHParticleSystemManager::Instance()->CreateParticleSystem(kpsShotgun, theBarrelTip);
 //		}
 		//EV_HLDM_FireBullets( idx, forward, right, up, kSGBulletsPerShot, vecSrc, vecAiming, kSGRange, BULLET_PLAYER_BUCKSHOT, 0, &tracerCount[idx-1], VECTOR_CONE_20DEGREES.x, VECTOR_CONE_20DEGREES.y);
-		EV_HLDM_FireBulletsPlayer( idx, forward, right, up, BALANCE_VAR(kSGBulletsPerShot), vecSrc, vecAiming, kSGRange, BULLET_PLAYER_BUCKSHOT, 0, &tracerCount[idx-1], kSGSpread, args->iparam1);
+
+		if (CVAR_GET_FLOAT("sv_nsversion") < 323.0f)
+		{
+			EV_HLDM_FireBulletsPlayer(idx, forward, right, up, 10, vecSrc, vecAiming, kSGRange, BULLET_PLAYER_BUCKSHOT, 0, &tracerCount[idx - 1], kSGSpread, args->iparam1);
+		}
+		else
+		{
+			EV_HLDM_FireBulletsPlayer(idx, forward, right, up, BALANCE_VAR(kSGBulletsPerShot), vecSrc, vecAiming, kSGRange, BULLET_PLAYER_BUCKSHOT, 0, &tracerCount[idx - 1], kSGSpread, args->iparam1);
+		}
 		//}
 	
 	// General x-punch axis
