@@ -1095,7 +1095,7 @@ void CL_DLLEXPORT CL_CreateMove ( float frametime, struct usercmd_s *cmd, int ac
 				// Scroll the view if the HUD tells us to, otherwise use normal key presses
 				int theScrollX = 0, theScrollY = 0, theScrollZ = 0;
 				gHUD.GetAndClearTopDownScrollAmount(theScrollX, theScrollY, theScrollZ);
-				//Arrow key scrolling. Binds not needed. Hardcoded in HUD_Key_Event.
+				//Arrow key scrolling.
 				theScrollY += CL_KeyState(&in_scrollup);
 				theScrollY -= CL_KeyState(&in_scrolldown);
 				theScrollX -= CL_KeyState(&in_scrollleft);
