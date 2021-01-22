@@ -1210,6 +1210,7 @@ void AvHBasePlayerWeapon::UpdateInventoryEnabledState(int inNumActiveHives)
 {
 	// Process here
 	int theEnabledState = 1;
+	bool theGameStarted = GetGameRules()->GetGameStarted();
 				
 	ItemInfo theItemInfo;
 	if(this->GetItemInfo(&theItemInfo) != 0)
@@ -1218,8 +1219,23 @@ void AvHBasePlayerWeapon::UpdateInventoryEnabledState(int inNumActiveHives)
 		AvHPlayer* thePlayer = dynamic_cast<AvHPlayer*>(this->m_pPlayer);
 		ASSERT(thePlayer);
 	
+		// Pregame alien abilities
+		if (!theGameStarted)
+		{
+			if (!thePlayer->GetIsAbleToAct() ||
+				(thePlayer->pev->iuser3 == AVH_USER3_ALIEN_PLAYER5 && (theWeaponFlags & ONE_HIVE_REQUIRED)) ||
+				(theWeaponFlags & TWO_HIVES_REQUIRED) ||
+				(theWeaponFlags & THREE_HIVES_REQUIRED))
+			{
+				//// Allow leap
+				//if (!(thePlayer->pev->iuser3 == AVH_USER3_ALIEN_PLAYER1 && (theWeaponFlags & TWO_HIVES_REQUIRED)))
+				//{
+					theEnabledState = 0;
+				//}
+			}
+		}
 		// If we don't have the hives required, or we're ensnared
-		if	(/*thePlayer->GetIsTemporarilyInvulnerable() ||*/
+		else if (/*thePlayer->GetIsTemporarilyInvulnerable() ||*/
 			!thePlayer->GetIsAbleToAct() || 
 			((inNumActiveHives < 1) && (theWeaponFlags & ONE_HIVE_REQUIRED)) ||
 			((inNumActiveHives < 2) && (theWeaponFlags & TWO_HIVES_REQUIRED)) ||
@@ -1230,9 +1246,8 @@ void AvHBasePlayerWeapon::UpdateInventoryEnabledState(int inNumActiveHives)
 			theEnabledState = 0;
 		}
 	}
-	
-	// : 497 save the state for when we send the CurWeapon message
-	this->m_iEnabled =  theEnabledState;
+		// : 497 save the state for when we send the CurWeapon message
+		this->m_iEnabled = theEnabledState;
 }
 
 void AvHBasePlayerWeapon::KeyValue(KeyValueData* pkvd)

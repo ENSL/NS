@@ -8200,6 +8200,7 @@ void AvHPlayer::SetUser3(AvHUser3 inUser3, bool inForceChange, bool inGiveWeapon
             this->SendMessageOnce(theMessage.c_str(), TOOLTIP);
         }
 		this->LogEmitRoleChange(); 
+		//ALERT(at_console, "resetbehavior newvangle0:%f newvangle1:%f newvangle2:%f\n", this->pev->v_angle[0], this->pev->v_angle[1], this->pev->v_angle[2]);
     }
 }
 
@@ -8395,6 +8396,8 @@ void AvHPlayer::StartTopDownMode()
         VectorCopy(this->pev->angles, this->mAnglesBeforeTopDown);
         VectorCopy(this->pev->v_angle, this->mViewAnglesBeforeTopDown);
         VectorCopy(this->pev->view_ofs, this->mViewOfsBeforeTopDown);
+		//ALERT(at_console, "v_angle0:%f v_angle1:%f v_angle2:%f\n", this->pev->v_angle[0], this->pev->v_angle[1], this->pev->v_angle[2]);
+		//ALERT(at_console, "saving0:%f saving1:%f saving2:%f\n", this->mViewAnglesBeforeTopDown[0], this->mViewAnglesBeforeTopDown[1], this->mViewAnglesBeforeTopDown[2]);
         this->mAnimExtensionBeforeTopDown = this->m_szAnimExtention;
 
         this->HolsterCurrent();
@@ -8824,6 +8827,9 @@ bool AvHPlayer::StopTopDownMode()
         VectorCopy(this->mAnglesBeforeTopDown, this->pev->angles);
         VectorCopy(this->mViewAnglesBeforeTopDown, this->pev->v_angle);
         VectorCopy(this->mViewOfsBeforeTopDown, this->pev->view_ofs);
+		//ALERT(at_console, "saved0:%f saved1:%f saved2:%f\n", this->mViewAnglesBeforeTopDown[0], this->mViewAnglesBeforeTopDown[1], this->mViewAnglesBeforeTopDown[2]);
+		//ALERT(at_console, "newvangle0:%f newvangle1:%f newvangle2:%f\n", this->pev->v_angle[0], this->pev->v_angle[1], this->pev->v_angle[2]);
+
         strcpy(this->m_szAnimExtention, this->mAnimExtensionBeforeTopDown.c_str());
 
         VectorCopy(g_vecZero, this->pev->velocity);
@@ -9933,6 +9939,7 @@ void AvHPlayer::UpdateTechNodes()
 {
     bool theIsCombatMode = GetGameRules()->GetIsCombatMode();
 	bool theIsNSMode = GetGameRules()->GetIsNSMode();
+	bool theGameStarted = GetGameRules()->GetGameStarted();
     if((this->GetUser3() == AVH_USER3_COMMANDER_PLAYER) || theIsCombatMode || this->GetIsAlien())
     {
         AvHTeam* theTeam = this->GetTeamPointer();
@@ -9940,7 +9947,7 @@ void AvHPlayer::UpdateTechNodes()
         {
 			// Propagate and use local tech nodes in combat mode, else use team nodes in NS mode
             AvHTechTree& theTechNodes = theIsCombatMode ? this->mCombatNodes : theTeam->GetTechNodes();
- 
+
             // Now customize nodes for aliens in NS
             if(theIsNSMode && this->GetIsAlien())
             {
@@ -9983,8 +9990,8 @@ void AvHPlayer::UpdateTechNodes()
                 theTechNodes.SetIsResearchable(ALIEN_EVOLUTION_ELEVEN, true);
                 theTechNodes.SetIsResearchable(ALIEN_EVOLUTION_TWELVE, true);
 				
-				// If not Gorge, set buildables to be unavailable
-                if(theLifeform != ALIEN_LIFEFORM_TWO)
+				// If not Gorge or the game hasn't started, set buildables to be unavailable
+                if(theLifeform != ALIEN_LIFEFORM_TWO || !theGameStarted)
                 {
                     theTechNodes.SetIsResearchable(ALIEN_BUILD_HIVE, false);
                     theTechNodes.SetIsResearchable(ALIEN_BUILD_RESOURCES, false);
@@ -10052,7 +10059,10 @@ void AvHPlayer::UpdateTechNodes()
 					}
 					if(!AvHGetHasFreeUpgradeCategory(ALIEN_UPGRADE_CATEGORY_MOVEMENT, theUpgrades, this->pev->iuser4))
 					{
-						theTechNodes.SetIsResearchable(ALIEN_EVOLUTION_SEVEN, false);
+						//if (theGameStarted)
+						//{
+							theTechNodes.SetIsResearchable(ALIEN_EVOLUTION_SEVEN, false);
+						//}
 						theTechNodes.SetIsResearchable(ALIEN_EVOLUTION_EIGHT, false);
 						theTechNodes.SetIsResearchable(ALIEN_EVOLUTION_NINE, false);
 					}
@@ -10064,6 +10074,15 @@ void AvHPlayer::UpdateTechNodes()
 					}
                 }
             }
+
+			if (UpdatedCosts && !theGameStarted)
+				UpdatedCosts = false;
+
+			if (theGameStarted && !UpdatedCosts)
+			{
+				theTechNodes.processBalanceChange();
+				UpdatedCosts = true;
+			}
             
 			theTechNodes.GetDelta( this->mClientTechNodes,this->mClientTechDelta );
 			if( !mClientTechDelta.empty() )

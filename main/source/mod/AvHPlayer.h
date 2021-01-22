@@ -692,6 +692,7 @@ private:
 	AvHTechTree			mClientTechNodes;
 	MessageIDListType	mClientTechDelta;
 	AvHTechSlotListType	mClientTechSlotList;
+	bool				UpdatedCosts;
 
 	AvHMessageID		mClientResearchingTech;
 
