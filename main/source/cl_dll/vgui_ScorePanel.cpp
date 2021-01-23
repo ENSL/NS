@@ -578,12 +578,24 @@ void ScorePanel::SortTeams()
 		SortActivePlayers(kMarine1Team);
 		SortActivePlayers(kAlien2Team);
 		SortActivePlayers(kMarine2Team);
+
+		if (oldteam != gHUD.GetHUDTeam())
+		{
+			ClientCmd("exec alienofficial.cfg\n");
+			oldteam = gHUD.GetHUDTeam();
+		}
 	}
 	else {
 		SortActivePlayers(kMarine1Team);
 		SortActivePlayers(kAlien1Team);
 		SortActivePlayers(kMarine2Team);
 		SortActivePlayers(kAlien2Team);
+
+		if (oldteam != gHUD.GetHUDTeam())
+		{
+			ClientCmd("exec marineofficial.cfg\n");
+			oldteam = gHUD.GetHUDTeam();
+		}
 	}
 
 	SortActivePlayers(kSpectatorTeam);
