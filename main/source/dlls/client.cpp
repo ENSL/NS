@@ -2393,8 +2393,8 @@ int	InconsistentFile( const edict_t *player, const char *filename, char *disconn
 	}*/
 
 	if (strstr(filename, "dlls/") != NULL) {
-		sprintf(disconnect_message, "(%s) Your NS version differs from the server's. Go to github.com/ENSL/NS#downloads or run Natural Launcher for the latest version.\n", filename);
-		//sprintf(disconnect_message, "(%s) This server is running an experimental NS build. Enable experimental build in Natural Launcher settings. github.com/ENSL/NS#downloads\n", filename);
+		//sprintf(disconnect_message, "(%s) Your NS version differs from the server's. Go to github.com/ENSL/NS#downloads or run Natural Launcher for the latest version.\n", filename);
+		sprintf(disconnect_message, "(%s) This server is running an experimental NS build. Enable experimental build in Natural Launcher settings. github.com/ENSL/NS#downloads\n", filename);
 		return 1;
 	}
 

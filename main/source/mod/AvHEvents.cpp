@@ -938,7 +938,7 @@ void EV_SonicGun(struct event_args_s* args)
 //		}
 		//EV_HLDM_FireBullets( idx, forward, right, up, kSGBulletsPerShot, vecSrc, vecAiming, kSGRange, BULLET_PLAYER_BUCKSHOT, 0, &tracerCount[idx-1], VECTOR_CONE_20DEGREES.x, VECTOR_CONE_20DEGREES.y);
 
-		if (CVAR_GET_FLOAT("sv_nsversion") < 323.0f)
+		if ((CVAR_GET_FLOAT("sv_nsversion") < 323.0f) || (CVAR_GET_FLOAT("sv_newsgspread") == 0.0f))
 		{
 			EV_HLDM_FireBulletsPlayer(idx, forward, right, up, 10, vecSrc, vecAiming, kSGRange, BULLET_PLAYER_BUCKSHOT, 0, &tracerCount[idx - 1], kSGSpread, args->iparam1);
 		}

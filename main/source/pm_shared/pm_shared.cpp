@@ -6341,6 +6341,7 @@ void PM_Jetpack()
     gIsJetpacking[pmove->player_index] = false;
 
 	bool newjp = atoi(pmove->PM_Info_ValueForKey(pmove->physinfo, "jp"));
+	bool fastjp = atoi(pmove->PM_Info_ValueForKey(pmove->physinfo, "jp2"));
     
     if(!pmove->dead && theHasJetpackUpgrade && !theIsDevoured)
     {
@@ -6378,7 +6379,14 @@ void PM_Jetpack()
 			// Old lateral jetpack code - acceleration scales with framerate
 			//pmove->velocity[0] += (theWishVelocity[0]/pmove->clientmaxspeed)*kJetpackLateralScalar;
 			//pmove->velocity[1] += (theWishVelocity[1]/pmove->clientmaxspeed)*kJetpackLateralScalar;
-			if (!newjp)
+
+			if (fastjp)
+			{
+				pmove->velocity[0] += (theWishVelocity[0] / pmove->clientmaxspeed) * (theTimePassed * theWeightScalar * 1562.5f);
+				pmove->velocity[1] += (theWishVelocity[1] / pmove->clientmaxspeed) * (theTimePassed * theWeightScalar * 1562.5f);
+				pmove->velocity[2] += theTimePassed * theWeightScalar*kJetpackForce;
+			}
+			else if (!newjp)
 			{
 				pmove->velocity[0] += (theWishVelocity[0]/pmove->clientmaxspeed)*12.0f;
 				pmove->velocity[1] += (theWishVelocity[1]/pmove->clientmaxspeed)*12.0f;

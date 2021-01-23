@@ -215,7 +215,8 @@ void AvHSonicGun::FireProjectiles(void)
 	//this->m_pPlayer->FireBullets(kSGBulletsPerShot, vecSrc, vecAiming, this->GetProjectileSpread(), this->mRange, 0, 0, theDamage);
 
 	bool oldshotty = (CVAR_GET_FLOAT("sv_nsversion") < 323.0f);
-	if (oldshotty)
+
+	if (oldshotty || (CVAR_GET_FLOAT("sv_newsgspread") == 0.0f))
 	{
 		this->m_pPlayer->FireBulletsPlayer(10, vecSrc, vecAiming, this->GetProjectileSpread(), this->mRange, BULLET_PLAYER_BUCKSHOT, 0, 17, 0, this->m_pPlayer->random_seed);
 	}
