@@ -1488,6 +1488,21 @@ void CL_ResetButtonBits( int bits )
 	}
 }
 
+void NsVersion(void)
+{
+	static char theGameVersion[1024];
+
+	string theGameVersionString;
+
+	theGameVersionString = "v" + MakeStringFromInt(BALANCE_VAR(kGameVersionMajor)) + "." + MakeStringFromInt(BALANCE_VAR(kGameVersionMinor)) + "." +
+		MakeStringFromInt(BALANCE_VAR(kGameVersionRevision)) + "  " + __DATE__ + " " + __TIME__;
+
+	//memset(theGameVersion, 0, 1024);
+	strcpy(theGameVersion, theGameVersionString.c_str());
+
+	gEngfuncs.Con_Printf(theGameVersion);
+}
+
 /*
 ============
 InitInput
@@ -1559,6 +1574,8 @@ void InitInput (void)
 	gEngfuncs.pfnAddCommand("-scrollleft", IN_ScrollLeftUp);
 	gEngfuncs.pfnAddCommand("+scrollright", IN_ScrollRightDown);
 	gEngfuncs.pfnAddCommand("-scrollright", IN_ScrollRightUp);
+
+	gEngfuncs.pfnAddCommand("nsversion", NsVersion);
 
 	lookstrafe			= gEngfuncs.pfnRegisterVariable ( "lookstrafe", "0", FCVAR_ARCHIVE );
 	lookspring			= gEngfuncs.pfnRegisterVariable ( "lookspring", "0", FCVAR_ARCHIVE );
