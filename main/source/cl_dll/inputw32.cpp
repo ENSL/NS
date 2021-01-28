@@ -96,7 +96,9 @@ int			old_mouse_x, old_mouse_y, mx_accum, my_accum;
 float		mouse_x, mouse_y;
 
 static int	restore_spi;
-static int	originalmouseparms[3], newmouseparms[3] = {0, 0, 1};
+//// Previous code from HL SDK windows98 for era paramaters. See comments in IN_StartupMouse.
+//static int	originalmouseparms[3], newmouseparms[3] = {0, 0, 1};
+static int	originalmouseparms[3], newmouseparms[3] = { 0, 0, 0};
 static int	mouseactive = 0;
 int			mouseinitialized;
 static int	mouseparmsvalid;
@@ -387,15 +389,34 @@ void IN_StartupMouse (void)
 
 	if (mouseparmsvalid)
 	{
-		if ( gEngfuncs.CheckParm ("-noforcemspd", NULL ) ) 
-			newmouseparms[2] = originalmouseparms[2];
+		//// Original mouse parameter code. SPI_GETMOUSE windows parameters changed either in win2000 or winxp and these launch parameters haven't made sense since.
+		//// The newmouseparms[2] (mouse accel on/off in newer windows) was also hardcoded to 1 previously, forcing acceleration on for players without noforcemspd or noforcemparms parameters. This was done so to make mouse speed = 1 in win98.
+		//// SPI_GETMOUSE documentation:
+		//// Win10: https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-systemparametersinfoa 
+		////		https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-mouse_event
+		//// Win98: Retrieve the x-axis and y-axis threshold values for the mouse as well as the mouse speed. uiParam must be 0. pvParam is a 3-element array of Long-type variables which receives the x-threshold, y-threshold, and mouse speed.
+		//if ( gEngfuncs.CheckParm ("-noforcemspd", NULL ) ) 
+		//	newmouseparms[2] = originalmouseparms[2];
+		//
+		//if ( gEngfuncs.CheckParm ("-noforcemaccel", NULL ) ) 
+		//{
+		//	newmouseparms[0] = originalmouseparms[0];
+		//	newmouseparms[1] = originalmouseparms[1];
+		//}
+		//
+		//if ( gEngfuncs.CheckParm ("-noforcemparms", NULL ) ) 
+		//{
+		//	newmouseparms[0] = originalmouseparms[0];
+		//	newmouseparms[1] = originalmouseparms[1];
+		//	newmouseparms[2] = originalmouseparms[2];
+		//}
 
-		if ( gEngfuncs.CheckParm ("-noforcemaccel", NULL ) ) 
-		{
-			newmouseparms[0] = originalmouseparms[0];
-			newmouseparms[1] = originalmouseparms[1];
-		}
 
+		// Legacy default settings behavior for players that got used to it
+		if ( gEngfuncs.CheckParm ("-forcemaccel", NULL ) )
+			newmouseparms[2] = 1;
+
+		// Windows parameters in game. For people with desktop accel that want it in game or people that have custom accel curves from registry edits.
 		if ( gEngfuncs.CheckParm ("-noforcemparms", NULL ) ) 
 		{
 			newmouseparms[0] = originalmouseparms[0];
