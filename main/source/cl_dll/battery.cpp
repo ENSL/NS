@@ -122,10 +122,10 @@ int CHudBattery::Draw(float flTime)
 	int iOffset = (m_prc1->bottom - m_prc1->top)/6;
 
 	int theInset = 0;
-	if(gHUD.GetIsAlien())
-	{
-		theInset = ScreenWidth()*kResourceEnergyBarWidth;
-	}
+	//if(gHUD.GetIsAlien())
+	//{
+	//	theInset = ScreenWidth()*kResourceEnergyBarWidth;
+	//}
 
     int theViewport[4];
     gHUD.GetViewport(theViewport);
@@ -150,7 +150,7 @@ int CHudBattery::Draw(float flTime)
 
 	x += (m_prc1->right - m_prc1->left);
 	x = gHUD.DrawHudNumber(x, y, DHN_3DIGITS | DHN_DRAWZERO, m_iBat, r, g, b);
-    
+
 	return 1;
     
 }
