@@ -217,10 +217,10 @@ int CHudHealth::Draw(float flTime)
 		x = theViewport[0] + CrossWidth /2;
 
 		int theInset = 0;
-		if(gHUD.GetIsAlien() && !gHUD.GetIsCombatMode())
-		{
-			theInset = ScreenWidth()*kResourceEnergyBarWidth;
-		}
+		//if(gHUD.GetIsAlien() && !gHUD.GetIsCombatMode())
+		//{
+		//	theInset = ScreenWidth()*kResourceEnergyBarWidth;
+		//}
 		x += theInset;// + kHealthLeftInset*ScreenWidth;
 		
 		SPR_Set(gHUD.GetSprite(m_HUD_cross), r, g, b);
