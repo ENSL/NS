@@ -132,13 +132,18 @@ void WeaponsResource :: LoadWeaponSprites( WEAPON *pWeapon, int custom )
 	int screenWidth=ScreenWidth();
 
 	for ( j=0; j < numRes; j++ ) {
+		if (screenWidth > resolutions[5]) 
+		{
+			iRes = resolutions[5];
+			break;
+		}
 		if ( screenWidth == resolutions[j] ) {
 			iRes=resolutions[j];
 			break;
 		}
 		if ( j > 0 && screenWidth > resolutions[j-1] && screenWidth < resolutions[j] ) {
 			iRes=resolutions[j-1];
-			break;
+				break;
 		}
 	}
 
@@ -687,6 +692,16 @@ void CHudAmmo::Think(void)
 			}
 		}
 
+	}
+
+	if (gHUD.GetCurrentWeaponID() != gWR.LastWeaponId)
+	{
+		gWR.LastWeaponId = gHUD.GetCurrentWeaponID();
+		WEAPON* currentWeapon = gWR.GetWeapon(gHUD.GetCurrentWeaponID());
+
+		char weapcfg[128];
+		sprintf(weapcfg, "exec weaponcfgs/%s.cfg", currentWeapon->szName);
+		ClientCmd(weapcfg);
 	}
 
 	if(gHUD.GetIsAlien()) //check for hive death causing loss of current weapon
