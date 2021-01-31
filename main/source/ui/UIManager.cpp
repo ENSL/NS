@@ -294,30 +294,44 @@ bool UIManager::SetLMBActionRelative(const TRTag& inTag)
 
 void UIManager::SetMouseVisibility(bool inState)
 {
-    // To change whether the mouse is visible, just change this variable
-    g_iVisibleMouse = inState;
+	//  2021 - Check if we need to run code. Prevents showcursor from incrementing or decrementing outside of useful range.
+	if (g_iVisibleMouse != inState)
+	{
+		// To change whether the mouse is visible, just change this variable
+		g_iVisibleMouse = inState;
 
-    // Update cursor
-    if(g_iVisibleMouse)
-    {
-        //ClientCmd("say Entering mouse mode.");
-        //App::getInstance()->setCursorOveride(App::getInstance()->getScheme()->getCursor(Scheme::SchemeCursor::scu_arrow));
-		// Remove above line and put this line back in for sprite cursors
-        App::getInstance()->setCursorOveride(this->mBlankCursor);
-    }
-    else
-    {
-        //ClientCmd("say Exiting mouse mode.");
-        // Move mouse to center of screen so mouse look isn't changed
+		// Update cursor
+		if(g_iVisibleMouse)
+		{
+			//ClientCmd("say Entering mouse mode.");
+			//App::getInstance()->setCursorOveride(App::getInstance()->getScheme()->getCursor(Scheme::SchemeCursor::scu_arrow));
+			// Remove above line and put this line back in for sprite cursors
+			App::getInstance()->setCursorOveride(this->mBlankCursor);
+#ifdef WIN32
+			// 2021 - Prevent windows OS cursor from appearing over sprite cursor.
+			// Uncomment below to track windows showcursor value because you can only increment or decrement by 1 with no min or max on the value so it can get stuck in a high or low range.
+			// If the cursor breaks, create a for loop to increment or decrement the value as necessary to fix it. https://devblogs.microsoft.com/oldnewthing/20091217-00/?p=15643
+			/*int sc = */ShowCursor(FALSE);
+			//gEngfuncs.Con_Printf("showcursor:%d\n", sc);
+#endif
+		}
+		else
+		{
+			//ClientCmd("say Exiting mouse mode.");
+			// Move mouse to center of screen so mouse look isn't changed
 
-        // Only do this when in full screen
-        App::getInstance()->setCursorPos(ScreenWidth()/2, ScreenHeight()/2);
+			// Only do this when in full screen
+			App::getInstance()->setCursorPos(ScreenWidth()/2, ScreenHeight()/2);
 
-        // Hide cursor again
-        App::getInstance()->setCursorOveride( App::getInstance()->getScheme()->getCursor(Scheme::scu_none) );
-    }
+			// Hide cursor again
+			App::getInstance()->setCursorOveride( App::getInstance()->getScheme()->getCursor(Scheme::scu_none) );
+#ifdef WIN32
+			ShowCursor(TRUE);
+#endif
+		}
 
-    //App::getInstance()->setCursorOveride( App::getInstance()->getScheme()->getCursor(Scheme::SchemeCursor::scu_none) );
+		//App::getInstance()->setCursorOveride( App::getInstance()->getScheme()->getCursor(Scheme::SchemeCursor::scu_none) );
+	}
 
 }
 
