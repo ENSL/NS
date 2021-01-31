@@ -697,8 +697,10 @@ void CHudAmmo::Think(void)
 	if (gHUD.GetCurrentWeaponID() != gWR.LastWeaponId)
 	{
 		gWR.LastWeaponId = gHUD.GetCurrentWeaponID();
-		WEAPON* currentWeapon = gWR.GetWeapon(gHUD.GetCurrentWeaponID());
 
+		ClientCmd("exec weaponcfgs/default.cfg");
+
+		WEAPON* currentWeapon = gWR.GetWeapon(gHUD.GetCurrentWeaponID());
 		char weapcfg[128];
 		sprintf(weapcfg, "exec weaponcfgs/%s.cfg", currentWeapon->szName);
 		ClientCmd(weapcfg);
