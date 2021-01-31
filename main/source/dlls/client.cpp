@@ -1055,6 +1055,7 @@ void ClientPrecache( void )
 	PRECACHE_UNMODIFIED_SOUND(kWingFlapSound3);
 	PRECACHE_UNMODIFIED_SOUND(kSiegeHitSound1);
 	PRECACHE_UNMODIFIED_SOUND(kSiegeHitSound2);
+	PRECACHE_UNMODIFIED_SOUND("misc/egg_idle.wav");
 	
 	// setup precaches always needed
 	PRECACHE_UNMODIFIED_SOUND("player/sprayer.wav");			// spray paint sound for PreAlpha
@@ -1227,10 +1228,30 @@ void ClientPrecache( void )
 	PRECACHE_UNMODIFIED_GENERIC("ns.wad");
 	PRECACHE_UNMODIFIED_GENERIC("ns2.wad");
 	PRECACHE_UNMODIFIED_GENERIC("v_wad.wad");
+	PRECACHE_UNMODIFIED_GENERIC("decals.wad");
+	PRECACHE_UNMODIFIED_GENERIC("hallwall_1.wad");
+	PRECACHE_UNMODIFIED_GENERIC("co_ether.wad");
+	PRECACHE_UNMODIFIED_GENERIC("co_kestrel.wad");
+	PRECACHE_UNMODIFIED_GENERIC("co_umbra.wad");
+	PRECACHE_UNMODIFIED_GENERIC("ns_ayumi.wad");
+	PRECACHE_UNMODIFIED_GENERIC("ns_bast.wad");
+	PRECACHE_UNMODIFIED_GENERIC("ns_delta.wad");
+	PRECACHE_UNMODIFIED_GENERIC("ns_eclipse.wad");
+	PRECACHE_UNMODIFIED_GENERIC("ns_eon.wad");
+	PRECACHE_UNMODIFIED_GENERIC("ns_hera.wad");
+	PRECACHE_UNMODIFIED_GENERIC("ns_lost.wad");
+	PRECACHE_UNMODIFIED_GENERIC("ns_lucid.wad");
+	PRECACHE_UNMODIFIED_GENERIC("ns_metal.wad");
+	PRECACHE_UNMODIFIED_GENERIC("ns_nancy.wad");
+	PRECACHE_UNMODIFIED_GENERIC("ns_nothing.wad");
+	PRECACHE_UNMODIFIED_GENERIC("ns_shiva.wad");
+	PRECACHE_UNMODIFIED_GENERIC("ns_tanith.wad");
+
 	PRECACHE_UNMODIFIED_GENERIC("dlls/ns.dll");
 	PRECACHE_UNMODIFIED_GENERIC("cl_dlls/client.dll");
 	PRECACHE_UNMODIFIED_GENERIC("dlls/ns.so");
 	PRECACHE_UNMODIFIED_GENERIC("cl_dlls/client.so");
+
 /*	PRECACHE_UNMODIFIED_GENERIC("maps/co_angst_detail.txt");
 	PRECACHE_UNMODIFIED_GENERIC("maps/co_core_detail.txt");
 	PRECACHE_UNMODIFIED_GENERIC("maps/co_daimos_detail.txt");
@@ -2397,13 +2418,18 @@ int	InconsistentFile( const edict_t *player, const char *filename, char *disconn
 		sprintf(disconnect_message, "(%s) This server is running an experimental NS build. Enable experimental build in Natural Launcher settings. github.com/ENSL/NS#downloads\n", filename);
 		return 1;
 	}
-
-	if (CVAR_GET_FLOAT("mp_consistency") > 1)
-	{
+	// Cheating prone files that aren't commonly used for customization.
+	if ( (strstr(filename, "player/pl_") != NULL) || (strstr(filename, "player/role") != NULL) || (strstr(filename, ".wad") != NULL) || (strstr(filename, "misc/egg_idle.wav") != NULL)){
 		// Default behavior is to kick the player
 		sprintf(disconnect_message, "Server is enforcing file consistency for %s. Files available at github.com/ENSL/NS#downloads\n", filename);
-
 		// Kick now with specified disconnect message.
+		return 1;
+	}
+
+	// Competitive play consistency checks
+	if (CVAR_GET_FLOAT("mp_consistency") > 1)
+	{
+		sprintf(disconnect_message, "Server is enforcing file consistency for %s. Files available at github.com/ENSL/NS#downloads\n", filename);
 		return 1;
 	}
 	else
