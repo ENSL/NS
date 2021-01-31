@@ -4368,7 +4368,6 @@ int	AvHGamerules::GetCostForMessageID(AvHMessageID inMessageID) const
     {
         switch(inMessageID)
         {
-		case ALIEN_LIFEFORM_TWO:
         case ALIEN_EVOLUTION_ONE:
         case ALIEN_EVOLUTION_TWO:
         case ALIEN_EVOLUTION_THREE:
@@ -4397,7 +4396,10 @@ int	AvHGamerules::GetCostForMessageID(AvHMessageID inMessageID) const
             cost = 1;
             break;
 
-		case ALIEN_LIFEFORM_THREE:
+		case ALIEN_LIFEFORM_TWO:
+			cost = 1 * theGameStarted;
+			break;
+
         case BUILD_HEAVY:
         case BUILD_JETPACK:
         case ALIEN_HIVE_THREE_UNLOCK:
@@ -4405,12 +4407,16 @@ int	AvHGamerules::GetCostForMessageID(AvHMessageID inMessageID) const
             cost = 2;
             break;
 
+		case ALIEN_LIFEFORM_THREE:
+			cost = 2 * theGameStarted;
+			break;
+
         case ALIEN_LIFEFORM_FOUR:
-			cost = 3;
+			cost = 3 * theGameStarted;
 			break;
 
         case ALIEN_LIFEFORM_FIVE:
-			cost = 4;
+			cost = 4 * theGameStarted;
 			break;
         }
     }
