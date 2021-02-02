@@ -122,13 +122,6 @@ void AvHPieMenuHandler::ClosePieMenu(void)
 
 	IN_ResetMouse();
     gHUD.ShowCrosshair();
-
-	// Reset showcursor value after forcing it to hide
-	// Check if piemenu is open or else windows will keep decrementing the showcursor value every time -popupmenu is called from closing the console
-	if (sPieMenuOpen)
-	{
-		gHUD.GetManager().SetMouseVisibility(false);
-	}
 	
     sPieMenuOpen = false;
 
@@ -140,11 +133,11 @@ void AvHPieMenuHandler::InternalClosePieMenu(void)
 
     if(gHUD.GetManager().GetVGUIComponentNamed(sPieMenuName, theMarineMenu))
     {
-		//// TODO: Select option on menu before closing it!
-		//if(!gHUD.GetInTopDownMode())
-		//{
-		//	gHUD.GetManager().SetMouseVisibility(false);
-		//}
+		// TODO: Select option on menu before closing it!
+		if(!gHUD.GetInTopDownMode())
+		{
+			gHUD.GetManager().SetMouseVisibility(false);
+		}
 
         theMarineMenu->SetFadeState(false);
         if(sLastNodeHighlighted)
