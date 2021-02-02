@@ -1494,13 +1494,13 @@ void NsVersion(void)
 
 	string theGameVersionString;
 
-	theGameVersionString = "v" + MakeStringFromInt(BALANCE_VAR(kGameVersionMajor)) + "." + MakeStringFromInt(BALANCE_VAR(kGameVersionMinor)) + "." +
+	theGameVersionString = "v" + MakeStringFromInt(BALANCE_VAR(kGameVersionMajor)) + "." + MakeStringFromInt(BALANCE_VAR(kGameVersionMinor)) + "b" +
 		MakeStringFromInt(BALANCE_VAR(kGameVersionRevision)) + "  " + __DATE__ + " " + __TIME__;
 
 	//memset(theGameVersion, 0, 1024);
 	strcpy(theGameVersion, theGameVersionString.c_str());
 
-	gEngfuncs.Con_Printf(theGameVersion);
+	gEngfuncs.Con_Printf("%s %s", kAvHGameAcronymn, theGameVersion);
 }
 
 /*

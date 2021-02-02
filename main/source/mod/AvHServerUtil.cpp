@@ -189,7 +189,7 @@ char* AvHSUGetGameVersionString()
 
     string theGameVersionString;
     
-    theGameVersionString = "v"	+ MakeStringFromInt(BALANCE_VAR(kGameVersionMajor)) + "." + MakeStringFromInt(BALANCE_VAR(kGameVersionMinor)) + "." +
+    theGameVersionString = "v"	+ MakeStringFromInt(BALANCE_VAR(kGameVersionMajor)) + "." + MakeStringFromInt(BALANCE_VAR(kGameVersionMinor)) + "b" +
 		MakeStringFromInt(BALANCE_VAR(kGameVersionRevision));
     
     //memset(theGameVersion, 0, 1024);
