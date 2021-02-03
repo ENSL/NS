@@ -16,6 +16,7 @@ class CHudCrosshairs : public CHudBase
 	cvar_t* cl_cross_outline_alpha;
 	cvar_t* cl_cross_outline_inner;
 	cvar_t* cl_cross_circle_radius;
+	cvar_t* cl_cross_circle_thickness;
 	cvar_t* cl_cross_dot_size;
 	cvar_t* cl_cross_dot_color;
 	cvar_t* cl_cross_dot_outline;

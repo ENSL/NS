@@ -20,6 +20,7 @@ int CHudCrosshairs::Init()
 	cl_cross_outline_alpha = CVAR_CREATE("cl_cross_outline_alpha", "255", FCVAR_ARCHIVE);
 	cl_cross_outline_inner = CVAR_CREATE("cl_cross_outline_inner", "0", FCVAR_ARCHIVE);
 	cl_cross_circle_radius = CVAR_CREATE("cl_cross_circle_radius", "0", FCVAR_ARCHIVE);
+	cl_cross_circle_thickness = CVAR_CREATE("cl_cross_circle_thickness", "1", FCVAR_ARCHIVE);
 	cl_cross_dot_size = CVAR_CREATE("cl_cross_dot_size", "0", FCVAR_ARCHIVE);
 	cl_cross_dot_color = CVAR_CREATE("cl_cross_dot_color", "", FCVAR_ARCHIVE);
 	cl_cross_dot_outline = CVAR_CREATE("cl_cross_dot_outline", "0", FCVAR_ARCHIVE);
@@ -163,6 +164,29 @@ int CHudCrosshairs::Draw(float time)
 			gl.line(Vector2D(center.x + offset.x, center.y - offset.y + dot_half_width), Vector2D(center.x + offset.x, center.y + offset.y - dot_half_width));
 			gl.line(Vector2D(center.x - offset.x, center.y - offset.y + dot_half_width), Vector2D(center.x - offset.x, center.y + offset.y - dot_half_width));
 			gl.line(Vector2D(center.x - offset.x - dot_half_width, center.y + offset.y), Vector2D(center.x + offset.x + dot_half_width, center.y + offset.y));
+		}
+
+		// Circle
+		if (cl_cross_circle_radius->value > 0.0f && cl_cross_circle_thickness->value > 0.0f) {
+
+			auto radius = cl_cross_circle_radius->value;
+
+			if (cl_cross_outline_inner->value == 0.0f)
+			{
+				radius += (cl_cross_circle_thickness->value * 0.5f) + (cl_cross_outline->value * 0.5f);
+				gl.line_width(cl_cross_outline->value);
+			}
+			else
+			{
+				gl.line_width(cl_cross_circle_thickness->value + cl_cross_outline->value);
+			}
+
+			if (old_circle_radius != radius) {
+				// Recompute the circle points.
+				circle_points = HudGL::compute_circle(radius);
+				old_circle_radius = radius;
+			}
+			gl.circle(center, circle_points);
 		}
 	}
 
