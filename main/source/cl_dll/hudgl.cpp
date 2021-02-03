@@ -75,9 +75,9 @@ void HudGL::rectangle(const Vector2D& corner_a, const Vector2D& corner_b) const 
 	glEnd();
 }
 
-#ifdef __APPLE__
-//Remove when OSX builds with c++11
-#else
+//#ifdef __APPLE__
+////Remove when OSX builds with c++11
+//#else
 std::vector<Vector2D> HudGL::compute_circle(float radius) {
 	// Maximum allowed distance between the circle and the rendered line segment.
 	const float MAX_ERROR = 0.1f;
@@ -94,4 +94,4 @@ std::vector<Vector2D> HudGL::compute_circle(float radius) {
 
 	return points;
 }
-#endif
+//#endif

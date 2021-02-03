@@ -25,12 +25,12 @@ class CHudCrosshairs : public CHudBase
 	cvar_t* cl_cross_line_left;
 	cvar_t* cl_cross_line_right;
 
-#ifdef __APPLE__
-	//Remove when OSX builds with c++11
-#else
+//#ifdef __APPLE__
+//	//Remove when OSX builds with c++11
+//#else
 	float old_circle_radius;
 	std::vector<Vector2D> circle_points;
-#endif
+//#endif
 
 public:
 	virtual int Init();
