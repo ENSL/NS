@@ -123,7 +123,8 @@ void AvHPieMenuHandler::ClosePieMenu(void)
 	IN_ResetMouse();
     gHUD.ShowCrosshair();
 	
-    sPieMenuOpen = false;
+	// 2021 - moved to InternalClosePieMenu for ShowCursor fix.
+    //sPieMenuOpen = false;
 
 }
 
@@ -137,6 +138,12 @@ void AvHPieMenuHandler::InternalClosePieMenu(void)
 		if(!gHUD.GetInTopDownMode())
 		{
 			gHUD.GetManager().SetMouseVisibility(false);
+
+			// OS cursor displaying over in game cursor fix. Remove if showcursor code in SetMouseVisibility is made bug free.
+			#ifdef WIN32
+			if(sPieMenuOpen)
+			ShowCursor(TRUE);
+			#endif
 		}
 
         theMarineMenu->SetFadeState(false);
@@ -146,6 +153,7 @@ void AvHPieMenuHandler::InternalClosePieMenu(void)
         }
         sLastNodeHighlighted = NULL;
 
+		// Return to raw input after menu closes
 		if (CVAR_GET_FLOAT("m_rawinput") != 0)
 		{
 			SDL_SetRelativeMouseMode(SDL_TRUE);
@@ -160,7 +168,7 @@ void AvHPieMenuHandler::InternalClosePieMenu(void)
 //            }
 //        }
 	}
-
+	sPieMenuOpen = false;
 }
 
 void AvHPieMenuHandler::OpenPieMenu(void)
@@ -181,18 +189,21 @@ void AvHPieMenuHandler::OpenPieMenu(void)
 				if(!gHUD.GetInTopDownMode())
 				{
 					gHUD.GetManager().SetMouseVisibility(true);
+
+					// OS cursor displaying over in game cursor fix. Remove if showcursor code in SetMouseVisibility is made bug free.
+					#ifdef WIN32
+					ShowCursor(FALSE);
+					#endif
 				}
 
                 gHUD.HideCrosshair();
 
+				// Workaround for not being able to center mouse with raw input enabled.
 				if (CVAR_GET_FLOAT("m_rawinput") != 0)
 				{
 					SDL_SetRelativeMouseMode(SDL_FALSE);
 					gEngfuncs.pfnSetMousePos(gEngfuncs.GetWindowCenterX(), gEngfuncs.GetWindowCenterY());
 				}
-				//App::getInstance()->setCursorOveride(App::getInstance()->getScheme()->getCursor(Scheme::scu_none));
-				//App::getInstance()->setCursorOveride(gHUD.GetManager().mBlankCursor);
-
 
 				// Only do this when in full screen
 				//App::getInstance()->setCursorPos(ScreenWidth/2, ScreenHeight/2);

@@ -307,13 +307,16 @@ void UIManager::SetMouseVisibility(bool inState)
 			//App::getInstance()->setCursorOveride(App::getInstance()->getScheme()->getCursor(Scheme::SchemeCursor::scu_arrow));
 			// Remove above line and put this line back in for sprite cursors
 			App::getInstance()->setCursorOveride(this->mBlankCursor);
-#ifdef WIN32
-			// 2021 - Prevent windows OS cursor from appearing over sprite cursor.
-			// Uncomment below to track windows showcursor value because you can only increment or decrement by 1 with no min or max on the value so it can get stuck in a high or low range.
-			// If the cursor breaks, create a for loop to increment or decrement the value as necessary to fix it. https://devblogs.microsoft.com/oldnewthing/20091217-00/?p=15643
-			/*int sc = */ShowCursor(FALSE);
-			//gEngfuncs.Con_Printf("showcursor:%d\n", sc);
-#endif
+
+				// OS cursor show/hide fix for m_rawinput 0. Disabled until we can find a way to check if options menu is open. Otherwise cursor is hidden in options menu when commanding or spectating.
+				// If uncommenting this, remove Showcursor code in PieMenuHandler.
+//#ifdef WIN32
+//				// 2021 - Prevent windows OS cursor from appearing over sprite cursor.
+//				// Uncomment below to track windows showcursor value because you can only increment or decrement by 1 with no min or max on the value so it can get stuck in a high or low range.
+//				// If the cursor breaks, create a for loop to increment or decrement the value as necessary to fix it. https://devblogs.microsoft.com/oldnewthing/20091217-00/?p=15643
+//				/*int sc = */ShowCursor(FALSE);
+//				//gEngfuncs.Con_Printf("showcursor:%d\n", sc);
+//#endif
 		}
 		else
 		{
@@ -325,9 +328,11 @@ void UIManager::SetMouseVisibility(bool inState)
 
 			// Hide cursor again
 			App::getInstance()->setCursorOveride( App::getInstance()->getScheme()->getCursor(Scheme::scu_none) );
-#ifdef WIN32
-			ShowCursor(TRUE);
-#endif
+
+			// OS cursor show/hide fix for m_rawinput 0.
+//#ifdef WIN32
+//			ShowCursor(TRUE);
+//#endif
 		}
 
 		//App::getInstance()->setCursorOveride( App::getInstance()->getScheme()->getCursor(Scheme::SchemeCursor::scu_none) );
