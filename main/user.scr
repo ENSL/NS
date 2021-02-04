@@ -48,6 +48,13 @@ DESCRIPTION INFO_OPTIONS
 		{ "0" }
 	}
 
+		"cl_ambientsound"
+	{
+		"Ambient sound volume (0 to 1)"
+		{ NUMBER 0.000000 1.000000 }
+		{ "0.000000" }
+	}
+
 	"hud_style"
 	{
 		"HUD style (requires map reload)"
@@ -172,6 +179,13 @@ DESCRIPTION INFO_OPTIONS
 		{ "0.000000" }
 	}
 
+	"cl_cross_circle_thickness"
+	{
+		"Crosshair circle thickness"
+		{ NUMBER 0.000000 255.000000 }
+		{ "0.000000" }
+	}
+
 	"crosshair"
 	{
 		"Legacy crosshair system"
@@ -193,18 +207,6 @@ DESCRIPTION INFO_OPTIONS
 		{ "0.000000" }
 	}
 
-	"cl_ambientsound"
-	{
-		"Ambient sound (requies map reload)"
-		{
-			LIST
-			"None" "0"
-			"All - Original" "1"
-			"Selective" "2"
-		}
-		{ "2.000000" }
-	}
-
 	"senslock"
 	{
 		"Don't scale sensitivity with FOV (Skulk/Gorge)"
@@ -224,6 +226,26 @@ DESCRIPTION INFO_OPTIONS
 		"Commander hotkeys"
 		{ STRING }
 		{ "qwerasdfzxcv" }
+	}
+
+	"cl_mutemenu"
+	{
+		"Scoreboard mute menu hotkey"
+		{
+			LIST
+			"None" "0"
+			"Left click" "1"
+			"Right click" "2"
+			"Middle mouse" "3"
+		}
+		{ "3.000000" }
+	}
+
+	"cl_showspeed"
+	{
+		"Show player speed"
+		{ BOOL }
+		{ "0" }
 	}
 
 	"cl_centerentityid"
@@ -259,6 +281,13 @@ DESCRIPTION INFO_OPTIONS
 		"Dynamic lights"
 		{ BOOL }
 		{ "0" }
+	}
+
+	"r_dynamic"
+	{
+		"Dynamic lighting (non-nvidia graphics users should turn off)"
+		{ BOOL }
+		{ "1" }
 	}
 
 	"hud_fastswitch"
