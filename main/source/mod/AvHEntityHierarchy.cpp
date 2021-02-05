@@ -201,7 +201,6 @@ void AvHEntityHierarchy::BuildFromTeam(const AvHTeam* inTeam, BaseEntityListType
 
             mapEntity.mAngle = theBaseEntity->pev->angles[1];
             mapEntity.mTeam  = (AvHTeamNumber)(theBaseEntity->pev->team);
-			mapEntity.mPlayerSlot = -1;
             mapEntity.mSquadNumber = 0;
 			mapEntity.mUnderAttack = theEntityIsUnderAttack ? 1 : 0;
 

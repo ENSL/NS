@@ -33,8 +33,8 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Playtest|Win32'">F:\Steam\steamapps\common\Half-Life\ns\cl_dlls</OutDir>
-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Playtest|Win32'">.</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Playtest|Win32'">.\release</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Playtest|Win32'">$(Configuration)\</IntDir>
     <ExtensionsToDeleteOnClean Condition="'$(Configuration)|$(Platform)'=='Playtest|Win32'">$(TargetPath)%3b*.obj%3b*.ilk%3b*.pdb%3b*.tlb%3b*.tli%3b*.tlh%3b*.tmp%3b*.rsp%3b*.bat</ExtensionsToDeleteOnClean>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Playtest|Win32'">false</LinkIncremental>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Playtest|Win32'">client</TargetName>
@@ -72,7 +72,7 @@
       <ShowIncludes>false</ShowIncludes>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>\..\..\Release\particles.lib;vgui.lib;zlib.lib;libpng.lib;wsock32.lib;sdl2.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>particles.lib;vgui.lib;zlib.lib;libpng.lib;wsock32.lib;sdl2.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>$(SolutionDir)\particles\Release;$(SolutionDir)\includes\lpng1251;$(SolutionDir)\includes\zlib-1.2.8;$(SolutionDir)\includes\vgui\lib\win32_vc6;$(SolutionDir)\lib\public;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>
@@ -89,7 +89,7 @@
       <TreatLinkerWarningAsErrors>
       </TreatLinkerWarningAsErrors>
       <AdditionalOptions>/NODEFAULTLIB:LIBCMT %(AdditionalOptions)</AdditionalOptions>
-      <OutputFile>F:\Steam\steamapps\common\Half-Life\ns\cl_dlls\client.dll</OutputFile>
+      <OutputFile>$(SolutionDir)..\cl_dlls\client.dll</OutputFile>
     </Link>
     <Midl>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>

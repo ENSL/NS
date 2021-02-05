@@ -74,7 +74,7 @@
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Developer - debug|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Developer - debug|Win32'">$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Developer - debug|Win32'">true</LinkIncremental>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Playtest|Win32'">F:\Steam\steamapps\common\Half-Life\ns\dlls\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Playtest|Win32'">.\Playtest\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Playtest|Win32'">$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Playtest|Win32'">false</LinkIncremental>
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Playtest - balance disabled|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
@@ -215,7 +215,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\includes\lua\include;$(SolutionDir)\particles\;$(SolutionDir)\includes\vgui\include;$(SolutionDir)\includes\libcurl-7.50-nossl\include;$(SolutionDir)\common;$(SolutionDir)\public;$(SolutionDir)\util;$(SolutionDir)\engine;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>winmm.lib;ws2_32.lib;\..\..\Release\particles.lib;lua5.1.lib;libcurl_a.lib;%(AdditionalDependencies);legacy_stdio_definitions.lib</AdditionalDependencies>
+      <AdditionalDependencies>winmm.lib;ws2_32.lib;particles.lib;lua5.1.lib;libcurl_a.lib;%(AdditionalDependencies);legacy_stdio_definitions.lib</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <IgnoreSpecificDefaultLibraries>gdi32.lib user32.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ModuleDefinitionFile>.\hl.def</ModuleDefinitionFile>
@@ -230,7 +230,7 @@
       <AdditionalLibraryDirectories>$(SolutionDir)includes\lua\lib;$(SolutionDir)particles\Release;$(SolutionDir)includes\libcurl-7.50-nossl;$(SolutionDir)includes\vgui\lib\win32_vc6;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
-      <OutputFile>F:\Steam\steamapps\common\Half-Life\ns\dlls\$(TargetName)$(TargetExt)</OutputFile>
+      <OutputFile>C:\Program Files (x86)\Steam\steamapps\common\Half-Life\ns\dlls\$(TargetName)$(TargetExt)</OutputFile>
     </Link>
     <Midl>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>

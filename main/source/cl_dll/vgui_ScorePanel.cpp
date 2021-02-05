@@ -81,12 +81,6 @@
 #include "mod/AvHServerVariables.h"
 #include "util/STLUtil.h"
 #include "ui/ScoreboardIcon.h"
-#include <string>
-#include <array>
-#include<algorithm>
-#include "AvHServerVariables.h"
-
-using namespace std;
 /* @2014 
 #include "common/itrackeruser.h"
 extern ITrackerUser *g_pTrackerUser;
@@ -197,16 +191,16 @@ vgui::Color BuildColor( int R, int G, int B, float gamma )
 //-----------------------------------------------------------------------------
 // Purpose: Create the ScoreBoard panel
 //-----------------------------------------------------------------------------
-ScorePanel::ScorePanel(int x, int y, int wide, int tall) : Panel(x, y, wide, tall)
+ScorePanel::ScorePanel(int x,int y,int wide,int tall) : Panel(x,y,wide,tall)
 {
-	CSchemeManager* pSchemes = gViewPort->GetSchemeManager();
+	CSchemeManager *pSchemes = gViewPort->GetSchemeManager();
 	SchemeHandle_t hTitleScheme = pSchemes->getSchemeHandle("Scoreboard Title Text");
 	SchemeHandle_t hSmallScheme = pSchemes->getSchemeHandle("Scoreboard Small Text");
 	SchemeHandle_t hTinyScheme = pSchemes->getSchemeHandle("Scoreboard Tiny Text");
-	Font* tfont = pSchemes->getFont(hTitleScheme);
-	Font* smallfont = pSchemes->getFont(hSmallScheme);
-	Font* tinyfont = pSchemes->getFont(hTinyScheme);
-
+	Font *tfont = pSchemes->getFont(hTitleScheme);
+	Font *smallfont = pSchemes->getFont(hSmallScheme);
+	Font *tinyfont = pSchemes->getFont(hTinyScheme);
+	
 	setBgColor(0, 0, 0, 96);
 	m_pCurrentHighlightLabel = NULL;
 	m_iHighlightRow = -1;
@@ -219,7 +213,7 @@ ScorePanel::ScorePanel(int x, int y, int wide, int tall) : Panel(x, y, wide, tal
 	m_pContribIcon = NULL;
 	m_pCheatingDeathIcon = NULL;
 	m_pVeteranIcon = NULL;
-
+	
 	m_pHMG = NULL;
 	m_pMine = NULL;
 	m_pWeld = NULL;
@@ -236,6 +230,7 @@ ScorePanel::ScorePanel(int x, int y, int wide, int tall) : Panel(x, y, wide, tal
 	m_pCheatingDeathIcon = vgui_LoadTGANoInvertAlpha("gfx/vgui/640_scoreboardcd.tga");
 	m_pVeteranIcon = vgui_LoadTGANoInvertAlpha("gfx/vgui/640_scoreboardveteran.tga");
 
+	
 
 	m_pHMG = vgui_LoadTGANoInvertAlpha("gfx/vgui/640_scoreboardhmg.tga");
 	m_pMine = vgui_LoadTGANoInvertAlpha("gfx/vgui/640_scoreboardmine.tga");
@@ -245,18 +240,6 @@ ScorePanel::ScorePanel(int x, int y, int wide, int tall) : Panel(x, y, wide, tal
 
 	m_iIconFrame = 0;
 	m_iLastFrameIncrementTime = gHUD.GetTimeOfLastUpdate();
-
-	// Player Colors indicators
-	m_pCYellow = vgui_LoadTGANoInvertAlpha("gfx/vgui/640_yellow.tga");
-	for (int i = 0; i < MAX_PLAYERS; i++) {
-		m_pColorIcons[i] = vgui_LoadTGANoInvertAlpha("gfx/vgui/640_scoreboardtracker.tga");
-	}
-
-	
-
-
-
-		
 	
 	// Initialize the top title.
 	m_TitleLabel.setFont(tfont);
@@ -376,7 +359,7 @@ ScorePanel::ScorePanel(int x, int y, int wide, int tall) : Panel(x, y, wide, tal
 		m_PlayerList.AddItem(pGridRow);
 	}
 
-	
+
 	// Add the hit test panel. It is invisible and traps mouse clicks so we can go into squelch mode.
 	m_HitTestPanel.setBgColor(0,0,0,255);
 	m_HitTestPanel.setParent(this);
@@ -391,7 +374,6 @@ ScorePanel::ScorePanel(int x, int y, int wide, int tall) : Panel(x, y, wide, tal
 	m_pCloseButton->setFont(tfont);
 	m_pCloseButton->setBoundKey( (char)255 );
 	m_pCloseButton->setContentAlignment(Label::a_center);
-	
 	Initialize();
 }
 
@@ -845,7 +827,6 @@ void ScorePanel::FillGrid()
 		hud_player_info_t* pl_info = &g_PlayerInfoList[theSortedRow];
 		extra_player_info_t* theExtraPlayerInfo = &g_PlayerExtraInfo[theSortedRow];
 		int thePlayerClass = theExtraPlayerInfo->playerclass;
-		int thePlayerId = theExtraPlayerInfo->player_index;
 		short theTeamNumber = theExtraPlayerInfo->teamnumber;
 		string theCustomIcon = (string)theExtraPlayerInfo->customicon;
 // : 0001073
@@ -1105,80 +1086,10 @@ void ScorePanel::FillGrid()
 						}
 					}
 					*/
-					// set Player Color
-										
-				
-					switch (theTeamNumber) {
-					case 1:
-						if (std::find(std::begin(players_marine_team), std::end(players_marine_team), thePlayerId) == std::end(players_marine_team)){
-							players_marine_team.push_back(thePlayerId);
-							players_marine_team.sort();
-						}
-						else if (std::find(std::begin(players_alien_team), std::end(players_alien_team), thePlayerId) != std::end(players_alien_team)) {
-							players_alien_team.erase(std::find(std::begin(players_alien_team), std::end(players_alien_team), thePlayerId));
-							players_alien_team.sort();
-						}
-						break;
-					case 2:
-						if (std::find(std::begin(players_alien_team), std::end(players_alien_team), thePlayerId) == std::end(players_alien_team)) {
-							players_alien_team.push_back(thePlayerId);
-							players_alien_team.sort();
-						}
-						else if (std::find(std::begin(players_marine_team), std::end(players_marine_team), thePlayerId) != std::end(players_marine_team)) {
-							players_marine_team.erase(std::find(std::begin(players_marine_team), std::end(players_marine_team), thePlayerId));
-							players_marine_team.sort();
-							
-						}
-						break;
-					default:
-						if (std::find(std::begin(players_alien_team), std::end(players_alien_team), thePlayerId) != std::end(players_alien_team)) {
-							players_alien_team.erase(std::find(std::begin(players_alien_team), std::end(players_alien_team), thePlayerId));
-							players_alien_team.sort();
-						}
-						else if (std::find(std::begin(players_marine_team), std::end(players_marine_team), thePlayerId) != std::end(players_marine_team)) {
-							players_marine_team.erase(std::find(std::begin(players_marine_team), std::end(players_marine_team), thePlayerId));
-							players_marine_team.sort();
-						}
-						break;
-					
-					}
-
-
-				
-
 					if(pl_info)
 					{
-						
-						if (gHUD.GetServerVariableFloat(kvTournamentMode)) {
-							sprintf(sz, "   %s  ", pl_info->name);
-							pLabel->setImage(m_pColorIcons[thePlayerId]);
-							pLabel->setFgColorAsImageColor(false);
-
-							switch (theTeamNumber) {
-							case 1:
-								m_pColorIndex = std::distance(std::begin(players_marine_team), std::find(std::begin(players_marine_team), std::end(players_marine_team), thePlayerId));
-								m_pColorIndex = m_pColorIndex % player_colors.size();
-								m_pColorIcons[thePlayerId]->setColor(BuildColor(player_colors[m_pColorIndex][0],
-									player_colors[m_pColorIndex][1],
-									player_colors[m_pColorIndex][2], gHUD.GetGammaSlope()));
-								break;
-							case 2:
-								m_pColorIndex = std::distance(std::begin(players_alien_team), std::find(std::begin(players_alien_team), std::end(players_alien_team), thePlayerId));
-								m_pColorIndex = m_pColorIndex % player_colors.size();
-								m_pColorIcons[thePlayerId]->setColor(BuildColor(player_colors[m_pColorIndex][0],
-									player_colors[m_pColorIndex][1],
-									player_colors[m_pColorIndex][2], gHUD.GetGammaSlope()));
-								break;
-							default:
-								m_pColorIcons[thePlayerId]->setColor(BuildColor(255, 255, 255, gHUD.GetGammaSlope()));
-								break;
-							}
-						}
-						else {
-							sprintf(sz, "%s  ", pl_info->name);
-						}
+						sprintf(sz, "%s  ", pl_info->name);
 					}
-				
 					break;
 				case COLUMN_VOICE:
 					sz[0] = 0;
@@ -1303,8 +1214,7 @@ void ScorePanel::FillGrid()
 						pLabel->setFgColorAsImageColor(false);
 						m_pServerOpIcon->setColor(BuildColor(0, 255, 0, gHUD.GetGammaSlope()));
 					}
-					
-					
+
 					// Allow custom icons to override other general icons
 					if(thePlayerAuthentication & PLAYERAUTH_CUSTOM)
 					{
@@ -1330,25 +1240,19 @@ void ScorePanel::FillGrid()
 								pLabel->setFgColorAsImageColor(false);
 								
 								// Parse color (last 3 bytes are the RGB values 1-9)
-								string theColor = theCustomIcon.substr( strlen(theCustomIcon.c_str()) - 3, 3);
+								string theColor = theCustomIcon.substr( strlen(theCustomIcon.c_str())-3, 3);
 								
-								string rStr = theColor.substr(0, 1);
-								string bStr = theColor.substr(1, 1);
-								string gStr = theColor.substr(2, 1);
 
-								//pass reference type
-								int theRed = (MakeIntFromString(rStr) / 9.0f) * 255;
-								int theGreen = (MakeIntFromString(bStr) / 9.0f) * 255;
-								int theBlue = (MakeIntFromString(gStr) / 9.0f) * 255;
+
+								int theRed = (MakeIntFromString(theColor.substr(0, 1))/9.0f)*255;
+								int theGreen = (MakeIntFromString(theColor.substr(1, 1))/9.0f)*255;
+								int theBlue = (MakeIntFromString(theColor.substr(2, 1))/9.0f)*255;
 
 
 								pIcon->setColor(BuildColor(theRed, theGreen, theBlue, gHUD.GetGammaSlope()));
 							}
 						}
 					}
-					// Set Colors for Players
-				
-						
 					/* @2014 
 					if(g_pTrackerUser)
 					{

@@ -13,7 +13,6 @@
 #include "AvHSpriteAPI.h"
 #include "AvHSprites.h"
 #include "AvHClientVariables.h"
-#include "AvHServerVariables.h"
 
 using std::string;
 
@@ -216,8 +215,6 @@ void AvHOverviewMap::GetColorForEntity(const DrawableEntity& entity, float& outR
 	        entity.mUser3 == AVH_USER3_ALIENRESTOWER ||
 	        entity.mUser3 == AVH_USER3_ADVANCED_TURRET_FACTORY;
 
-
-
 	if ( entity.mIsUnderAttack && (entity.mTeam == mTeam || gEngfuncs.IsSpectateOnly() ) ) {
 		if ( gpGlobals && (gpGlobals->time > this->mBlinkTime + attackBlinkPeriod) ) {
 			this->mBlinkOn=!mBlinkOn;
@@ -231,104 +228,30 @@ void AvHOverviewMap::GetColorForEntity(const DrawableEntity& entity, float& outR
 		}
 	}
 
-	if (entity.mUser3 == AVH_USER3_WAYPOINT) {
-		outR = 0.1;
-		outG = 0.8;
+    if (entity.mUser3 == AVH_USER3_WAYPOINT)    {
+        outR = 0.1;
+	    outG = 0.8;
 		outB = 1.0;
 	}
-	else if (entity.mUser3 == AVH_USER3_WELD) {
-		outR = 1.0;
-		outG = 0.7;
-		outB = 0.3;
-	}
-	else if (entity.mUser3 == AVH_USER3_MINE) {
+	else if (entity.mUser3 == AVH_USER3_WELD)    {
+        outR = 1.0;
+        outG = 0.7;
+        outB = 0.3;
+    }
+	else if ( entity.mUser3 == AVH_USER3_MINE ) {
 		outR = 0.05;
-		outG = 0.44;
+    	outG = 0.44;
 		outB = 0.61;
 	}
-	else if (entity.mTeam == TEAM_IND) {
+    else if (entity.mTeam == TEAM_IND)    {   
 		outR = 0.5;
 		outG = 0.5;
 		outB = 0.5;
-	}
+    }
     else if (entity.mTeam == mTeam && !isStructure)    {
-		
-		thePlayerId = entity.mPlayerSlot;
-		string test = to_string(entity.mPlayerSlot) + '\n';
-		//ConsolePrint(test.c_str());
-		if (gHUD.GetServerVariableFloat(kvTournamentMode)) {
-			switch (entity.mTeam) {
-			case 1:
-				if (std::find(std::begin(players_marine_team), std::end(players_marine_team), thePlayerId) == std::end(players_marine_team)) {
-					players_marine_team.push_back(thePlayerId);
-					players_marine_team.sort();
-				}
-				else if (std::find(std::begin(players_alien_team), std::end(players_alien_team), thePlayerId) != std::end(players_alien_team)) {
-					players_alien_team.erase(std::find(std::begin(players_alien_team), std::end(players_alien_team), thePlayerId));
-					players_alien_team.sort();
-				}
-				break;
-			case 2:
-				if (std::find(std::begin(players_alien_team), std::end(players_alien_team), thePlayerId) == std::end(players_alien_team)) {
-					players_alien_team.push_back(thePlayerId);
-					players_alien_team.sort();
-				}
-				else if (std::find(std::begin(players_marine_team), std::end(players_marine_team), thePlayerId) != std::end(players_marine_team)) {
-					players_marine_team.erase(std::find(std::begin(players_marine_team), std::end(players_marine_team), thePlayerId));
-					players_marine_team.sort();
-
-				}
-				break;
-			default:
-				if (std::find(std::begin(players_alien_team), std::end(players_alien_team), thePlayerId) != std::end(players_alien_team)) {
-					players_alien_team.erase(std::find(std::begin(players_alien_team), std::end(players_alien_team), thePlayerId));
-					players_alien_team.sort();
-				}
-				else if (std::find(std::begin(players_marine_team), std::end(players_marine_team), thePlayerId) != std::end(players_marine_team)) {
-					players_marine_team.erase(std::find(std::begin(players_marine_team), std::end(players_marine_team), thePlayerId));
-					players_marine_team.sort();
-				}
-				break;
-			}
-
-
-
-			string debug_string = "";
-			switch (entity.mTeam) {
-			case 1:
-				m_pColorIndex = std::distance(std::begin(players_marine_team), std::find(std::begin(players_marine_team), std::end(players_marine_team), thePlayerId));
-				m_pColorIndex = m_pColorIndex % player_colors.size();
-				outR = player_colors[m_pColorIndex][0] / 255.0;
-				outG = player_colors[m_pColorIndex][1] / 255.0;
-				outB = player_colors[m_pColorIndex][2] / 250.0;
-
-				//debug_string = "Team: " + to_string(entity.mTeam) + " AltTeam: " + to_string(mTeam) + " PlayerId: " + to_string(thePlayerId) + " Color: " + to_string(player_colors[m_pColorIndex][0]) + " " + to_string(player_colors[m_pColorIndex][1]) + " " + to_string(player_colors[m_pColorIndex][2]) + "\n";
-				//ConsolePrint(debug_string.c_str());
-				break;
-			case 2:
-				m_pColorIndex = std::distance(std::begin(players_alien_team), std::find(std::begin(players_alien_team), std::end(players_alien_team), thePlayerId));
-				m_pColorIndex = m_pColorIndex % player_colors.size();
-				outR = player_colors[m_pColorIndex][0] / 255.0;
-				outG = player_colors[m_pColorIndex][1] / 255.0;
-				outB = player_colors[m_pColorIndex][2] / 255.0;
-				break;
-			default:
-				outR = 1.0;
-				outG = 1.0;
-				outB = 1.0;
-
-				break;
-			}
-		}
-		else {
-			outR = 1.0;
-			outG = 1.0;
-			outB = 1.0;
-		}
-
-
-
-	
+		outR = 1.0;
+		outG = 1.0;
+		outB = 1.0;
 
 		int localPlayerSquad;
 		
@@ -341,7 +264,7 @@ void AvHOverviewMap::GetColorForEntity(const DrawableEntity& entity, float& outR
 			localPlayerSquad = 0;
 		}
 
-		/*if (mUser3 != AVH_USER3_COMMANDER_PLAYER) {
+		if (mUser3 != AVH_USER3_COMMANDER_PLAYER) {
 			if (entity.mIsLocalPlayer ) {
     			outR = 0.0;
 	    		outG = 1.0;
@@ -352,51 +275,51 @@ void AvHOverviewMap::GetColorForEntity(const DrawableEntity& entity, float& outR
 	    		outG = 1.0;
 				outB = 0.0;
 			}			    
-		}*/
-    }
-		else {
-		if (entity.mTeam == TEAM_ONE) {
-			outR = 0.33;
-			outG = 0.95;
-			outB = 1.0;
 		}
-		else if (entity.mTeam == TEAM_TWO) {
-			if (entity.mUser3 == AVH_USER3_UNKNOWN) {
-				outR = 1.0;
-				outG = 0.72;
-				outB = 0.0;
+    }
+	else  {
+		if ( entity.mTeam == TEAM_ONE ) {
+			outR=0.33;
+			outG=0.95;
+			outB=1.0;
+		}
+		else if ( entity.mTeam == TEAM_TWO ) {
+			if ( entity.mUser3 == AVH_USER3_UNKNOWN ) {
+				outR=1.0;
+				outG=0.72;
+				outB=0.0;
 			}
 			else {
-				outR = 1.0;
-				outG = 0.85;
-				outB = 0.0;
+				outR=1.0;
+				outG=0.85;
+				outB=0.0;
 			}
 		}
-		else if (entity.mTeam == TEAM_THREE) {
-			outR = 0.92;
-			outG = 0.1;
-			outB = 0.47;
+		else if ( entity.mTeam == TEAM_THREE ) {
+			outR=0.92;
+			outG=0.1;
+			outB=0.47;
 		}
-		else if (entity.mTeam == TEAM_FOUR) {
-			outR = 0.65;
-			outG = 0.92;
-			outB = 0.0;
+		else if ( entity.mTeam == TEAM_FOUR ) {
+			outR=0.65;
+			outG=0.92;
+			outB=0.0;
 		}
 		else {
-			outR = 0.0;
-			outG = 0.0;
-			outB = 0.0;
+			outR=0.0;
+			outG=0.0;
+			outB=0.0;
 		}
-		if (isStructure) {
-			if (entity.mTeam == TEAM_ONE) {
-				outR = 0.43;
-				outG = 0.70;
-				outB = 1.0;
+		if ( isStructure ) {
+			if ( entity.mTeam == TEAM_ONE ) {
+				outR=0.43;
+				outG=0.70;
+				outB=1.0;
 			}
-			else if (entity.mTeam == TEAM_TWO) {
-				outR = 0.88;
-				outG = 0.45;
-				outB = 0.00;
+			else if ( entity.mTeam == TEAM_TWO ) {
+				outR=0.88;
+				outG=0.45;
+				outB=0.00;
 			}
 		}
 	}
@@ -447,7 +370,7 @@ void AvHOverviewMap::DrawMiniMapEntity(const DrawInfo& inDrawInfo, const Drawabl
 
         bool isPlayer = inEntity.mUser3 == AVH_USER3_MARINE_PLAYER || inEntity.mUser3 == AVH_USER3_HEAVY; //heavy used for player in minimap system
 		bool theIsWaypoint = inEntity.mUser3 == AVH_USER3_WAYPOINT;
-		
+	
         float w = theSprWidth * scale;
         float h = theSprHeight * scale;
 
@@ -501,8 +424,6 @@ void AvHOverviewMap::DrawMiniMapEntity(const DrawInfo& inDrawInfo, const Drawabl
                 AvHSpriteSetRenderMode(kRenderTransAdd);
                 AvHSpriteDraw(theSprite, theFrame, x2, y2, x2 + w2, y2 + h2, 0, 0, 1, 1);
 
-				
-
             }
 
 		    if (mUser3 != AVH_USER3_COMMANDER_PLAYER)
@@ -517,7 +438,6 @@ void AvHOverviewMap::DrawMiniMapEntity(const DrawInfo& inDrawInfo, const Drawabl
             AvHSpriteSetColor(r, g, b);
             AvHSpriteSetRenderMode(theRenderMode);
             AvHSpriteDraw(theSprite, theFrame, x, y, x + w, y + h, 0, 0, 1, 1);
-		
 
         }
 
@@ -811,7 +731,6 @@ void AvHOverviewMap::Draw(const DrawInfo& inDrawInfo)
 	DrawableEntityListType attackedPlayers;
 	DrawableEntityListType players;
 
-
     for (DrawableEntityListType::const_iterator theIter = this->mDrawableEntityList.begin(); theIter != this->mDrawableEntityList.end(); theIter++)
 	{
 		if ( (*theIter).mUser3 > AVH_USER3_NONE && (*theIter).mUser3 <= AVH_USER3_ALIEN_EMBRYO ) {
@@ -834,7 +753,6 @@ void AvHOverviewMap::Draw(const DrawInfo& inDrawInfo)
     for (DrawableEntityListType::const_iterator theIter = players.begin(); theIter != players.end(); theIter++)
 	{
 			DrawMiniMapEntity(inDrawInfo, *theIter);
-			
 	}
 
     for (DrawableEntityListType::const_iterator theIter = attackedPlayers.begin(); theIter != attackedPlayers.end(); theIter++)
@@ -983,7 +901,7 @@ void AvHOverviewMap::UpdateDrawData(float inCurrentTime)
     {
         theLocalPlayerIndex = g_iUser2;
     }
-	
+    
     cl_entity_s* thePlayer = gEngfuncs.GetEntityByIndex(theLocalPlayerIndex);
     mTeam = (AvHTeamNumber)(thePlayer->curstate.team);
 
@@ -1011,9 +929,7 @@ void AvHOverviewMap::UpdateDrawData(float inCurrentTime)
         theDrawableEntity.mAngleRadians = theIter->second.mAngle * M_PI / 180;
         theDrawableEntity.mSquadNumber  = theIter->second.mSquadNumber;
 		theDrawableEntity.mIsUnderAttack = theIter->second.mUnderAttack;
-		theDrawableEntity.mPlayerSlot = theIter->first;
-		theDrawableEntity.mHealth = theIter->second.mEntityHealth;
-		
+
 		// Returns position relative to minimap, so add it back in
 //				commented this out here, commented out corresponding shift in AvHEntityHierarchy::BuildFromTeam at line 234
 //		theDrawableEntity.mX += this->mMapExtents.GetMinMapX();

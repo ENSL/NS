@@ -9,8 +9,6 @@
 #include<VGUI_Label.h>
 #include<VGUI_TextImage.h>
 #include "vgui_listbox.h"
-#include <list>
-#include <vector>
 
 #include <ctype.h>
 
@@ -98,18 +96,7 @@ private:
 	vgui::BitmapTGA *m_pGL;
 	vgui::BitmapTGA *m_pSG;
 
-	vgui::BitmapTGA *m_pColorIcons[MAX_PLAYERS];
-	std::vector<std::vector<int>> player_colors = {
-	{154,5,102},{199,131,7},{17,59,132},{136,188,6},{203,203,203},{0,0,0,0}
-	};
-	std::list<int> players_marine_team ;
-	std::list<int> players_alien_team;
-	int m_pColorIndex = -1;
-	// Player Color indicators
-	vgui::BitmapTGA *m_pCYellow;
-
 	vector< pair <vgui::BitmapTGA *, string> > m_CustomIconList;
-
 
 	unsigned int	m_iIconFrame;
 	unsigned int	m_iLastFrameIncrementTime;

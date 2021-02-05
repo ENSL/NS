@@ -4,12 +4,11 @@
 #include "AvHEntityHierarchy.h"
 #include "AvHMapExtents.h"
 #include "AvHOrder.h"
-#include <list>
 
 class DrawableEntity
 {
 public:
-	DrawableEntity() : mUser3(AVH_USER3_NONE), mIsAlive(true), mX(0), mY(0), mAngleRadians(0), mIsLocalPlayer(false), mEntityNumber(0), mTeam(TEAM_IND), mSquadNumber(0), mIsUnderAttack(0), mPlayerSlot(0), mHealth(0)
+	DrawableEntity() : mUser3(AVH_USER3_NONE), mIsAlive(true), mX(0), mY(0), mAngleRadians(0), mIsLocalPlayer(false), mEntityNumber(0), mTeam(TEAM_IND), mSquadNumber(0), mIsUnderAttack(0)
 	{}
 	
 	AvHUser3	    mUser3;
@@ -22,8 +21,6 @@ public:
 	bool		    mIsLocalPlayer;
 	int			    mEntityNumber;
     int             mSquadNumber;
-    int             mPlayerSlot; // todo currently mEntityNumber is used which is not necessarily equal to the PlayerSlot
-    int             mHealth; //todo
 };
 
 class AvHOverviewMap
@@ -47,17 +44,6 @@ public:
         bool mFullScreen;
         bool mCommander;
     };
-    
-    std::vector<std::vector<int>> player_colors = {
-   // {255,0,0}, {0,255,0}, {0,0,255}, {2,181,160}, {249, 175,31}, {0,0,0}, {118,122,121}
-   //   {255,192,203}, {0,255,0}, {0,0,255}, {2,181,160}, {249, 175,31}, {255,255,255}
-    //    {154,5,102},{199,131,7},{17,59,132},{136,188,6},{203,203,203},{0,0,0,0}
-        {191,23,170},{255,148,31},{28,136,177},{203,247,30},{203,203,203},{0,0,0,0}
-    };
-    std::list<int> players_marine_team;
-    std::list<int> players_alien_team;
-    int m_pColorIndex = -1;
-    int thePlayerId = -1;
                                     AvHOverviewMap();
 
 	void							Clear();

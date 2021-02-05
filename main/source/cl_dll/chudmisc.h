@@ -241,7 +241,6 @@ struct extra_player_info_t
 	short playerclass;
 	short extra;
 	short auth;
-	short player_index;
 	short teamnumber;
 	char teamname[MAX_TEAM_NAME];
 	char customicon[CUSTOM_ICON_LENGTH + 3]; //last 3 characters is the color.

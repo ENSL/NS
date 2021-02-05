@@ -2559,7 +2559,6 @@ int TeamFortressViewport::MsgFunc_ScoreInfo( const char *pszName, int iSize, voi
         // Update score, but show + or - indicator on scoreboard when it changes
 		g_PlayerExtraInfo[info.player_index].lastScore = g_PlayerExtraInfo[info.player_index].score;
         g_PlayerExtraInfo[info.player_index].score = info.score;
-		g_PlayerExtraInfo[info.player_index].player_index = info.player_index;
 		if(g_PlayerExtraInfo[info.player_index].score != g_PlayerExtraInfo[info.player_index].lastScore)
 		{
 			g_PlayerExtraInfo[info.player_index].timeOfLastScoreChange = gHUD.GetTimeOfLastUpdate();

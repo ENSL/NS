@@ -2087,8 +2087,6 @@ const int	kEntHierFlagUnderAttack = 0x04;
 		ent.mY = UnpackageCoord(long_data & kPositionCoordinateMask);
 		long_data >>= kNumPositionCoordinateBits;
 		ent.mX = UnpackageCoord(long_data & kPositionCoordinateMask);
-	
-
 
 		if( (flags & kEntHierFlagPlayer) == kEntHierFlagPlayer )		// Player added/changed
 		{

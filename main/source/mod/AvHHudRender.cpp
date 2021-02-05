@@ -722,7 +722,6 @@ void AvHHud::DrawPlayerNames()
 								this->mTopDownPlayerNameMessage.SetIgnoreFadeForLifetime(true);
 						
 								// Set the message info and draw it
-								
 								this->mTopDownPlayerNameMessage.SetText(theEntityName);
 						
 								// Set position
@@ -2957,8 +2956,6 @@ void AvHHud::RenderCommonUI()
 				    hud_player_info_t thePlayerInfo;
 				    gEngfuncs.pfnGetPlayerInfo(this->mProgressBarEntityIndex, &thePlayerInfo);
 
-
-				
 				    char* thePlayerName = thePlayerInfo.name;
 				    if(thePlayerName)
 				    {

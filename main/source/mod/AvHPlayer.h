@@ -848,8 +848,6 @@ private:
 	int					mNumSensory;
 	int					mNumDefense;
 
-	bool				mIsReady; // for tournamentmode, if player is ready
-
     struct ServerVariable
     {
         const cvar_t*		mCvar;
