@@ -1240,13 +1240,16 @@ void ScorePanel::FillGrid()
 								pLabel->setFgColorAsImageColor(false);
 								
 								// Parse color (last 3 bytes are the RGB values 1-9)
-								string theColor = theCustomIcon.substr( strlen(theCustomIcon.c_str())-3, 3);
-								
+								string theColor = theCustomIcon.substr(strlen(theCustomIcon.c_str()) - 3, 3);
 
+								string rStr = theColor.substr(0, 1);
+								string bStr = theColor.substr(1, 1);
+								string gStr = theColor.substr(2, 1);
 
-								int theRed = (MakeIntFromString(theColor.substr(0, 1))/9.0f)*255;
-								int theGreen = (MakeIntFromString(theColor.substr(1, 1))/9.0f)*255;
-								int theBlue = (MakeIntFromString(theColor.substr(2, 1))/9.0f)*255;
+								//pass reference type
+								int theRed = (MakeIntFromString(rStr) / 9.0f) * 255;
+								int theGreen = (MakeIntFromString(bStr) / 9.0f) * 255;
+								int theBlue = (MakeIntFromString(gStr) / 9.0f) * 255;
 
 
 								pIcon->setColor(BuildColor(theRed, theGreen, theBlue, gHUD.GetGammaSlope()));
