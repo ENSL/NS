@@ -258,7 +258,7 @@ void GameDLLInit( void )
 
 #ifdef USE_NETWORK_METERING
 	CVAR_REGISTER (&avh_networkdebug);
-//    CVAR_REGISTER (&avh_drawinvisible);
+    CVAR_REGISTER (&avh_drawinvisible);
 #endif
 
 #ifdef PROFILE_BUILD

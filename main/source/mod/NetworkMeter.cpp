@@ -52,12 +52,10 @@ void NetworkMeterMessageBegin(int msg_dest, int msg_type, const float* pOrigin, 
 	if(ns_cvar_float(&avh_networkdebug) > 0) 
 		networkDebug=true;
 #endif
-	networkDebug = true;
 	if(networkDebug)
 	{
 		char theDebugString[512];
 		sprintf(theDebugString, "MessageBegin(%d, %d...)\n", msg_dest, msg_type);
-		UTIL_LogPrintf(theDebugString, "MessageBegin(%d, %d...)\n", msg_dest, msg_type);
 		ALERT(at_logged, theDebugString); 
 	}
 	

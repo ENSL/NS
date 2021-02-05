@@ -253,9 +253,7 @@ void AvHOverviewMap::GetColorForEntity(const DrawableEntity& entity, float& outR
 	}
     else if (entity.mTeam == mTeam && !isStructure)    {
 		
-
-		cl_entity_s* theEntity = gEngfuncs.GetEntityByIndex(entity.mEntityNumber);
-		thePlayerId = theEntity->curstate.number;
+		thePlayerId = entity.mPlayerSlot;
 		string test = to_string(entity.mPlayerSlot) + '\n';
 		//ConsolePrint(test.c_str());
 		if (gHUD.GetServerVariableFloat(kvTournamentMode)) {
@@ -357,7 +355,7 @@ void AvHOverviewMap::GetColorForEntity(const DrawableEntity& entity, float& outR
 		}*/
     }
 		else {
-	/*	if (entity.mTeam == TEAM_ONE) {
+		if (entity.mTeam == TEAM_ONE) {
 			outR = 0.33;
 			outG = 0.95;
 			outB = 1.0;
@@ -388,51 +386,17 @@ void AvHOverviewMap::GetColorForEntity(const DrawableEntity& entity, float& outR
 			outR = 0.0;
 			outG = 0.0;
 			outB = 0.0;
-		}*/
+		}
 		if (isStructure) {
-			cl_entity_s* theStructEntity = gEngfuncs.GetEntityByIndex(entity.mEntityNumber);
-			int health = theStructEntity->curstate.health;
-			int solid = theStructEntity->curstate.solid;
-			int f1 = theStructEntity->curstate.fuser1;
-			int f2 = theStructEntity->curstate.fuser2;
-			int f3 = theStructEntity->curstate.fuser3;
-			int f4 = theStructEntity->curstate.fuser4;
-			//ConsolePrint("--------------------------------\n");
-			//ConsolePrint(("ENTITY ID : " + to_string(entity.mEntityNumber)).c_str());
-			//ConsolePrint("--------------------------------\n");
-			//ConsolePrint(("health " +to_string(health)+"\n").c_str());
-			//ConsolePrint(("solid " + to_string(solid) + "\n").c_str());
-			//ConsolePrint(("f1 " + to_string(f1) + "\n").c_str());
-			//ConsolePrint(("f2 " + to_string(f2) + "\n").c_str());
-			//ConsolePrint(("f3 " + to_string(f4) + "\n").c_str());
-			//ConsolePrint(("f4 " + to_string(f4) + "\n").c_str());
-			//ConsolePrint("--------------------------------\n");
-	
-
 			if (entity.mTeam == TEAM_ONE) {
-				if (f1 == 1000) {
-					outR = 0.43; //110
-					outG = 0.70; //180
-					outB = 1.0;  //255
-				}
-				else {
-					outR = 200.0/255.0; //110
-					outG = 200.0/255.0; //180
-					outB = 255;  //255
-				}
+				outR = 0.43;
+				outG = 0.70;
+				outB = 1.0;
 			}
 			else if (entity.mTeam == TEAM_TWO) {
-				if (f1 == 1000) {
-					outR = 0.88;
-					outG = 0.45;
-					outB = 0.00;
-				}
-				else {
-					outR = 255.0 / 255.0; //110
-					outG = 200.0 / 255.0; //180
-					outB = 200.0;  //255
-				}
-				
+				outR = 0.88;
+				outG = 0.45;
+				outB = 0.00;
 			}
 		}
 	}

@@ -269,7 +269,7 @@ extern int gNumFullPackCalls;
 extern int gWeaponAnimationEventID;
 extern int gMetabolizeSuccessEventID;
 extern int gPhaseInEventID;
-extern bool mIsReady; // for tournamentmode, if player is ready
+
 // Yucky globals
 extern AvHParticleTemplateListServer    gParticleTemplateList;
 extern AvHSoundListManager              gSoundListManager;
@@ -296,14 +296,6 @@ AvHPlayer::AvHPlayer()
     this->Init();
 	//TODO: find out lifecycle of entity vs. lifecycle of client and reset only when we have a new client.
 	this->InitBalanceVariables();
-}
-
-void AvHPlayer::setReady(bool ready) {
-    mIsReady = ready;
-}
-
-bool AvHPlayer::getReadyStatus() {
-    return mIsReady;
 }
 
 void AvHPlayer::AddDebugEnemyBlip(float inX, float inY, float inZ)

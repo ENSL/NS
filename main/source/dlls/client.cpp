@@ -163,8 +163,7 @@ extern int g_teamplay;
 
 
 vector<int> playerReadyList;
-vector<int> marinesPlayerList;
-vector<int> aliensPlayerList;
+vector<int> playerList;
 /*
  * used by kill command and disconnect command
  * ROBIN: Moved here from player.cpp, to allow multiple player models
@@ -369,57 +368,38 @@ void ClientPutInServer( edict_t *pEntity )
 void Player_Ready(edict_t* pEntity, bool ready) {
 	AvHPlayer* theTalkingPlayer = dynamic_cast<AvHPlayer*>(CBaseEntity::Instance(pEntity));
 	// Player is ready
-	//if (theTalkingPlayer->GetTeam == TEAM_ONE || theTalkingPlayer->GetTeam == TEAM_TWO) {
-	//	if (ready) {
-	//		if (std::find(std::begin(playerReadyList), std::end(playerReadyList), theTalkingPlayer->entindex()) == std::end(playerReadyList)) {
-	//			playerReadyList.push_back(theTalkingPlayer->entindex());
-	//			g_engfuncs.pfnServerPrint(("ADD playerReady " + std::to_string(theTalkingPlayer->entindex())).c_str());
+	if (ready){
+		if (std::find(std::begin(playerReadyList), std::end(playerReadyList), theTalkingPlayer->entindex()) == std::end(playerReadyList)) {
+			playerReadyList.push_back(theTalkingPlayer->entindex());
+			g_engfuncs.pfnServerPrint(( "ADD playerReady " +std::to_string(theTalkingPlayer->entindex()) ).c_str());
+			
+		}
+	}
+	else {	// Player is not ready
+		if (std::find(std::begin(playerReadyList), std::end(playerReadyList), theTalkingPlayer->entindex()) != std::end(playerReadyList)) {
+			playerReadyList.erase(std::find(std::begin(playerReadyList), std::end(playerReadyList), theTalkingPlayer->entindex()));
+			g_engfuncs.pfnServerPrint(("REMOVE playerReady " + std::to_string(theTalkingPlayer->entindex())).c_str());
+		}
 
-	//		}
-	//	}
-	//	else {	// Player is not ready
-	//		if (std::find(std::begin(playerReadyList), std::end(playerReadyList), theTalkingPlayer->entindex()) != std::end(playerReadyList)) {
-	//			playerReadyList.erase(std::find(std::begin(playerReadyList), std::end(playerReadyList), theTalkingPlayer->entindex()));
-	//			g_engfuncs.pfnServerPrint(("REMOVE playerReady " + std::to_string(theTalkingPlayer->entindex())).c_str());
-	//		}
+	}
 
+	bool allready = true;
+	// check wether all players are ready
+	if (playerList.size() >= 12) {
+		for (int i : playerList) {
+			if (std::find(std::begin(playerReadyList), std::end(playerReadyList), i) != std::end(playerReadyList)) {
+				allready = false;
+			}
+		}
+	}
 	
-		
+	if (allready) {
+		AvHTeam* teamA = GetGameRules()->GetTeam(AvHTeamNumber::TEAM_ONE);
+		AvHTeam* teamB = GetGameRules()->GetTeam(AvHTeamNumber::TEAM_TWO);
+		teamA->SetIsReady();
+		teamB->SetIsReady();
+	}
 
-		// Loop trough all players 
-		//AvHPlayer* client = NULL;
-		//while (((client = (AvHPlayer*)UTIL_FindEntityByClassname(client, "player")) != NULL) && (!FNullEnt(client->edict()))) {
-
-		//	if (client->GetTeam == AvHTeamNumber::TEAM_ONE){
-		//		marinesPlayerList.push_back(client->entindex);
-		//		
-		//	}
-		//	else if (client->GetTeam == AvHTeamNumber::TEAM_TWO) {
-		//		aliensPlayerList.push_back(client->entindex);
-
-		//	}
-
-		//	// in case someone left the team remove him
-		//	if (std::find(std::begin(aliensPlayerList), std::end(aliensPlayerList), client->entindex) != std::end(aliensPlayerList)) {
-		//		aliensPlayerList.erase(std::find(std::begin(aliensPlayerList), std::end(aliensPlayerList), client->entindex));
-		//	}
-		//	if (std::find(std::begin(marinesPlayerList), std::end(marinesPlayerList), client->entindex) != std::end(marinesPlayerList)) {
-		//		marinesPlayerList.erase(std::find(std::begin(aliensPlayerList), std::end(aliensPlayerList), client->entindex));
-		//	}
-		//}
-
-
-
-		//bool allready = true;
-		// check wether all players are ready
-		//if (marinesPlayerList.size() >= 12) {
-		//	for (int i : marinesPlayerList) {
-		//		if (std::find(std::begin(playerReadyList), std::end(playerReadyList), i) != std::end(playerReadyList)) {
-		//			allready = false;
-		//		}
-		//	}
-		//}
-	
 
 }
 
@@ -464,27 +444,27 @@ void Host_Say( edict_t *pEntity, int teamonly )
 				
 				if(!strcmp(CMD_ARGV(1), kReadyNotification))
 				{
-					//Player_Ready(pEntity, true);
+					Player_Ready(pEntity, true);
 					// Team is ready
-					
+					/*
 					AvHTeam* theTeam = GetGameRules()->GetTeam((AvHTeamNumber)(pEntity->v.team));
 					if(theTeam && !theTeam->GetIsReady())
 					{
 						theTeam->SetIsReady();
 					}
-					
+					*/
 				}
 				else if (!strcmp(CMD_ARGV(1), kNotReadyNotification))
 				{
 					Player_Ready(pEntity, false);
 					// Team is no longer ready
-					
+					/*
 					AvHTeam* theTeam = GetGameRules()->GetTeam((AvHTeamNumber)(pEntity->v.team));
 					if(theTeam && theTeam->GetIsReady())
 					{
 						theTeam->SetIsReady(false);
 					}
-					
+					*/
 				}
 			}
 		}
@@ -573,6 +553,25 @@ void Host_Say( edict_t *pEntity, int teamonly )
 		bool theClientIsHLTV = (client->pev->flags & FL_PROXY);
 
         bool theClientInReadyRoom = client->GetInReadyRoom();
+
+
+		// Create a list of all players that are on Marine or Alien team
+		if (client->GetTeam()==TEAM_ONE || client->GetTeam() == TEAM_TWO) {
+			if (std::find(std::begin(playerList), std::end(playerList), client->entindex()) == std::end(playerList)) {
+				playerList.push_back(client->entindex());
+				g_engfuncs.pfnServerPrint(("REMOVE playerList " + std::to_string(theTalkingPlayer->entindex())).c_str());
+			}
+		}
+		else {
+			playerList.erase(std::find(std::begin(playerList), std::end(playerList), client->entindex()));
+			g_engfuncs.pfnServerPrint(("REMOVE playerList " + std::to_string(theTalkingPlayer->entindex())).c_str());
+			// also remove from the ready lists if they are in... 
+			if (std::find(std::begin(playerReadyList), std::end(playerReadyList), client->entindex()) != std::end(playerReadyList)) {
+				playerReadyList.erase(std::find(std::begin(playerReadyList), std::end(playerReadyList), client->entindex()));
+				g_engfuncs.pfnServerPrint(("REMOVE playerReady" + std::to_string(theTalkingPlayer->entindex())).c_str());
+			}
+		}
+
 
 
         if (theClientInReadyRoom != theTalkerInReadyRoom && !theClientIsHLTV)
@@ -920,7 +919,6 @@ void ParmsChangeLevel( void )
 
 	if ( pSaveData )
 		pSaveData->connectionCount = BuildChangeList( pSaveData->levelList, MAX_LEVEL_CONNECTIONS );
-
 }
 
 void ShowMenu(entvars_s *pev, int ValidSlots, int DisplayTime, BOOL ShowLater, char Menu[500])

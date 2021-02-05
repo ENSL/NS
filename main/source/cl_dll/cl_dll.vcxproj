@@ -49,7 +49,7 @@
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\particles;$(SolutionDir)\includes\lpng1251;$(SolutionDir)\includes\zlib-1.2.8;$(SolutionDir)\includes\fmod\inc;$(SolutionDir)\includes\vgui\include;../public;../common;../external;../pm_shared;../game_shared;../mod;../util;../ui;../engine;../cl_dll;../dlls</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>USE_NETWORK_METERING;NDEBUG;WIN32;_WINDOWS;AVH_CLIENT;USE_OLDAUTH;_X86_</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;AVH_CLIENT;USE_OLDAUTH;_X86_</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <PrecompiledHeader>
