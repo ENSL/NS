@@ -1520,6 +1520,7 @@ void AvHPlayer::GetAnimationForActivity(int inActivity, char outAnimation[64], b
     bool theIsGestating = (this->GetUser3() == AVH_USER3_ALIEN_EMBRYO);
     bool theIsDeathAnim = false;
     bool theIsReloading = false;
+	bool theIsGlidingOnGround = (FBitSet(this->pev->flags, FL_ONGROUND) && (this->GetUser3() == AVH_USER3_ALIEN_PLAYER3) && this->pev->button & IN_JUMP && this->pev->oldbuttons & IN_JUMP);
     int theDebugAnimations = BALANCE_VAR(kDebugAnimations);
 	
     //bool theIsBlinking = this->GetIsBlinking();
@@ -1616,7 +1617,12 @@ void AvHPlayer::GetAnimationForActivity(int inActivity, char outAnimation[64], b
 		break;
 
 	case ACT_RUN:
-		if(inGaitSequence || !strcmp(this->m_szAnimExtention, ""))
+		if (theIsGlidingOnGround && CVAR_GET_FLOAT("sv_newlerk") != 0)
+		{
+			strcat(outAnimation, "jump");
+			break;
+		}
+		else if(inGaitSequence || !strcmp(this->m_szAnimExtention, ""))
 		{
 			strcat(outAnimation, "run");
 		}

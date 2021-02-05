@@ -3176,6 +3176,11 @@ void CBasePlayer::Spawn( void )
 	else
 		g_engfuncs.pfnSetPhysicsKeyValue(edict(), "jp2", "0");
 
+	if (avh_newlerk.value == 1 && avh_version.value > 321)
+		g_engfuncs.pfnSetPhysicsKeyValue(edict(), "nl", "1");
+	else
+		g_engfuncs.pfnSetPhysicsKeyValue(edict(), "nl", "0");
+
 	pev->fov = m_iFOV				= 0;// init field of view.
 	m_iClientFOV		= -1; // make sure fov reset is sent
 

@@ -99,6 +99,7 @@ extern cvar_t avh_version;
 //playtest cvars
 extern cvar_t avh_newsgspread;
 extern cvar_t avh_fastjp;
+extern cvar_t avh_newlerk;
 
 char	*ns_cvar_string(const cvar_t *cvar);
 int		ns_cvar_int(const cvar_t *cvar);
@@ -151,4 +152,5 @@ float	ns_cvar_float(const cvar_t *cvar);
 //playtest cvars
 #define kvNewsgspread				"sv_newsgspread"
 #define kvfastjp					"sv_fastjp"
+#define kvNewlerk					"sv_newlerk"
 #endif

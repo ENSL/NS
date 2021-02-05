@@ -2023,6 +2023,7 @@ void PM_PlayStepSound( int step, float fvol )
     static int iSkipStep = 0;
     int irand;
     vec3_t hvel;
+	bool newlerk = atoi(pmove->PM_Info_ValueForKey(pmove->physinfo, "nl"));
 
     pmove->iStepLeft = !pmove->iStepLeft;
 
@@ -2039,6 +2040,12 @@ void PM_PlayStepSound( int step, float fvol )
     {
         return;
     }
+
+	// Don't play footsteps if gliding 
+	if (pmove->iuser3 == AVH_USER3_ALIEN_PLAYER3 && pmove->cmd.buttons & IN_JUMP && pmove->oldbuttons & IN_JUMP && newlerk)
+	{
+		return;
+	}
 
     VectorCopy( pmove->velocity, hvel );
     hvel[2] = 0.0;
@@ -3719,7 +3726,10 @@ void PM_CategorizePosition (void)
             pmove->onground = tr.ent;  // Otherwise, point to index of ent under us.
         }
 
-		if ( gIsJetpacking[pmove->player_index] == 0 ) {
+		bool isglidinglerk = (pmove->iuser3 == AVH_USER3_ALIEN_PLAYER3 && pmove->cmd.buttons & IN_JUMP && pmove->oldbuttons & IN_JUMP);
+		bool newlerk = atoi(pmove->PM_Info_ValueForKey(pmove->physinfo, "nl"));
+
+		if ( gIsJetpacking[pmove->player_index] == 0 && (!isglidinglerk && newlerk)) {
 
 			// If we are on something...
 			if (pmove->onground != -1)
@@ -4601,8 +4611,12 @@ bool PM_FlapMove()
     }
     else
     {
+		bool newlerk = atoi(pmove->PM_Info_ValueForKey(pmove->physinfo, "nl"));
+
         // Added by mmcguire. Lerk gliding.
-        if (pmove->iuser3 == AVH_USER3_ALIEN_PLAYER3 && pmove->onground == -1)
+        //if (pmove->iuser3 == AVH_USER3_ALIEN_PLAYER3 && pmove->onground == -1)
+		//if (pmove->iuser3 == AVH_USER3_ALIEN_PLAYER3/* && pmove->onground == -1*/)
+		if (pmove->iuser3 == AVH_USER3_ALIEN_PLAYER3 && (newlerk || pmove->onground == -1))
         {
             // Compute the velocity not in the direction we're facing.
 			float theGlideAmount = min(0.2f, PM_GetHorizontalSpeed() / 1000);
@@ -6722,9 +6736,12 @@ void PM_PlayerMove ( qboolean server )
 				pmove->flags &= ~FL_JUMPHELD;
             }
 
+			bool isglidinglerk = (pmove->iuser3 == AVH_USER3_ALIEN_PLAYER3 && pmove->cmd.buttons & IN_JUMP && pmove->oldbuttons & IN_JUMP);
+			bool newlerk = atoi(pmove->PM_Info_ValueForKey(pmove->physinfo, "nl"));
+
             // Fricion is handled before we add in any base velocity. That way, if we are on a conveyor, 
             //  we don't slow when standing still, relative to the conveyor.
-            if ((pmove->onground != -1 && gIsJetpacking[pmove->player_index] == 0) || GetHasUpgrade(pmove->iuser4, MASK_WALLSTICKING))
+            if ((pmove->onground != -1 && gIsJetpacking[pmove->player_index] == 0 && (!isglidinglerk || !newlerk)) || GetHasUpgrade(pmove->iuser4, MASK_WALLSTICKING))
             {
 				if(!GetHasUpgrade(pmove->iuser4, MASK_WALLSTICKING))
                     pmove->velocity[2] = 0.0;
@@ -6735,7 +6752,7 @@ void PM_PlayerMove ( qboolean server )
             PM_CheckVelocity();
 
             // Are we on ground now
-             if ( (pmove->onground != -1 && gIsJetpacking[pmove->player_index] == 0) || GetHasUpgrade(pmove->iuser4, MASK_WALLSTICKING) )
+             if ( (pmove->onground != -1 && gIsJetpacking[pmove->player_index] == 0 && (!isglidinglerk || !newlerk)) || GetHasUpgrade(pmove->iuser4, MASK_WALLSTICKING) )
             {
                 PM_WalkMove();
             }
