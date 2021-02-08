@@ -117,6 +117,7 @@
 #include "AvHClientVariables.h"
 #include "../util/MathUtil.h"
 #include "AvHHulls.h"
+#include "AvHServerVariables.h"
 
 //extern AvHKnife				gKnife;
 //extern AvHMachineGun		gMachineGun;
@@ -938,7 +939,10 @@ void EV_SonicGun(struct event_args_s* args)
 //		}
 		//EV_HLDM_FireBullets( idx, forward, right, up, kSGBulletsPerShot, vecSrc, vecAiming, kSGRange, BULLET_PLAYER_BUCKSHOT, 0, &tracerCount[idx-1], VECTOR_CONE_20DEGREES.x, VECTOR_CONE_20DEGREES.y);
 
-		if ((CVAR_GET_FLOAT("sv_nsversion") < 323.0f) || (CVAR_GET_FLOAT("sv_newsgspread") == 0.0f))
+
+		bool oldpellets = (gHUD.GetServerVariableFloat(kvVersion) < 323.0f || gHUD.GetServerVariableFloat(kvNewsgspread) == 0.0f);
+
+		if (oldpellets)
 		{
 			EV_HLDM_FireBulletsPlayer(idx, forward, right, up, 10, vecSrc, vecAiming, kSGRange, BULLET_PLAYER_BUCKSHOT, 0, &tracerCount[idx - 1], kSGSpread, args->iparam1);
 		}
