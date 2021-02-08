@@ -1500,7 +1500,7 @@ void NsVersion(void)
 	//memset(theGameVersion, 0, 1024);
 	strcpy(theGameVersion, theGameVersionString.c_str());
 
-	gEngfuncs.Con_Printf("%s %s", kAvHGameAcronymn, theGameVersion);
+	gEngfuncs.Con_Printf("%s %s\n", kAvHGameAcronymn, theGameVersion);
 }
 
 /*
