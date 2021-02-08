@@ -214,9 +214,10 @@ void AvHSonicGun::FireProjectiles(void)
     // Fire the bullets and apply damage
 	//this->m_pPlayer->FireBullets(kSGBulletsPerShot, vecSrc, vecAiming, this->GetProjectileSpread(), this->mRange, 0, 0, theDamage);
 
-	bool oldshotty = (CVAR_GET_FLOAT("sv_nsversion") < 323.0f);
+	// Client thinks these are 0 but this should run fine on the server. If client check is necessary, use gHUD.GetServerVariableFloat.
+	bool oldshotty = (CVAR_GET_FLOAT("sv_nsversion") < 323.0f || CVAR_GET_FLOAT("sv_newsgspread") == 0.0f);
 
-	if (oldshotty || (CVAR_GET_FLOAT("sv_newsgspread") == 0.0f))
+	if (oldshotty)
 	{
 		this->m_pPlayer->FireBulletsPlayer(10, vecSrc, vecAiming, this->GetProjectileSpread(), this->mRange, BULLET_PLAYER_BUCKSHOT, 0, 17, 0, this->m_pPlayer->random_seed);
 	}
