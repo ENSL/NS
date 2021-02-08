@@ -6782,7 +6782,7 @@ void PM_PlayerMove ( qboolean server )
             }
 
             // If we are on ground, no downward velocity.
-            if((pmove->onground != -1 && gIsJetpacking[pmove->player_index] == 0) && !GetHasUpgrade(pmove->iuser4, MASK_WALLSTICKING))
+			if ((pmove->onground != -1 && gIsJetpacking[pmove->player_index] == 0 && (!isglidinglerk || !newlerk)) && !GetHasUpgrade(pmove->iuser4, MASK_WALLSTICKING))
             {
                 pmove->velocity[2] = 0;
             }
