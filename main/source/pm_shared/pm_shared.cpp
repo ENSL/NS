@@ -6389,6 +6389,7 @@ void PM_Jetpack()
             }
 
             float theWeightScalar = kBaseScalar + (1.0f - kBaseScalar)*((pmove->clientmaxspeed - theMinMarineSpeed)/(theMaxMarineSpeed - theMinMarineSpeed));
+			ALERT(at_console, "weightscalar = %f wishvel0= %f wishvel1= %f", theWeightScalar, theWishVelocity[0], theWishVelocity[1]);
             
 			// Old lateral jetpack code - acceleration scales with framerate
 			//pmove->velocity[0] += (theWishVelocity[0]/pmove->clientmaxspeed)*kJetpackLateralScalar;
@@ -6396,8 +6397,8 @@ void PM_Jetpack()
 
 			if (fastjp)
 			{
-				pmove->velocity[0] += (theWishVelocity[0] / pmove->clientmaxspeed) * (theTimePassed * theWeightScalar * 1562.5f);
-				pmove->velocity[1] += (theWishVelocity[1] / pmove->clientmaxspeed) * (theTimePassed * theWeightScalar * 1562.5f);
+				pmove->velocity[0] += ((theWishVelocity[0] / pmove->clientmaxspeed) * (theTimePassed * kJetpackForce) * 1.25f);
+				pmove->velocity[1] += ((theWishVelocity[1] / pmove->clientmaxspeed) * (theTimePassed * kJetpackForce) * 1.25f);
 				pmove->velocity[2] += theTimePassed * theWeightScalar*kJetpackForce;
 			}
 			else if (!newjp)
@@ -6408,8 +6409,12 @@ void PM_Jetpack()
 			}
 			else
 			{
-				pmove->velocity[0] += (theWishVelocity[0] / pmove->clientmaxspeed) * (theTimePassed * theWeightScalar*kJetpackForce);
-				pmove->velocity[1] += (theWishVelocity[1] / pmove->clientmaxspeed) * (theTimePassed * theWeightScalar*kJetpackForce);
+				//pmove->velocity[0] += (theWishVelocity[0] / pmove->clientmaxspeed) * (theTimePassed * theWeightScalar*kJetpackForce);
+				//pmove->velocity[1] += (theWishVelocity[1] / pmove->clientmaxspeed) * (theTimePassed * theWeightScalar*kJetpackForce);
+				//pmove->velocity[2] += theTimePassed*theWeightScalar*kJetpackForce;
+
+				pmove->velocity[0] += (theWishVelocity[0] / pmove->clientmaxspeed) * (theTimePassed * kJetpackForce);
+				pmove->velocity[1] += (theWishVelocity[1] / pmove->clientmaxspeed) * (theTimePassed * kJetpackForce);
 				pmove->velocity[2] += theTimePassed*theWeightScalar*kJetpackForce;
 			}
 
