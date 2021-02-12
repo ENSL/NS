@@ -6409,10 +6409,6 @@ void PM_Jetpack()
 			}
 			else
 			{
-				//pmove->velocity[0] += (theWishVelocity[0] / pmove->clientmaxspeed) * (theTimePassed * theWeightScalar*kJetpackForce);
-				//pmove->velocity[1] += (theWishVelocity[1] / pmove->clientmaxspeed) * (theTimePassed * theWeightScalar*kJetpackForce);
-				//pmove->velocity[2] += theTimePassed*theWeightScalar*kJetpackForce;
-
 				pmove->velocity[0] += (theWishVelocity[0] / pmove->clientmaxspeed) * (theTimePassed * kJetpackForce);
 				pmove->velocity[1] += (theWishVelocity[1] / pmove->clientmaxspeed) * (theTimePassed * kJetpackForce);
 				pmove->velocity[2] += theTimePassed*theWeightScalar*kJetpackForce;
