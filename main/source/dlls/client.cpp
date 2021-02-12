@@ -978,7 +978,6 @@ void ClientPrecache( void )
 	PRECACHE_UNMODIFIED_SOUND(kWingFlapSound3);
 	PRECACHE_UNMODIFIED_SOUND(kSiegeHitSound1);
 	PRECACHE_UNMODIFIED_SOUND(kSiegeHitSound2);
-	PRECACHE_UNMODIFIED_SOUND("misc/egg_idle.wav");
 	
 	// setup precaches always needed
 	PRECACHE_UNMODIFIED_SOUND("player/sprayer.wav");			// spray paint sound for PreAlpha
