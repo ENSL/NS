@@ -10074,9 +10074,11 @@ void AvHPlayer::UpdateTechNodes()
             }
 
 			if (UpdatedCosts && !theGameStarted)
+			{
+				theTechNodes.processBalanceChange();
 				UpdatedCosts = false;
-
-			if (theGameStarted && !UpdatedCosts)
+			}
+			else if (theGameStarted && !UpdatedCosts)
 			{
 				theTechNodes.processBalanceChange();
 				UpdatedCosts = true;
