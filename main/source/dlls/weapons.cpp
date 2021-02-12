@@ -800,7 +800,7 @@ void CBasePlayerItem::FallThink ( void )
 		pev->fuser4 = 0;
 	}
 	//weapons in air for too long from collision issues with other entities change to SOLID_TRIGGER to fall to ground
-	if ((pev->fuser4 > 0.7))
+	else if ((pev->fuser4 > 0.7))
 	{
 		pev->solid = SOLID_TRIGGER;
 		pev->fuser4 = 0;
@@ -928,14 +928,14 @@ void CBasePlayerItem::DefaultTouch( CBaseEntity *pOther )
 
 	SUB_UseTargets( pOther, USE_TOGGLE, 0 ); // UNDONE: when should this happen?
 
-	// Haven't had the crash but adding this in case due to weapons being able to turn to SOLID_TRIGGER before touching the ground with 2021 weapon collision fix.
-	// https://github.com/ValveSoftware/halflife/pull/1599
-	// If the item is falling and its Think remains FallItem after the player picks it up,
-	// then after the item touches the ground its Touch will be set back to DefaultTouch,
-	// so the player will pick it up again, this time Kill-ing the item (since we already have it in the inventory),
-	// which will make the pointer bad and crash the game.
-	if (m_pfnThink == &CBasePlayerItem::FallThink)
-		SetThink(NULL);
+	//// 2021 - Possible fix if crashes occur. Disabled because weapons can't be picked up if aliens touch them while they're falling.
+	//// https://github.com/ValveSoftware/halflife/pull/1599
+	//// If the item is falling and its Think remains FallItem after the player picks it up,
+	//// then after the item touches the ground its Touch will be set back to DefaultTouch,
+	//// so the player will pick it up again, this time Kill-ing the item (since we already have it in the inventory),
+	//// which will make the pointer bad and crash the game.
+	//if (m_pfnThink == &CBasePlayerItem::FallThink)
+		//SetThink(NULL);
 }
 
 BOOL CanAttack( float attack_time, float curtime, BOOL isPredicted )
