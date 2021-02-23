@@ -6566,7 +6566,7 @@ void PM_PlayerMove ( qboolean server )
     NS_UpdateWallsticking();
 
     // Don't run ladder code if dead or on a train, or a lerk or a skulk
-    bool theIsFlyingAlien = (pmove->iuser3 == AVH_USER3_ALIEN_PLAYER3) && (pmove->onground == -1);
+    bool theIsLerk = (pmove->iuser3 == AVH_USER3_ALIEN_PLAYER3);
     bool theIsSkulk = (pmove->iuser3 == AVH_USER3_ALIEN_PLAYER1);
 
 //	if ( PM_GetIsBlinking() ) {
@@ -6574,7 +6574,7 @@ void PM_PlayerMove ( qboolean server )
 		g_onladder[pmove->player_index] = 0;
 	}
 	else {
-		if ( !pmove->dead && !(pmove->flags & FL_ONTRAIN) && !gIsJetpacking[pmove->player_index] && !GetHasUpgrade(pmove->iuser4, MASK_WALLSTICKING) && !theIsFlyingAlien && !theIsSkulk)
+		if ( !pmove->dead && !(pmove->flags & FL_ONTRAIN) && !gIsJetpacking[pmove->player_index] && !GetHasUpgrade(pmove->iuser4, MASK_WALLSTICKING) && !theIsLerk && !theIsSkulk)
 		{
 			pLadder = PM_Ladder();
 			if ( pLadder )
