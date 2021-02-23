@@ -16,21 +16,24 @@ class CHudCrosshairs : public CHudBase
 	cvar_t* cl_cross_outline_alpha;
 	cvar_t* cl_cross_outline_inner;
 	cvar_t* cl_cross_circle_radius;
+	cvar_t* cl_cross_circle_color;
 	cvar_t* cl_cross_circle_thickness;
+	cvar_t* cl_cross_circle_alpha;
+	cvar_t* cl_cross_circle_outline;
+	cvar_t* cl_cross_circle_outline_alpha;
+	cvar_t* cl_cross_circle_outline_inner;
 	cvar_t* cl_cross_dot_size;
 	cvar_t* cl_cross_dot_color;
+	cvar_t* cl_cross_dot_alpha;
 	cvar_t* cl_cross_dot_outline;
+	cvar_t* cl_cross_dot_outline_alpha;
 	cvar_t* cl_cross_line_top;
 	cvar_t* cl_cross_line_bottom;
 	cvar_t* cl_cross_line_left;
 	cvar_t* cl_cross_line_right;
 
-//#ifdef __APPLE__
-//	//Remove when OSX builds with c++11
-//#else
 	float old_circle_radius;
 	std::vector<Vector2D> circle_points;
-//#endif
 
 public:
 	virtual int Init();

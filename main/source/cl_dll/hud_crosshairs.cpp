@@ -17,13 +17,20 @@ int CHudCrosshairs::Init()
 	cl_cross_size = CVAR_CREATE("cl_cross_size", "6", FCVAR_ARCHIVE);
 	cl_cross_gap = CVAR_CREATE("cl_cross_gap", "3", FCVAR_ARCHIVE);
 	cl_cross_outline = CVAR_CREATE("cl_cross_outline", "2", FCVAR_ARCHIVE);
-	cl_cross_outline_alpha = CVAR_CREATE("cl_cross_outline_alpha", "255", FCVAR_ARCHIVE);
+	cl_cross_outline_alpha = CVAR_CREATE("cl_cross_outline_alpha", "", FCVAR_ARCHIVE);
 	cl_cross_outline_inner = CVAR_CREATE("cl_cross_outline_inner", "0", FCVAR_ARCHIVE);
 	cl_cross_circle_radius = CVAR_CREATE("cl_cross_circle_radius", "0", FCVAR_ARCHIVE);
+	cl_cross_circle_color = CVAR_CREATE("cl_cross_circle_color", "", FCVAR_ARCHIVE);
 	cl_cross_circle_thickness = CVAR_CREATE("cl_cross_circle_thickness", "1", FCVAR_ARCHIVE);
+	cl_cross_circle_alpha = CVAR_CREATE("cl_cross_circle_alpha", "", FCVAR_ARCHIVE);
+	cl_cross_circle_outline = CVAR_CREATE("cl_cross_circle_outline", "", FCVAR_ARCHIVE);
+	cl_cross_circle_outline_alpha = CVAR_CREATE("cl_cross_circle_outline_alpha", "", FCVAR_ARCHIVE);
+	cl_cross_circle_outline_inner = CVAR_CREATE("cl_cross_circle_outline_inner", "", FCVAR_ARCHIVE);
 	cl_cross_dot_size = CVAR_CREATE("cl_cross_dot_size", "0", FCVAR_ARCHIVE);
 	cl_cross_dot_color = CVAR_CREATE("cl_cross_dot_color", "", FCVAR_ARCHIVE);
+	cl_cross_dot_alpha = CVAR_CREATE("cl_cross_dot_alpha", "", FCVAR_ARCHIVE);
 	cl_cross_dot_outline = CVAR_CREATE("cl_cross_dot_outline", "0", FCVAR_ARCHIVE);
+	cl_cross_dot_outline_alpha = CVAR_CREATE("cl_cross_dot_outline_alpha", "", FCVAR_ARCHIVE);
 	cl_cross_line_top = CVAR_CREATE("cl_cross_line_top", "1", FCVAR_ARCHIVE);
 	cl_cross_line_bottom = CVAR_CREATE("cl_cross_line_bottom", "1", FCVAR_ARCHIVE);
 	cl_cross_line_left = CVAR_CREATE("cl_cross_line_left", "1", FCVAR_ARCHIVE);
@@ -53,14 +60,6 @@ int CHudCrosshairs::Draw(float time)
 	if (gHUD.GetInTopDownMode())
 		return 0;
 
-	// outline alpha perhaps unnecessary since odd numbered thicknesses feather the outline edges
-	unsigned char outalpha;
-	if (sscanf(cl_cross_outline_alpha->string, "%hhu", &outalpha) != 1)
-		outalpha = 255;
-	
-	if (outalpha == 0)
-		return 0;
-
 	unsigned char r, g, b;
 	if (sscanf(cl_cross_color->string, "%hhu %hhu %hhu", &r, &g, &b) != 3) {
 		r = 0;
@@ -80,7 +79,10 @@ int CHudCrosshairs::Draw(float time)
 	// Example below is for bottom line. Would also cause certain crosshairs that have outlines on invisible cross lines to not look right.
 	// gl.rectangle(Vector2D(center.x + offset, center.y + gap - half_width), Vector2D(center.x - offset, center.y + gap + size + half_width));
 	if (cl_cross_outline->value > 0.0f) {
-		//gl.color(0, 0, 0, alpha);
+		unsigned char outalpha;
+		if (sscanf(cl_cross_outline_alpha->string, "%hhu", &outalpha) != 1)
+			outalpha = alpha;
+
 		gl.color(0, 0, 0, outalpha);
 		gl.line_width(cl_cross_outline->value);
 
@@ -153,41 +155,62 @@ int CHudCrosshairs::Draw(float time)
 				gl.line(Vector2D(center.x + gap + half_width, center.y - half_thickness), Vector2D(center.x + gap + size - half_width, center.y - half_thickness));
 			}
 		}
+	}
 
-		// Dot
-		if (cl_cross_dot_size->value > 0.0f && cl_cross_dot_outline->value > 0.0f) {
-			float size = cl_cross_dot_size->value;
-			Vector2D offset = Vector2D(size / 2.0f, size / 2.0f);
-			float dot_half_width = cl_cross_dot_outline->value / 2.0f;
+	unsigned char dotout;
+	if (sscanf(cl_cross_dot_outline->string, "%hhu", &dotout) != 1)
+		dotout = cl_cross_outline->value;
+	// Dot outline
+	if (cl_cross_dot_size->value > 0.0f && dotout > 0.0f) {
+		unsigned char dotoutalpha;
+		if (sscanf(cl_cross_circle_outline_alpha->string, "%hhu", &dotoutalpha) != 1)
+			dotoutalpha = alpha;
 
-			gl.line(Vector2D(center.x - offset.x - dot_half_width, center.y - offset.y), Vector2D(center.x + offset.x + dot_half_width, center.y - offset.y));
-			gl.line(Vector2D(center.x + offset.x, center.y - offset.y + dot_half_width), Vector2D(center.x + offset.x, center.y + offset.y - dot_half_width));
-			gl.line(Vector2D(center.x - offset.x, center.y - offset.y + dot_half_width), Vector2D(center.x - offset.x, center.y + offset.y - dot_half_width));
-			gl.line(Vector2D(center.x - offset.x - dot_half_width, center.y + offset.y), Vector2D(center.x + offset.x + dot_half_width, center.y + offset.y));
+		gl.color(0, 0, 0, dotoutalpha);
+
+		float size = cl_cross_dot_size->value;
+		Vector2D offset = Vector2D(size / 2.0f, size / 2.0f);
+		float dot_half_width = dotout / 2.0f;
+
+		gl.line(Vector2D(center.x - offset.x - dot_half_width, center.y - offset.y), Vector2D(center.x + offset.x + dot_half_width, center.y - offset.y));
+		gl.line(Vector2D(center.x + offset.x, center.y - offset.y + dot_half_width), Vector2D(center.x + offset.x, center.y + offset.y - dot_half_width));
+		gl.line(Vector2D(center.x - offset.x, center.y - offset.y + dot_half_width), Vector2D(center.x - offset.x, center.y + offset.y - dot_half_width));
+		gl.line(Vector2D(center.x - offset.x - dot_half_width, center.y + offset.y), Vector2D(center.x + offset.x + dot_half_width, center.y + offset.y));
+	}
+
+	unsigned char circleout;
+	if (sscanf(cl_cross_circle_outline->string, "%hhu", &circleout) != 1)
+		circleout = cl_cross_outline->value;
+	// Circle outline
+	if (cl_cross_circle_radius->value > 0.0f && cl_cross_circle_thickness->value > 0.0f && circleout > 0.0f) {
+
+		unsigned char circleoutalpha;
+		if (sscanf(cl_cross_circle_outline_alpha->string, "%hhu", &circleoutalpha) != 1)
+			circleoutalpha = alpha;
+		unsigned char circleoutinner;
+		if (sscanf(cl_cross_circle_outline_inner->string, "%hhu", &circleoutinner) != 1)
+			circleoutinner = cl_cross_outline_inner->value;
+
+		gl.color(0, 0, 0, circleoutalpha);
+
+		auto radius = cl_cross_circle_radius->value;
+
+		if (circleoutinner == 0.0f)
+		{
+			radius += (cl_cross_circle_thickness->value * 0.5f) + (circleout * 0.5f);
+			gl.line_width(circleout);
+		}
+		else
+		{
+			gl.line_width(cl_cross_circle_thickness->value + circleout);
 		}
 
-		// Circle
-		if (cl_cross_circle_radius->value > 0.0f && cl_cross_circle_thickness->value > 0.0f) {
-
-			auto radius = cl_cross_circle_radius->value;
-
-			if (cl_cross_outline_inner->value == 0.0f)
-			{
-				radius += (cl_cross_circle_thickness->value * 0.5f) + (cl_cross_outline->value * 0.5f);
-				gl.line_width(cl_cross_outline->value);
-			}
-			else
-			{
-				gl.line_width(cl_cross_circle_thickness->value + cl_cross_outline->value);
-			}
-
-			if (old_circle_radius != radius) {
-				// Recompute the circle points.
-				circle_points = HudGL::compute_circle(radius);
-				old_circle_radius = radius;
-			}
-			gl.circle(center, circle_points);
+		if (old_circle_radius != radius) {
+			// Recompute the circle points.
+			circle_points = HudGL::compute_circle(radius);
+			old_circle_radius = radius;
 		}
+		gl.circle(center, circle_points);
 	}
 
 	gl.color(r, g, b, alpha);
@@ -209,12 +232,23 @@ int CHudCrosshairs::Draw(float time)
 			gl.line(Vector2D(center.x + gap + size, center.y), Vector2D(center.x + gap, center.y));
 	}
 
-//#ifdef __APPLE__
-//	//Remove when OSX builds with c++11
-//#else
 	// Draw the circle.
-	if (cl_cross_circle_radius->value > 0.0f) {
-		gl.line_width(1.0f);
+	if (cl_cross_circle_radius->value > 0.0f && cl_cross_circle_thickness->value > 0.0f) {
+		unsigned char circlealpha;
+		if (sscanf(cl_cross_circle_alpha->string, "%hhu", &circlealpha) != 1)
+			circlealpha = alpha;
+
+		unsigned char circr, circg, circb;
+		if (sscanf(cl_cross_circle_color->string, "%hhu %hhu %hhu", &circr, &circg, &circb) == 3)
+		{
+			gl.color(circr, circg, circb, circlealpha);
+		}
+		else
+		{
+			gl.color(r, g, b, circlealpha);
+		}
+		
+		gl.line_width(cl_cross_circle_thickness->value);
 
 		float radius = cl_cross_circle_radius->value;
 		if (old_circle_radius != radius) {
@@ -225,13 +259,22 @@ int CHudCrosshairs::Draw(float time)
 
 		gl.circle(center, circle_points);
 	}
-//#endif
 
 	// Draw the dot.
 	if (cl_cross_dot_size->value > 0.0f) {
-		unsigned char r, g, b;
-		if (sscanf(cl_cross_dot_color->string, "%hhu %hhu %hhu", &r, &g, &b) == 3)
-			gl.color(r, g, b, alpha);
+		unsigned char dotalpha;
+		if (sscanf(cl_cross_dot_alpha->string, "%hhu", &dotalpha) != 1)
+			dotalpha = alpha;
+
+		unsigned char dotr, dotg, dotb;
+		if (sscanf(cl_cross_dot_color->string, "%hhu %hhu %hhu", &dotr, &dotg, &dotb) == 3)
+		{
+			gl.color(dotr, dotg, dotb, dotalpha);
+		}
+		else
+		{
+			gl.color(r, g, b, dotalpha);
+		}
 
 		float size = cl_cross_dot_size->value;
 		Vector2D offset = Vector2D(size / 2.0f, size / 2.0f);
