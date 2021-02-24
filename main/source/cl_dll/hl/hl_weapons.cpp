@@ -473,28 +473,34 @@ Handles weapon firing, reloading, etc.
 */
 void CBasePlayerWeapon::ItemPostFrame( void )
 {
+	// Get item info necessary for various checks here.  Adapted from Solokiller's halflife-updated. HL SDK has broken checks that always return false.
+	ItemInfo ii;
+	memset(&ii, 0, sizeof(ii));
+	GetItemInfo(&ii);
+
 	// Hack initialization
 	if (this->m_flLastAnimationPlayed >= 3.0f * BALANCE_VAR(kLeapROF) + gpGlobals->time)
 		this->m_flLastAnimationPlayed = 0.0f;
 
-//	if ((m_fInReload) && (m_pPlayer->m_flNextAttack <= 0.0))
-//	{
+	if ((m_fInReload) && (m_pPlayer->m_flNextAttack <= 0.0))
+	{
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 //// Put code in here to predict reloads (ie, have the ammo on screen update before we get a response) //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
-////#if 0 // FIXME, need ammo on client to make this work right
-////		// complete the reload. 
-////		int j = min( iMaxClip() - m_iClip, m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType]);	
-////
-////		// Add them to the clip
-////		m_iClip += j;
-////		m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= j;
-////		ALERT(at_console, "hlweappredictreload\n");
-////#else	
-////		m_iClip += 10;
-////#endif
-//		m_fInReload = FALSE;
-//	}
+#if 1
+		// complete the reload. 
+
+		int j = min(ii.iMaxClip - m_iClip, m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType]);
+
+		// Add them to the clip
+		m_iClip += j;
+		m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= j;
+		//ALERT(at_console, "hlweap predict reload\n");
+#else	
+		m_iClip += 10;
+#endif
+		m_fInReload = FALSE;
+	}
 
 	// Properly propagate the end animation
 	if (this->PrevAttack2Status == true && !(m_pPlayer->pev->button & IN_ATTACK2))
@@ -528,8 +534,8 @@ void CBasePlayerWeapon::ItemPostFrame( void )
 		}
         else if (GetCanUseWeapon() && (m_flNextPrimaryAttack <= 0.0))
         {
-		    if ( (m_iClip == 0 && pszAmmo1()) || 
-			    (iMaxClip() == -1 && !m_pPlayer->m_rgAmmo[PrimaryAmmoIndex()] ) )
+		    if ( (m_iClip == 0 && ii.pszAmmo1) || 
+			    (ii.iMaxClip == -1 && !m_pPlayer->m_rgAmmo[PrimaryAmmoIndex()] ) )
 		    {
 			    m_fFireOnEmpty = TRUE;
 		    }
@@ -650,7 +656,7 @@ void CBasePlayerWeapon::ItemPostFrame( void )
 //			PrimaryAttack();
 //		}
 	}
-	else if ( m_pPlayer->pev->button & IN_RELOAD && iMaxClip() != WEAPON_NOCLIP && !m_fInReload ) 
+	else if ( m_pPlayer->pev->button & IN_RELOAD && ii.iMaxClip != WEAPON_NOCLIP && !m_fInReload ) 
 	{
         if (GetCanUseWeapon())
         {
@@ -669,11 +675,10 @@ void CBasePlayerWeapon::ItemPostFrame( void )
 		    m_fFireOnEmpty = FALSE;
 			
 		    // weapon is useable. Reload if empty and weapon has waited as long as it has to after firing
-		    if ( m_iClip == 0 && !(iFlags() & ITEM_FLAG_NOAUTORELOAD) && m_flNextPrimaryAttack < 0.0 )
+			if (m_iClip == 0 && !(ii.iFlags & ITEM_FLAG_NOAUTORELOAD) && m_flNextPrimaryAttack < 0.0)
 		    {
 			    // << CGC >> Only reload if we have more ammo to reload with
-				// Client doesn't know autoreload flag and knife ammo is infinite with networked ammo. Check if knife to prevent reload.
-			    if(m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] > 0 && !(gHUD.GetCurrentWeaponID() == AVH_WEAPON_KNIFE))
+			    if(m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] > 0)
 			    {
 						Reload();
 						return;
@@ -685,7 +690,7 @@ void CBasePlayerWeapon::ItemPostFrame( void )
 		this->PrevAttack2Status = false;
 		return;
 	}
-	
+
 	this->PrevAttack2Status = false;
 
 	// catch all

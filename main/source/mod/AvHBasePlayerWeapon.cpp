@@ -266,14 +266,14 @@ BOOL AvHBasePlayerWeapon::DefaultReload( int iClipSize, int iAnim, float fDelay,
 		return TRUE;
 	// :
 
-	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0 || m_iId == AVH_WEAPON_KNIFE)
+	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0)
 		return FALSE;
 
 	// Don't reload while we're resupplying
-	if(this->mTimeOfLastResupply > 0)
-	{
-		return FALSE;
-	}
+//	if(this->mTimeOfLastResupply > 0)
+//	{
+//		return FALSE;
+//	}
 
 	int j = min(iClipSize - m_iClip, m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType]);	
 	
@@ -283,14 +283,15 @@ BOOL AvHBasePlayerWeapon::DefaultReload( int iClipSize, int iAnim, float fDelay,
 	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + fDelay;
 	
 	//!!UNDONE -- reload sound goes here !!!
-	//SendWeaponAnim( iAnim, UseDecrement() ? 1 : 0 );
+	// 2021 Ammo networking. Uncommented to not send animations to the client that initiated the reload. This is HL SDK code.
+	SendWeaponAnim( iAnim, UseDecrement() ? 1 : 0 );
 	//// 2021 Ammo networking. Commented below - client was getting sent extra reload animations causing visual stutter.
 	//this->SendWeaponAnim(iAnim);
 
-	// Send reload to all players.  Reloads are initiated server-side, so send down to local client as well
 	//// 2021 Ammo networking. Commented below - client was getting sent extra reload animations causing visual stutter.
+	// Send reload to all players.  Reloads are initiated server-side, so send down to local client as well
 	//this->m_pPlayer->pev->weaponanim = iAnim;
-	this->PlaybackEvent(this->mWeaponAnimationEvent, iAnim, FEV_RELIABLE);
+	//this->PlaybackEvent(this->mWeaponAnimationEvent, iAnim, FEV_RELIABLE);
 
 	//ALERT(at_console, "defaultreload nextattack:%g\n", m_pPlayer->m_flNextAttack);
 	// Player model reload animation
@@ -1087,8 +1088,8 @@ bool AvHBasePlayerWeapon::Resupply()
 
         const float theDelay = 1.0f;
 		//bugfix - don't let resupply shorten reload time
-        this->m_pPlayer->m_flNextAttack = max(this->m_pPlayer->m_flNextAttack,UTIL_WeaponTimeBase() + theDelay);
-        this->mTimeOfLastResupply = UTIL_WeaponTimeBase() + theDelay;
+		this->m_pPlayer->m_flNextAttack = max(this->m_pPlayer->m_flNextAttack,UTIL_WeaponTimeBase() + theDelay);
+		this->mTimeOfLastResupply = UTIL_WeaponTimeBase() + theDelay;
 	}
 
 	return theResupplied;
