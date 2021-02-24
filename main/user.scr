@@ -48,7 +48,7 @@ DESCRIPTION INFO_OPTIONS
 		{ "0" }
 	}
 
-		"cl_ambientsound"
+	"cl_ambientsound"
 	{
 		"Ambient sound volume (0 to 1)"
 		{ NUMBER 0.000000 1.000000 }
@@ -93,6 +93,68 @@ DESCRIPTION INFO_OPTIONS
 			"Full Zoom (3X) " "3"
 		}
 		{ "3.000000" }
+	}
+		
+	"cl_mutemenu"
+	{
+		"Scoreboard mute menu hotkey"
+		{
+			LIST
+			"None" "0"
+			"Left click" "1"
+			"Right click" "2"
+			"Middle mouse" "3"
+		}
+		{ "3.000000" }
+	}
+
+	"zoom_sensitivity_ratio"
+	{
+		"Zoom sensitivity ratio (skulk/gorge)"
+		{ NUMBER 0.000000 5.000000 }
+		{ "1.000000" }
+	}
+
+	"senslock"
+	{
+		"Don't scale sensitivity with FOV (Skulk/Gorge)"
+		{ BOOL }
+		{ "0" }
+	}
+
+	"r_dynamic"
+	{
+		"Dynamic lighting (non-nvidia graphics users should turn off)"
+		{ BOOL }
+		{ "1" }
+	}
+
+	"cl_dynamiclights"
+	{
+		"Dynamic lights"
+		{ BOOL }
+		{ "0" }
+	}
+
+	"cl_showspeed"
+	{
+		"Show player speed"
+		{ BOOL }
+		{ "0" }
+	}
+	
+	"hud_fastswitch"
+	{
+		"Weapon fast-switch"
+		{ BOOL }
+		{ "1" }
+	}
+	
+	"cl_cmhotkeys"
+	{
+		"Commander hotkeys"
+		{ STRING }
+		{ "qwerasdfzxcv" }
 	}
 
 	"cl_cross"
@@ -147,8 +209,8 @@ DESCRIPTION INFO_OPTIONS
 	"cl_cross_outline_alpha"
 	{
 		"Crosshair outline transparency (0-255)"
-		{ NUMBER 0.000000 255.000000 }
-		{ "255.000000" }
+		{ STRING }
+		{ "" }
 	}
 
 	"cl_cross_outline_inner"
@@ -158,32 +220,116 @@ DESCRIPTION INFO_OPTIONS
 		{ "0" }
 	}
 
+		"cl_cross_line_top"
+	{
+		"Cross top line"
+		{ BOOL }
+		{ "1" }
+	}
+
+	"cl_cross_line_bottom"
+	{
+		"Cross bottom line"
+		{ BOOL }
+		{ "1" }
+	}
+
+		"cl_cross_line_left"
+	{
+		"Cross left line"
+		{ BOOL }
+		{ "1" }
+	}
+
+		"cl_cross_line_right"
+	{
+		"Cross right line"
+		{ BOOL }
+		{ "1" }
+	}
+
 	"cl_cross_dot_size"
 	{
-		"Crosshair dot size"
+		"Dot size"
 		{ NUMBER -1.000000 -1.000000 }
-		{ "0.000000" }
+		{ "0" }
+	}
+
+	"cl_cross_dot_color"
+	{
+		"Dot color (R G B)"
+		{ STRING }
+		{ "" }
+	}
+
+	"cl_cross_dot_alpha"
+	{
+		"Dot transparency (0-255)"
+		{ STRING }
+		{ "" }
 	}
 
 	"cl_cross_dot_outline"
 	{
-		"Crosshair dot outline thickness"
+		"Dot outline thickness"
 		{ NUMBER -1.000000 -1.000000 }
 		{ "0.000000" }
 	}
 
+	"cl_cross_dot_outline_alpha"
+	{
+		"Dot outline transparency (0-255)"
+		{ STRING }
+		{ "" }
+	}
+
 	"cl_cross_circle_radius"
 	{
-		"Crosshair circle size"
+		"Circle size"
 		{ NUMBER 0.000000 255.000000 }
-		{ "0.000000" }
+		{ "0" }
 	}
 
 	"cl_cross_circle_thickness"
 	{
-		"Crosshair circle thickness"
+		"Circle thickness"
 		{ NUMBER 0.000000 255.000000 }
-		{ "0.000000" }
+		{ "1" }
+	}
+
+	"cl_cross_circle_color"
+		{
+		"Circle color (R G B)"
+		{ STRING }
+		{ "" }
+	}
+
+	"cl_cross_circle_alpha"
+	{
+		"Circle transparency (0-255)"
+		{ STRING }
+		{ "" }
+	}
+
+	"cl_cross_circle_outline"
+	{
+		"Circle outline thickness"
+		{ STRING }
+		{ "" }
+	}
+
+	"cl_cross_circle_outline_alpha"
+	{
+		"Circle outline transparency (0-255)"
+		{ STRING }
+		{ "" }
+	}
+
+	"cl_cross_circle_outline_inner"
+	{
+		"Outline inside of the circle"
+		{ BOOL }
+		{ "" }
 	}
 
 	"crosshair"
@@ -205,47 +351,6 @@ DESCRIPTION INFO_OPTIONS
 			"Custom 4" "4"
 		}
 		{ "0.000000" }
-	}
-
-	"senslock"
-	{
-		"Don't scale sensitivity with FOV (Skulk/Gorge)"
-		{ BOOL }
-		{ "0" }
-	}
-
-	"zoom_sensitivity_ratio"
-	{
-		"Zoom sensitivity ratio (skulk/gorge)"
-		{ NUMBER 0.000000 5.000000 }
-		{ "1.000000" }
-	}
-
-	"cl_cmhotkeys"
-	{
-		"Commander hotkeys"
-		{ STRING }
-		{ "qwerasdfzxcv" }
-	}
-
-	"cl_mutemenu"
-	{
-		"Scoreboard mute menu hotkey"
-		{
-			LIST
-			"None" "0"
-			"Left click" "1"
-			"Right click" "2"
-			"Middle mouse" "3"
-		}
-		{ "3.000000" }
-	}
-
-	"cl_showspeed"
-	{
-		"Show player speed"
-		{ BOOL }
-		{ "0" }
 	}
 
 	"cl_centerentityid"
@@ -272,27 +377,6 @@ DESCRIPTION INFO_OPTIONS
 	"cl_labelhivesight"
 	{
 		"Show alien hivesight text"
-		{ BOOL }
-		{ "1" }
-	}
-
-	"cl_dynamiclights"
-	{
-		"Dynamic lights"
-		{ BOOL }
-		{ "0" }
-	}
-
-	"r_dynamic"
-	{
-		"Dynamic lighting (non-nvidia graphics users should turn off)"
-		{ BOOL }
-		{ "1" }
-	}
-
-	"hud_fastswitch"
-	{
-		"Weapon fast-switch"
 		{ BOOL }
 		{ "1" }
 	}
