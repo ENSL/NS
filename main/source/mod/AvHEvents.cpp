@@ -939,9 +939,9 @@ void EV_SonicGun(struct event_args_s* args)
 //		}
 		//EV_HLDM_FireBullets( idx, forward, right, up, kSGBulletsPerShot, vecSrc, vecAiming, kSGRange, BULLET_PLAYER_BUCKSHOT, 0, &tracerCount[idx-1], VECTOR_CONE_20DEGREES.x, VECTOR_CONE_20DEGREES.y);
 		
-		bool oldpellets = (gHUD.GetServerVariableFloat(kvVersion) < 323.0f || gHUD.GetServerVariableFloat(kvNewsgspread) == 0.0f);
+		bool newpellets = (gHUD.GetServerVariableFloat(kvVersion) > 322.0f || gHUD.GetServerVariableFloat(kvNewsgspread) != 0.0f);
 
-		if (oldpellets)
+		if (!newpellets)
 		{
 			EV_HLDM_FireBulletsPlayer(idx, forward, right, up, 10, vecSrc, vecAiming, kSGRange, BULLET_PLAYER_BUCKSHOT, 0, &tracerCount[idx - 1], kSGSpread, args->iparam1);
 		}
