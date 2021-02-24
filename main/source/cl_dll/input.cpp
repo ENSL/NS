@@ -805,7 +805,12 @@ void IN_AttackUp(void)
 {
 	KeyUp( &in_attack );
 	in_cancel = 0;
-	//IN_Attack2Up();
+	// Attack2up only for onos so it can end +attack onos charges.  Attack2up for all causes blink and leap to cancel if you release attack while blinking or leaping.
+	if (gViewPort)
+	{
+		if (gHUD.GetHUDUser3() == AVH_USER3_ALIEN_PLAYER5)
+			IN_Attack2Up();
+	}
 }
 
 void IN_AttackDownForced(void)
