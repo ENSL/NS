@@ -1,0 +1,38 @@
+BSP Name: ns_ragnarok
+Author: Trie aka AnimeLOL (animelol.ns@gmail.com)
+Built: 2015-2021
+
+=========
+BACKSTORY
+=========
+
+Ragnarok Energy Corporation had great success in the latter part of the 22nd century. Founded with a novel and exotic process for nanite production (using a combined geothermal, nuclear, and chemical regime), REC quickly established dominance in the refueling market, first for long-haul shipping and later in all sectors. As REC could easily outbid their competitors thanks to their high-yield technology, they secured many lucrative contracts with the governments and super-corporations comprising the TSA. The nanite production process employed by REC was not without its drawbacks, however. The particular combination of natural resources needed in close proximity considerably constrained site selection.
+
+This drawback was not enough to hold back REC, which bootstrapped efficient distribution logistics to compensate for the inherent constraints on their nanite production locations. Over the course of fifteen years, most REC competitors folded. Most industrial-scale nanite consumers became nearly completely relient on REC at this point.
+
+The emergence of the Kharaa threat eventually required a response from the TSA Frontiersmen, and at first REC was happy to supply TSA extra nanites for the war effort at fair prices. The REC board board had no doubt the threat would be eliminated quickly with the TSA's impressive weapons. Once "that tedious bacterium" began to disrupt some of their supply chain distribution centers, however, nanite prices spiked. REC had impressive logistics, however, and while supply became tighter, there was still sufficient access to nanites to sustain both the war effort and relatively normal life for citizens.
+
+Until the Kharaa spread to a Ragnarok production facility, that is. After losing two facilities, REC became cash-flow negative for the first time in thirty years. The shipping economy slowed to a fraction of what it had been five years ago. The TSA responded with inter-system trade rationing to prioritize military nanite needs in the fight against the Kharaa. With fewer luxuries for all, and in many systems fewer necessities for many, protests broke out.
+
+Dreading the possible effects of losing yet another Ragnarok mining facility, the TSA have deployed the Frontiersmen to critical REC facilities to prepare for invasion.
+
+======
+THANKS
+======
+
+This map was made possible by many people.
+- Admirable for minimaps and detailed feedback
+- NukemD for many mapping tips and demonstrations
+- The ENSL NS1 gather community. Still going strong 20 years later. I'm damn impressed.
+- NS1 communities I've been part of over the years, specifically EvolveNS and Jigglypuff's NS Jigglyroom.
+- All the developers and contributors to NS1, especially Flayra and Max.
+
+Thanks you all for the ggs.
+
+=====
+LINKS
+=====
+
+Sign up for gathers: https://www.ensl.org/gathers/latest/ns1
+Discord invite link: https://discord.gg/ZUSSBUA
+Steam community: http://steamcommunity.com/groups/enslgathers
