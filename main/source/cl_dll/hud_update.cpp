@@ -46,29 +46,35 @@ int CHud::UpdateClientData(client_data_t *cdata, float time)
 	float width = ScreenWidth();
 	float height = ScreenHeight();
 
-	//horizontal+ widescreen view correction - engine uses vertical-
-	bool wstoggle = CVAR_GET_FLOAT("cl_widescreen") != 0;
+	// Horizontal+ widescreen view correction - engine uses vertical- cropping
+
+	// Cvar to let players use old widescreen. Only allow it to change when not alive so it can't be used as a zoom toggle.
+	if (!gHUD.GetIsAlive(false))
+	{
+		wstoggle = CVAR_GET_FLOAT("cl_widescreen") != 0;
+	}
+
 	if (wstoggle)
 	{
-			m_wsFOV = atanf(tan(m_iFOV * M_PI / 360) * 0.75 * width / height) * 360 / M_PI;
+		m_wsFOV = atanf(tan(m_iFOV * M_PI / 360) * 0.75 * width / height) * 360 / M_PI;
 
-			//clamp for game balance
-			if (m_iFOV == 105 && m_wsFOV > 121)
-			{
-				m_wsFOV = 120;
-			}
-			else if (m_iFOV == 100 && m_wsFOV > 117)
-			{
-				m_wsFOV = 116;
-			}
-			else if (m_iFOV == 90 && m_wsFOV > 107)
-			{
-				m_wsFOV = 106;
-			}
-			else if (m_wsFOV < 90)
-			{
-				m_wsFOV = 90;
-			}
+		//clamp for game balance
+		if (m_iFOV == 105 && m_wsFOV > 121)
+		{
+			m_wsFOV = 120;
+		}
+		else if (m_iFOV == 100 && m_wsFOV > 117)
+		{
+			m_wsFOV = 116;
+		}
+		else if (m_iFOV == 90 && m_wsFOV > 107)
+		{
+			m_wsFOV = 106;
+		}
+		else if (m_wsFOV < 90)
+		{
+			m_wsFOV = 90;
+		}
 	}
 	else
 	{

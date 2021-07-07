@@ -17,6 +17,7 @@ private:
 	int							m_iSpriteCount;
 	int							m_iSpriteCountAllRes;
 	float						m_flMouseSensitivity;
+	bool						wstoggle;
 
 public:
 
