@@ -217,7 +217,9 @@ int CHudCrosshairs::Draw(float time)
 
 	// Draw the crosshairs.
 	if (cl_cross_thickness->value > 0.0f) {
-		gl.line_width(cl_cross_thickness->value);
+		//gl.line_width(cl_cross_thickness->value);
+		//clamp dot size to prevent using it as a full screen transparent mask for highlighting eneimies like with the /nvg night vision server plugin.
+		gl.line_width(min(cl_cross_thickness->value, ScreenHeight() * 0.3f));
 
 		float size = cl_cross_size->value;
 		float gap = cl_cross_gap->value;
@@ -276,7 +278,9 @@ int CHudCrosshairs::Draw(float time)
 			gl.color(r, g, b, dotalpha);
 		}
 
-		float size = cl_cross_dot_size->value;
+		//float size = cl_cross_dot_size->value;
+		//clamp dot size to prevent using it as a full screen transparent mask for highlighting eneimies like with the /nvg night vision server plugin.
+		float size = min(cl_cross_dot_size->value, ScreenHeight() * 0.2f);
 		Vector2D offset = Vector2D(size / 2.0f, size / 2.0f);
 
 		gl.rectangle(center - offset, center + offset);
