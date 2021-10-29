@@ -23,7 +23,7 @@ nohimodel "1"
 mpentity "info_mapinfo"
 // Using HPB_bot support for now
 gamedll "dlls\ns.dll"
-gamedll_linux "dlls/ns_i386.so"
+gamedll_linux "dlls/ns.so"
 // Training map
 //trainmap "ns_training"
 
