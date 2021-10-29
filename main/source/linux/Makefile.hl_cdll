@@ -31,14 +31,16 @@ CFLAGS=$(BASE_CFLAGS) $(ARCH_CFLAGS) -DCLIENT_DLL -I/usr/include/malloc -D_snwpr
 INCLUDEDIRS= -I$(HL_SRC_DIR) -I$(NS_MOD_SRC_DIR) -I$(COMMON_SRC_DIR) -I$(PUBLIC_SRC_DIR) -I$(PM_SHARED_SRC_DIR) -I../engine -I$(GAME_SHARED_SRC_DIR) -I../external/ -I../particles -I../includes/fmodapi375linux/api/inc -I$(HL_SERVER_SRC_DIR) -I$(HL_SRC_DIR)/cl_dll -I$(VGUI_INCLUDE_DIR) -I$(UI_INCLUDE_DIR) -I$(UTIL_SRC_DIR) -I../ -I../includes/fmodapi375linux/api -I../includes/lpng1251
 
 ifeq ($(OS),Darwin)
-LDFLAGS=$(SHLIBLDFLAGS) $(CPP_LIB) -L. libpng12.dylib -lz -framework Carbon -framework OpenGL vgui.dylib -L. -lSDL2-2.0.0 -L. libparticleMP.a
+LDFLAGS=$(SHLIBLDFLAGS) $(CPP_LIB) -framework Carbon -framework OpenGL vgui.dylib -L. -lSDL2-2.0.0 -L. libparticleMP.a
+#-L. libpng12.dylib -lz
 DO_CC=$(CPLUS) -std=c++11 -stdlib=libc++ $(INCLUDEDIRS) $(CFLAGS) -o $@ -c $<
 DO_PUBLIC_CC=$(CPLUS) -std=c++11 -stdlib=libc++ $(COMMON_INCLUDEDIRS) $(CFLAGS) $(SHLIBCFLAGS) -o $@ -c $<
 DO_COMMON_CC=$(CPLUS) -std=c++11 -stdlib=libc++ $(INCLUDEDIRS)  $(CFLAGS) $(SHLIBCFLAGS) -o $@ -c $<
 DO_PM_SHARED_CC=$(CPLUS) -std=c++11 -stdlib=libc++ $(INCLUDEDIRS)  $(CFLAGS) $(SHLIBCFLAGS) -o $@ -c $<
 
 else
-LDFLAGS=$(SHLIBLDFLAGS) $(CPP_LIB) -lpng -lz -lfmod-3.75 -L$(CFG) vgui.so -L. libSDL2-2.0.so.0 -L. libparticleMP.a 
+LDFLAGS=$(SHLIBLDFLAGS) $(CPP_LIB) -lfmod-3.75 -L$(CFG) vgui.so -L. libSDL2-2.0.so.0 -L. libparticleMP.a 
+# -lpng -lz
 DO_CC=$(CPLUS) $(INCLUDEDIRS) $(CFLAGS) -o $@ -c $<
 DO_PUBLIC_CC=$(CPLUS) $(COMMON_INCLUDEDIRS) $(CFLAGS) $(SHLIBCFLAGS) -o $@ -c $<
 DO_COMMON_CC=$(CPLUS) $(INCLUDEDIRS)  $(CFLAGS) $(SHLIBCFLAGS) -o $@ -c $<

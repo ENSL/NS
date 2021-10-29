@@ -25,13 +25,17 @@
 #include "AvHGamerules.h"
 #include "AvHServerUtil.h"
 
-//@2014 curl 32/64 bit problems
-#ifndef LINUX
-#define CURL_STATICLIB
-#endif
 
-#include <curl/curl.h>
-//#define CURL_SIZEOF_LONG 4
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+//////		2021 - Unused library removal. Uncomment and reinclude libcurl to add back.			////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+////@2014 curl 32/64 bit problems
+//#ifndef LINUX
+//#define CURL_STATICLIB
+//#endif
+//
+//#include <curl/curl.h>
+////#define CURL_SIZEOF_LONG 4
 
 
 extern cvar_t							avh_serverops;
@@ -364,49 +368,52 @@ string BuildUserPassword()
 	return theUserPassword;
 }
 
-CURLcode PopulateChunkFromURL(const string& inURL, MemoryStruct& outChunk)
-{
-	const int kCurlTimeout = 8;
-
-	// init the curl session
-	CURL* theCurlHandle = curl_easy_init();
-	
-	// specify URL to get
-	curl_easy_setopt(theCurlHandle, CURLOPT_URL, inURL.c_str());
-	
-	// send all data to this function
-	curl_easy_setopt(theCurlHandle, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
-
-	// Ignore header and progress so there isn't extra stuff at the beginning of the data returned
-	//curl_easy_setopt(theCurlHandle, CURLOPT_HEADER, 0);
-	//curl_easy_setopt(theCurlHandle, CURLOPT_NOPROGRESS, 1);
-    //curl_easy_setopt(theCurlHandle, CURLOPT_VERBOSE, 0);
-    //curl_easy_setopt(theCurlHandle, CURLOPT_NOBODY, 1);
-
-	// timeout (3 seconds)
-	curl_easy_setopt(theCurlHandle, CURLOPT_CONNECTTIMEOUT, kCurlTimeout);
-	curl_easy_setopt(theCurlHandle, CURLOPT_TIMEOUT, kCurlTimeout);
-	curl_easy_setopt(theCurlHandle, CURLOPT_NOSIGNAL, true);
-	// CURLOPT_LOW_SPEED_LIMIT?
-	// CURLOPT_LOW_SPEED_TIME?
-
-	// Specify the user name and password
-	string kUserPassword = BuildUserPassword();
-	curl_easy_setopt(theCurlHandle, CURLOPT_USERPWD, kUserPassword.c_str());
-	
-	// we pass our 'theChunk' struct to the callback function
-	outChunk.memory=NULL; /* we expect realloc(NULL, size) to work */
-	outChunk.size = 0;    /* no data at this point */
-	curl_easy_setopt(theCurlHandle, CURLOPT_FILE, (void *)&outChunk);
-	
-	// get it!
-	CURLcode theCode = curl_easy_perform(theCurlHandle);
-	
-	// cleanup curl stuff
-	curl_easy_cleanup(theCurlHandle);
-   
-	return theCode;
-}
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+//////		2021 - Unused library removal. Uncomment and reinclude libcurl to add back.			////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//CURLcode PopulateChunkFromURL(const string& inURL, MemoryStruct& outChunk)
+//{
+//	const int kCurlTimeout = 8;
+//
+//	// init the curl session
+//	CURL* theCurlHandle = curl_easy_init();
+//	
+//	// specify URL to get
+//	curl_easy_setopt(theCurlHandle, CURLOPT_URL, inURL.c_str());
+//	
+//	// send all data to this function
+//	curl_easy_setopt(theCurlHandle, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+//
+//	// Ignore header and progress so there isn't extra stuff at the beginning of the data returned
+//	//curl_easy_setopt(theCurlHandle, CURLOPT_HEADER, 0);
+//	//curl_easy_setopt(theCurlHandle, CURLOPT_NOPROGRESS, 1);
+//    //curl_easy_setopt(theCurlHandle, CURLOPT_VERBOSE, 0);
+//    //curl_easy_setopt(theCurlHandle, CURLOPT_NOBODY, 1);
+//
+//	// timeout (3 seconds)
+//	curl_easy_setopt(theCurlHandle, CURLOPT_CONNECTTIMEOUT, kCurlTimeout);
+//	curl_easy_setopt(theCurlHandle, CURLOPT_TIMEOUT, kCurlTimeout);
+//	curl_easy_setopt(theCurlHandle, CURLOPT_NOSIGNAL, true);
+//	// CURLOPT_LOW_SPEED_LIMIT?
+//	// CURLOPT_LOW_SPEED_TIME?
+//
+//	// Specify the user name and password
+//	string kUserPassword = BuildUserPassword();
+//	curl_easy_setopt(theCurlHandle, CURLOPT_USERPWD, kUserPassword.c_str());
+//	
+//	// we pass our 'theChunk' struct to the callback function
+//	outChunk.memory=NULL; /* we expect realloc(NULL, size) to work */
+//	outChunk.size = 0;    /* no data at this point */
+//	curl_easy_setopt(theCurlHandle, CURLOPT_FILE, (void *)&outChunk);
+//	
+//	// get it!
+//	CURLcode theCode = curl_easy_perform(theCurlHandle);
+//	
+//	// cleanup curl stuff
+//	curl_easy_cleanup(theCurlHandle);
+//   
+//	return theCode;
+//}
 
 void AvHGamerules::InitializeAuthentication()
 {
@@ -414,81 +421,84 @@ void AvHGamerules::InitializeAuthentication()
 
 	ALERT(at_console, "\tReading authentication data...");
 
-    struct MemoryStruct theChunk;
-	CURLcode theCode = PopulateChunkFromURL(BuildAuthenticationURL(), theChunk);
-	
-	// Now parse data and add users for each mask
-	if((theCode == CURLE_OK) && theChunk.memory)
-	{
-        // Clear existing authentication data, only after lookup succeeds
-        gAuthMaskList.clear();
-
-		string theString(theChunk.memory);
-		string theDelimiters("\r\n");
-		StringVector theLines;
-		Tokenizer::split(theString, theDelimiters, theLines);
-		
-		// Run through each line
-		int theNumConstellationMembers = 0;
-		for(StringVector::const_iterator theIter = theLines.begin(); theIter != theLines.end(); theIter++)
-		{
-			char *msg=(char *)(*theIter).c_str();
-			// If it's not empty and not a comment
-			char theFirstChar = (*theIter)[0];
-			if((theFirstChar != '/') && (theFirstChar != '#'))
-			{
-				// Split up tag and number
-				StringVector theTokens;
-				if(Tokenizer::split(*theIter, " ", theTokens) == 3)
-				{
-					// Translate tag to auth mask
-					string theTag = theTokens[0];
-					string theWONID = theTokens[1];
-					string theSteamID = theTokens[2];
-
-                    // Upper-case prefix
-                    UppercaseString(theSteamID);
-
-                    // Make sure it starts with "STEAM_X:Y"
-					if(strncmp(theSteamID.c_str(), kSteamIDPrefix, strlen(kSteamIDPrefix)))
-                    {
-                        string theNewSteamID = kSteamIDPrefix + theSteamID;
-                        theSteamID = theNewSteamID;
-                    }
-
-					// Add auth status
-					AvHPlayerAuthentication theMask = PLAYERAUTH_NONE;
-					if(TagToAuthMask(theTag, theMask))
-					{
-						// Count Constellation members fyi
-						if(theMask & PLAYERAUTH_CONTRIBUTOR)
-						{
-							theNumConstellationMembers++;
-						}
-
-						if((theWONID != "") || (theSteamID != ""))
-						{
-#ifdef DEBUG
-							char theMessage[512];
-							sprintf(theMessage, "	Adding auth mask: %s %s %s\n", theTag.c_str(), theWONID.c_str(), theSteamID.c_str());
-							ALERT(at_logged, theMessage);
-#endif
-							
-							this->AddAuthStatus(theMask, theWONID, theSteamID);
-							theSuccess = true;
-						}
-					}
-				}
-			}
-		}
-
-		// Breakpoint to see how many Constellation members there are (don't even think of printing or logging)
-		int a = 0;
-	}
-    else
-    {
-        int a = 0;
-    }
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+//////		2021 - Unused library removal. Uncomment and reinclude libcurl to add back.			////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//    struct MemoryStruct theChunk;
+//	CURLcode theCode = PopulateChunkFromURL(BuildAuthenticationURL(), theChunk);
+//	
+//	// Now parse data and add users for each mask
+//	if((theCode == CURLE_OK) && theChunk.memory)
+//	{
+//        // Clear existing authentication data, only after lookup succeeds
+//        gAuthMaskList.clear();
+//
+//		string theString(theChunk.memory);
+//		string theDelimiters("\r\n");
+//		StringVector theLines;
+//		Tokenizer::split(theString, theDelimiters, theLines);
+//		
+//		// Run through each line
+//		int theNumConstellationMembers = 0;
+//		for(StringVector::const_iterator theIter = theLines.begin(); theIter != theLines.end(); theIter++)
+//		{
+//			char *msg=(char *)(*theIter).c_str();
+//			// If it's not empty and not a comment
+//			char theFirstChar = (*theIter)[0];
+//			if((theFirstChar != '/') && (theFirstChar != '#'))
+//			{
+//				// Split up tag and number
+//				StringVector theTokens;
+//				if(Tokenizer::split(*theIter, " ", theTokens) == 3)
+//				{
+//					// Translate tag to auth mask
+//					string theTag = theTokens[0];
+//					string theWONID = theTokens[1];
+//					string theSteamID = theTokens[2];
+//
+//                    // Upper-case prefix
+//                    UppercaseString(theSteamID);
+//
+//                    // Make sure it starts with "STEAM_X:Y"
+//					if(strncmp(theSteamID.c_str(), kSteamIDPrefix, strlen(kSteamIDPrefix)))
+//                    {
+//                        string theNewSteamID = kSteamIDPrefix + theSteamID;
+//                        theSteamID = theNewSteamID;
+//                    }
+//
+//					// Add auth status
+//					AvHPlayerAuthentication theMask = PLAYERAUTH_NONE;
+//					if(TagToAuthMask(theTag, theMask))
+//					{
+//						// Count Constellation members fyi
+//						if(theMask & PLAYERAUTH_CONTRIBUTOR)
+//						{
+//							theNumConstellationMembers++;
+//						}
+//
+//						if((theWONID != "") || (theSteamID != ""))
+//						{
+//#ifdef DEBUG
+//							char theMessage[512];
+//							sprintf(theMessage, "	Adding auth mask: %s %s %s\n", theTag.c_str(), theWONID.c_str(), theSteamID.c_str());
+//							ALERT(at_logged, theMessage);
+//#endif
+//							
+//							this->AddAuthStatus(theMask, theWONID, theSteamID);
+//							theSuccess = true;
+//						}
+//					}
+//				}
+//			}
+//		}
+//
+//		// Breakpoint to see how many Constellation members there are (don't even think of printing or logging)
+//		int a = 0;
+//	}
+//    else
+//    {
+//       int a = 0;
+//    }
 
 	// Now build server op list
 	this->mServerOpList.clear();
@@ -521,36 +531,39 @@ void AvHGamerules::InitializeAuthentication()
 
 void AvHGamerules::DisplayVersioning()
 {
-	struct MemoryStruct theChunk;
-	CURLcode theCode = PopulateChunkFromURL(BuildVersionURL(), theChunk);
+	/////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////		2021 - Unused library removal. Uncomment and reinclude libcurl to add back.			////
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	//struct MemoryStruct theChunk;
+	//CURLcode theCode = PopulateChunkFromURL(BuildVersionURL(), theChunk);
 
-	// Now parse data and add users for each mask
-	if((theCode == CURLE_OK) && theChunk.memory)
-	{
-		string theString(theChunk.memory, theChunk.size);
+	//// Now parse data and add users for each mask
+	//if((theCode == CURLE_OK) && theChunk.memory)
+	//{
+	//	string theString(theChunk.memory, theChunk.size);
 
-		string theDelimiters("\r\n");
-		StringVector theLines;
-		Tokenizer::split(theString, theDelimiters, theLines);
+	//	string theDelimiters("\r\n");
+	//	StringVector theLines;
+	//	Tokenizer::split(theString, theDelimiters, theLines);
 
-		if(theLines.size() > 0)
-		{
-			string theCurrentVersion(theLines[0]);
-			string theCurrentGameVersion = AvHSUGetGameVersionString();
+	//	if(theLines.size() > 0)
+	//	{
+	//		string theCurrentVersion(theLines[0]);
+	//		string theCurrentGameVersion = AvHSUGetGameVersionString();
 
-			char theMessage[1024];
-			if(theCurrentGameVersion != theCurrentVersion)
-			{
-				sprintf(theMessage, "\tServer out of date.  NS version %s is now available!\n", theCurrentVersion.c_str());
-				ALERT(at_console, theMessage);
-			}
-			else
-			{
-				sprintf(theMessage, "\tServer version is up to date.\n");
-				ALERT(at_console, theMessage);
-			}
-		}
-	}
+	//		char theMessage[1024];
+	//		if(theCurrentGameVersion != theCurrentVersion)
+	//		{
+	//			sprintf(theMessage, "\tServer out of date.  NS version %s is now available!\n", theCurrentVersion.c_str());
+	//			ALERT(at_console, theMessage);
+	//		}
+	//		else
+	//		{
+	//			sprintf(theMessage, "\tServer version is up to date.\n");
+	//			ALERT(at_console, theMessage);
+	//		}
+	//	}
+	//}
 }
 
 #endif //defined(USE_OLDAUTH)

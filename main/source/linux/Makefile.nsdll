@@ -20,8 +20,8 @@ UTIL_OBJ_DIR=$(HLDLL_OBJ_DIR)/util
 TEXTREP_OBJ_DIR=$(HLDLL_OBJ_DIR)/textrep
 
 #CFLAGS=$(BASE_CFLAGS) $(ARCH_CFLAGS) $(SHLIBCFLAGS) -DCLIENT_WEAPONS
-CFLAGS=$(BASE_CFLAGS) $(ARCH_CFLAGS) -Dstricmp=strcasecmp -D_strnicmp=strncasecmp -Dstrnicmp=strncasecmp -DAVH_SERVER -DLINUX -DVALVE_DLL -DQUIVER -DVOXEL -DQUAKE2 -DDEDICATED -DSWDS -D_STLP_USE_GLIBC -DUSE_OLDAUTH -Dsprintf_s=snprintf -D_stricmp=strcasecmp -DCURL_STATICLIB -DDISABLE_VEC_FUNCS -D_FORTIFY_SOURCE=0
-#-O3 -ffast-math -fno-strength-reduce
+CFLAGS=$(BASE_CFLAGS) $(ARCH_CFLAGS) -Dstricmp=strcasecmp -D_strnicmp=strncasecmp -Dstrnicmp=strncasecmp -DAVH_SERVER -DLINUX -DVALVE_DLL -DQUIVER -DVOXEL -DQUAKE2 -DDEDICATED -DSWDS -D_STLP_USE_GLIBC -DUSE_OLDAUTH -Dsprintf_s=snprintf -D_stricmp=strcasecmp -DDISABLE_VEC_FUNCS -D_FORTIFY_SOURCE=0
+#-O3 -ffast-math -fno-strength-reduce -DCURL_STATICLIB
 
 HLDLL_INCLUDEDIRS=-I$(HLDLL_SRC_DIR) -I../ -I$(ENGINE_SRC_DIR) -I$(COMMON_SRC_DIR) -I$(PM_SRC_DIR) -I$(GAME_SHARED_SRC_DIR) -I$(PUBLIC_SRC_DIR) -I$(UTIL_SRC_DIR) -I$(NS_MOD_SRC_DIR) -I$(PM_OBJ_DIR)
 PM_INCLUDEDIRS=-I$(COMMON_SRC_DIR) -I$(PUBLIC_SRC_DIR) -I$(PM_SHARED_SRC_DIR) 
@@ -31,9 +31,11 @@ UTIL_INCLUDEDIRS = -I../ -I../util
 TEXTREP_INCLUDEDIRS=..
 
 ifeq ($(OS),Darwin)
-LDFLAGS=-lm -lcurl -lstdc++ -L. libparticleMP.a
+LDFLAGS=-lm -lstdc++ -L. libparticleMP.a
+#-lcurl
 else
-LDFLAGS=-lm -lcurl -lstdc++ -L. libparticleMP.a
+LDFLAGS=-lm -lstdc++ -L. libparticleMP.a
+#-lcurl
 endif
 
 DO_HLDLL_CC=$(CC) $(HLDLL_INCLUDEDIRS) $(CFLAGS) -o $@ -c $<
