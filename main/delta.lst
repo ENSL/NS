@@ -117,7 +117,7 @@ entity_state_t gamedll Entity_Encode
 
 	DEFINE_DELTA( playerclass, DT_INTEGER, 1, 1.0 ),
 
-	//DEFINE_DELTA( iuser2, DT_INTEGER, 32, 1.0 ),				// NS custom code (used for entity ids for research)
+	DEFINE_DELTA( iuser2, DT_INTEGER, 8, 1.0 ),				// NS custom code (used for entity ids for research)
 	DEFINE_DELTA( iuser3, DT_INTEGER, 6, 1.0 ),				// NS custom code
 	DEFINE_DELTA( iuser4, DT_INTEGER, 32, 1.0 ),			// NS custom parameter (needs 32 for AvHSpecialSound)
 	DEFINE_DELTA( fuser1, DT_FLOAT, 32, 1.0 )				// Use 32-bits because two values fit in here sometimes

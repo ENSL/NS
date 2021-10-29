@@ -151,8 +151,9 @@ void ActionButton::Localize(const AvHTechTree& inTechNodes)
 		
 		// Localize help string
 		this->mHelpText = "";
+		string theCostAndTimeText;
 
-		if(gHUD.GetHelpForMessage(this->mMessageID, this->mHelpText))
+		if(gHUD.GetHelpForMessage(this->mMessageID, this->mHelpText, theCostAndTimeText))
 		{
 			// Add hotkey accelerator
 			if(this->mButtonIndex >= 0)
@@ -167,6 +168,8 @@ void ActionButton::Localize(const AvHTechTree& inTechNodes)
 					string theHotkeyText = string("(") + theHotkeyChar + string(")");
 					this->mHelpText += string(" ");
 					this->mHelpText += theHotkeyText;
+					if (theCostAndTimeText != "")
+						this->mHelpText += string("\n") + theCostAndTimeText;
 				}
 			}
 

@@ -1458,13 +1458,14 @@ void AvHHud::DrawHelpIcons()
 // inDrawMode determines if we're drawing text or sprites
 void AvHHud::DrawHUDStructureNotification()
 {
-	const float	kHUDStructureNotificationStartX = .02f;
-	const float	kHUDStructureNotificationStartY = .11f;
+	const float	kHUDStructureNotificationStartX = .01f;
+	const float	kHUDStructureNotificationStartY = .08f;
 	const float	kHUDStructureNotificationIconWidth = .03f;
 	const float	kHUDStructureNotificationIconHeight = kHUDStructureNotificationIconWidth*1.333f;
 	const float	kHUDStructureNotificationIconHorizontalSpacing = .01f;
 	const float	kHUDStructureNotificationIconVerticalSpacing = kHUDStructureNotificationIconHorizontalSpacing*1.333f;
-	const float	kHUDStructureNotificationMaxTextWidth = .2f;
+	//const float	kHUDStructureNotificationMaxTextWidth = .2f;
+	const float kTextHeightCenteringFactor = 0.25f;
 
 	// Draw them all in order
 	if(this->GetIsAlive() && CVAR_GET_FLOAT(kvBuildMessages))
@@ -1473,23 +1474,65 @@ void AvHHud::DrawHUDStructureNotification()
 		float theCurrentX = kHUDStructureNotificationStartX;
 		float theCurrentY = kHUDStructureNotificationStartY;
 
+		//bool inTopDown = GetInTopDownMode();
+		AvHTeamNumber theCurrentTeam = this->GetHUDTeam();
+		float kSmallScaleFactor;
+		//Don't make building icons smaller if alien.
+		(theCurrentTeam == TEAM_TWO) ? kSmallScaleFactor = 1.0f : kSmallScaleFactor = 0.75f;
+		const float kIconWidthSmall = kHUDStructureNotificationIconWidth * kSmallScaleFactor;
+		const float kIconHeightSmall = kHUDStructureNotificationIconHeight * kSmallScaleFactor;
 		
 		for(StructureHUDNotificationListType::iterator theIter = this->mStructureNotificationList.begin(); theIter != this->mStructureNotificationList.end(); theIter++)
 		{
 			// Draw icon
 			AvHMessageID theIconTech = theIter->mStructureID;
 			int theFrame = 0;
-			this->DrawTechTreeSprite(theIconTech, theCurrentX*ScreenWidth(), theCurrentY*ScreenHeight(), kHUDStructureNotificationIconWidth*ScreenWidth(), kHUDStructureNotificationIconHeight*ScreenHeight(), theFrame);
 
 			string theLocationName = this->GetNameOfLocation(theIter->mLocation);
-			if(theLocationName != "")
+			int theStartX = (theCurrentX + kHUDStructureNotificationIconWidth + kHUDStructureNotificationIconHorizontalSpacing)*ScreenWidth();
+			bool isResearch = AvHSHUGetIsResearchTech(theIconTech);
+
+			//Don't draw cancel notifications. Still getting sent them in UpdateStructureNotification so they can be read to remove research.
+			if (theIconTech != MESSAGE_CANCEL)
 			{
-				int theStartX = (theCurrentX + kHUDStructureNotificationIconWidth + kHUDStructureNotificationIconHorizontalSpacing)*ScreenWidth();
-				this->DrawTranslatedString(theStartX, theCurrentY*ScreenHeight(), theLocationName.c_str(), false, true);
+				if (isResearch)
+				{
+					string theResearchTimerText;
+					ActionButton::GetLabelForMessage(theIter->mStructureID, theResearchTimerText);
+
+					int timeLeft = theIter->mResearchTimer;
+					int theMinutesLeft = timeLeft / 60;
+					int theSecondsLeft = timeLeft % 60;
+
+					if (theMinutesLeft)
+						theResearchTimerText += " - " + MakeStringFromInt(theMinutesLeft) + "m " + MakeStringFromInt(theSecondsLeft) + "s";
+					else
+						theResearchTimerText += " - " + MakeStringFromInt(theSecondsLeft) + "s";
+
+					int theR, theG, theB;
+					this->GetPrimaryHudColor(theR, theG, theB, true, false);
+					char theCharBuffer[512];
+					sprintf(theCharBuffer, "%s", theResearchTimerText.c_str());
+
+					float theCurrentTextY = theCurrentY + (kHUDStructureNotificationIconHeight * kTextHeightCenteringFactor);
+
+					this->DrawTechTreeSprite(theIconTech, theCurrentX*ScreenWidth(), theCurrentY*ScreenHeight(), kHUDStructureNotificationIconWidth*ScreenWidth(), kHUDStructureNotificationIconHeight*ScreenHeight(), theFrame);
+					this->DrawHudString(theStartX, theCurrentTextY*ScreenHeight(), ScreenWidth(), theCharBuffer, theR, theG, theB);
+				}
+				else
+				{
+					this->DrawTechTreeSprite(theIconTech, theCurrentX*ScreenWidth(), theCurrentY*ScreenHeight(), kIconWidthSmall*ScreenWidth(), kIconHeightSmall*ScreenHeight(), theFrame);
+
+					int theStartXsmall = theStartX * kSmallScaleFactor;
+					float theCurrentTextY = theCurrentY + (kIconHeightSmall * kTextHeightCenteringFactor);
+
+					if (theLocationName != "")
+						this->DrawTranslatedString(theStartXsmall, theCurrentTextY*ScreenHeight(), theLocationName.c_str(), false, true);
+				}
+
+				// Increment coords
+				theCurrentY += (kHUDStructureNotificationIconHeight + kHUDStructureNotificationIconVerticalSpacing);
 			}
-            
-			// Increment coords
-			theCurrentY += (kHUDStructureNotificationIconHeight + kHUDStructureNotificationIconVerticalSpacing);
 		}
 		
 	}
@@ -2492,6 +2535,9 @@ void AvHHud::DrawBuildHealthEffectsForEntity(int inEntityIndex, float inAlpha)
 
 				// It's a friendly entity and we're a builder OR
 				(theIsOnOurTeam && (this->GetHUDUser3() == AVH_USER3_ALIEN_PLAYER2)) ||
+
+				// It's a friendly player with <95% armor and we have a welder in our inventory OR
+				(theIsOnOurTeam && theEntityIsPlayer && theHealthPercentage < 0.95f && this->mHasWelder) ||
 
 				// welder/healing spray is selected
 				(this->mCurrentWeaponID == 18 || this->mCurrentWeaponID == 27)

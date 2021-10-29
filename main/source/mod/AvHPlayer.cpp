@@ -4958,11 +4958,11 @@ void AvHPlayer::PlayHUDStructureNotification(AvHMessageID inMessageID, const Vec
         // This player built a structure.  Tell all his teammates
         FOR_ALL_ENTITIES(kAvHPlayerClassName, AvHPlayer*)
 
-        if(theEntity->GetIsRelevant() && !theEntity->GetIsBeingDigested())
-        {
+        //if(theEntity->GetIsRelevant() && !theEntity->GetIsBeingDigested())
+        //{
             // Don't send our own messages to ourself unless cheats are enabled
-            if(GetGameRules()->GetCheatsEnabled() || (this != theEntity))
-            {
+            //if(GetGameRules()->GetCheatsEnabled() || (this != theEntity))
+            //{
                 bool theShowNotification = false;
 
                 // Show to friendlies...
@@ -4975,8 +4975,8 @@ void AvHPlayer::PlayHUDStructureNotification(AvHMessageID inMessageID, const Vec
                 {
 					NetMsg_PlayHUDNotification( theEntity->pev, 1, inMessageID, inLocation.x, inLocation.y );
                 }
-            }
-        }
+           // }
+        //}
         END_FOR_ALL_ENTITIES(kAvHPlayerClassName);
     }
 }
@@ -5354,6 +5354,8 @@ void AvHPlayer::Research(AvHMessageID inUpgrade, int inEntityIndex)
                         theRefund = min(theRefund, (float)theResearchCost);
                         this->SetResources(this->GetResources() + theRefund);
                     }
+					//Tell team about cancel so it can update research notifications
+					this->PlayHUDStructureNotification(inUpgrade, theEntity->pev->origin);
 
                     char* theResearchName = NULL;
                     if(AvHSHUGetResearchTechName(inUpgrade, theResearchName))

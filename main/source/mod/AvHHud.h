@@ -241,7 +241,7 @@ public:
 	AvHPlayMode		GetPlayMode(void) const;
 	bool			GetAlienHelpForMessage(int inMessageID, string& outHelpText, int& outPointCost) const;
 	bool			GetDoesPlayerHaveOrder() const;
-	bool			GetHelpForMessage(int inMessageID, string& outHelpText) const;
+	bool			GetHelpForMessage(int inMessageID, string& outHelpText, string& outCostAndTimeText) const;
 	bool			GetInTopDownMode() const;
 	bool			GetIsSelecting() const;
 	OrderListType	GetOrderList() const;
@@ -334,6 +334,7 @@ public:
 	int				GetLocalUpgrades() const;
 	string			GetNameOfLocation(vec3_t inLocation) const;
 	const AvHTechTree& GetTechNodes() const;
+	bool			GetResearchInfo(AvHMessageID inMessageID, bool& outIsResearchable, int& outCost, float& outTime) const;
 
 	UIMode			GetUIMode() const;
 	bool			SwitchUIMode(UIMode inNewMode);
@@ -843,6 +844,7 @@ private:
 	{
 		AvHMessageID	mStructureID;
 		float			mTime;
+		float			mResearchTimer;
 		int				mPlayerIndex;
 		Vector			mLocation;
 	} HUDNotificationType;

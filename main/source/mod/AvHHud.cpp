@@ -4813,7 +4813,7 @@ void AvHHud::InitExploitPrevention() {
 	ForceCvar("gl_d3dflip", gl_d3dflip, 1.0f);
 	ForceCvar("s_show", s_show, 0.0f);
 	ForceCvar("r_detailtextures", r_detailtextures, 0.0f);
-	ForceCvar("gl_max_size", gl_max_size, 256.0f);
+	ForceCvar("gl_max_size", gl_max_size, 512.0f);
 
 	RemoveAlias("lightgamma");
 	if(lightgamma && lightgamma->value < 2.0) {
@@ -4845,7 +4845,7 @@ void AvHHud::UpdateExploitPrevention()
 	ForceCvar("gl_d3dflip", gl_d3dflip, 1.0f);
 	ForceCvar("s_show", s_show, 0.0f);
 	ForceCvar("r_detailtextures", r_detailtextures, 0.0f);
-	ForceCvar("gl_max_size", gl_max_size, 256.0f);
+	ForceCvar("gl_max_size", gl_max_size, 512.0f);
 
 	if(lightgamma && lightgamma->value < 2.0) {
 		ForceCvar("lightgamma", lightgamma, 2.0f);
@@ -5231,7 +5231,7 @@ bool AvHHud::GetDoesPlayerHaveOrder() const
 }
 
 		
-bool AvHHud::GetHelpForMessage(int inMessageID, string& outHelpText) const
+bool AvHHud::GetHelpForMessage(int inMessageID, string& outHelpText, string& outCostAndTimeText) const
 {
 	bool theSuccess = false;
 	
@@ -5262,20 +5262,32 @@ bool AvHHud::GetHelpForMessage(int inMessageID, string& outHelpText) const
 				if(AvHSHUGetDoesTechCostEnergy((AvHMessageID)inMessageID))
 				{
 					LocalizeString(kEnergyPrefix, theCostString);
+					outCostAndTimeText = theCostString + " " + MakeStringFromInt(theCost);
 				}
 				else
 				{
 					LocalizeString(kMessageButtonCost, theCostString);
+					//Research or build time. TODO: localize.
+					string theResearchOrBuildString;
+					theResearchOrBuildString = AvHSHUGetIsBuilding((AvHMessageID)inMessageID) ? string("Build") : string("Research");
+
+					outCostAndTimeText = theCostString + " " + MakeStringFromInt(theCost);
+					if (theTime > 0)
+					{
+						int timeToFinish = theTime;
+						int theMinutes = timeToFinish / 60;
+						int theSeconds = timeToFinish % 60;
+
+						if (theMinutes)
+							outCostAndTimeText += "\n" + theResearchOrBuildString + " time " + MakeStringFromInt(theMinutes) + "m " + MakeStringFromInt(theSeconds) + "s";
+						else
+							outCostAndTimeText += "\n" + theResearchOrBuildString + " time " + MakeStringFromInt(theSeconds) + "s";
+					}
 				}
 
-				outHelpText += "  ";
-				outHelpText += theCostString;
-				outHelpText += " ";
-				outHelpText += MakeStringFromInt(theCost);
-
 				// Draw description below
-				//outHelpText += "\n";
-				//outHelpText += theTechNodeHelp;
+				//outCostAndTimeText += "\n";
+				//outCostAndTimeText += theTechNodeHelp;
 			}
 		}
 	}
@@ -5634,6 +5646,11 @@ const AvHTechTree& AvHHud::GetTechNodes() const
 	return this->mTechNodes;
 }
 
+bool AvHHud::GetResearchInfo(AvHMessageID inMessageID, bool& outIsResearchable, int& outCost, float& outTime) const
+{
+	return this->mTechNodes.GetResearchInfo(inMessageID, outIsResearchable, outCost, outTime);
+}
+
 void AvHHud::GetTooltipDrawingInfo(float& outNormX, float& outNormY) const
 {
 	outNormX = kHelpMessageLeftEdgeInset;
@@ -5832,12 +5849,41 @@ void AvHHud::UpdateTooltips(float inCurrentTime)
 
 void AvHHud::UpdateStructureNotification(float inCurrentTime)
 {
-	const float kTimeToDisplayIcon = 6.0f;
 	const int kMaxIcons = 5;
+	Vector cancelLocation;
+	AvHTeamNumber theCurrentTeam = this->GetHUDTeam();
+
+	// Reset on a team change
+	if (this->mLastTeamNumber != theCurrentTeam)
+		this->mStructureNotificationList.clear();
 
 	for(StructureHUDNotificationListType::iterator theIter = this->mStructureNotificationList.begin(); theIter != this->mStructureNotificationList.end(); /* no inc */)
 	{
-		if((inCurrentTime > (theIter->mTime + kTimeToDisplayIcon)) || (this->mStructureNotificationList.size() > kMaxIcons))
+		int theCost;
+		bool theResearchable;
+		float theBuildOrResearchTime;
+		AvHMessageID theTech = theIter->mStructureID;
+		this->mTechNodes.GetResearchInfo(theTech, theResearchable, theCost, theBuildOrResearchTime);
+		bool isResearch = AvHSHUGetIsResearchTech(theTech);
+		float timeToDisplayIcon = 6.0f;
+
+		if (isResearch)
+		{
+			theIter->mResearchTimer = max(0, theBuildOrResearchTime - (inCurrentTime - theIter->mTime));
+			timeToDisplayIcon = theBuildOrResearchTime;
+		}
+		else
+		{
+			theIter->mResearchTimer = 0;
+		}
+
+		if (theTech == MESSAGE_CANCEL)
+		{
+			cancelLocation = theIter->mLocation;
+			this->mStructureNotificationList.erase(theIter);
+			theIter = this->mStructureNotificationList.begin();
+		}
+		else if ((inCurrentTime > (theIter->mTime + timeToDisplayIcon)) || (!(theIter->mResearchTimer > 0) && this->mStructureNotificationList.size() > kMaxIcons ) || (theIter->mLocation == cancelLocation))
 		{
 			theIter = this->mStructureNotificationList.erase(theIter);
 		}
@@ -6316,29 +6362,38 @@ void AvHHud::UpdateBuildResearchText()
 	if(this->GetHUDUser3() == AVH_USER3_COMMANDER_PLAYER)
 	{
 		Label* theHelpTextLabel = NULL;
-		if(this->GetManager().GetVGUIComponentNamed(kTechHelpText, theHelpTextLabel))
+		//Label* theRefundTextLabel = NULL;
+		if(this->GetManager().GetVGUIComponentNamed(kTechHelpText, theHelpTextLabel)/* && this->GetManager().GetVGUIComponentNamed(kTechHelpText, theRefundTextLabel)*/)
 		{
 			gCommanderHandler.RecalculateBuildResearchText();
 
 			// Display build/research text
 			string theBuildResearchText = gCommanderHandler.GetBuildResearchText();
 			theHelpTextLabel->setText(theBuildResearchText.c_str());
+			//string theBuildRefundText = gCommanderHandler.GetBuildRefundText();
+			//theRefundTextLabel->setText(theBuildRefundText.c_str());
 				
 			// Center it
-			int theWidth, theHeight;
+			int theWidth, theHeight/*, theWidth2, theHeight2*/;
 			theHelpTextLabel->getTextSize(theWidth, theHeight);
+			//theRefundTextLabel->getTextSize(theWidth2, theHeight2);
 			
-			int theX, theY;
+			int theX, theY/*, theX2, theY2*/;
 			theHelpTextLabel->getPos(theX, theY);
+			//theRefundTextLabel->getPos(theX2, theY2);
 			
 			int theScreenWidth = ScreenWidth();
 			theHelpTextLabel->setPos(theScreenWidth/2 - theWidth/2, theY);
+			//theRefundTextLabel->setPos(theScreenWidth / 2 - theWidth2 / 2, theY2);
+			//gEngfuncs.Con_Printf("y2:%d\n", theY2);
 			
 			// Vanish if no text (but keep build/research text visible)
 			theHelpTextLabel->setVisible(true);
+			//theRefundTextLabel->setVisible(true);
 			if(theBuildResearchText.length() == 0)// || ((this->mTimeLastHelpTextChanged != -1) && (this->mTimeLastHelpTextChanged + kHelpTextInterval < this->mTimeOfLastUpdate)))
 			{
 				theHelpTextLabel->setVisible(false);
+				//theRefundTextLabel->setVisible(false);
 			}
 
 			// Display action button tool tip

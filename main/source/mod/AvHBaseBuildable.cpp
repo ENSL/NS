@@ -89,6 +89,7 @@
 #include "AvHPlayerUpgrade.h"
 #include "../dlls/animation.h"
 #include "AvHMovementUtil.h"
+#include "AvHNetworkMessages.h"
 
 const int kBaseBuildableSpawnAnimation = 0;
 const int kBaseBuildableDeployAnimation = 1;
@@ -702,6 +703,25 @@ AvHTeamNumber AvHBaseBuildable::GetTeamNumber() const
 void AvHBaseBuildable::Killed(entvars_t* pevAttacker, int iGib)
 {
 	bool theInReset = GetGameRules()->GetIsGameInReset();
+
+	// Send a Cancel notification so any research can be removed from the research tracker.
+	if (GetGameRules()->GetGameStarted())
+	{
+		FOR_ALL_ENTITIES(kAvHPlayerClassName, AvHPlayer*)
+			bool theShowNotification = false;
+
+			// Show to friendlies...
+			if (theEntity->pev->team == this->pev->team)
+			{
+				theShowNotification = true;
+			}
+
+			if (theShowNotification)
+			{
+				NetMsg_PlayHUDNotification(theEntity->pev, 1, MESSAGE_CANCEL, this->pev->origin.x, this->pev->origin.y);
+			}
+		END_FOR_ALL_ENTITIES(kAvHPlayerClassName);
+	}
 	
 	AvHBaseBuildable::SetHasBeenKilled();
 	GetGameRules()->RemoveEntityUnderAttack( this->entindex() );

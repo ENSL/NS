@@ -257,12 +257,52 @@ void AvHCommanderModeHandler::RecalculateBuildResearchText()
 					LocalizeString(kResearchingPrefix, theHelpPrefix);
 				}
 				
+				//iuser2 gets set when research starts so it doesn't work for building.
 				string theHelpText;
 				AvHMessageID theResearchID = (AvHMessageID)(theEntity->curstate.iuser2);
 				if(theResearchID != MESSAGE_NULL)
 				{
 					if(ActionButton::GetLabelForMessage(theResearchID, theHelpText))
 					{
+						//Research timer and refund UI. Assumes no cheats or combat mode. Building timer would need to check the number of people building or its build rate.
+						if (theIsResearching)
+						{
+							bool theResearchable;
+							float timeToBuild;
+							int researchCost;
+							gHUD.GetResearchInfo(theResearchID, theResearchable, researchCost, timeToBuild);
+							//Display time to completion.
+							int timeLeft = (1 - thePercentage) * timeToBuild;
+
+							int theMinutesLeft = timeLeft / 60;
+							int theSecondsLeft = timeLeft % 60;
+
+							if (theMinutesLeft)
+								theHelpText += " (" + MakeStringFromInt(theMinutesLeft) + "m " + MakeStringFromInt(theSecondsLeft) + "s)";
+							else
+								theHelpText += " (" + MakeStringFromInt(theSecondsLeft) + "s)";
+
+							//Display amount refunded if canceled.
+							if (researchCost)
+							{
+								int theRefund = round((1 - thePercentage) * researchCost);
+
+								//Some lazy centering that's good enough. Should be making a new UI label for this or matching width.
+								string theRefundText = "Cancellation refund: " + MakeStringFromInt(theRefund);
+								int helpLength = theHelpPrefix.length() + theHelpText.length();
+								int refundLength = theRefundText.length();
+
+								//int padNumber = ((helpLength - refundLength) / 2);
+								int padNumber = (helpLength - refundLength) - 1;
+
+								if (padNumber > 0)
+								{
+									theHelpText += "\n\n" + string(padNumber, ' ') + theRefundText;
+								}
+								else
+									theHelpText += "\n\n" + theRefundText;
+							}
+						}
 						string theFinalMessage = theHelpPrefix + theHelpText;
 						this->mBuildResearchText = theFinalMessage;
 					}
