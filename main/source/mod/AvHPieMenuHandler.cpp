@@ -154,7 +154,7 @@ void AvHPieMenuHandler::InternalClosePieMenu(void)
         sLastNodeHighlighted = NULL;
 
 		// Return to raw input after menu closes
-		if (CVAR_GET_FLOAT("m_rawinput") != 0)
+		if (CVAR_GET_FLOAT("m_rawinput") != 0 && sPieMenuOpen)
 		{
 			SDL_SetRelativeMouseMode(SDL_TRUE);
 		}
@@ -192,6 +192,7 @@ void AvHPieMenuHandler::OpenPieMenu(void)
 
 					// OS cursor displaying over in game cursor fix. Remove if showcursor code in SetMouseVisibility is made bug free.
 					#ifdef WIN32
+					if (!sPieMenuOpen)
 					ShowCursor(FALSE);
 					#endif
 				}
@@ -199,7 +200,7 @@ void AvHPieMenuHandler::OpenPieMenu(void)
                 gHUD.HideCrosshair();
 
 				// Workaround for not being able to center mouse with raw input enabled.
-				if (CVAR_GET_FLOAT("m_rawinput") != 0)
+				if (CVAR_GET_FLOAT("m_rawinput") != 0 && !sPieMenuOpen)
 				{
 					SDL_SetRelativeMouseMode(SDL_FALSE);
 					gEngfuncs.pfnSetMousePos(gEngfuncs.GetWindowCenterX(), gEngfuncs.GetWindowCenterY());
