@@ -159,7 +159,7 @@ void AvHReloadableMarineWeapon::Reload(void)
 			//this->m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + theEndReloadAnimationTime;
 			//this->m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + theEndReloadAnimationTime;
 
-			//+1 second is the average of the gotoreload and shellreload times previously used to limit primary attack and matches the marine putting his hand on the gun.
+			//+1 is the average of the gotoreload and shellreload times previously used to limit primary attack and matches the marine putting his hand on the gun. Actual time is half these values in seconds because timers get decremented twice.
 			//this->m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 1.0f;
 			this->m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 1.0f;
 			this->m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 1.0f;
@@ -168,6 +168,25 @@ void AvHReloadableMarineWeapon::Reload(void)
 			this->m_pPlayer->SetAnimation(PLAYER_RELOAD_END);
 			this->m_fInSpecialReload = kSpecialReloadNone;
 		}
+		else if(this->m_fInSpecialReload == kSpecialReloadReloadShell)
+        {
+			// Add to shell count at specified time in the middle of reload to sync with animation and sound.
+			if (m_flTimeWeaponIdle <= UTIL_WeaponTimeBase())
+			{
+				// Don't idle for a bit
+				//this->SetNextIdle();
+
+				// Add them to the clip
+				this->m_iClip += 1;
+				this->m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= 1;
+				this->m_fInSpecialReload = kSpecialReloadGotoReload;
+
+				if (this->m_iClip >= theClipSize)
+				{
+					this->m_pPlayer->SetAnimation(PLAYER_RELOAD_END);
+				}
+			}
+        }
         // don't reload until recoil is done
         else if(this->m_flNextPrimaryAttack <= UTIL_WeaponTimeBase())
         {
@@ -210,32 +229,18 @@ void AvHReloadableMarineWeapon::Reload(void)
                     float theShellReloadTime = this->GetShellReloadAnimationTime();
 
                     //this->mNextReload = UTIL_WeaponTimeBase() + theShellReloadTime;
-                    this->m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + theShellReloadTime;
+
+					//Time to call weaponidle and trigger another reload so ammo count addition can by synchronized with animation and sound.
+					this->m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 0.4f;
 
 					this->m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + theShellReloadTime;
 					this->m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + theShellReloadTime;
+
 					this->m_pPlayer->SetAnimation(PLAYER_RELOAD_INSERT);
 
                 }
             }
-            else if(this->m_fInSpecialReload == kSpecialReloadReloadShell)
-            {
-                //DefaultReload(theClipSize, theReloadAnimation, theReloadTime);
-				
-                // Don't idle for a bit
-                //this->SetNextIdle();
-
-				//ALERT(at_console, "reload2clipadd %g\n", gpGlobals->time);
-			
-                // Add them to the clip
-                this->m_iClip += 1;
-                this->m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= 1;
-				this->m_fInSpecialReload = kSpecialReloadGotoReload;
-				this->m_pPlayer->SetAnimation(PLAYER_RELOAD_END);
-            }
-
         }
-
     }
 }
 

@@ -401,6 +401,8 @@ public:
 
 	virtual int		GetShootAnimation() const;
 
+	virtual int		GetEndAnimation() const;
+
 	virtual char*	GetViewModel() const;
 
 	virtual char*	GetWorldModel() const;
@@ -408,6 +410,16 @@ public:
 	virtual int		iItemSlot(void);
 
 	virtual void	Precache(void);
+
+	virtual void	Reload(void);
+
+	virtual int		DefaultReload(int iClipSize, int iAnim, float fDelay);
+
+	virtual void    Holster(int skiplocal);
+
+	virtual void	WeaponIdle(void);
+
+	virtual void	DeductCostForShot(void);
 
 	virtual void	Spawn();
 

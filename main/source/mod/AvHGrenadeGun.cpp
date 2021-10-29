@@ -60,10 +60,17 @@
 LINK_ENTITY_TO_CLASS(kwGrenadeGun, AvHGrenadeGun);
 void V_PunchAxis( int axis, float punch );
 
+const int	kSpecialReloadNone = 0;
+const int	kSpecialReloadGotoReload = 1;
+const int	kSpecialReloadAddGren = 2;
+const int	kSpecialReloadCloseGG = 3;
+const float kEndReloadAnimationTime = 2.43f;
+
 void AvHGrenadeGun::Init()
 {
 	this->mRange = kGGRange;
 	this->mDamage = BALANCE_VAR(kGrenadeDamage);
+	this->m_fInSpecialReload = kSpecialReloadNone;
 }
 
 int	AvHGrenadeGun::GetBarrelLength() const
@@ -182,28 +189,32 @@ char* AvHGrenadeGun::GetPlayerModel() const
 int	AvHGrenadeGun::GetReloadAnimation() const
 {
 	int theAnimation = -1;
+
+	int ShotsEmpty = this->GetClipSize() - this->GetShotsInClip();
+
+	int Shotsleft = this->m_pPlayer->m_rgAmmo[this->m_iPrimaryAmmoType];
+
+	int ShotsToReload = min(ShotsEmpty, Shotsleft);
 	
-	int theShotsInClip = this->GetShotsInClip();
-	
-	switch(theShotsInClip)
+	switch(ShotsToReload)
 	{
-	case 0:
+	case 4:
 		theAnimation = 7;
 		break;
-		
-	case 1:
+	
+	case 3:
 		theAnimation = 6;
 		break;
-		
+	
 	case 2:
 		theAnimation = 5;
 		break;
-		
-	case 3:
+	
+	case 1:
 		theAnimation = 4;
 		break;
 	}
-	
+
 	return theAnimation;
 }
 
@@ -237,6 +248,27 @@ int	AvHGrenadeGun::GetShootAnimation() const
 		break;
 	}
 	
+	return theAnimation;
+}
+
+int	AvHGrenadeGun::GetEndAnimation() const
+{
+	int theAnimation = -1;
+
+	int theShotsInClip = this->GetShotsInClip();
+
+	switch (theShotsInClip)
+	{
+	case 1:
+		theAnimation = 17;
+		break;
+
+	case 2:
+	case 3:
+		theAnimation = 18;
+		break;
+	}
+
 	return theAnimation;
 }
 
@@ -285,6 +317,150 @@ void AvHGrenadeGun::Precache()
 	PRECACHE_UNMODIFIED_SOUND(kGGReloadSound);
 	
 	this->mEvent = PRECACHE_EVENT(1, kGGEventName);
+}
+
+void AvHGrenadeGun::DeductCostForShot(void)
+{
+	AvHMarineWeapon::DeductCostForShot();
+
+	// Stop reload if we were in the middle of one
+	if (this->m_fInSpecialReload != kSpecialReloadNone)
+	{
+		this->m_fInSpecialReload = kSpecialReloadNone;
+	}
+}
+
+int	AvHGrenadeGun::DefaultReload(int iClipSize, int iAnim, float fDelay)
+{
+	// Needed to prevet super fast default reload
+	return FALSE;
+}
+
+void AvHGrenadeGun::Holster(int skiplocal)
+{
+	AvHMarineWeapon::Holster(skiplocal);
+
+	// Cancel any reload in progress.
+	this->m_fInSpecialReload = kSpecialReloadNone;
+}
+
+void AvHGrenadeGun::Reload(void)
+{
+	int theClipSize = this->GetClipSize();
+
+	if ((this->m_pPlayer->m_rgAmmo[this->m_iPrimaryAmmoType] > 0) && (m_iClip < theClipSize))
+	{
+		if (this->m_fInSpecialReload == kSpecialReloadCloseGG)
+		{
+			this->SendWeaponAnim(this->GetEndAnimation());
+			//Timings here made to match animations as well as reload length of the previous reload version. Numbers are seconds*2 because they get decremented twice in NS.
+			this->m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + kEndReloadAnimationTime;
+			this->m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + kEndReloadAnimationTime;
+			this->m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + kEndReloadAnimationTime;
+			//this->m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + kEndReloadAnimationTime;
+
+			this->m_pPlayer->SetAnimation(PLAYER_RELOAD_END);
+			this->m_fInSpecialReload = kSpecialReloadNone;
+		}
+		else if (this->m_fInSpecialReload == kSpecialReloadAddGren)
+		{
+			// Add to grenade count at specified time in the middle of reload to sync with animation and sound.
+			if (m_flTimeWeaponIdle <= UTIL_WeaponTimeBase())
+			{
+				// Add them to the clip
+				this->m_iClip += 1;
+				this->m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= 1;
+
+				if (this->m_iClip < theClipSize && (this->m_pPlayer->m_rgAmmo[this->m_iPrimaryAmmoType] != 0))
+				{
+					this->m_fInSpecialReload = kSpecialReloadGotoReload;
+				}
+				else
+				{
+					this->m_fInSpecialReload = kSpecialReloadNone;
+
+					this->m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + kEndReloadAnimationTime;
+					this->m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + kEndReloadAnimationTime;
+					this->m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + kEndReloadAnimationTime;
+
+					this->m_pPlayer->SetAnimation(PLAYER_RELOAD_END);
+				}
+			}
+		}
+		// don't reload until recoil is done
+		else if (this->m_flNextPrimaryAttack <= UTIL_WeaponTimeBase())
+		{
+			if (this->m_fInSpecialReload == kSpecialReloadNone)
+			{
+				// Start reload
+				this->m_fInSpecialReload = kSpecialReloadGotoReload;
+
+				this->SendWeaponAnim(this->GetReloadAnimation());
+
+				const float theGotoReloadAnimationTime = 1.1f;
+
+				this->m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + theGotoReloadAnimationTime;
+				this->m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + theGotoReloadAnimationTime;
+				this->m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + theGotoReloadAnimationTime;
+
+				//this->m_pPlayer->SetAnimation(PLAYER_RELOAD);
+				this->m_pPlayer->SetAnimation(PLAYER_RELOAD_START);
+			}
+			else if (this->m_fInSpecialReload == kSpecialReloadGotoReload)
+			{
+				if (m_flTimeWeaponIdle <= UTIL_WeaponTimeBase())
+				{
+					this->m_fInSpecialReload = kSpecialReloadAddGren;
+
+					const float theGrenReloadTime = 2.4f;
+
+					this->m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + theGrenReloadTime;
+					this->m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + theGrenReloadTime;
+					this->m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + theGrenReloadTime;
+
+					this->m_pPlayer->SetAnimation(PLAYER_RELOAD_INSERT);
+
+				}
+			}
+		}
+	}
+}
+
+void AvHGrenadeGun::WeaponIdle(void)
+{
+	// : 0000484 - ensures that all idle weapons can fire the empty sound
+	ResetEmptySound();
+	if (this->m_flTimeWeaponIdle < UTIL_WeaponTimeBase())
+	{
+		if ((this->m_iClip == 0) && (this->m_fInSpecialReload == kSpecialReloadNone) && m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType])
+		{
+			this->Reload();
+		}
+		else if (this->m_fInSpecialReload != kSpecialReloadNone)
+		{
+			if ((m_iClip != this->GetClipSize()) && m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType])
+			{
+				this->Reload();
+			}
+			else
+			{
+				// reload debounce has timed out
+				this->m_fInSpecialReload = kSpecialReloadNone;
+				//ALERT(at_console, "specreset time:%g idle:%g primary:%g specrel:%d\n", gpGlobals->time, this->m_flTimeWeaponIdle, this->m_flNextPrimaryAttack, m_fInSpecialReload);
+				this->SendWeaponAnim(this->GetEndAnimation());
+				m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + kEndReloadAnimationTime;
+				this->m_pPlayer->SetAnimation(PLAYER_RELOAD_END);
+			}
+		}
+		//else
+		//{
+			// Hack to prevent idle animation from playing mid-reload.  Not sure how to fix this right, but all this special reloading is happening server-side, client doesn't know about it
+			//if (m_iClip == this->GetClipSize())
+			//{
+			//	AvHMarineWeapon::WeaponIdle();
+			//}
+		//}
+	}
 }
 
 void AvHGrenadeGun::Spawn() 
