@@ -144,6 +144,7 @@ cvar_t	*senslock;
 cvar_t	*hud_style;
 cvar_t	*cl_chatbeep;
 cvar_t	*cl_mutemenu;
+cvar_t	*cl_weaponcfgs;
 
 /*
 ===============================================================================
@@ -805,11 +806,11 @@ void IN_AttackUp(void)
 {
 	KeyUp( &in_attack );
 	in_cancel = 0;
+
 	// Attack2up only for onos so it can end +attack onos charges.  Attack2up for all causes blink and leap to cancel if you release attack while blinking or leaping.
-	if (gViewPort)
+	if (g_iUser3 == AVH_USER3_ALIEN_PLAYER5)
 	{
-		if (gHUD.GetHUDUser3() == AVH_USER3_ALIEN_PLAYER5)
-			IN_Attack2Up();
+		IN_Attack2Up();
 	}
 }
 
@@ -1621,6 +1622,7 @@ void InitInput (void)
 	hud_style			= gEngfuncs.pfnRegisterVariable	("hud_style", "1", FCVAR_ARCHIVE);
 	cl_chatbeep			= gEngfuncs.pfnRegisterVariable	("cl_chatbeep", "1", FCVAR_ARCHIVE);
 	cl_mutemenu			= gEngfuncs.pfnRegisterVariable ("cl_mutemenu", "3", FCVAR_ARCHIVE);
+	cl_weaponcfgs		= gEngfuncs.pfnRegisterVariable ("cl_weaponcfgs", "1", FCVAR_ARCHIVE);
 
 	// Initialize third person camera controls.
 	CAM_Init();
