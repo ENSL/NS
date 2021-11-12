@@ -140,6 +140,8 @@ public:
 
 	virtual float	GetRateOfFire() const;
 
+	virtual float	GetResupplyTimer() const;
+
 	virtual char*	GetPlayerModel() const;
 
     virtual char*   GetPrimeSound() const;

@@ -1087,12 +1087,27 @@ bool AvHBasePlayerWeapon::Resupply()
         this->m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] = min(theCurrentPrimary + theAmountToAdd, theMaxPrimary);
 
         const float theDelay = 1.0f;
-		//bugfix - don't let resupply shorten reload time
-		this->m_pPlayer->m_flNextAttack = max(this->m_pPlayer->m_flNextAttack,UTIL_WeaponTimeBase() + theDelay);
+
+		if (this->m_iId != AVH_WEAPON_SONIC && this->m_iId != AVH_WEAPON_GRENADE_GUN)
+		{
+			this->m_flNextPrimaryAttack = max(this->m_flNextPrimaryAttack, (UTIL_WeaponTimeBase() + (theDelay * 2)));// Delay*2 because nextprimary attack gets decremented twice.
+		}
+		else
+		{
+			bool startingReload = (this->m_pPlayer->pev->button & IN_RELOAD && (this->m_iClip < this->GetClipSize()));
+			//Some edge cases here but it allows staged reload to start or continue while resupplying and adds resupply delay if not reloading.
+			if ((this->m_fInSpecialReload == 0 && !startingReload) || (this->m_fInSpecialReload >= 2 && this->m_iClip >= (this->GetClipSize() - 1)))
+				this->m_flNextPrimaryAttack = max(this->m_flNextPrimaryAttack, (UTIL_WeaponTimeBase() + (theDelay * 2)));
+		}
 		this->mTimeOfLastResupply = UTIL_WeaponTimeBase() + theDelay;
 	}
 
 	return theResupplied;
+}
+
+float AvHBasePlayerWeapon::GetResupplyTimer() const
+{
+	return this->mTimeOfLastResupply;
 }
 
 void AvHBasePlayerWeapon::SendWeaponAnim(int inAnimation, int skiplocal, int body)

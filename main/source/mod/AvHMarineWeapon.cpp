@@ -151,19 +151,30 @@ void AvHReloadableMarineWeapon::Reload(void)
 		if (this->m_fInSpecialReload == kSpecialReloadPump)
 		{
 			//pump the shotgun to end the reload if attack is pressed during a reload
-			//ALERT(at_console, "reloadpump3\n");
 			this->SendWeaponAnim(this->GetEndReloadAnimation());
 
-			//float theEndReloadAnimationTime = this->GetEndReloadAnimationTime();
-			//this->m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + theEndReloadAnimationTime;
-			//this->m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + theEndReloadAnimationTime;
-			//this->m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + theEndReloadAnimationTime;
-
 			//+1 is the average of the gotoreload and shellreload times previously used to limit primary attack and matches the marine putting his hand on the gun. Actual time is half these values in seconds because timers get decremented twice.
+			const float theEndReloadTime = 1.0f;
+
 			//this->m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 1.0f;
-			this->m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 1.0f;
-			this->m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 1.0f;
-			this->m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 1.0f;
+
+			//Server code is a bug fix for being able to beat the resupply shoot delay timer.
+			//Only the server tracks resupply time but it has 500ms here to update the client's m_flNextPrimaryAttack. If it's buggy then remove it and the resupply code that adds to primary attack, network the resupply timer, and check it alongside m_flNextPrimaryAttack in AvHBasePlayerWeapon::ProcessValidAttack.
+#ifdef AVH_SERVER
+			float resupplyTimer = this->GetResupplyTimer();
+			if (resupplyTimer > 0.0f)
+			{
+				this->m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + max(theEndReloadTime,(resupplyTimer * 2.0f));
+				this->m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + max(theEndReloadTime,(resupplyTimer * 2.0f));
+				this->m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + max(theEndReloadTime,(resupplyTimer * 2.0f));
+			}
+			else
+#endif
+			{
+				this->m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + theEndReloadTime;
+				this->m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + theEndReloadTime;
+				this->m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + theEndReloadTime;
+			}
 
 			this->m_pPlayer->SetAnimation(PLAYER_RELOAD_END);
 			this->m_fInSpecialReload = kSpecialReloadNone;
