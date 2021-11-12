@@ -19,7 +19,7 @@ public:
 	{
 		bool theAreEqual = CHECK_EQUAL(mHealthPercentage) && CHECK_EQUAL(mPosX) 
 			&& CHECK_EQUAL(mPosY) && CHECK_EQUAL(mPosZ) && CHECK_EQUAL(mStatus) 
-			&& CHECK_EQUAL(mUnderAttack) && CHECK_EQUAL(mTechnology);
+			&& CHECK_EQUAL(mUnderAttack) && CHECK_EQUAL(mTechnology) && CHECK_EQUAL(mBuildTime);
 		return theAreEqual;
 	}
 
@@ -35,12 +35,44 @@ public:
 	int		mStatus;
 	bool	mUnderAttack;
 	int		mTechnology;
-
+	int		mBuildTime;
 	int		mHealthPercentage;
 };
 #undef CHECK_EQUAL
 
 typedef vector<AvHHiveInfo>		HiveInfoListType;
+
+
+#define CHECK_EQUAL(x) (this->x == inResearchInfo.x )
+class AvHResearchInfo
+{
+public:
+	bool	operator==(const AvHResearchInfo& inResearchInfo) const
+	{
+		bool theAreEqual = CHECK_EQUAL(mResearch) && CHECK_EQUAL(mTimeResearchDone)/* && CHECK_EQUAL(mEntityIndex)*/;
+		return theAreEqual;
+	}
+
+	bool	operator!=(const AvHResearchInfo& inResearchInfo) const
+	{
+		return !operator==(inResearchInfo);
+	}
+
+	//float	mPosX;
+	//float	mPosY;
+	//float	mPosZ;
+
+	AvHMessageID	mResearch;
+	float			mTimeResearchDone;
+	//int				mEntityIndex;
+
+
+};
+#undef CHECK_EQUAL
+
+typedef vector<AvHResearchInfo>		ResearchInfoListType;
+
+
 typedef int						EntityInfo;
 typedef vector<EntityInfo>		EntityListType;
 

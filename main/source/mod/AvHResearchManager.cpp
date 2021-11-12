@@ -166,6 +166,11 @@ bool AvHResearchManager::GetResearchInfo(AvHMessageID inTech, bool& outIsResearc
 	return theFoundIt;
 }
 
+ResearchListType& AvHResearchManager::GetResearchingTech()
+{
+	return this->mResearchingTech;
+}
+
 const AvHTechTree&	AvHResearchManager::GetTechNodes() const
 {
 	return this->mTechNodes;

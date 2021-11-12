@@ -1474,64 +1474,69 @@ void AvHHud::DrawHUDStructureNotification()
 		float theCurrentX = kHUDStructureNotificationStartX;
 		float theCurrentY = kHUDStructureNotificationStartY;
 
-		//bool inTopDown = GetInTopDownMode();
-		AvHTeamNumber theCurrentTeam = this->GetHUDTeam();
+		bool isMarine = GetIsMarine();
 		float kSmallScaleFactor;
 		//Don't make building icons smaller if alien.
-		(theCurrentTeam == TEAM_TWO) ? kSmallScaleFactor = 1.0f : kSmallScaleFactor = 0.75f;
+		(isMarine) ? kSmallScaleFactor = 0.75f : kSmallScaleFactor = 1.0f;
 		const float kIconWidthSmall = kHUDStructureNotificationIconWidth * kSmallScaleFactor;
 		const float kIconHeightSmall = kHUDStructureNotificationIconHeight * kSmallScaleFactor;
+
+		if (isMarine)
+		{
+			for (ResearchInfoListType::iterator theIter = this->mResearchInfoList.begin(); theIter != this->mResearchInfoList.end(); theIter++)
+			{
+				// Draw icon
+				AvHMessageID theIconTech = theIter->mResearch;
+				int theFrame = 0;
+				int theStartX = (theCurrentX + kHUDStructureNotificationIconWidth + kHUDStructureNotificationIconHorizontalSpacing)*ScreenWidth();
+
+				string theResearchTimerText;
+				ActionButton::GetLabelForMessage(theIconTech, theResearchTimerText);
+
+				int timeLeft = theIter->mTimeResearchDone - this->mTimeOfCurrentUpdate;
+				int theMinutesLeft = timeLeft / 60;
+				int theSecondsLeft = timeLeft % 60;
+
+				if (theMinutesLeft)
+					theResearchTimerText += " - " + MakeStringFromInt(theMinutesLeft) + "m " + MakeStringFromInt(theSecondsLeft) + "s";
+				else
+					theResearchTimerText += " - " + MakeStringFromInt(theSecondsLeft) + "s";
+
+				int theR, theG, theB;
+				this->GetPrimaryHudColor(theR, theG, theB, true, false);
+				char theCharBuffer[512];
+				sprintf(theCharBuffer, "%s", theResearchTimerText.c_str());
+
+				float theCurrentTextY = theCurrentY + (kHUDStructureNotificationIconHeight * kTextHeightCenteringFactor);
+
+				this->DrawTechTreeSprite(theIconTech, theCurrentX*ScreenWidth(), theCurrentY*ScreenHeight(), kHUDStructureNotificationIconWidth*ScreenWidth(), kHUDStructureNotificationIconHeight*ScreenHeight(), theFrame);
+				this->DrawHudString(theStartX, theCurrentTextY*ScreenHeight(), ScreenWidth(), theCharBuffer, theR, theG, theB);
+
+				theCurrentY += (kHUDStructureNotificationIconHeight + kHUDStructureNotificationIconVerticalSpacing);
+			}
+		}
 		
 		for(StructureHUDNotificationListType::iterator theIter = this->mStructureNotificationList.begin(); theIter != this->mStructureNotificationList.end(); theIter++)
 		{
 			// Draw icon
 			AvHMessageID theIconTech = theIter->mStructureID;
 			int theFrame = 0;
-
 			string theLocationName = this->GetNameOfLocation(theIter->mLocation);
 			int theStartX = (theCurrentX + kHUDStructureNotificationIconWidth + kHUDStructureNotificationIconHorizontalSpacing)*ScreenWidth();
 			bool isResearch = AvHSHUGetIsResearchTech(theIconTech);
 
-			//Don't draw cancel notifications. Still getting sent them in UpdateStructureNotification so they can be read to remove research.
-			if (theIconTech != MESSAGE_CANCEL)
+			if (!isResearch)
 			{
-				if (isResearch)
+				this->DrawTechTreeSprite(theIconTech, theCurrentX*ScreenWidth(), theCurrentY*ScreenHeight(), kIconWidthSmall*ScreenWidth(), kIconHeightSmall*ScreenHeight(), theFrame);
+				if (theLocationName != "")
 				{
-					string theResearchTimerText;
-					ActionButton::GetLabelForMessage(theIter->mStructureID, theResearchTimerText);
-
-					int timeLeft = theIter->mResearchTimer;
-					int theMinutesLeft = timeLeft / 60;
-					int theSecondsLeft = timeLeft % 60;
-
-					if (theMinutesLeft)
-						theResearchTimerText += " - " + MakeStringFromInt(theMinutesLeft) + "m " + MakeStringFromInt(theSecondsLeft) + "s";
-					else
-						theResearchTimerText += " - " + MakeStringFromInt(theSecondsLeft) + "s";
-
-					int theR, theG, theB;
-					this->GetPrimaryHudColor(theR, theG, theB, true, false);
-					char theCharBuffer[512];
-					sprintf(theCharBuffer, "%s", theResearchTimerText.c_str());
-
-					float theCurrentTextY = theCurrentY + (kHUDStructureNotificationIconHeight * kTextHeightCenteringFactor);
-
-					this->DrawTechTreeSprite(theIconTech, theCurrentX*ScreenWidth(), theCurrentY*ScreenHeight(), kHUDStructureNotificationIconWidth*ScreenWidth(), kHUDStructureNotificationIconHeight*ScreenHeight(), theFrame);
-					this->DrawHudString(theStartX, theCurrentTextY*ScreenHeight(), ScreenWidth(), theCharBuffer, theR, theG, theB);
-				}
-				else
-				{
-					this->DrawTechTreeSprite(theIconTech, theCurrentX*ScreenWidth(), theCurrentY*ScreenHeight(), kIconWidthSmall*ScreenWidth(), kIconHeightSmall*ScreenHeight(), theFrame);
-
 					int theStartXsmall = theStartX * kSmallScaleFactor;
 					float theCurrentTextY = theCurrentY + (kIconHeightSmall * kTextHeightCenteringFactor);
-
-					if (theLocationName != "")
-						this->DrawTranslatedString(theStartXsmall, theCurrentTextY*ScreenHeight(), theLocationName.c_str(), false, true);
+					this->DrawTranslatedString(theStartXsmall, theCurrentTextY*ScreenHeight(), theLocationName.c_str(), false, true);
 				}
 
 				// Increment coords
-				theCurrentY += (kHUDStructureNotificationIconHeight + kHUDStructureNotificationIconVerticalSpacing);
+				theCurrentY += (kIconHeightSmall + kHUDStructureNotificationIconVerticalSpacing);
 			}
 		}
 		
@@ -4228,6 +4233,22 @@ void AvHHud::RenderAlienUI()
 				if(theIter->mStatus == kHiveInfoStatusUnbuilt)
 				{
 					theR = theG = theB = 100;
+				}
+				// If building, draw time until completion.
+				else if (theIter->mStatus > 0 && theIter->mStatus < 6)
+				{
+					const int totalBuildTime = BALANCE_VAR(kHiveBuildTime);
+					if (theIter->mBuildTime > 0 && theIter->mBuildTime < totalBuildTime)
+					{
+						int timeLeft = theIter->mBuildTime;
+						int theMinutesLeft = timeLeft / 60;
+						int theSecondsLeft = timeLeft % 60;
+
+						if (theMinutesLeft)
+							theTranslatedLocationName = MakeStringFromInt(theMinutesLeft) + "m " + MakeStringFromInt(theSecondsLeft) + "s - " + theTranslatedLocationName;
+						else
+							theTranslatedLocationName = MakeStringFromInt(theSecondsLeft) + "s - " + theTranslatedLocationName;
+					}
 				}
 			
 				this->DrawHudStringReverse(mViewport[0] + mViewport[2] - 5, theScreenPosY, ScreenWidth(), (char*)theTranslatedLocationName.c_str(), theR, theG, theB);

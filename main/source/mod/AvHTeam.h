@@ -161,7 +161,8 @@ public:
 	void			ResetGame();
 	virtual void	SetGameStarted(bool inGameStarted);
 
-	HiveInfoListType	GetHiveInfoList() const;
+	HiveInfoListType		GetHiveInfoList() const;
+	ResearchInfoListType	GetResearchInfoList() const;
 	
 	// Tech nodes for team
 	void			InitializeTechNodes();
@@ -299,8 +300,9 @@ private:
 	typedef			map<string, AvHServerPlayerData>		AvHServerPlayerDataListType;
 	AvHServerPlayerDataListType								mServerPlayerData;
 
-	HiveInfoListType	mHiveInfoList;
-	float				mTimeOfLastStructureUpdate;
+	HiveInfoListType		mHiveInfoList;
+	ResearchInfoListType	mResearchInfoList;
+	float					mTimeOfLastStructureUpdate;
 
 	EntityListType	mLowResourceAlerts;
 	float			mTimeLastHintUpdate;

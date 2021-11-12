@@ -3483,6 +3483,7 @@ void AvHPlayer::Init()
 
     // Clear out hive info
     this->mClientHiveInfo.clear();
+	this->mClientResearchInfo.clear();
 
     this->mClientGamma = kDefaultMapGamma;
     
@@ -4944,7 +4945,7 @@ bool AvHPlayer::PlayHUDSound(AvHHUDSound inSound, float x, float y) const
     
     if((inSound > HUD_SOUND_INVALID) && (inSound < HUD_SOUND_MAX))
     {
-		NetMsg_PlayHUDNotification( this->pev, 0, inSound, x, y );
+		NetMsg_PlayHUDNotification_Single( this->pev, 0, inSound, x, y );
         theSuccess = true;
     }
     
@@ -4958,25 +4959,25 @@ void AvHPlayer::PlayHUDStructureNotification(AvHMessageID inMessageID, const Vec
         // This player built a structure.  Tell all his teammates
         FOR_ALL_ENTITIES(kAvHPlayerClassName, AvHPlayer*)
 
-        //if(theEntity->GetIsRelevant() && !theEntity->GetIsBeingDigested())
-        //{
+        if(theEntity->GetIsRelevant() && !theEntity->GetIsBeingDigested())
+        {
             // Don't send our own messages to ourself unless cheats are enabled
-            //if(GetGameRules()->GetCheatsEnabled() || (this != theEntity))
-            //{
-                bool theShowNotification = false;
+			if(GetGameRules()->GetCheatsEnabled() || (this != theEntity))
+			{
+				bool theShowNotification = false;
 
-                // Show to friendlies...
-                if(theEntity->pev->team == this->pev->team) 
-                {
-                    theShowNotification = true;
-                }
-                
-                if(theShowNotification)
-                {
-					NetMsg_PlayHUDNotification( theEntity->pev, 1, inMessageID, inLocation.x, inLocation.y );
-                }
-           // }
-        //}
+				// Show to friendlies...
+				if(theEntity->pev->team == this->pev->team)
+				{
+					theShowNotification = true;
+				}
+
+				if(theShowNotification)
+				{
+					NetMsg_PlayHUDNotification_Single(theEntity->pev, 1, inMessageID, inLocation.x, inLocation.y);
+				}
+			}
+        }
         END_FOR_ALL_ENTITIES(kAvHPlayerClassName);
     }
 }
@@ -5354,8 +5355,6 @@ void AvHPlayer::Research(AvHMessageID inUpgrade, int inEntityIndex)
                         theRefund = min(theRefund, (float)theResearchCost);
                         this->SetResources(this->GetResources() + theRefund);
                     }
-					//Tell team about cancel so it can update research notifications
-					this->PlayHUDStructureNotification(inUpgrade, theEntity->pev->origin);
 
                     char* theResearchName = NULL;
                     if(AvHSHUGetResearchTechName(inUpgrade, theResearchName))
@@ -9497,37 +9496,47 @@ void AvHPlayer::UpdateMarineUI()
     bool theIsMarine = false;
     bool theIsAlien = false;
 
-    if(this->GetIsAlien())
-    {
+	if(this->GetIsAlien())
+	{
 		return;
-    }
+	}
 
 	int tmpUpgrades=0;
-    for(int i = 0; i < MAX_ITEM_TYPES; i++)
-    {
+	for(int i = 0; i < MAX_ITEM_TYPES; i++)
+	{
 		AvHBasePlayerWeapon* theActiveWeapon = dynamic_cast<AvHBasePlayerWeapon*>(this->m_rgpPlayerItems[i]);
-        while(theActiveWeapon)
-        {
+		while(theActiveWeapon)
+		{
 			ItemInfo ii;
 			theActiveWeapon->GetItemInfo(&ii);
 			switch ( ii.iId ) {
-				case AVH_WEAPON_WELDER:
-					tmpUpgrades |= 0x1;
-					break;
-				case AVH_WEAPON_MINE:
-					tmpUpgrades |= 0x2;
-					break;
-				case AVH_WEAPON_GRENADE:
-					tmpUpgrades |= 0x4;
-					break;
+			case AVH_WEAPON_WELDER:
+				tmpUpgrades |= 0x1;
+				break;
+			case AVH_WEAPON_MINE:
+				tmpUpgrades |= 0x2;
+				break;
+			case AVH_WEAPON_GRENADE:
+				tmpUpgrades |= 0x4;
+				break;
 			}
-            // Next weapon
-            theActiveWeapon = dynamic_cast<AvHBasePlayerWeapon*>(theActiveWeapon->m_pNext);
-        }
-    }
+			// Next weapon
+			theActiveWeapon = dynamic_cast<AvHBasePlayerWeapon*>(theActiveWeapon->m_pNext);
+		}
+	}
 	if ( tmpUpgrades != this->mMarineHUDUpgrades ) {
 		NetMsg_HUDSetUpgrades(this->pev, tmpUpgrades&0x7);
 		this->mMarineHUDUpgrades=tmpUpgrades;
+	}
+
+	if (theTeamPointer)
+	{	
+		ResearchInfoListType theTeamResearchInfo = theTeamPointer->GetResearchInfoList();
+		if (this->mClientResearchInfo != theTeamResearchInfo)
+		{
+			NetMsg_PlayHUDNotification_Research(this->pev, 2, theTeamResearchInfo);
+			this->mClientResearchInfo = theTeamResearchInfo;
+		}
 	}
 }
 

@@ -844,13 +844,14 @@ private:
 	{
 		AvHMessageID	mStructureID;
 		float			mTime;
-		float			mResearchTimer;
 		int				mPlayerIndex;
 		Vector			mLocation;
 	} HUDNotificationType;
 
 	typedef vector< HUDNotificationType >	StructureHUDNotificationListType;
 	StructureHUDNotificationListType		mStructureNotificationList;
+
+	ResearchInfoListType	mResearchInfoList;
 
     int                     mCrosshairShowCount;
 	AVHHSPRITE              mCrosshairSprite;

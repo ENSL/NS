@@ -428,6 +428,10 @@ HiveInfoListType AvHTeam::GetHiveInfoList() const
 	return this->mHiveInfoList;
 }
 
+ResearchInfoListType AvHTeam::GetResearchInfoList() const
+{
+	return this->mResearchInfoList;
+}
 
 const AvHResearchManager& AvHTeam::GetResearchManager() const
 {
@@ -860,6 +864,7 @@ void AvHTeam::ResetGame()
 	//this->InitializeRandomResourceShares();
 
 	this->mHiveInfoList.clear();
+	this->mResearchInfoList.clear();
 	this->mTimeOfLastStructureUpdate = -1;
 
 	this->mVoteStarted = false;
@@ -1570,11 +1575,13 @@ void AvHTeam::UpdateTeamStructures()
 
 					// Fill in hive status
 					int theStatus = kHiveInfoStatusBuilt;
+					int theBuildTime;
 					
 					// Unbuilt hives
 					if(theEntity->pev->team == 0)
 					{
 						theStatus = kHiveInfoStatusUnbuilt;
+						theBuildTime = 0;
 					}
 					// building hives
 					else if(!theEntity->GetIsBuilt())
@@ -1585,15 +1592,20 @@ void AvHTeam::UpdateTeamStructures()
 							theStatus = kHiveInfoStatusBuildingStage1;
 							int theSteps = (int)(theNormalizedBuildPercentage*5.0f);
 							theStatus += theSteps;
+
+							int totalBuildTime = BALANCE_VAR(kHiveBuildTime);
+							theBuildTime = totalBuildTime - (theNormalizedBuildPercentage * totalBuildTime);
 						}
 						else
 						{
 							theStatus = kHiveInfoStatusUnbuilt;
+							theBuildTime = 0;
 						}
 					}
 					
 					theHiveInfo.mStatus = theStatus;
 					theHiveInfo.mTechnology = (int)(theEntity->GetTechnology());
+					theHiveInfo.mBuildTime = theBuildTime;
 					
 					// Under attack?
 					theHiveInfo.mUnderAttack = GetGameRules()->GetIsEntityUnderAttack(theEntityIndex);
@@ -1632,6 +1644,22 @@ void AvHTeam::UpdateTeamStructures()
 				}
 			END_FOR_ALL_ENTITIES(kwsTeamCommand);
 			this->mNumBuiltCommandStations = theNumActiveCommandStations;
+
+			// Research info to send to clients for research tracker
+			this->mResearchInfoList.clear();
+			ResearchListType researchingTech = this->mResearchManager.GetResearchingTech();
+
+			for (ResearchListType::iterator theIter = researchingTech.begin(); theIter != researchingTech.end(); theIter++)
+			{
+				AvHResearchInfo theResearchInfo;
+
+					
+				theResearchInfo.mResearch = theIter->GetResearching();
+				theResearchInfo.mTimeResearchDone = theIter->GetTimeResearchDone();
+				//theResearchInfo.mEntityIndex = theIter->GetEntityIndex();
+
+				this->mResearchInfoList.push_back(theResearchInfo);
+			}
 		}
 	}
 }

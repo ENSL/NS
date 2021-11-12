@@ -73,7 +73,7 @@ void Net_InitializeMessages(void)
 	g_msgFog = REG_USER_MSG( "Fog", -1 );
 	g_msgGameStatus = REG_USER_MSG( "GameStatus", -1 );
 	g_msgListPS = REG_USER_MSG( "ListPS", -1 );
-	g_msgPlayHUDNotification = REG_USER_MSG( "PlayHUDNot", 6 );
+	g_msgPlayHUDNotification = REG_USER_MSG( "PlayHUDNot", -1 );
 	g_msgHUDSetUpgrades = REG_USER_MSG( "SetUpgrades", 1);
 	g_msgProgressBar = REG_USER_MSG( "Progress", -1 );
 	g_msgServerVar = REG_USER_MSG( "ServerVar", -1 );
@@ -969,6 +969,7 @@ enum AlienInfo_ChangeFlags
 					if( changes & HEALTH_CHANGED )
 					{
 						hives[counter].mHealthPercentage = READ_BYTE();
+						hives[counter].mBuildTime = READ_BYTE();
 					}
 				}
 			}
@@ -1019,8 +1020,9 @@ enum AlienInfo_ChangeFlags
 					client_hives[index].mUnderAttack != current->mUnderAttack || client_hives[index].mTechnology != current->mTechnology )
 				{ change_flags |= STATUS_CHANGED; }
 
-				if( client_hives.size() <= index || client_hives[index].mHealthPercentage != current->mHealthPercentage	)
+				if( client_hives.size() <= index || client_hives[index].mHealthPercentage != current->mHealthPercentage || client_hives[index].mBuildTime != current->mBuildTime )
 				{ change_flags |= HEALTH_CHANGED; }
+
 				WRITE_BYTE(change_flags);
 
 				//send change data
@@ -1048,6 +1050,7 @@ enum AlienInfo_ChangeFlags
 				if( change_flags & HEALTH_CHANGED )
 				{
 					WRITE_BYTE(current->mHealthPercentage);
+					WRITE_BYTE(current->mBuildTime);
 				}
 			}
 		MESSAGE_END();
@@ -1494,23 +1497,71 @@ union float_converter
 #endif
 
 #ifndef AVH_SERVER
-	void NetMsg_PlayHUDNotification( void* const buffer, const int size, int& flags, int& sound, float& location_x, float& location_y )
+	void NetMsg_PlayHUDNotification( void* const buffer, const int size, int& flags, int& sound, float& location_x, float& location_y, ResearchInfoListType& researching)
 	{
 		BEGIN_READ( buffer, size );
 			flags = READ_BYTE();
-			sound = READ_BYTE();
-			location_x = READ_COORD();
-			location_y = READ_COORD();
+			// If sound or one time build notification
+			if (flags == 0 || flags == 1)
+			{
+				sound = READ_BYTE();
+				location_x = READ_COORD();
+				location_y = READ_COORD();
+			}
+			else
+			{
+				// Research tracker info
+				if (flags == 2)
+				{
+					int num_research = READ_BYTE();
+					researching.clear();
+					for (int counter = 0; counter < num_research; counter++)
+					{
+						AvHResearchInfo theResearchInfoEntry;
+						theResearchInfoEntry.mResearch = (AvHMessageID)READ_BYTE();
+
+						float_converter c;
+						c.l = READ_LONG();
+						theResearchInfoEntry.mTimeResearchDone = c.f;
+
+						//theResearchInfoEntry.mEntityIndex = READ_LONG();
+
+						researching.push_back(theResearchInfoEntry);
+					}
+				}
+			}
 		END_READ();
 	}
 #else
-	void NetMsg_PlayHUDNotification( entvars_t* const pev, const int flags, const int sound, const float location_x, const float location_y )
+	void NetMsg_PlayHUDNotification_Single(entvars_t* const pev, const int flags, const int sound, const float location_x, const float location_y)
 	{
 		MESSAGE_BEGIN( MSG_ONE, g_msgPlayHUDNotification, NULL, pev );
 			WRITE_BYTE( flags );
 			WRITE_BYTE( sound );
 			WRITE_COORD( location_x );
 			WRITE_COORD( location_y );
+		MESSAGE_END();
+	}
+	void NetMsg_PlayHUDNotification_Research(entvars_t* const pev, const int flags, const ResearchInfoListType& researching)
+	{
+		MESSAGE_BEGIN(MSG_ONE, g_msgPlayHUDNotification, NULL, pev);
+			WRITE_BYTE(flags);
+			if (flags == 2)
+			{
+				// Research tracker info
+				WRITE_BYTE(researching.size());
+				ResearchInfoListType::const_iterator current, end = researching.end();
+				for (current = researching.begin(); current != end; ++current)
+				{
+					WRITE_BYTE(current->mResearch);
+					
+					float_converter c;
+					c.f = current->mTimeResearchDone;
+					WRITE_LONG(c.l);
+
+					//WRITE_LONG(current->mEntityIndex);
+				}
+			}
 		MESSAGE_END();
 	}
 #endif

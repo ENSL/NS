@@ -781,7 +781,8 @@ private:
 
 	AvHBaseInfoLocationListType	mClientInfoLocations;
 
-	HiveInfoListType	mClientHiveInfo;
+	HiveInfoListType		mClientHiveInfo;
+	ResearchInfoListType	mClientResearchInfo;
 
 	AvHAlienUpgradeListType		mClientUpgrades;
 

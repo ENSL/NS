@@ -92,7 +92,8 @@
 	void NetMsg_ListPS( entvars_t* const pev, const string& system_name );
 	void NetMsg_HUDSetUpgrades( int upgradeMask );
 	void NetMsg_HUDSetUpgrades( entvars_t* const pev, int upgradeMask );
-	void NetMsg_PlayHUDNotification( entvars_t* const pev, const int flags, const int sound, const float location_x, const float location_y );
+	void NetMsg_PlayHUDNotification_Single( entvars_t* const pev, const int flags, const int sound, const float location_x, const float location_y);
+	void NetMsg_PlayHUDNotification_Research(entvars_t* const pev, const int flags, const ResearchInfoListType& researching);
 	void NetMsg_ProgressBar( entvars_t* const pev, const int entity_number, const int progress, int percent=0 );
 	void NetMsg_ServerVar( entvars_t* const pev, const string& name, const int& value );
 	void NetMsg_SetGammaRamp( entvars_t* const pev, const float gamma );
@@ -184,7 +185,7 @@
 	void NetMsg_GameStatus( void* const buffer, const int size, int& status_code, AvHMapMode& map_mode, int& game_time, int& timelimit, int& misc_data );
 	void NetMsg_ListPS( void* const buffer, const int size, string& system_name );
 	void NetMsg_HUDSetUpgrades( void* const buffer, const int size, int& upgradeMask );
-	void NetMsg_PlayHUDNotification( void* const buffer, const int size, int& flags, int& sound, float& location_x, float& location_y );
+	void NetMsg_PlayHUDNotification( void* const buffer, const int size, int& flags, int& sound, float& location_x, float& location_y, ResearchInfoListType& researching);
 	void NetMsg_ProgressBar( void* const buffer, const int size, int& entity_number, int& progress, int &percent);
 	//45
 	void NetMsg_ServerVar( void* const buffer, const int size, string& name, int& value );

@@ -57,6 +57,8 @@ public:
 
 	bool				GetResearchInfo(AvHMessageID inTech, bool& outIsResearchable, int& outCost, float& outTime) const;
 
+	ResearchListType&	GetResearchingTech();
+
 	void				TriggerAddTech(AvHTechID inTechID);
 	void				TriggerRemoveTech(AvHTechID inTechID);
 	

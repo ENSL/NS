@@ -2578,6 +2578,7 @@ void AvHHud::ResetGame(bool inMapChanged)
 	this->mLastTeamSpectated = TEAM_IND;
 
 	this->mStructureNotificationList.clear();
+	this->mResearchInfoList.clear();
 
 	this->mGameTime = -1;
 	this->mTimeLimit = -1;
@@ -2961,11 +2962,12 @@ int	AvHHud::MsgFunc_ListPS(const char* pszName, int iSize, void* pbuf)
 BIND_MESSAGE(PlayHUDNot);
 int AvHHud::MsgFunc_PlayHUDNot(const char* pszName, int iSize, void* pbuf)
 {
-	int message_id, sound;
+	int flags, sound;
 	float location_x, location_y;
-	NetMsg_PlayHUDNotification( pbuf, iSize, message_id, sound, location_x, location_y );
-
-	if(message_id == 0)
+	ResearchInfoListType researchInfoBuf;
+	NetMsg_PlayHUDNotification( pbuf, iSize, flags, sound, location_x, location_y , researchInfoBuf);
+	// Sound
+	if(flags == 0)
 	{
 		// Hack to avoid adding another network message (at max)
 		if(!this->GetInTopDownMode())
@@ -3014,7 +3016,8 @@ int AvHHud::MsgFunc_PlayHUDNot(const char* pszName, int iSize, void* pbuf)
 		
         this->PlayHUDSound((AvHHUDSound)sound);
 	}
-	else
+	// Single HUD notification
+	else if (flags == 1)
 	{
 		// Push back icon
 		HUDNotificationType theNotification;
@@ -3026,6 +3029,12 @@ int AvHHud::MsgFunc_PlayHUDNot(const char* pszName, int iSize, void* pbuf)
 		{
 			this->mStructureNotificationList.push_back(theNotification);
 		}
+	}
+	// Research info list
+	else
+	{
+		this->mResearchInfoList.clear();
+		this->mResearchInfoList = researchInfoBuf;
 	}
 
 	return 1;
@@ -5849,41 +5858,13 @@ void AvHHud::UpdateTooltips(float inCurrentTime)
 
 void AvHHud::UpdateStructureNotification(float inCurrentTime)
 {
-	const int kMaxIcons = 5;
-	Vector cancelLocation;
+	const int kMaxIcons = 4;
+	const float kTimeToDisplayIcon = 6.0f;
 	AvHTeamNumber theCurrentTeam = this->GetHUDTeam();
-
-	// Reset on a team change
-	if (this->mLastTeamNumber != theCurrentTeam)
-		this->mStructureNotificationList.clear();
 
 	for(StructureHUDNotificationListType::iterator theIter = this->mStructureNotificationList.begin(); theIter != this->mStructureNotificationList.end(); /* no inc */)
 	{
-		int theCost;
-		bool theResearchable;
-		float theBuildOrResearchTime;
-		AvHMessageID theTech = theIter->mStructureID;
-		this->mTechNodes.GetResearchInfo(theTech, theResearchable, theCost, theBuildOrResearchTime);
-		bool isResearch = AvHSHUGetIsResearchTech(theTech);
-		float timeToDisplayIcon = 6.0f;
-
-		if (isResearch)
-		{
-			theIter->mResearchTimer = max(0, theBuildOrResearchTime - (inCurrentTime - theIter->mTime));
-			timeToDisplayIcon = theBuildOrResearchTime;
-		}
-		else
-		{
-			theIter->mResearchTimer = 0;
-		}
-
-		if (theTech == MESSAGE_CANCEL)
-		{
-			cancelLocation = theIter->mLocation;
-			this->mStructureNotificationList.erase(theIter);
-			theIter = this->mStructureNotificationList.begin();
-		}
-		else if ((inCurrentTime > (theIter->mTime + timeToDisplayIcon)) || (!(theIter->mResearchTimer > 0) && this->mStructureNotificationList.size() > kMaxIcons ) || (theIter->mLocation == cancelLocation))
+		if ((inCurrentTime > (theIter->mTime + kTimeToDisplayIcon)) || (this->mStructureNotificationList.size() > kMaxIcons))
 		{
 			theIter = this->mStructureNotificationList.erase(theIter);
 		}
