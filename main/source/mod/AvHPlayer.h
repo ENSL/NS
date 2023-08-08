@@ -208,7 +208,7 @@ public:
 	bool			BuildTech(AvHMessageID inBuildID, const Vector& inWorldPos);
 	void			ClearBlips();
 	void			ClientDisconnected();
-	bool			DropItem(const char* inItemName = NULL);
+	bool			DropItem(const char* inItemName = NULL, const Vector spawnOffset = Vector(0, 0, 0)/*, bool bToss = true*/);
 	bool			GroupMessage(AvHMessageID inGroupMessage);
 	bool			GetCenterPositionForGroup(int inGroupNumber, float& outX, float& outY);
 	
@@ -487,7 +487,8 @@ private:
 	bool				AttemptToBuildAlienStructure(AvHMessageID inMessageID);
 	void				ClearRoleAbilities();
 	void				ClearUserVariables();
-	CBaseEntity*		CreateAndDrop(const char* inItemName);
+	CBaseEntity*		CreateAndDrop(const char* inItemName, const Vector spawnOffset = Vector(0, 0, 0));
+	//CBaseEntity*		CreateAndPlace(const char* inItemName, const Vector spawnOffset = Vector(0, 0, 0));
 	void				DeployCurrent();
 	bool				ExecuteAlienMorphMessage(AvHMessageID inMessageID, bool inInstantaneous);
     bool				ExecuteCombatMessage(AvHMessageID inMessageID, bool& outIsAvailable, bool inForce = false);

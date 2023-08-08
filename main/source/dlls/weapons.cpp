@@ -757,8 +757,7 @@ CBasePlayerItem::IsUseable( void )
 void CBasePlayerItem :: FallInit( void )
 {
 	pev->movetype = MOVETYPE_TOSS;
-	//SOLID_BBOX caused weapons to get stuck on eachother and float in air
-	pev->solid = SOLID_BSP;
+	pev->solid = SOLID_BBOX;
 
 	UTIL_SetOrigin( pev, pev->origin );
 	UTIL_SetSize(pev, Vector( 0, 0, 0), Vector(0, 0, 0) );//pointsize until it lands on the ground.
@@ -779,8 +778,6 @@ void CBasePlayerItem :: FallInit( void )
 void CBasePlayerItem::FallThink ( void )
 {
 	pev->nextthink = gpGlobals->time + 0.1;
-	//timer for weapons stuck floating in air
-	pev->fuser4 += 0.1;
 
 	if ( pev->flags & FL_ONGROUND )
 	{
@@ -789,7 +786,7 @@ void CBasePlayerItem::FallThink ( void )
 		if ( !FNullEnt( pev->owner ) )
 		{
 			int pitch = 95 + RANDOM_LONG(0,29);
-			EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "items/weapondrop1.wav", 1, ATTN_NORM, 0, pitch);	
+			EMIT_SOUND_DYN(ENT(pev), CHAN_VOICE, "items/weapondrop1.wav", 1, ATTN_NORM, 0, pitch);
 		}
 
 		// lie flat
@@ -797,13 +794,12 @@ void CBasePlayerItem::FallThink ( void )
 		pev->angles.z = 0;
 
 		Materialize();
-		pev->fuser4 = 0;
 	}
-	//weapons in air for too long from collision issues with other entities change to SOLID_TRIGGER to fall to ground
-	else if ((pev->fuser4 > 0.7))
+	//Weapons in air for too long from collision issues with other entities. Change to SOLID_TRIGGER to fall to ground.
+	else if (fabs(pev->velocity.x) < 0.1f && fabs(pev->velocity.y) < 0.1f && fabs(pev->velocity.z) < 3.0f)
 	{
 		pev->solid = SOLID_TRIGGER;
-		pev->fuser4 = 0;
+		//ALERT(at_console, "stuck x=%f y=%f z=%f \n", pev->velocity.x, pev->velocity.y, pev->velocity.z);
 	}
 }
 

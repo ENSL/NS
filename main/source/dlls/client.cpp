@@ -588,7 +588,7 @@ void ClientCommand( edict_t *pEntity )
         if (thePlayerCanAct)
         {
 		    // player is dropping an item. 
-		    GetClassPtr((AvHPlayer *)pev)->DropItem((char *)CMD_ARGV(1));
+			GetClassPtr((AvHPlayer *)pev)->DropItem((char *)CMD_ARGV(1), Vector(0, 0, 0)/*, true*/);
         }
 	}
 	else if ( FStrEq(pcmd, "fov" ) )

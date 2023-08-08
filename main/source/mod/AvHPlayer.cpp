@@ -882,11 +882,15 @@ int AvHPlayer::GetScore() const
     return this->mScore;
 }
 
-CBaseEntity* AvHPlayer::CreateAndDrop(const char* inItemName)
+CBaseEntity* AvHPlayer::CreateAndDrop(const char* inItemName, const Vector spawnOffset)
 {
 	UTIL_MakeVectors(pev->v_angle);
 
-    CBaseEntity* theEntity = CBaseEntity::Create(inItemName, pev->origin + gpGlobals->v_forward * 10, pev->angles, edict() );
+    Vector spawnLoc = pev->origin + gpGlobals->v_forward * 10;
+    Vector adjustedSpawnOffset = (gpGlobals->v_right * spawnOffset.x) + (gpGlobals->v_forward * spawnOffset.y) + (gpGlobals->v_up * spawnOffset.z);
+    spawnLoc = spawnLoc + adjustedSpawnOffset;
+
+    CBaseEntity* theEntity = CBaseEntity::Create(inItemName, spawnLoc, pev->angles, edict());
     
     theEntity->pev->angles.x = 0;
     theEntity->pev->angles.z = 0;
@@ -895,6 +899,23 @@ CBaseEntity* AvHPlayer::CreateAndDrop(const char* inItemName)
     
     return theEntity;
 }
+
+//CBaseEntity* AvHPlayer::CreateAndPlace(const char* inItemName, const Vector spawnOffset)
+//{
+//    Vector spawnLoc = pev->origin + (gpGlobals->v_right * spawnOffset.x) + (gpGlobals->v_forward * spawnOffset.y) + (gpGlobals->v_up * spawnOffset.z);
+//
+//    CBaseEntity* theEntity = CBaseEntity::Create(inItemName, spawnLoc, pev->angles, edict());
+//
+//    if (theEntity)
+//    {
+//        theEntity->pev->angles.x = 0;
+//        theEntity->pev->angles.z = 0;
+//        //theEntity->PackWeapon( pWeapon );
+//        theEntity->pev->velocity = Vector(0, 0, 0);
+//    }
+//
+//    return theEntity;
+//}
 
 void AvHPlayer::DeployCurrent()
 {
@@ -915,7 +936,7 @@ void AvHPlayer::DeployCurrent()
 
 
 // Drop the current item, not weapon, if any.  
-bool AvHPlayer::DropItem(const char* inItemName)
+bool AvHPlayer::DropItem(const char* inItemName, const Vector spawnOffset/*, bool bToss*/)
 {
     bool theSuccess = false;
     
@@ -964,7 +985,9 @@ bool AvHPlayer::DropItem(const char* inItemName)
                     GetGameRules()->GetNextBestWeapon(this, theItem);
                 }
                 
-                CBaseEntity* theDroppedEntity = this->CreateAndDrop(STRING(theItem->pev->classname));
+                //CBaseEntity* theDroppedEntity = (bToss) ? this->CreateAndDrop(STRING(theItem->pev->classname), spawnOffset) : this->CreateAndPlace(STRING(theItem->pev->classname), spawnOffset);
+                CBaseEntity* theDroppedEntity = this->CreateAndDrop(STRING(theItem->pev->classname), spawnOffset);
+
                 if(theAmmoLeft != -1)
                 {
                     CBasePlayerWeapon* theNewlyDroppedWeapon = dynamic_cast<CBasePlayerWeapon*>(theDroppedEntity);
@@ -4777,8 +4800,9 @@ void AvHPlayer::PackDeadPlayerItems(void)
     this->DropItem(kwsShotGun);
 	this->DropItem(kwsHeavyMachineGun);
 	this->DropItem(kwsGrenadeGun);
-	this->DropItem(kwsMine);
-	this->DropItem(kwsWelder);
+    //Offset items so they don't get stuck in weapons and for visibility.
+    this->DropItem(kwsMine, Vector(10, 0, -12)/*, true*/);
+    this->DropItem(kwsWelder, Vector(-10, 0, -12)/*, true*/);
 }
 
 void AvHPlayer::PlayRandomRoleSound(string inSoundListName, int inChannel, float inVolume)

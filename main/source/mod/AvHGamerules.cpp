@@ -1781,7 +1781,7 @@ void AvHGamerules::PlayerGotWeapon(CBasePlayer *pPlayer, CBasePlayerItem *pWeapo
 				}
 				else
 				{
-					thePlayer->DropItem(theWeaponName);
+					thePlayer->DropItem(theWeaponName, Vector(0, 0, 0)/*, true*/);
 				}
 			}
 			//theDroppedWeapon = true;
