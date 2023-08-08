@@ -1891,7 +1891,8 @@ void CBasePlayer::Jump()
 	if ( !FBitSet( m_afButtonPressed, IN_JUMP ) )
 		return;         // don't pogo stick
 
-	if ( !(pev->flags & FL_ONGROUND) || !pev->groundentity )
+	//if ( !(pev->flags & FL_ONGROUND) || !pev->groundentity )
+	if ((!(pev->flags & FL_ONGROUND) && pev->iuser3 != AVH_USER3_ALIEN_PLAYER3) || !pev->groundentity)
 	{
 		return;
 	}
