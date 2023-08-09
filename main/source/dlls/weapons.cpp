@@ -990,7 +990,7 @@ void CBasePlayerWeapon::ItemPostFrame( void )
 
 	if ( theAttackPressed && m_pPlayer->GetCanUseWeapon())
 	{
-		if ((m_fInSpecialReload == 1 || m_fInSpecialReload == 2) && m_iClip != 0 && (CVAR_GET_FLOAT("sv_nsversion") > 322.0f))
+		if ((m_fInSpecialReload == 1 || m_fInSpecialReload == 2) && m_iClip != 0)
 		{
 			m_fInSpecialReload = 3;
 			Reload();

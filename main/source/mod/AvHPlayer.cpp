@@ -1632,7 +1632,7 @@ void AvHPlayer::GetAnimationForActivity(int inActivity, char outAnimation[64], b
 		break;
 
 	case ACT_RUN:
-		if (theIsGlidingOnGround && CVAR_GET_FLOAT("sv_newlerk") != 0)
+		if (theIsGlidingOnGround)
 		{
 			strcat(outAnimation, "jump");
 			break;

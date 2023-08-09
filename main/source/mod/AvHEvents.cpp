@@ -938,17 +938,11 @@ void EV_SonicGun(struct event_args_s* args)
 //			AvHParticleSystemManager::Instance()->CreateParticleSystem(kpsShotgun, theBarrelTip);
 //		}
 		//EV_HLDM_FireBullets( idx, forward, right, up, kSGBulletsPerShot, vecSrc, vecAiming, kSGRange, BULLET_PLAYER_BUCKSHOT, 0, &tracerCount[idx-1], VECTOR_CONE_20DEGREES.x, VECTOR_CONE_20DEGREES.y);
-		
-		bool newpellets = (gHUD.GetServerVariableFloat(kvVersion) > 322.0f || gHUD.GetServerVariableFloat(kvNewsgspread) != 0.0f);
 
-		if (!newpellets)
-		{
-			EV_HLDM_FireBulletsPlayer(idx, forward, right, up, 10, vecSrc, vecAiming, kSGRange, BULLET_PLAYER_BUCKSHOT, 0, &tracerCount[idx - 1], kSGSpread, args->iparam1);
-		}
-		else
-		{
-			EV_HLDM_FireBulletsPlayer(idx, forward, right, up, BALANCE_VAR(kSGBulletsPerShot), vecSrc, vecAiming, kSGRange, BULLET_PLAYER_BUCKSHOT, 0, &tracerCount[idx - 1], kSGSpread, args->iparam1);
-		}
+		////Old 3.2 SG
+		//EV_HLDM_FireBulletsPlayer(idx, forward, right, up, 10, vecSrc, vecAiming, kSGRange, BULLET_PLAYER_BUCKSHOT, 0, &tracerCount[idx - 1], kSGSpread, args->iparam1);
+
+		EV_HLDM_FireBulletsPlayer(idx, forward, right, up, BALANCE_VAR(kSGBulletsPerShot), vecSrc, vecAiming, kSGRange, BULLET_PLAYER_BUCKSHOT, 0, &tracerCount[idx - 1], kSGSpread, args->iparam1);
 		//}
 	
 	// General x-punch axis

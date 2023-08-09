@@ -124,9 +124,7 @@ cvar_t  avh_blockscripts            = {kvBlockScripts, "1", FCVAR_SERVER};
 cvar_t  avh_jumpmode				= {kvJumpMode, "1", FCVAR_SERVER};
 cvar_t  avh_version					= {kvVersion, "330", FCVAR_SERVER};
 //playtest cvars
-cvar_t  avh_newsgspread				= {kvNewsgspread, "1", FCVAR_SERVER};
 cvar_t  avh_fastjp					= {kvfastjp, "0", FCVAR_SERVER};
-cvar_t  avh_newlerk					= {kvNewlerk, "1", FCVAR_SERVER};
 #ifdef DEBUG
 	cvar_t  avh_testing            = {kvTesting, "0", FCVAR_SERVER};
 #endif
@@ -239,9 +237,7 @@ void GameDLLInit( void )
 	CVAR_REGISTER (&avh_jumpmode);
 	CVAR_REGISTER (&avh_version);
 	//playtest cvars
-	CVAR_REGISTER (&avh_newsgspread);
 	CVAR_REGISTER (&avh_fastjp);
-	CVAR_REGISTER (&avh_newlerk);
 
     // TODO: Remove
     CVAR_REGISTER (&avh_ironman);

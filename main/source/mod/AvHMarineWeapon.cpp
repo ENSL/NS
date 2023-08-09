@@ -210,20 +210,9 @@ void AvHReloadableMarineWeapon::Reload(void)
 
                 float theGotoReloadAnimationTime = this->GetGotoReloadAnimationTime();
 				
-				bool oldreload = (CVAR_GET_FLOAT("sv_nsversion") < 323.0f);
-				if (oldreload)
-				{ 
-					this->m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 1.1f;
-					this->m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 1.1f;
-					this->m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 1.1f;
-					this->m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 1.1f;
-				}
-				else
-				{
-					this->m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + theGotoReloadAnimationTime;
-					this->m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + theGotoReloadAnimationTime;
-					this->m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + theGotoReloadAnimationTime;
-				}
+				this->m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + theGotoReloadAnimationTime;
+				this->m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + theGotoReloadAnimationTime;
+				this->m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + theGotoReloadAnimationTime;
 
 				this->m_pPlayer->SetAnimation(PLAYER_RELOAD_START);
 			

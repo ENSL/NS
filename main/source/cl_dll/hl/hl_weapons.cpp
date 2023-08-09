@@ -527,7 +527,7 @@ void CBasePlayerWeapon::ItemPostFrame( void )
 
 	if ( (m_pPlayer->pev->button & IN_ATTACK) && !(m_pPlayer->pev->button & IN_ATTACK2))
 	{
-		if ((m_fInSpecialReload == 1 || m_fInSpecialReload == 2) && m_iClip != 0 && (CVAR_GET_FLOAT("sv_nsversion") > 322.0f))
+		if ((m_fInSpecialReload == 1 || m_fInSpecialReload == 2) && m_iClip != 0)
 		{
 			m_fInSpecialReload = 3;
 			Reload();

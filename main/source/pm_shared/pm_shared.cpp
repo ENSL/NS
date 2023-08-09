@@ -2023,7 +2023,6 @@ void PM_PlayStepSound( int step, float fvol )
     static int iSkipStep = 0;
     int irand;
     vec3_t hvel;
-	bool newlerk = atoi(pmove->PM_Info_ValueForKey(pmove->physinfo, "nl"));
 
     pmove->iStepLeft = !pmove->iStepLeft;
 
@@ -2042,7 +2041,7 @@ void PM_PlayStepSound( int step, float fvol )
     }
 
 	// Don't play footsteps if gliding 
-	if (pmove->iuser3 == AVH_USER3_ALIEN_PLAYER3 && pmove->cmd.buttons & IN_JUMP && pmove->oldbuttons & IN_JUMP && newlerk)
+	if (pmove->iuser3 == AVH_USER3_ALIEN_PLAYER3 && pmove->cmd.buttons & IN_JUMP && pmove->oldbuttons & IN_JUMP)
 	{
 		return;
 	}
@@ -3726,10 +3725,9 @@ void PM_CategorizePosition (void)
             pmove->onground = tr.ent;  // Otherwise, point to index of ent under us.
         }
 
-		bool isglidinglerk = (pmove->iuser3 == AVH_USER3_ALIEN_PLAYER3 && pmove->cmd.buttons & IN_JUMP && pmove->oldbuttons & IN_JUMP);
-		bool newlerk = atoi(pmove->PM_Info_ValueForKey(pmove->physinfo, "nl"));
+		bool isGlidingLerk = (pmove->iuser3 == AVH_USER3_ALIEN_PLAYER3 && pmove->cmd.buttons & IN_JUMP && pmove->oldbuttons & IN_JUMP);
 
-		if ( gIsJetpacking[pmove->player_index] == 0 && (!isglidinglerk && newlerk)) {
+		if ( gIsJetpacking[pmove->player_index] == 0 && !isGlidingLerk) {
 
 			// If we are on something...
 			if (pmove->onground != -1)
@@ -4611,12 +4609,9 @@ bool PM_FlapMove()
     }
     else
     {
-		bool newlerk = atoi(pmove->PM_Info_ValueForKey(pmove->physinfo, "nl"));
-
         // Added by mmcguire. Lerk gliding.
         //if (pmove->iuser3 == AVH_USER3_ALIEN_PLAYER3 && pmove->onground == -1)
-		//if (pmove->iuser3 == AVH_USER3_ALIEN_PLAYER3/* && pmove->onground == -1*/)
-		if (pmove->iuser3 == AVH_USER3_ALIEN_PLAYER3 && (newlerk || pmove->onground == -1))
+		if (pmove->iuser3 == AVH_USER3_ALIEN_PLAYER3)
         {
             // Compute the velocity not in the direction we're facing.
 			float theGlideAmount = min(0.2f, PM_GetHorizontalSpeed() / 1000);
@@ -6354,8 +6349,7 @@ void PM_Jetpack()
     // Turn off jetpack by default
     gIsJetpacking[pmove->player_index] = false;
 
-	bool newjp = atoi(pmove->PM_Info_ValueForKey(pmove->physinfo, "jp"));
-	bool fastjp = atoi(pmove->PM_Info_ValueForKey(pmove->physinfo, "jp2"));
+	bool fastJp = atoi(pmove->PM_Info_ValueForKey(pmove->physinfo, "jp2"));
     
     if(!pmove->dead && theHasJetpackUpgrade && !theIsDevoured)
     {
@@ -6394,16 +6388,10 @@ void PM_Jetpack()
 			//pmove->velocity[0] += (theWishVelocity[0]/pmove->clientmaxspeed)*kJetpackLateralScalar;
 			//pmove->velocity[1] += (theWishVelocity[1]/pmove->clientmaxspeed)*kJetpackLateralScalar;
 
-			if (fastjp)
+			if (fastJp)
 			{
 				pmove->velocity[0] += ((theWishVelocity[0] / pmove->clientmaxspeed) * (theTimePassed * kJetpackForce) * 1.25f);
 				pmove->velocity[1] += ((theWishVelocity[1] / pmove->clientmaxspeed) * (theTimePassed * kJetpackForce) * 1.25f);
-				pmove->velocity[2] += theTimePassed * theWeightScalar*kJetpackForce;
-			}
-			else if (!newjp)
-			{
-				pmove->velocity[0] += (theWishVelocity[0]/pmove->clientmaxspeed)*12.0f;
-				pmove->velocity[1] += (theWishVelocity[1]/pmove->clientmaxspeed)*12.0f;
 				pmove->velocity[2] += theTimePassed * theWeightScalar*kJetpackForce;
 			}
 			else
@@ -6736,12 +6724,11 @@ void PM_PlayerMove ( qboolean server )
 				pmove->flags &= ~FL_JUMPHELD;
             }
 
-			bool isglidinglerk = (pmove->iuser3 == AVH_USER3_ALIEN_PLAYER3 && pmove->cmd.buttons & IN_JUMP && pmove->oldbuttons & IN_JUMP);
-			bool newlerk = atoi(pmove->PM_Info_ValueForKey(pmove->physinfo, "nl"));
+			bool isGlidingLerk = (pmove->iuser3 == AVH_USER3_ALIEN_PLAYER3 && pmove->cmd.buttons & IN_JUMP && pmove->oldbuttons & IN_JUMP);
 
             // Fricion is handled before we add in any base velocity. That way, if we are on a conveyor, 
             //  we don't slow when standing still, relative to the conveyor.
-            if ((pmove->onground != -1 && gIsJetpacking[pmove->player_index] == 0 && (!isglidinglerk || !newlerk)) || GetHasUpgrade(pmove->iuser4, MASK_WALLSTICKING))
+            if ((pmove->onground != -1 && gIsJetpacking[pmove->player_index] == 0 && !isGlidingLerk) || GetHasUpgrade(pmove->iuser4, MASK_WALLSTICKING))
             {
 				if(!GetHasUpgrade(pmove->iuser4, MASK_WALLSTICKING))
                     pmove->velocity[2] = 0.0;
@@ -6752,7 +6739,7 @@ void PM_PlayerMove ( qboolean server )
             PM_CheckVelocity();
 
             // Are we on ground now
-             if ( (pmove->onground != -1 && gIsJetpacking[pmove->player_index] == 0 && (!isglidinglerk || !newlerk)) || GetHasUpgrade(pmove->iuser4, MASK_WALLSTICKING) )
+             if ( (pmove->onground != -1 && gIsJetpacking[pmove->player_index] == 0 && !isGlidingLerk) || GetHasUpgrade(pmove->iuser4, MASK_WALLSTICKING) )
             {
                 PM_WalkMove();
             }
@@ -6782,7 +6769,7 @@ void PM_PlayerMove ( qboolean server )
             }
 
             // If we are on ground, no downward velocity.
-			if ((pmove->onground != -1 && gIsJetpacking[pmove->player_index] == 0 && (!isglidinglerk || !newlerk)) && !GetHasUpgrade(pmove->iuser4, MASK_WALLSTICKING))
+			if ((pmove->onground != -1 && gIsJetpacking[pmove->player_index] == 0 && !isGlidingLerk) && !GetHasUpgrade(pmove->iuser4, MASK_WALLSTICKING))
             {
                 pmove->velocity[2] = 0;
             }
