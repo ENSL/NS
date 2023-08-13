@@ -228,94 +228,97 @@ void runAssertBox( void* inWnd ) {
 #endif
 
 int emailMsgTo( char *msg, char *emailAddress ) {
-	struct hostent *hostEnt;
-	int ip = 0;
-	sockaddr_in sockAddr;
-	int sockFD;
-	int _send, _recv, _connect;	
-	char *computerName = "";
-	char *emailAt;
-	char *s = (char *)alloca( strlen(msg) + 256 ); // send buffer
-	char r[2048]; // recv buffer
-	
-	#ifdef WIN32
-		WSAData wsaData;
-		int ret = WSAStartup(0x0101, &wsaData);
-		if( ret != 0 ) goto error;
-	#endif
+	/////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////		2021 - Unused library removal. Uncomment and reinclude libcurl to add back.			////
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	//struct hostent *hostEnt;
+	//int ip = 0;
+	//sockaddr_in sockAddr;
+	//int sockFD;
+	//int _send, _recv, _connect;	
+	//char *computerName = "";
+	//char *emailAt;
+	//char *s = (char *)alloca( strlen(msg) + 256 ); // send buffer
+	//char r[2048]; // recv buffer
+	//
+	//#ifdef WIN32
+	//	WSAData wsaData;
+	//	int ret = WSAStartup(0x0101, &wsaData);
+	//	if( ret != 0 ) goto error;
+	//#endif
 
-	sockFD = socket( PF_INET, SOCK_STREAM, IPPROTO_TCP );
-	if( sockFD < 0 ) goto error;
+	//sockFD = socket( PF_INET, SOCK_STREAM, IPPROTO_TCP );
+	//if( sockFD < 0 ) goto error;
 
-	// Parse the emailAddress to get the copmuter name after the '@'
-	emailAt = strchr( emailAddress, '@' );
-	if( emailAt ) {
-		computerName = emailAt+1;
-	}
+	//// Parse the emailAddress to get the copmuter name after the '@'
+	//emailAt = strchr( emailAddress, '@' );
+	//if( emailAt ) {
+	//	computerName = emailAt+1;
+	//}
 
-	ip = inet_addr( computerName );
-	if( ip == INADDR_NONE ) {
-		hostEnt = gethostbyname( computerName );
-		if( hostEnt ) {
-			ip = *(int *)hostEnt->h_addr;
-		}
-	}
-	memset( &sockAddr, 0, sizeof(sockAddr) );
-	sockAddr.sin_family = AF_INET; 
-	sockAddr.sin_port = htons(25);	// 25 = SMTP port
-	sockAddr.sin_addr.s_addr = ip;
+	//ip = inet_addr( computerName );
+	//if( ip == INADDR_NONE ) {
+	//	hostEnt = gethostbyname( computerName );
+	//	if( hostEnt ) {
+	//		ip = *(int *)hostEnt->h_addr;
+	//	}
+	//}
+	//memset( &sockAddr, 0, sizeof(sockAddr) );
+	//sockAddr.sin_family = AF_INET; 
+	//sockAddr.sin_port = htons(25);	// 25 = SMTP port
+	//sockAddr.sin_addr.s_addr = ip;
 
-	_connect = connect( sockFD, (struct sockaddr *)&sockAddr, sizeof(sockAddr) );
-	if( _connect < 0 ) goto error;
+	//_connect = connect( sockFD, (struct sockaddr *)&sockAddr, sizeof(sockAddr) );
+	//if( _connect < 0 ) goto error;
 
-	memset( r, 0, 256 );
-	_recv = recv( sockFD, r, 256, 0 );
-	if( r[0] != '2' ) goto error;
+	//memset( r, 0, 256 );
+	//_recv = recv( sockFD, r, 256, 0 );
+	//if( r[0] != '2' ) goto error;
 
-	memset( r, 0, 256 );
-	sprintf( s, "HELO overmind.org\r\n" );
-	_send = send( sockFD, s, strlen(s), 0 );
-	if( _send < 0 ) goto error;
-	_recv = recv( sockFD, r, 256, 0 );
-	if( r[0] != '2' ) goto error;
+	//memset( r, 0, 256 );
+	//sprintf( s, "HELO overmind.org\r\n" );
+	//_send = send( sockFD, s, strlen(s), 0 );
+	//if( _send < 0 ) goto error;
+	//_recv = recv( sockFD, r, 256, 0 );
+	//if( r[0] != '2' ) goto error;
 
-	memset( r, 0, 256 );
-	sprintf( s, "MAIL FROM: ns-assert@overmind.org\r\n" );
-	_send = send( sockFD, s, strlen(s), 0 );
-	if( _send < 0 ) goto error;
-	_recv = recv( sockFD, r, 256, 0 );
-	if( r[0] != '2' ) goto error;
+	//memset( r, 0, 256 );
+	//sprintf( s, "MAIL FROM: ns-assert@overmind.org\r\n" );
+	//_send = send( sockFD, s, strlen(s), 0 );
+	//if( _send < 0 ) goto error;
+	//_recv = recv( sockFD, r, 256, 0 );
+	//if( r[0] != '2' ) goto error;
 
-	memset( r, 0, 256 );
-	sprintf( s, "RCPT TO: %s\r\n", emailAddress );
-	_send = send( sockFD, s, strlen(s), 0 );
-	if( _send < 0 ) goto error;
-	_recv = recv( sockFD, r, 256, 0 );
-	if( r[0] != '2' ) goto error;
+	//memset( r, 0, 256 );
+	//sprintf( s, "RCPT TO: %s\r\n", emailAddress );
+	//_send = send( sockFD, s, strlen(s), 0 );
+	//if( _send < 0 ) goto error;
+	//_recv = recv( sockFD, r, 256, 0 );
+	//if( r[0] != '2' ) goto error;
 
-	memset( r, 0, 256 );
-	sprintf( s, "DATA\r\n" );
-	_send = send( sockFD, s, strlen(s), 0 );
-	if( _send < 0 ) goto error;
-	_recv = recv( sockFD, r, 256, 0 );
-	if( r[0] != '3' ) goto error;
+	//memset( r, 0, 256 );
+	//sprintf( s, "DATA\r\n" );
+	//_send = send( sockFD, s, strlen(s), 0 );
+	//if( _send < 0 ) goto error;
+	//_recv = recv( sockFD, r, 256, 0 );
+	//if( r[0] != '3' ) goto error;
 
-	memset( r, 0, 256 );
-	sprintf( s, "From ns-assert@overmind.org\r\nSubject: NS Assert\r\n%s\r\n.\r\n", msg );
-	_send = send( sockFD, s, strlen(s), 0 );
-	if( _send < 0 ) goto error;
-	_recv = recv( sockFD, r, 256, 0 );
-	if( r[0] != '2' ) goto error;
+	//memset( r, 0, 256 );
+	//sprintf( s, "From ns-assert@overmind.org\r\nSubject: NS Assert\r\n%s\r\n.\r\n", msg );
+	//_send = send( sockFD, s, strlen(s), 0 );
+	//if( _send < 0 ) goto error;
+	//_recv = recv( sockFD, r, 256, 0 );
+	//if( r[0] != '2' ) goto error;
 
-	memset( r, 0, 256 );
-	sprintf( s, "QUIT\r\n" );
-	_send = send( sockFD, s, strlen(s), 0 );
-	if( _send < 0 ) goto error;
-	_recv = recv( sockFD, r, 256, 0 );
-	CLOSESOCKET( sockFD );
+	//memset( r, 0, 256 );
+	//sprintf( s, "QUIT\r\n" );
+	//_send = send( sockFD, s, strlen(s), 0 );
+	//if( _send < 0 ) goto error;
+	//_recv = recv( sockFD, r, 256, 0 );
+	//CLOSESOCKET( sockFD );
 	return 1;
 
-	error:
-	CLOSESOCKET( sockFD );
-	return 0;
+	//error:
+	//CLOSESOCKET( sockFD );
+	//return 0;
 }

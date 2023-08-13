@@ -1575,7 +1575,7 @@ void AvHTeam::UpdateTeamStructures()
 
 					// Fill in hive status
 					int theStatus = kHiveInfoStatusBuilt;
-					int theBuildTime;
+					int theBuildTime = 0;
 					
 					// Unbuilt hives
 					if(theEntity->pev->team == 0)

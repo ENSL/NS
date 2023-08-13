@@ -262,7 +262,7 @@ char *stackTrace( int skipAssert ) {
 								}
 								break;
 							case 'M':
-								OUTS "%f", *a );
+								OUTS "%u", *a );
 								break;
 							case 'N':
 								// TODO

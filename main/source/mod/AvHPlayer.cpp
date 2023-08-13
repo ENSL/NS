@@ -9692,8 +9692,8 @@ void AvHPlayer::UpdateFog()
     if(this->mClientCurrentFogEntity != this->mCurrentFogEntity)
     {
         bool theFogEnabled = this->mCurrentFogEntity > -1;
-        int theR, theG, theB;
-		float theStart, theEnd;
+        int theR = 0, theG = 0, theB = 0;
+        float theStart = 0.0f, theEnd = 0.0f;
 
         if(theFogEnabled)
         {

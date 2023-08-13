@@ -706,7 +706,7 @@ typedef struct alias_t {
 
 void TestAlias()
 {
-	cmdalias_t* alias = gEngfuncs.pfnGetAliases();// *(alias_s**)0x02d29b7c;
+	cmdalias_t* alias = gEngfuncs.pfnGetAliasList();// *(alias_s**)0x02d29b7c;
 	while(alias)
 	{
 		gEngfuncs.Con_Printf("%s=%s\n%x - %x\n", alias->name, alias->value, alias, gEngfuncs);

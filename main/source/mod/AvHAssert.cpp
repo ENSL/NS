@@ -69,7 +69,8 @@ DBG_AssertFunction(
 	#endif
 	
 	#ifdef WIN32
-	_assert((void*)szExpr, (void*)szFile, szLine);
+	//_assert((void*)szExpr, (void*)szFile, szLine);
+	assert(fExpr);
 	#else
 	assert(fExpr);
 	#endif

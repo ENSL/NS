@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.6.33712.159
+VisualStudioVersion = 17.6.33723.286
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cl_dll.dll", "cl_dll\cl_dll.vcxproj", "{665C1DAF-9248-E06F-4E5C-A664BAFDE9D8}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -8,9 +8,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cl_dll.dll", "cl_dll\cl_dll
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ns.dll", "dlls\hl.vcxproj", "{BC87A180-F17B-83FC-5D7D-470FAD003ABC}"
-	ProjectSection(ProjectDependencies) = postProject
-		{5AADD469-7488-4B34-A9FD-01CFAC5972FD} = {5AADD469-7488-4B34-A9FD-01CFAC5972FD}
-	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "particles", "particles\particles.vcxproj", "{5AADD469-7488-4B34-A9FD-01CFAC5972FD}"
 EndProject
@@ -24,8 +21,8 @@ Global
 		Release|Win32 = Release|Win32
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{665C1DAF-9248-E06F-4E5C-A664BAFDE9D8}.Debug|Win32.ActiveCfg = Playtest|Win32
-		{665C1DAF-9248-E06F-4E5C-A664BAFDE9D8}.Debug|Win32.Build.0 = Playtest|Win32
+		{665C1DAF-9248-E06F-4E5C-A664BAFDE9D8}.Debug|Win32.ActiveCfg = client - debug|Win32
+		{665C1DAF-9248-E06F-4E5C-A664BAFDE9D8}.Debug|Win32.Build.0 = client - debug|Win32
 		{665C1DAF-9248-E06F-4E5C-A664BAFDE9D8}.Developer - debug|Win32.ActiveCfg = Playtest|Win32
 		{665C1DAF-9248-E06F-4E5C-A664BAFDE9D8}.Developer - debug|Win32.Build.0 = Playtest|Win32
 		{665C1DAF-9248-E06F-4E5C-A664BAFDE9D8}.Developer - release|Win32.ActiveCfg = Playtest|Win32
@@ -36,9 +33,10 @@ Global
 		{665C1DAF-9248-E06F-4E5C-A664BAFDE9D8}.Playtest|Win32.Build.0 = Playtest|Win32
 		{665C1DAF-9248-E06F-4E5C-A664BAFDE9D8}.Release|Win32.ActiveCfg = Playtest|Win32
 		{665C1DAF-9248-E06F-4E5C-A664BAFDE9D8}.Release|Win32.Build.0 = Playtest|Win32
-		{BC87A180-F17B-83FC-5D7D-470FAD003ABC}.Debug|Win32.ActiveCfg = Developer - release|Win32
-		{BC87A180-F17B-83FC-5D7D-470FAD003ABC}.Debug|Win32.Build.0 = Developer - release|Win32
+		{BC87A180-F17B-83FC-5D7D-470FAD003ABC}.Debug|Win32.ActiveCfg = Developer - debug|Win32
+		{BC87A180-F17B-83FC-5D7D-470FAD003ABC}.Debug|Win32.Build.0 = Developer - debug|Win32
 		{BC87A180-F17B-83FC-5D7D-470FAD003ABC}.Developer - debug|Win32.ActiveCfg = Developer - debug|Win32
+		{BC87A180-F17B-83FC-5D7D-470FAD003ABC}.Developer - debug|Win32.Build.0 = Developer - debug|Win32
 		{BC87A180-F17B-83FC-5D7D-470FAD003ABC}.Developer - release|Win32.ActiveCfg = Developer - release|Win32
 		{BC87A180-F17B-83FC-5D7D-470FAD003ABC}.Playtest - balance disabled|Win32.ActiveCfg = Playtest - balance disabled|Win32
 		{BC87A180-F17B-83FC-5D7D-470FAD003ABC}.Playtest - balance disabled|Win32.Build.0 = Playtest - balance disabled|Win32
