@@ -108,8 +108,22 @@ Vector UTIL_GetRandomSpreadDir(unsigned int inSeed, int inShotNumber, const Vect
 {
 	// Use player's random seed.
 	// get circular gaussian spread
-	float x = UTIL_SharedRandomFloat( inSeed + inShotNumber, -0.5, 0.5 ) + UTIL_SharedRandomFloat( inSeed + ( 1 + inShotNumber ) , -0.5, 0.5 );
-	float y = UTIL_SharedRandomFloat( inSeed + ( 2 + inShotNumber ), -0.5, 0.5 ) + UTIL_SharedRandomFloat( inSeed + ( 3 + inShotNumber ), -0.5, 0.5 );
+	float x, y;
+
+	// Check if seed is 0 to fix bot weapon spread.
+	if (inSeed == 0)
+	{
+		x = g_engfuncs.pfnRandomFloat(-0.5, 0.5);
+		x = g_engfuncs.pfnRandomFloat(-0.5, 0.5) + x;
+		y = g_engfuncs.pfnRandomFloat(-0.5, 0.5);
+		y = g_engfuncs.pfnRandomFloat(-0.5, 0.5) + y;
+	}
+	else
+	{
+		x = UTIL_SharedRandomFloat(inSeed + inShotNumber, -0.5, 0.5) + UTIL_SharedRandomFloat(inSeed + (1 + inShotNumber), -0.5, 0.5);
+		y = UTIL_SharedRandomFloat(inSeed + (2 + inShotNumber), -0.5, 0.5) + UTIL_SharedRandomFloat(inSeed + (3 + inShotNumber), -0.5, 0.5);
+	}
+
 	float z = x * x + y * y;
 	
 	Vector theRandomDir = inBaseDirection + x * inSpread.x * inRight + y * inSpread.y * inUp;
@@ -122,8 +136,22 @@ Vector UTIL_GetRandomSpreadDirFrom(unsigned int inSeed, int inShotNumber, const 
 {
 	// Use player's random seed.
 	// get circular gaussian spread
-	float x = UTIL_SharedRandomFloat( inSeed + inShotNumber, -0.5, 0.5 ) + UTIL_SharedRandomFloat( inSeed + ( 1 + inShotNumber ) , -0.5, 0.5 );
-	float y = UTIL_SharedRandomFloat( inSeed + ( 2 + inShotNumber ), -0.5, 0.5 ) + UTIL_SharedRandomFloat( inSeed + ( 3 + inShotNumber ), -0.5, 0.5 );
+	float x, y;
+
+	// Check if seed is 0 to fix bot weapon spread.
+	if (inSeed == 0)
+	{
+		x = g_engfuncs.pfnRandomFloat(-0.5, 0.5);
+		x = g_engfuncs.pfnRandomFloat(-0.5, 0.5) + x;
+		y = g_engfuncs.pfnRandomFloat(-0.5, 0.5);
+		y = g_engfuncs.pfnRandomFloat(-0.5, 0.5) + y;
+	}
+	else
+	{
+		x = UTIL_SharedRandomFloat(inSeed + inShotNumber, -0.5, 0.5) + UTIL_SharedRandomFloat(inSeed + (1 + inShotNumber), -0.5, 0.5);
+		y = UTIL_SharedRandomFloat(inSeed + (2 + inShotNumber), -0.5, 0.5) + UTIL_SharedRandomFloat(inSeed + (3 + inShotNumber), -0.5, 0.5);
+	}
+
 	float z = x * x + y * y;
 	float xdir = x / fabs(x);
 	float ydir = y / fabs(y);
