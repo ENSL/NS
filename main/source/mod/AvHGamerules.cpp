@@ -517,9 +517,9 @@ void AvHGamerules::RewardPlayerForKill(AvHPlayer* inPlayer, CBaseEntity* inTarge
 				}
 				else 
 				{
-				int theMin = BALANCE_VAR(kKillRewardMin);
-				int theMax = BALANCE_VAR(kKillRewardMax);
-				theResourceValue = RANDOM_LONG(theMin, theMax);
+					int theMin = BALANCE_VAR(kKillRewardMin);
+					int theMax = BALANCE_VAR(kKillRewardMax);
+					theResourceValue = RANDOM_LONG(theMin, theMax);
 				}
 
 				if(theResourceValue > 0)
@@ -636,10 +636,22 @@ BOOL AvHGamerules::CanHavePlayerItem(CBasePlayer *pPlayer, CBasePlayerItem *pWea
 		int theCurrentFlag = (theWeaponFlags & (PRIMARY_WEAPON | SECONDARY_WEAPON));
 		CBasePlayerItem* theCurrentItem = NULL;
 		bool theHasWeaponWithFlag = pPlayer->HasItemWithFlag(theCurrentFlag, theCurrentItem);
-
+		
 		if(theHasWeaponWithFlag)
 		{
-			if(theCurrentItem->iWeight() < pWeapon->iWeight())
+			int playerAutoSwapWeapon = 1;
+			bool newWeaponCanFire = true;
+
+			AvHPlayer* thePlayer = dynamic_cast<AvHPlayer*>(pPlayer);
+			if(thePlayer)
+				playerAutoSwapWeapon = thePlayer->GetAutoWeapSwapValue();
+
+			AvHBasePlayerWeapon* theNewWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pWeapon);
+			if (theNewWeapon)
+				newWeaponCanFire = theNewWeapon->GetIsCapableOfFiring();
+			
+			//if (theCurrentItem->iWeight() < pWeapon->iWeight())
+			if(theCurrentItem->iWeight() < pWeapon->iWeight() && (playerAutoSwapWeapon == 1 || (playerAutoSwapWeapon == 2 && newWeaponCanFire)))
 			{
 				theCanHaveIt = TRUE;
 			}
@@ -851,6 +863,16 @@ void AvHGamerules::ClientKill( edict_t *pEntity )
 void AvHGamerules::ClientUserInfoChanged(CBasePlayer *pPlayer, char *infobuffer)
 {
 	// NOTE: Not currently calling down to parent CHalfLifeTeamplay 
+
+	const char* theAutoWeapSwapValue = g_engfuncs.pfnInfoKeyValue(infobuffer, "cl_weaponswap");
+
+	if (theAutoWeapSwapValue) {
+
+		AvHPlayer* thePlayer = dynamic_cast<AvHPlayer*>(pPlayer);
+		if (thePlayer) {
+			thePlayer->SetAutoWeapSwapValue(atoi(theAutoWeapSwapValue));
+		}
+	}
 }
 
 void AvHGamerules::ChangePlayerTeam( CBasePlayer *pPlayer, const char *pTeamName, BOOL bKill, BOOL bGib )

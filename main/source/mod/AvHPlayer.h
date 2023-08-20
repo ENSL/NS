@@ -477,6 +477,9 @@ public:
 	void			SetUsedKilled(bool bKilled )	{ mUsedKilled = bKilled; }
 	void			ClearOrders() { mClientOrders.clear(); }
 
+	int				GetAutoWeapSwapValue() { return mAutoWeapSwapValue; }
+	void			SetAutoWeapSwapValue(int autoSwap) { mAutoWeapSwapValue = autoSwap; }
+
 	// : 0000953 
 	bool			JoinTeamCooledDown(float inCoolDownTime);
 	// 
@@ -860,6 +863,8 @@ private:
     std::vector<ServerVariable> mServerVariableList;
 
 	bool				mUsedKilled;
+
+	int				mAutoWeapSwapValue;
 
 	//TODO: remove this system from AvHPlayer and create an 
 	// explicit balance forwarding class registered to each

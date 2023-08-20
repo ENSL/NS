@@ -502,7 +502,8 @@ bool AvHBasePlayerWeapon::GetHasMuzzleFlash() const
 
 bool AvHBasePlayerWeapon::GetIsCapableOfFiring() const
 {
-	return !this->UsesAmmo() || (this->m_iClip > 0);
+	//return !this->UsesAmmo() || (this->m_iClip > 0);
+	return !this->UsesAmmo() || (this->m_iClip > 0 || this->m_iDefaultAmmo > 0);
 }
 
 
