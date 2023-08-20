@@ -2079,10 +2079,16 @@ void CBasePlayer::UpdateStatusBar()
 				if ( g_pGameRules->PlayerRelationship( this, pEntity ) == GR_TEAMMATE )
 				{
 					int theLevel = 1;
+					bool hasWelder = 0;
 					AvHPlayer* thePlayer = dynamic_cast<AvHPlayer*>(pEntity);
 					if(thePlayer)
 					{
 						theLevel = thePlayer->GetExperienceLevel();
+						//TODO:change out for icon in statusbar rendering code or localize.
+						hasWelder = thePlayer->GetHasItem("weapon_welder");
+						if (hasWelder) {
+							strcat(sbuf1, " [Welder]");
+						}
 					}
 
 					//newSBarState[ SBAR_ID_TARGETHEALTH ] = 100 * (pEntity->pev->health / pEntity->pev->max_health);
