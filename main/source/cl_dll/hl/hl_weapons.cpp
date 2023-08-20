@@ -662,6 +662,7 @@ void CBasePlayerWeapon::ItemPostFrame( void )
         {
     		// reload when reload is pressed, or if no buttons are down and weapon is empty.
 	    	Reload();
+			return;
         }
 	}
 	// +movement: Removed case for +attack2
