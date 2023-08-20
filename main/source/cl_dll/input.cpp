@@ -1509,6 +1509,23 @@ void NsVersion(void)
 	gEngfuncs.Con_Printf("%s %s\n", kAvHGameAcronymn, theGameVersion);
 }
 
+void EchoDev(void)
+{
+	////This method needs spaces added back in if using multiple args.
+	////Printing each arg followed by new line won't show in developer 1 text corner since new line gets executed seprarately last.
+	//char strbuff[8191];
+	//strbuff[0] = 0;
+	//
+	//int	i;
+	//for (i = 1; i < gEngfuncs.Cmd_Argc(); i++) {
+	//	strcat(strbuff, gEngfuncs.Cmd_Argv(i));
+	//}
+	//gEngfuncs.Con_Printf("%s\n", strbuff);
+
+	//One arg. Use quotes.
+	gEngfuncs.Con_Printf("%s\n", gEngfuncs.Cmd_Argv(1));
+}
+
 /*
 ============
 InitInput
@@ -1582,6 +1599,7 @@ void InitInput (void)
 	gEngfuncs.pfnAddCommand("-scrollright", IN_ScrollRightUp);
 
 	gEngfuncs.pfnAddCommand("nsversion", NsVersion);
+	gEngfuncs.pfnAddCommand("echodev", EchoDev);
 
 	lookstrafe			= gEngfuncs.pfnRegisterVariable ( "lookstrafe", "0", FCVAR_ARCHIVE );
 	lookspring			= gEngfuncs.pfnRegisterVariable ( "lookspring", "0", FCVAR_ARCHIVE );
