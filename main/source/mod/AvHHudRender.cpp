@@ -2531,6 +2531,7 @@ void AvHHud::DrawBuildHealthEffectsForEntity(int inEntityIndex, float inAlpha)
 		if(theContinue && theLocalPlayer)
 		{
 			const int kDrawEnemyBuildingDistance = 200;
+			bool healthLowEnough = theHealthPercentage < (CVAR_GET_FLOAT("hud_teamhealthalert") * 0.01f);
 
 			// Draw effects if we are in top-down mode OR
 			if(	this->GetInTopDownMode() ||
@@ -2538,18 +2539,19 @@ void AvHHud::DrawBuildHealthEffectsForEntity(int inEntityIndex, float inAlpha)
 				// It's an unfriendly building that's very close OR
 				(!theEntityIsPlayer && (theDistanceToEntity < kDrawEnemyBuildingDistance)) ||
 
-				// It's a friendly entity and we're a builder OR
-				(theIsOnOurTeam && (this->GetHUDUser3() == AVH_USER3_ALIEN_PLAYER2)) ||
+				// It's a friendly building and we're a builder OR
+				//(theIsOnOurTeam && (this->GetHUDUser3() == AVH_USER3_ALIEN_PLAYER2)) ||
+				(theIsOnOurTeam && !theEntityIsPlayer && (this->GetHUDUser3() == AVH_USER3_ALIEN_PLAYER2)) ||
 
-				// It's a friendly player with <95% armor and we have a welder in our inventory OR
-				(theIsOnOurTeam && theEntityIsPlayer && theHealthPercentage < 0.95f && this->mHasWelder) ||
+				// It's a friendly player with <95% armor/health and we have a welder in our inventory or are gorge OR
+				(theIsOnOurTeam && theEntityIsPlayer && healthLowEnough && (this->mHasWelder || this->GetHUDUser3() == AVH_USER3_ALIEN_PLAYER2)) ||
 
 				// welder/healing spray is selected
-				(this->mCurrentWeaponID == 18 || this->mCurrentWeaponID == 27)
+				(this->mCurrentWeaponID == AVH_WEAPON_WELDER || this->mCurrentWeaponID == AVH_WEAPON_HEALINGSPRAY)
 
 				)
 			{
-				
+
 			// If they're not on opposite teams
 			//if((theEntityTeam == theLocalPlayer->curstate.team) || (theEntityTeam == 0))
 			//{
@@ -2670,9 +2672,12 @@ void AvHHud::DrawSelectionAndBuildEffects()
 	}
 
 	// : 0000988 & 0000991
-	bool maintanceWeaponSelected = (this->mCurrentWeaponID == 18 || this->mCurrentWeaponID == 27);
+	bool maintanceWeaponSelected = (this->mCurrentWeaponID == AVH_WEAPON_WELDER || this->mCurrentWeaponID == AVH_WEAPON_HEALINGSPRAY);
+	bool hasWelder = this->mHasWelder;
+	bool isGorge = this->GetHUDUser3() == AVH_USER3_ALIEN_PLAYER2;
 	bool isCommander = this->GetInTopDownMode();
-	if (isCommander || maintanceWeaponSelected) {		
+	//if (isCommander || maintanceWeaponSelected) {		
+	if (isCommander || hasWelder || isGorge) {
 		gEngfuncs.pEventAPI->EV_SetUpPlayerPrediction( false, true );
 		gEngfuncs.pEventAPI->EV_PushPMStates();
 		gEngfuncs.pEventAPI->EV_SetSolidPlayers(-1);
@@ -2701,7 +2706,9 @@ void AvHHud::DrawSelectionAndBuildEffects()
 						{
 							this->DrawBuildHealthEffectsForEntity(theEntityIndex, 0.2);
 						}
-						else if (maintanceWeaponSelected && theSameTeam && !theIsPlayer)
+						//else if (maintanceWeaponSelected && theSameTeam && !theIsPlayer)
+						else if ((maintanceWeaponSelected && theSameTeam && !theIsPlayer) ||
+								((isGorge || hasWelder) && theSameTeam && theIsPlayer))
 						{
 							if (AvHTraceLineAgainstWorld(gEngfuncs.GetLocalPlayer()->origin, theEntity->origin) == 1.0f)
 							{

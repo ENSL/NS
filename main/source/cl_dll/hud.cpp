@@ -220,6 +220,8 @@ void CHud :: Init( void )
 	CVAR_CREATE( "cl_iconb", "221", FCVAR_ARCHIVE);
 
 	CVAR_CREATE("cl_weaponswap", "2", FCVAR_ARCHIVE | FCVAR_USERINFO);
+	CVAR_CREATE("hud_teamhealthalert", "95", FCVAR_ARCHIVE);
+
 	m_pSpriteList = NULL;
 
 	// Clear any old HUD list
