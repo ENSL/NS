@@ -340,6 +340,7 @@ AvHGamerules::AvHGamerules() : mTeamA(TEAM_ONE), mTeamB(TEAM_TWO)
 	RegisterServerVariable(&avh_version);
 	//playtest cvars
 	RegisterServerVariable(&avh_fastjp);
+	RegisterServerVariable(&avh_randomrfk);
 
 	g_VoiceGameMgr.Init(&gVoiceHelper, gpGlobals->maxClients);
 
@@ -509,9 +510,17 @@ void AvHGamerules::RewardPlayerForKill(AvHPlayer* inPlayer, CBaseEntity* inTarge
 			if(!this->GetIsCombatMode())
 			{
 				int theResourceValue = 0;
+
+				if (avh_randomrfk.value == 0)
+				{
+					theResourceValue = 2;
+				}
+				else 
+				{
 				int theMin = BALANCE_VAR(kKillRewardMin);
 				int theMax = BALANCE_VAR(kKillRewardMax);
 				theResourceValue = RANDOM_LONG(theMin, theMax);
+				}
 
 				if(theResourceValue > 0)
 				{

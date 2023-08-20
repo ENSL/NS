@@ -98,6 +98,7 @@ extern cvar_t *showtriggers;
 extern cvar_t avh_version;
 //playtest cvars
 extern cvar_t avh_fastjp;
+extern cvar_t avh_randomrfk;
 
 char	*ns_cvar_string(const cvar_t *cvar);
 int		ns_cvar_int(const cvar_t *cvar);
@@ -149,4 +150,5 @@ float	ns_cvar_float(const cvar_t *cvar);
 #define kvVersion					"sv_nsversion"
 //playtest cvars
 #define kvfastjp					"sv_fastjp"
+#define kvRandomRfk					"mp_randomresfromkill"
 #endif
