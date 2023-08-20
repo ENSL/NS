@@ -242,6 +242,10 @@ void AvHReloadableMarineWeapon::Reload(void)
             }
         }
     }
+	else
+	{
+		this->m_fInSpecialReload = kSpecialReloadNone;
+	}
 }
 
 

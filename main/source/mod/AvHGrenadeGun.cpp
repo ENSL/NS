@@ -424,6 +424,10 @@ void AvHGrenadeGun::Reload(void)
 			}
 		}
 	}
+	else
+	{
+		this->m_fInSpecialReload = kSpecialReloadNone;
+	}
 }
 
 void AvHGrenadeGun::WeaponIdle(void)
