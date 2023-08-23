@@ -94,6 +94,45 @@ DESCRIPTION INFO_OPTIONS
 		}
 		{ "3.000000" }
 	}
+	
+	"cl_weaponswap"
+	{
+		"Auto drop LMG for better weapon"
+		{
+			LIST
+			"Never" "0"
+			"Always" "1"
+			"If not empty" "2"
+		}
+		{ "2.000000" }
+	}
+	
+	"hud_nameinfo"
+	{
+		"Teammate's welder/parasite status"
+		{
+			LIST
+			"Don't show" "0"
+			"Full Length" "1"
+			"Shortened" "2"
+			"One Letter" "3"
+		}
+		{ "1.000000" }
+	}
+	
+	"hud_minimapnames"
+	{
+		"Length of minimap names 1=unlim"
+		{ NUMBER 0.000000 30.000000 }
+		{ "0.000000" }
+	}
+	
+	"hud_minimapnamesComm"
+	{
+		"Show names on minimap when commander"
+		{ BOOL }
+		{ "0" }
+	}
 		
 	"cl_mutemenu"
 	{
@@ -155,6 +194,13 @@ DESCRIPTION INFO_OPTIONS
 		"Commander hotkeys"
 		{ STRING }
 		{ "qwerasdfzxcv" }
+	}
+	
+	"hud_teamhealthalert"
+	{
+		"Show health/armor of team when <"
+		{ NUMBER 0.000000 100.000000 }
+		{ "95.000000" }
 	}
 
 	"cl_cross"
