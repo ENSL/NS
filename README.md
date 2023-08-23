@@ -12,14 +12,15 @@ As the game is a Half-Life mod, Steam and Half-Life installations are required t
 
 A fresh install of NS comes with updated config files containing everything you need to get playing on the standard settings most players prefer. Customization options are also built in like the Nine Legends competitve UI option as well as team and weapon specific config files that can be edited.
 
-## Game not working? Troubleshooting tips.
+## Game not working? Troubleshooting tips
 
 If the game doesn't load, check the following:
+1. If you recieve a "could not load library" error for the client.dll, please install the **[latest Microsoft Visual C++ Redistributable package](https://aka.ms/vs/17/release/vc_redist.x86.exe)**.
 1. Make sure you have verified Half-Life's integrity. Click [here](https://support.steampowered.com/kb_article.php?ref=2037-QEUH-3335) for detailed instructions.
-1. Make sure you have a clean install. Go to the half-life directory (eg. `c:\Program Files\Steam\steamapps\common\Half-Life`) and remove or rename the ``ns`` folder.
 1. Check if Half-Life works for you.
+1. Make sure you have a clean install. Go to the half-life directory (eg. `c:\Program Files\Steam\steamapps\common\Half-Life`) and remove or rename the ``ns`` folder, then try installing NS.
 1. Make sure you don't have any additional command line options for NS.
-1. For more help, ask on #help in [our discord](https://discord.gg/ZUSSBUA)
+1. For more help, ask on #help in [the community discord](https://discord.gg/ZUSSBUA)
 
 For Linux:
 - Remove or rename the `libstdc++so.6` provided by steam or steamcmd so the linux distro's can be used instead. The one steam provides is outdated.
@@ -30,17 +31,19 @@ For Linux:
 Updates include:
 
 - Natural Selection Launcher for installing and updating the game
-- Widescreen support (now expands FOV up to 16:9 aspect instead of cutting it off)
+- Widescreen support (now expands FOV up to 16:9 aspect instead of cropping the image)
 - AI upscaled model textures can be turned on with the "Use High Definition models" video option 
-- Many FPS dependencies fixed, including jetpack acceleration, so the game can now be fairly played at 200+ FPS
+- Many FPS dependent bugs fixed, including jetpack acceleration, so the game can now be fairly played at 200+ FPS
 - Quake style queued jumping to make bunnyhopping more accessible (server adjustable via sv_jumpmode)
 - Shotgun and grenade launcher have been reworked to fix reload bugs
 - Weapon reloads are now predicted on the client
 - New minimal HUD and the Nine Legends HUD can be selected through advanced options or hud_style and hud_mapstyle
 - New crosshair system that can be adjusted through the advanced options and cl_cross commands (Thanks [OpenAG](https://github.com/YaLTeR/OpenAG))
 - Ambient sounds can be changed in advanced options or via cl_ambientsound
-- Marine HUD now tracks research progress
+- Marine HUD now tracks research progress and alien HUD tracks hive growth
 - Raw input and sensitivity scaling options now available
+- Lerks no longer stick to the ground if they touch it when gliding
+- Players can change lifeform and use the popup menu in pregame warmup
 
 - Numerous bug fixes
 
@@ -58,7 +61,7 @@ apt-get install build-essential git gdb gcc-multilib g++-multilib libc6-i386 mes
 
 Then you will need to get the files:
 ```sh
-git clone https://github.com/fmoraw/NS.git
+git clone https://github.com/ENSL/NS.git
 ``` 
 Then cd to the linux directory:
 ```sh
@@ -99,11 +102,12 @@ Have to use XCode's lldb to get around https://stackoverflow.com/a/33589760 (Lac
 
 Since servers are really rare at this point in time here is a tutorial how to set up an [Natural Selection] server with [hlds]. 
 
-1. Follow these steps: https://developer.valvesoftware.com/wiki/SteamCMD
-2. Copy the [Natural Selection] directory to steamcmd/servers/
-3. Run the game : 
+1. Follow these steps to get steamCMD installed and HLDS updated in it: https://developer.valvesoftware.com/wiki/SteamCMD
+2. You'll want to run `app_update 90 validate` multiple times in steamCMD to install HLDS and fully update it, as it won't completely do it the first time.
+3. Copy the `ns` directory into the `hlds` directory after installing HLDS from steamcmd
+4. Run the game : 
 ```sh
-./hlds_run -game ns -autoupdate +map ns_eclipse + sv_secure 1 + port 27015 + ip 127.0.0.1 +hostname "Natural Selection" +maxplayers 32
+./hlds_run -game ns -autoupdate +map ns_eclipse + sv_secure 1 + port 27015 +hostname "Natural Selection" +maxplayers 32
 ``` 
 If you are behind a NAT(Router) make sure to open at least those ports: 
 - 27015 UDP (game transmission, pings) 
@@ -121,7 +125,7 @@ There is an updated version of metamod called [metamodp](http://metamod-p.source
 ### Usefull links
 
 * [Usefull collection of ns files server addons, maps and everything ](http://www.brywright.co.uk/downloads/files/index.php?dir=natural-selection/)
-* [Great collection of ns guides/tutorials](http://www.naturalns.clanservers.com/forums/index.php?topic=5.0)
+* [Game manual (some outdated info)](https://www.unknownworlds.com/oldwebsite/manuals/comm_manual/basic/index.htm)
 *  [rcbot downloads](http://filebase.bots-united.com/index.php?act=category&id=19)
 *  [dillinger.io markdown editor](http://dillinger.io/)
 
@@ -130,9 +134,6 @@ There is an updated version of metamod called [metamodp](http://metamod-p.source
    [Steam]: <http://store.steampowered.com/about/>
    [hlds]:<https://developer.valvesoftware.com/wiki/Half-Life_Dedicated_Server>
    [rcbot]:<http://filebase.bots-united.com/index.php?act=category&id=19>
-
-
-Many thanks to GiGaBiTe.
 
 
 Half Life 1 SDK LICENSE
