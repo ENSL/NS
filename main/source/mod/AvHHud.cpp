@@ -5408,6 +5408,15 @@ bool AvHHud::GetEntityInfoString(int inEntityID, string& outEntityInfoString, bo
 					outEntityInfoString += string(theStatusCStr);
 				}
 
+				// Do this client side so the extra chars don't need to be transmitted. Welder handled server side in UpdateStatusBar.
+				if (theEntity->curstate.team == theTeam)
+				{
+					if (GetHasUpgrade(theEntity->curstate.iuser4, MASK_PARASITED))
+					{
+						outEntityInfoString += " [Parasited]";
+					}
+				}
+
 				outIsEnemy = theIsEnemy;
 				theSuccess = true;
 			}

@@ -696,24 +696,25 @@ void AvHHud::DrawPlayerNames()
 								int theR, theG, theB;
 								this->GetPrimaryHudColor(theR, theG, theB, true, false);
 						
-								// If selected, draw in different color
+								// If selected or parasited, draw in different color
 								if(inTopDownMode)
 								{
+									if (GetHasUpgrade(theCurrentPlayer->curstate.iuser4, MASK_PARASITED))
+									{
+										////Old NS 3.2 method. Now in AvHHud::GetEntityInfoString.
+										//string thePrePendString;
+										//LocalizeString(kParasited, thePrePendString);
+										//theEntityName = string(theEntityName + " (" + thePrePendString + ")");
+
+										// Set color to parasited color
+										UnpackRGB(theR, theG, theB, RGB_MARINE_PARASITED);
+									}
+
 									bool theIsSelected = (std::find(this->mSelected.begin(), this->mSelected.end(), i) != this->mSelected.end());
-									if(theIsSelected)
+									if (theIsSelected)
 									{
 										// Selected color
 										UnpackRGB(theR, theG, theB, RGB_MARINE_SELECTED);
-									
-										if(GetHasUpgrade(theCurrentPlayer->curstate.iuser4, MASK_PARASITED))
-										{
-											string thePrePendString;
-											LocalizeString(kParasited, thePrePendString);
-											theEntityName = string(theEntityName + " (" + thePrePendString + ")");
-									
-											// Set color to parasited color
-											UnpackRGB(theR, theG, theB, RGB_MARINE_PARASITED);
-										}
 									}
 								}
 						
