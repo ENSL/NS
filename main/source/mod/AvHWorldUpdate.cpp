@@ -47,6 +47,8 @@ AvHUmbraCloudListType		gUmbraCloudList;
 
 const float kMovementVisibilityThreshold = 10.0f;
 
+extern cvar_t					avh_parasiteonmap;
+
 bool AvHSUGetInViewOfEnemy(CBaseEntity* inEntity, int& outSightedStatus)
 {
 	bool theInViewOfEnemy = false;
@@ -181,6 +183,12 @@ bool AvHSUGetInViewOfEnemy(CBaseEntity* inEntity, int& outSightedStatus)
 							outSightedStatus |= MASK_VIS_DETECTED;
 							theInViewOfEnemy = true;
 						}
+					}
+					// 2023 - Testing parasite detecting entities.
+					if (GetHasUpgrade(inEntity->pev->iuser4, MASK_PARASITED) && avh_parasiteonmap.value)
+					{
+						outSightedStatus |= MASK_VIS_DETECTED;
+						theInViewOfEnemy = true;
 					}
 				}
 			}

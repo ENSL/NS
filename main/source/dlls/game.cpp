@@ -126,6 +126,7 @@ cvar_t  avh_version					= {kvVersion, "330", FCVAR_SERVER};
 //playtest cvars
 cvar_t  avh_fastjp					= {kvfastjp, "0", FCVAR_SERVER};
 cvar_t  avh_randomrfk				= {kvRandomRfk, "1", FCVAR_SERVER};
+cvar_t  avh_parasiteonmap			= {kvParasiteOnMap, "0", FCVAR_SERVER };
 
 #ifdef DEBUG
 	cvar_t  avh_testing            = {kvTesting, "0", FCVAR_SERVER};
@@ -241,6 +242,7 @@ void GameDLLInit( void )
 	//playtest cvars
 	CVAR_REGISTER (&avh_fastjp);
 	CVAR_REGISTER (&avh_randomrfk);
+	CVAR_REGISTER (&avh_parasiteonmap);
 
     // TODO: Remove
     CVAR_REGISTER (&avh_ironman);

@@ -341,6 +341,7 @@ AvHGamerules::AvHGamerules() : mTeamA(TEAM_ONE), mTeamB(TEAM_TWO)
 	//playtest cvars
 	RegisterServerVariable(&avh_fastjp);
 	RegisterServerVariable(&avh_randomrfk);
+	RegisterServerVariable(&avh_parasiteonmap);
 
 	g_VoiceGameMgr.Init(&gVoiceHelper, gpGlobals->maxClients);
 
