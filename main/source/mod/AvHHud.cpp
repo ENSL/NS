@@ -4141,6 +4141,20 @@ int AvHHud::InitializeDemoPlayback(int inSize, unsigned char* inBuffer)
 		this->mHiveInfoList.push_back(theHiveInfo);
 	}
 
+	// Read in number of research infos
+	this->mResearchInfoList.clear();
+
+	int theNumResearchInfos = 0;
+	LoadData(&theNumResearchInfos, inBuffer, sizeof(int), theBytesRead);
+
+	// For each one, add a new research info
+	for (i = 0; i < theNumResearchInfos; i++)
+	{
+		AvHResearchInfo theResearchInfo;
+		LoadData(&theResearchInfo, inBuffer, sizeof(AvHResearchInfo), theBytesRead);
+		this->mResearchInfoList.push_back(theResearchInfo);
+	}
+
 	// Load and set current pie menu control
 	int thePieMenuControlLength = 0;
 	LoadData(&thePieMenuControlLength, inBuffer, sizeof(int), theBytesRead);
@@ -4253,6 +4267,9 @@ void AvHHud::InitializeDemoRecording()
 	int theNumHiveInfoRecords = (int)this->mHiveInfoList.size();
 	int theHiveInfoSize = sizeof(int) + theNumHiveInfoRecords*sizeof(AvHHiveInfo);
 
+	int theNumResearchInfoRecords = (int)this->mResearchInfoList.size();
+	int theResearchInfoSize = sizeof(int) + theNumResearchInfoRecords * sizeof(AvHResearchInfo);
+
 	string thePieMenuControl = gPieMenuHandler.GetPieMenuControl();
 	int theCurrentPieMenuControlSize = sizeof(int) + (int)thePieMenuControl.size();
 	
@@ -4280,6 +4297,13 @@ void AvHHud::InitializeDemoRecording()
 		for(HiveInfoListType::iterator theHiveInfoIter = this->mHiveInfoList.begin(); theHiveInfoIter != this->mHiveInfoList.end(); theHiveInfoIter++)
 		{
 			SaveData(theCharArray, &(*theHiveInfoIter), sizeof(AvHHiveInfo), theCounter);
+		}
+
+		// Write out num research info records
+		SaveData(theCharArray, &theNumResearchInfoRecords, sizeof(int), theCounter);
+		for (ResearchInfoListType::iterator theResearchInfoIter = this->mResearchInfoList.begin(); theResearchInfoIter != this->mResearchInfoList.end(); theResearchInfoIter++)
+		{
+			SaveData(theCharArray, &(*theResearchInfoIter), sizeof(AvHResearchInfo), theCounter);
 		}
 
 		// Save length of pie menu control name

@@ -3162,6 +3162,9 @@ void AvHGamerules::UpdateHLTVProxy()
 				const HiveInfoListType tmp;
 				NetMsg_AlienInfo_Hives( NULL, theTeamHiveInfo, tmp );
 
+				ResearchInfoListType theTeamResearchInfo = this->mTeamA.GetResearchInfoList();
+				NetMsg_PlayHUDNotification_Research(NULL, 2, theTeamResearchInfo);
+
 				this->mTimeOfLastHLTVProxyUpdate = gpGlobals->time;
 			}
         }
