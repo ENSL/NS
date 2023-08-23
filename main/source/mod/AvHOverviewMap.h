@@ -67,6 +67,7 @@ public:
     void                            Draw(const DrawInfo& inDrawInfo);
 
     int                             GetEntityAtWorldPosition(float inWorldX, float inWorldY, float inRadius) const;
+    AvHFont                         tFont;
 
 protected:
 	void							KillOldAlerts(float inCurrentTime);

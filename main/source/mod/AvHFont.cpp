@@ -193,3 +193,51 @@ int AvHFont::DrawStringReverse(int inX, int inY, const char* inString, int r, in
     return theX;
 
 }
+
+int AvHFont::DrawStringCustom(int inX, int inY, const char* inString, int r, int g, int b, int inRenderMode) const
+{
+
+    int theX = inX;
+    int theY = inY;
+
+    int theCharHeight = GetStringHeight();
+
+    AvHSpriteBeginFrame();
+
+    //AvHSpriteSetVGUIOffset(0, 0);
+
+    AvHSpriteSetRenderMode(inRenderMode);
+    AvHSpriteSetColor(r / 256.0f, g / 256.0f, b / 256.0f);
+
+    int charWidth = mSpriteWidth / 16;
+    int charHeight = mSpriteHeight / 16;
+
+    for (int i = 0; inString[i] != 0 && inString[i] != '\n'; ++i)
+    {
+
+        unsigned char c = inString[i];
+
+        if (c < 32)
+        {
+            // Unprintable.
+            continue;
+        }
+
+        theX += mCharWidth[c].a;
+
+        float theU = ((c % kNumCharsPerRow) * charWidth) / float(mSpriteWidth);
+        float theV = ((c / kNumCharsPerRow) * charHeight) / float(mSpriteHeight);
+
+        AvHSpriteDraw(mSprite, 0, theX, theY, theX + mCharWidth[c].b, theY + theCharHeight,
+            theU, theV, theU + mCharWidth[c].b / 256.0f, theV + theCharHeight / 256.0f);
+
+        theX += mCharWidth[c].b + mCharWidth[c].c;
+
+    }
+
+    AvHSpriteEndFrame();
+    AvHSpriteSetColor(1, 1, 1);
+
+    return theX;
+
+}

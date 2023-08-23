@@ -439,6 +439,51 @@ void AvHOverviewMap::DrawMiniMapEntity(const DrawInfo& inDrawInfo, const Drawabl
             AvHSpriteSetRenderMode(theRenderMode);
             AvHSpriteDraw(theSprite, theFrame, x, y, x + w, y + h, 0, 0, 1, 1);
 
+			//alien's minimap names
+			//if (inEntity.mIsLocalPlayer)
+			if (CVAR_GET_FLOAT("hud_minimapnames") != 0 && ((mUser3 != AVH_USER3_COMMANDER_PLAYER) || CVAR_GET_FLOAT("hud_minimapnamesComm") != 0))
+			{
+				tFont.Load("sprites/nl/font_arial"); //font_arialsmall
+				//string theText;
+				char bufferb[1024];
+
+				
+				if ((inEntity.mEntityNumber >= 1) && (inEntity.mEntityNumber <= gEngfuncs.GetMaxClients()))
+				{
+					hud_player_info_t thePlayerInfo;
+					gEngfuncs.pfnGetPlayerInfo(inEntity.mEntityNumber, &thePlayerInfo);
+					if (thePlayerInfo.name && !thePlayerInfo.thisplayer && inEntity.mTeam == this->mTeam)
+					{
+						//outEntityInfoString += thePlayerInfo.name;
+						//theText = thePlayerInfo.name;
+						//sprintf(bufferb, "%s", theText.c_str());
+
+						int tR = CVAR_GET_FLOAT("hud_minimapnamesRed");
+						int tG = CVAR_GET_FLOAT("hud_minimapnamesGreen");
+						int tB = CVAR_GET_FLOAT("hud_minimapnamesBlue");
+
+						sprintf(bufferb, "%s", thePlayerInfo.name);
+						
+						if (bufferb) {
+							std::string text(bufferb);
+
+							if (CVAR_GET_FLOAT("hud_minimapnames") >= 2) { //3 letter max
+								//strcpy(rgDeathNoticeList[i].szVictim, killed_with.c_str() + 2);
+								//while (text.length() > 3) {
+								//	text[3]
+								//}
+								//bufferb
+								text = text.substr(0, max((int)CVAR_GET_FLOAT("hud_minimapnames"), 1));
+							}
+							
+							tFont.DrawStringCustom(x + 12 - text.length() * 3, y - 18, text.c_str(), tR, tG, tB, 0);
+						}
+
+					}
+				}
+			}
+
+
         }
 
         if (isPlayer || theIsWaypoint)

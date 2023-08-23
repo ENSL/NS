@@ -221,6 +221,11 @@ void CHud :: Init( void )
 
 	CVAR_CREATE("cl_weaponswap", "2", FCVAR_ARCHIVE | FCVAR_USERINFO);
 	CVAR_CREATE("hud_teamhealthalert", "95", FCVAR_ARCHIVE);
+	CVAR_CREATE("hud_minimapnames", "0", FCVAR_ARCHIVE);
+	CVAR_CREATE("hud_minimapnamesComm", "0", FCVAR_ARCHIVE);
+	CVAR_CREATE("hud_minimapnamesRed", "255", FCVAR_ARCHIVE);
+	CVAR_CREATE("hud_minimapnamesGreen", "255", FCVAR_ARCHIVE);
+	CVAR_CREATE("hud_minimapnamesBlue", "255", FCVAR_ARCHIVE);
 
 	m_pSpriteList = NULL;
 
