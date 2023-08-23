@@ -5435,9 +5435,24 @@ bool AvHHud::GetEntityInfoString(int inEntityID, string& outEntityInfoString, bo
 				// Do this client side so the extra chars don't need to be transmitted. Welder handled server side in UpdateStatusBar.
 				if (theEntity->curstate.team == theTeam)
 				{
+					if (g_PlayerExtraInfo[theEntity->index].extra & WEAPON_WELDER)
+					{
+						if (CVAR_GET_FLOAT("hud_nameinfo") == 1)
+							outEntityInfoString += " [Welder]";
+						else if (CVAR_GET_FLOAT("hud_nameinfo") == 2.0f)
+							outEntityInfoString += " [Weld]";
+						else if (CVAR_GET_FLOAT("hud_nameinfo") == 3.0f)
+							outEntityInfoString += " [W]";
+					}
 					if (GetHasUpgrade(theEntity->curstate.iuser4, MASK_PARASITED))
 					{
-						outEntityInfoString += " [Parasited]";
+						if (CVAR_GET_FLOAT("hud_nameinfo") == 1)
+							outEntityInfoString += " [Parasited]";
+						else if (CVAR_GET_FLOAT("hud_nameinfo") == 2.0f)
+							outEntityInfoString += " [Para]";
+						else if (CVAR_GET_FLOAT("hud_nameinfo") == 3.0f)
+							outEntityInfoString += " [P]";
+
 					}
 				}
 

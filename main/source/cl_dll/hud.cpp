@@ -226,6 +226,7 @@ void CHud :: Init( void )
 	CVAR_CREATE("hud_minimapnamesRed", "255", FCVAR_ARCHIVE);
 	CVAR_CREATE("hud_minimapnamesGreen", "255", FCVAR_ARCHIVE);
 	CVAR_CREATE("hud_minimapnamesBlue", "255", FCVAR_ARCHIVE);
+	CVAR_CREATE("hud_nameinfo", "1", FCVAR_ARCHIVE);
 
 	m_pSpriteList = NULL;
 
