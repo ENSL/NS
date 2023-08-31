@@ -9445,25 +9445,26 @@ void AvHPlayer::UpdateAmbientSounds()
 
 void AvHPlayer::UpdateAlienUI()
 {
-    AvHTeam* theTeamPointer = this->GetTeamPointer();
-    bool theIsMarine = false;
+    //AvHTeam* theTeamPointer = this->GetTeamPointer();
+    //bool theIsMarine = false;
     bool theIsAlien = false;
 
-    if(this->GetIsAlien())
+    if(this->GetIsAlien(true))
     {
         theIsAlien = true;
     }
-    else if(this->GetIsMarine())
+    if(this->GetIsMarine())
     {
-        theIsMarine = true;
+        return;
+        //theIsMarine = true;
     }
 
     // Update when going back to ready room, so check if not-marine instead of is-alien
-    if(!theIsMarine)
-    {
+    //if(!theIsMarine)
+    //{
         bool theCanRespawn = GetGameRules()->FPlayerCanRespawn(this);
 
-        AvHTeam* theTeamPointer = this->GetTeamPointer();
+        AvHTeam* theTeamPointer = this->GetTeamPointer(true);
         if(theTeamPointer)
         {
             AvHAlienUpgradeListType theUpgrades = theTeamPointer->GetAlienUpgrades();
@@ -9512,12 +9513,13 @@ void AvHPlayer::UpdateAlienUI()
 				NetMsg_HUDSetUpgrades(this->pev, teamMask);
 			}
 		}
-    }
+    //}
 }
 
 void AvHPlayer::UpdateMarineUI()
 {
-    AvHTeam* theTeamPointer = this->GetTeamPointer();
+    //AvHTeam* theTeamPointer = this->GetTeamPointer();
+    AvHTeam* theTeamPointer = this->GetTeamPointer(true);
     bool theIsMarine = false;
     bool theIsAlien = false;
 
