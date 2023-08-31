@@ -120,7 +120,7 @@ DESCRIPTION SERVER_OPTIONS
 	{
 		"Enable cheats"
 		{ BOOL }
-		{ "1" }
+		{ "0" }
 	}
 
 	"mp_drawdamage"
