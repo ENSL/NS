@@ -448,6 +448,9 @@ public:
 	void			ClearCenterText();
 	// :
 
+	bool			GetDrawOrderOverlay() const;
+	void			SetDrawOrderOverlay(bool drawOverlay);
+
 private:
 
 	// :
@@ -867,6 +870,8 @@ private:
 
     typedef std::map<std::string, int> ServerVariableMapType;
     ServerVariableMapType   mServerVariableMap;
+
+	bool					mDrawOrderOverlay;
 
     static bool             sShowMap;
 
