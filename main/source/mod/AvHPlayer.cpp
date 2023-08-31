@@ -3434,6 +3434,7 @@ void AvHPlayer::Init()
     this->mEnemySighted = false;
     this->mTriggerUncloak = false;
     this->mTimeOfLastSaying = 0;
+    this->mRecentSayingCounter = 0;
     this->mLastSaying = MESSAGE_NULL;
     this->mTimeOfLastEnemySighting = 0;
     this->mClientInTopDownMode = false;
@@ -3855,7 +3856,8 @@ void AvHPlayer::ValidateClientMoveEvents()
         bool theIsValid = false;
         this->mCurrentCommand.impulse = MESSAGE_NULL;
         this->pev->impulse = MESSAGE_NULL;
-        const float kMinSayingInterval = 3.0f;
+        const float kMinSayingInterval = 0.5f;
+        const float kRepeatSayingInterval = 3.0f;
 
         // Process universally allowable impulses
         switch(theMessageID)
@@ -3883,13 +3885,18 @@ void AvHPlayer::ValidateClientMoveEvents()
 // preventing spamming of request and ack
 		case ORDER_REQUEST:
         case ORDER_ACK:
-// :
-			if(GetGameRules()->GetCheatsEnabled() || (gpGlobals->time > (this->mTimeOfLastSaying + kMinSayingInterval)))
+            // If cheats
+			if(GetGameRules()->GetCheatsEnabled() 
+            // OR It's less than the min saying interval, with less than 2 recent sayings, and they're not trying to say the same thing twice
+            || (gpGlobals->time > (this->mTimeOfLastSaying + kMinSayingInterval) && this->mRecentSayingCounter < 2
+            && !(gpGlobals->time < (this->mTimeOfLastSaying + kRepeatSayingInterval) && theMessageID == this->GetLastSaying())))
             {
                 theIsValid = true;
+                this->mRecentSayingCounter += 1;
             }
             else
             {
+                //2023 - Why???
                 int a = 0;
             }
             break;
@@ -7156,7 +7163,8 @@ void AvHPlayer::InternalSpeakingThink()
         this->mIsSpeaking = false;
         this->mOrderAcknowledged = false;
         this->mOrdersRequested = false;
-    }
+        this->mRecentSayingCounter = 0;
+    }     
 }
 
 void AvHPlayer::PreThink( void )

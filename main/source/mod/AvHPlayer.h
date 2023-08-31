@@ -651,6 +651,7 @@ private:
 
 	float				mTimeOfLastF4;
 	float				mTimeOfLastSaying;
+	int					mRecentSayingCounter;
 	AvHMessageID		mLastSaying;
 	bool				mIsSpeaking;
 	bool				mOrdersRequested;
