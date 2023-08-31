@@ -2533,6 +2533,8 @@ void AvHHud::DrawBuildHealthEffectsForEntity(int inEntityIndex, float inAlpha)
 		{
 			const int kDrawEnemyBuildingDistance = 200;
 			bool healthLowEnough = theHealthPercentage < (CVAR_GET_FLOAT("hud_teamhealthalert") * 0.01f);
+			bool isSpectating = this->GetPlayMode() == PLAYMODE_AWAITINGREINFORCEMENT || this->GetPlayMode() == PLAYMODE_OBSERVER;
+			bool theEntityIsSpecTarget = inEntityIndex == theLocalPlayer->curstate.iuser2;
 
 			// Draw effects if we are in top-down mode OR
 			if(	this->GetInTopDownMode() ||
@@ -2544,8 +2546,8 @@ void AvHHud::DrawBuildHealthEffectsForEntity(int inEntityIndex, float inAlpha)
 				//(theIsOnOurTeam && (this->GetHUDUser3() == AVH_USER3_ALIEN_PLAYER2)) ||
 				(theIsOnOurTeam && !theEntityIsPlayer && (this->GetHUDUser3() == AVH_USER3_ALIEN_PLAYER2)) ||
 
-				// It's a friendly player with <95% armor/health and we have a welder in our inventory or are gorge OR
-				(theIsOnOurTeam && theEntityIsPlayer && healthLowEnough && (this->mHasWelder || this->GetHUDUser3() == AVH_USER3_ALIEN_PLAYER2)) ||
+				// It's a friendly player with <95% armor/health and we have a welder in our inventory or are gorge and the player isn't one we're spectating OR
+				(theIsOnOurTeam && theEntityIsPlayer && healthLowEnough && (this->mHasWelder || this->GetHUDUser3() == AVH_USER3_ALIEN_PLAYER2) && !(isSpectating && theEntityIsSpecTarget)) ||
 
 				// welder/healing spray is selected
 				(this->mCurrentWeaponID == AVH_WEAPON_WELDER || this->mCurrentWeaponID == AVH_WEAPON_HEALINGSPRAY)
@@ -2901,7 +2903,7 @@ void AvHHud::RenderCommonUI()
         DrawHUDStructureNotification();
 
 		if (CVAR_GET_FLOAT("hud_drawwaypoints") == 1 || (CVAR_GET_FLOAT("hud_drawwaypoints") == 2.0f && this->GetDrawOrderOverlay())) {
-        this->DrawOrders();
+			this->DrawOrders();
 		}
         this->DrawHelpIcons();
 		// : 0000971
