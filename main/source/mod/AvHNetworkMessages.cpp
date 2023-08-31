@@ -1544,7 +1544,10 @@ union float_converter
 	}
 	void NetMsg_PlayHUDNotification_Research(entvars_t* const pev, const int flags, const ResearchInfoListType& researching)
 	{
-		MESSAGE_BEGIN(MSG_ONE, g_msgPlayHUDNotification, NULL, pev);
+		if (pev == NULL)
+			MESSAGE_BEGIN( MSG_SPEC, g_msgPlayHUDNotification);
+		else
+			MESSAGE_BEGIN(MSG_ONE, g_msgPlayHUDNotification, NULL, pev);
 			WRITE_BYTE(flags);
 			if (flags == 2)
 			{
