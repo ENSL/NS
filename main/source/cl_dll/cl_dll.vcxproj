@@ -165,19 +165,19 @@
       <AdditionalLibraryDirectories>$(SolutionDir)\particles\Release;$(SolutionDir)\includes\lpng1251;$(SolutionDir)\includes\zlib-1.2.8;$(SolutionDir)\includes\vgui\lib\win32_vc6;$(SolutionDir)\lib\public;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
-      <ProgramDatabaseFile>
-      </ProgramDatabaseFile>
-      <MapFileName>
-      </MapFileName>
+      <ProgramDatabaseFile>$(OutDir)cl_dll.pdb</ProgramDatabaseFile>
+      <MapFileName>$(OutDir)cl_dll.map</MapFileName>
       <SubSystem>Windows</SubSystem>
       <ImportLibrary>$(IntDir)cl_dll.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
-      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
       <TreatLinkerWarningAsErrors>
       </TreatLinkerWarningAsErrors>
       <AdditionalOptions>/NODEFAULTLIB:LIBCMT %(AdditionalOptions)</AdditionalOptions>
       <OutputFile>$(SolutionDir)..\cl_dlls\$(TargetName)$(TargetExt)</OutputFile>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapExports>true</MapExports>
     </Link>
     <Midl>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
