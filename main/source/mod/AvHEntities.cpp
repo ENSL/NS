@@ -1712,32 +1712,55 @@ void AvHWebStrand::Spawn(void)
 	CBeam::Spawn();
 
 	// Spawn code
-	this->SetTouch(&AvHWebStrand::StrandTouch);
-	this->pev->solid = SOLID_TRIGGER;
-	//this->pev->solid = SOLID_BBOX;
+	this->SetTouch(NULL);
+	this->pev->solid = SOLID_NOT;
 	this->pev->health = kWebHitPoints;
 	this->pev->takedamage = DAMAGE_YES;
 	this->mSolid=false;
-	this->pev->nextthink = gpGlobals->time + BALANCE_VAR(kWebWarmupTime);
+	this->mHardenTime = gpGlobals->time + BALANCE_VAR(kWebWarmupTime);
+	this->pev->nextthink = gpGlobals->time + kWebThinkInterval;
 	SetThink(&AvHWebStrand::StrandThink);
-	
-	//SetBits(this->pev->flags, FL_MONSTER);
 	
 	this->RelinkBeam();
 
 	EMIT_SOUND(ENT(this->pev), CHAN_AUTO, kWebStrandFormSound, 1.0, ATTN_IDLE);
-	//SetThink(StrandExpire);
-	//this->pev->nextthink = gpGlobals->time + kWebStrandLifetime;
+
 }
 
 void AvHWebStrand::StrandThink() 
 {
-	EMIT_SOUND(ENT(this->pev), CHAN_AUTO, kWebStrandHardenSound, 1.0, ATTN_IDLE);
-	this->SetBrightness( 32 );
-	this->SetColor( 255, 255, 255 );
-	this->SetFrame(1);
-	this->mSolid=true;
-	SetThink(NULL);
+	TraceResult Hit;
+
+	Vector StartTrace = this->GetStartPos();
+	Vector EndTrace = this->GetEndPos();
+
+	UTIL_TraceLine(StartTrace, EndTrace, dont_ignore_monsters, nullptr, &Hit);
+
+	if (!FNullEnt(Hit.pHit))
+	{
+		edict_t* webbedEdict = Hit.pHit;
+		AvHPlayer* theWebbedPlayer = dynamic_cast<AvHPlayer*>(CBaseEntity::Instance(webbedEdict));
+
+		if (theWebbedPlayer)
+		{
+			StrandTouch(theWebbedPlayer);
+		}
+	}
+
+	if (!this->mSolid)
+	{
+		if (gpGlobals->time >= this->mHardenTime)
+		{
+			EMIT_SOUND(ENT(this->pev), CHAN_AUTO, kWebStrandHardenSound, 1.0, ATTN_IDLE);
+			this->SetBrightness(32);
+			this->SetColor(255, 255, 255);
+			this->SetFrame(1);
+			this->mSolid = true;
+		}
+	}
+
+	this->pev->nextthink = gpGlobals->time + kWebThinkInterval;
+
 }
 void AvHWebStrand::StrandExpire()
 {
@@ -1749,7 +1772,7 @@ void AvHWebStrand::StrandTouch( CBaseEntity *pOther )
 {
 	// Webs can never break on friendlies
 	//if(GetGameRules()->CanEntityDoDamageTo(this, pOther))
-	if(pOther->pev->team != this->pev->team)
+	if (pOther->pev->team != this->pev->team)
 	{
 		if ( this->mSolid ) {
 			AvHPlayer* thePlayer = dynamic_cast<AvHPlayer*>(pOther);

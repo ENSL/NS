@@ -526,6 +526,7 @@ public:
 
 private:
 	bool 		mSolid;
+	float		mHardenTime;
 };
 
 class AvHFuncResource : public CBaseAnimating

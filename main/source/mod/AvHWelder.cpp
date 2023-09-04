@@ -51,6 +51,7 @@
 #include "AvHMarineEquipmentConstants.h"
 #include "AvHWeldable.h"
 #include "AvHSpecials.h"
+#include "MathUtil.h"
 
 #ifdef AVH_SERVER
 #include "AvHPlayerUpgrade.h"
@@ -179,16 +180,34 @@ void AvHWelder::FireProjectiles(void)
 		}
 	}
 
+
+
 	// Scan area for webs, and clear them.  I can't make the webs solid, and it seems like the welder might do this, so why not?  Also
 	// adds neat element of specialization where a guy with a welder might be needed to clear an area before an attack, kinda RPS
 	const float kWebClearingRadius = 75;
+	const float kWebCuttingDistance = 10.0f;
 	CBaseEntity* thePotentialWebStrand = NULL;
 	while((thePotentialWebStrand = UTIL_FindEntityInSphere(thePotentialWebStrand, theWelderBarrel, kWebClearingRadius)) != NULL)
 	{
 		AvHWebStrand* theWebStrand = dynamic_cast<AvHWebStrand*>(thePotentialWebStrand);
 		if(theWebStrand)
 		{
-			theWebStrand->Break();
+			//theWebStrand->Break();
+
+			Vector WelderCheckPoint;
+			VectorGetMidPointOnLine(theWelderBarrel, vecEnd, WelderCheckPoint);
+
+			Vector ClosestPointOnStrand;
+			VectorGetClosestPointOnLine(theWebStrand->GetStartPos(), theWebStrand->GetEndPos(), WelderCheckPoint, ClosestPointOnStrand);
+
+			float DistCuttingLineToStrand = VectorDistanceFromLine(theWelderBarrel, vecEnd, ClosestPointOnStrand);
+
+			if (DistCuttingLineToStrand <= kWebCuttingDistance)
+			{
+				theWebStrand->Break();
+			}
+
+			
 		}
 	}
 

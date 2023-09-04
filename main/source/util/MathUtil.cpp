@@ -349,6 +349,69 @@ double VectorDistance2D(const float* in1, const float* in2)
 	return sqrt(theXDiff*theXDiff + theYDiff*theYDiff);
 }
 
+// Added by Neoptolemus
+
+void VectorGetClosestPointOnLine(const float* inLineFrom, const float* inLineTo, const float* inTestPosition, float *outClosestPoint)
+{
+	
+	float vVector1[3];
+	VectorSubtract(inTestPosition, inLineFrom, vVector1);
+
+	float vVector2[3];
+	VectorSubtract(inLineTo, inLineFrom, vVector2);
+
+	VectorNormalize(vVector2);
+
+	float d = VectorDistance(inLineTo, inLineFrom);
+	float t = DotProduct(vVector2, vVector1);
+
+	if (t <= 0)
+	{
+		outClosestPoint[0] = inLineFrom[0];
+		outClosestPoint[1] = inLineFrom[1];
+		outClosestPoint[2] = inLineFrom[2];
+
+		return;
+	}
+
+	if (t >= d)
+	{
+		outClosestPoint[0] = inLineTo[0];
+		outClosestPoint[1] = inLineTo[1];
+		outClosestPoint[2] = inLineTo[2];
+
+		return;
+	}
+
+	
+	float vVector3[3];
+
+	VectorScale(vVector2, t, vVector3);
+
+	outClosestPoint[0] = inLineFrom[0] + vVector3[0];
+	outClosestPoint[1] = inLineFrom[1] + vVector3[1];
+	outClosestPoint[2] = inLineFrom[2] + vVector3[2];
+
+}
+
+float VectorDistanceFromLine(const float* inLineFrom, const float* inLineTo, const float* inTestPosition)
+{
+	float nearestPointToLine[3];
+	VectorGetClosestPointOnLine(inLineFrom, inLineTo, inTestPosition, nearestPointToLine);
+
+	return VectorDistance(inTestPosition, nearestPointToLine);
+}
+
+void VectorGetMidPointOnLine(const float* inLineFrom, const float* inLineTo, float* outPosition)
+{
+	float vVector1[3];
+	VectorSubtract(inLineTo, inLineFrom, vVector1);
+	VectorScale(vVector1, 0.5f, vVector1);
+
+	VectorAdd(inLineFrom, vVector1, outPosition);
+}
+
+
 // Added by mmcguire.
 
 void VectorsToAngles(const float forward[3], const float right[3], const float up[3], float angles[3])

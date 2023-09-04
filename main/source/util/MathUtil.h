@@ -47,6 +47,9 @@ bool IsVectorBetweenBoundingVectors(const float* inOrigin, const float* inRay, c
 void VectorRotate (const float* in1, const float in2[3][4], float* out);
 double VectorDistance(const float* in1, const float* in2);
 double VectorDistance2D(const float* in1, const float* in2);
+void VectorGetClosestPointOnLine(const float* inLineFrom, const float* inLineTo, const float* inTestPosition, float* outClosestPoint);
+float VectorDistanceFromLine(const float* inLineFrom, const float* inLineTo, const float* inTestPosition);
+void VectorGetMidPointOnLine(const float* inLineFrom, const float* inLineTo, float* outPosition);
 
 // Added by mmcguire.
 /**
