@@ -2745,7 +2745,7 @@ bool AvHSHUGetCanDropItem(vec3_t& ioCenter, Vector& inMinSize, Vector& inMaxSize
 	//adjust origin to be base
 	float theOrigin[3] = { ioCenter[0], ioCenter[1], ioCenter[2] + inMinSize[2] };
 
-	CollisionChecker Checker(pmove,kHLPointHullIndex,CollisionChecker::HULL_TYPE_ALL,inIgnorePlayers,CollisionChecker::IGNORE_NONE,inIgnoreIndex);
+	CollisionChecker Checker(pmove, kHLPointHullIndex, CollisionChecker::HULL_TYPE_ALL, inIgnorePlayers, CollisionChecker::IGNORE_INTANGIBLE, inIgnoreIndex);
 	bool theCanDropItem = (Checker.GetContentsInCylinder(theOrigin,theRadius,theHeight) != CONTENTS_SOLID);
 
 
@@ -3553,7 +3553,7 @@ bool AvHSHUServerTraceWaypoint(const vec3_t& inStartPos, const vec3_t& inEndPos,
 					{
 						// and if surface isn't under water, lava, sky
 						int thePointContents = UTIL_PointContents(tr.vecEndPos);
-						if(thePointContents == CONTENTS_EMPTY)
+						if (thePointContents == CONTENTS_EMPTY || thePointContents == 0)
 						{
 							// and if there's enough room to build
 							if(outReturnCode)

@@ -161,7 +161,12 @@ void AvHWeldable::Killed( entvars_t *pevAttacker, int iGib )
 {
 	AvHSUExplodeEntity(this, this->mMaterial);
 
-	AvHBaseEntity::Killed(pevAttacker, iGib);
+	//AvHBaseEntity::Killed(pevAttacker, iGib);
+
+	this->pev->solid = SOLID_NOT;
+	this->pev->effects = EF_NODRAW;
+	this->pev->takedamage = DAMAGE_NO;
+	this->pev->deadflag = DEAD_DEAD;
 
 	this->TriggerBroken();
 }
@@ -242,6 +247,8 @@ void AvHWeldable::SetPEVFlagsFromState()
 	{
 		this->pev->solid = SOLID_BSP;
 		this->pev->movetype = MOVETYPE_PUSH;
+		this->pev->effects = 0;
+		this->pev->deadflag = DEAD_NO;
 	}
 	else
 	{
@@ -312,7 +319,12 @@ void AvHWeldable::UpdateEntityState()
 		{
 			this->pev->rendermode = kRenderTransTexture;
 			this->pev->renderamt = 0;
-			this->pev->solid = 5;
+			//this->pev->solid = 5;
+
+			this->pev->solid = SOLID_NOT;
+			this->pev->effects = EF_NODRAW;
+			this->pev->takedamage = DAMAGE_NO;
+			this->pev->deadflag = DEAD_DEAD;
 
 			AvHSUExplodeEntity(this, this->mMaterial);
 		}
