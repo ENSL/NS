@@ -349,7 +349,7 @@ public:
 	void			TriggerUncloak();
 
 	//Nexus interface - replaces all old auth information
-	bool			GetIsAuthorized(AvHAuthAction inAction, int inParameter) const;
+	bool			GetIsAuthorized(AvHAuthAction inAction, int inParameter);
 #ifdef USE_OLDAUTH
 	int				GetAuthenticationMask();
 	bool			GetIsMember(const AvHPlayerAuthentication inAuthGroup);

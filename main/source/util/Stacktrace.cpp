@@ -299,7 +299,7 @@ char *stackTrace( int skipAssert ) {
 							unsigned char *ptr = (unsigned char *)*a;
 							if( ptr >= (unsigned char *)baseAddress ) {
 								for( int k=0; k<3; k++, ptr+=16 ) {
-									OUTS "  %X: ", ptr );
+									OUTS "  %X: ", (unsigned int)ptr );
 									for( l=0; l<16; l++ ) OUTS "%02X ", ptr[l] );
 									OUTS "  " );
 									for( l=0; l<16; l++ ) OUTS "%c", ptr[l]>=31&&ptr[l]<127?ptr[l]:'.' );

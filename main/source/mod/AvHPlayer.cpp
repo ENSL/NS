@@ -10322,7 +10322,7 @@ bool AvHPlayer::JoinTeamCooledDown(float inCoolDownTime) {
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 //TODO: flesh this out with admin privileges, etc. once the UPP authorization interface has been expanded
-bool AvHPlayer::GetIsAuthorized(AvHAuthAction inAction, int inParameter) const
+bool AvHPlayer::GetIsAuthorized(AvHAuthAction inAction, int inParameter)
 {
 	switch( inAction )
 	{
@@ -10357,7 +10357,7 @@ bool AvHPlayer::GetIsAuthorized(AvHAuthAction inAction, int inParameter) const
 #ifndef BALANCE_ENABLED 
 			return false;
 #else
-			return this->GetIsMember(PLAYERAUTH_DEVELOPER);
+            return true;// this->GetIsMember(PLAYERAUTH_DEVELOPER);
 #endif
 		}
 		default:
