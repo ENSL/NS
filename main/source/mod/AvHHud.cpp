@@ -6524,7 +6524,7 @@ void AvHHud::UpdateAmbientSounds()
 	
 	for(AmbientSoundListType::iterator theIter = this->mAmbientSounds.begin(); theIter != this->mAmbientSounds.end(); theIter++)
 	{
-		if (CVAR_GET_FLOAT("cl_ambientsound") != 0)
+		if (CVAR_GET_FLOAT("cl_ambientsound") != 0 || CVAR_GET_FLOAT("cl_musicenabled") != 0)
 			theIter->StartPlayingIfNot();
 
 		theIter->UpdateVolume(theListenerPosition);

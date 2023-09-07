@@ -530,7 +530,7 @@ int UIHud::Redraw(float flTime, int intermission)
         }
 		
 		// Initialize music the first time through
-		if (CVAR_GET_FLOAT("cl_ambientsound") != 0)
+		if (CVAR_GET_FLOAT("cl_ambientsound") != 0 || CVAR_GET_FLOAT("cl_musicenabled") != 0)
 			this->InitializeSound();
     }
 
@@ -628,7 +628,7 @@ bool UIHud::Update(float inCurrentTime, string& outError)
 	this->mManager.Update(inCurrentTime);
 
 	bool theSuccess = true;
-	if (CVAR_GET_FLOAT("cl_ambientsound") != 0) {
+	if (CVAR_GET_FLOAT("cl_ambientsound") != 0 || CVAR_GET_FLOAT("cl_musicenabled") != 0) {
 		this->UpdateMusic(inCurrentTime);
 
 		//bool theSuccess = this->UpdateInternetStream(inCurrentTime, outError);
