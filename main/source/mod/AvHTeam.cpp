@@ -2747,7 +2747,7 @@ void AvHTeam::UpdateAlerts()
 			thePlayerName = STRING(thePlayer->pev->netname);
 			
 			char theFullErrorMesssage[512];
-			sprintf(theFullErrorMesssage, "Invalid player bug detected <\"%s\">: %d", thePlayerName, theErrorMessage);
+			sprintf(theFullErrorMesssage, "Invalid player bug detected <\"%s\">: %s", thePlayerName, theErrorMessage);
 			UTIL_SayTextAll(theFullErrorMesssage, thePlayer);
 		}
 	}
