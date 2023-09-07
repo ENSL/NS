@@ -4943,7 +4943,7 @@ physent_t *PM_Ladder( void )
             num = hull->firstclipnode;
 
             // Engine returns monster hull (64x64x64) for Onos, but Onos uses custom (64x64x108). We correct it here
-            if (pmove->iuser3 == AVH_USER3_ALIEN_PLAYER5)
+            if (pmove->iuser3 == AVH_USER3_ALIEN_PLAYER5 && !(pmove->flags & FL_DUCKING))
             {
                 hull->clip_mins[2] = -54.0f;
                 hull->clip_maxs[2] = 54.0f;
