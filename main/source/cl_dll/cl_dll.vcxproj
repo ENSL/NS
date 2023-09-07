@@ -122,7 +122,7 @@
     <Link>
       <AdditionalDependencies>particles.lib;vgui.lib;wsock32.lib;sdl2.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>$(SolutionDir)\Release\Particles;$(SolutionDir)\includes\lpng1251;$(SolutionDir)\includes\zlib-1.2.8;$(SolutionDir)\includes\vgui\lib\win32_vc6;$(SolutionDir)\lib\public;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)\Release\Particles;$(SolutionDir)\includes\vgui\lib\win32_vc6;$(SolutionDir)\lib\public</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
       <ProgramDatabaseFile>
@@ -185,7 +185,7 @@
     <Link>
       <AdditionalDependencies>particles.lib;vgui.lib;wsock32.lib;sdl2.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>$(SolutionDir)\Release\Particles;$(SolutionDir)\includes\lpng1251;$(SolutionDir)\includes\zlib-1.2.8;$(SolutionDir)\includes\vgui\lib\win32_vc6;$(SolutionDir)\lib\public;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)\Release\Particles;$(SolutionDir)\includes\vgui\lib\win32_vc6;$(SolutionDir)\lib\public</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
       <ProgramDatabaseFile>
@@ -249,7 +249,7 @@
     <Link>
       <AdditionalDependencies>particles.lib;vgui.lib;wsock32.lib;sdl2.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>$(SolutionDir)\Debug\Particles;$(SolutionDir)\includes\lpng1251;$(SolutionDir)\includes\zlib-1.2.8;$(SolutionDir)\includes\vgui\lib\win32_vc6;$(SolutionDir)\lib\public;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)\Debug\Particles;$(SolutionDir)\includes\vgui\lib\win32_vc6;$(SolutionDir)\lib\public</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
       <ProgramDatabaseFile>$(OutDir)cl_dll.pdb</ProgramDatabaseFile>
