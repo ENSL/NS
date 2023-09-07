@@ -530,7 +530,8 @@ int UIHud::Redraw(float flTime, int intermission)
         }
 		
 		// Initialize music the first time through
-		this->InitializeSound();
+		if (CVAR_GET_FLOAT("cl_ambientsound") != 0)
+			this->InitializeSound();
     }
 
     string theErrorString;
@@ -568,9 +569,10 @@ void UIHud::ShutdownMusic(void)
 
         this->StopInternetStream();
 
-		mFMOD->FSOUND_Close();
-
-        FMOD_FreeInstance(mFMOD);
+		////Commented out to fix the dreaded hang on exit! Let HL and the OS take care of it.
+		//mFMOD->FSOUND_Close();
+		//
+        //FMOD_FreeInstance(mFMOD);
         mFMOD = NULL;
         
         this->mSoundInitialized = false;
@@ -623,13 +625,17 @@ void UIHud::ToggleMouse(void)
 
 bool UIHud::Update(float inCurrentTime, string& outError)
 {
-    this->mManager.Update(inCurrentTime);
+	this->mManager.Update(inCurrentTime);
 
-	this->UpdateMusic(inCurrentTime);
+	bool theSuccess = true;
+	if (CVAR_GET_FLOAT("cl_ambientsound") != 0) {
+		this->UpdateMusic(inCurrentTime);
 
-    bool theSuccess = this->UpdateInternetStream(inCurrentTime, outError);
+		//bool theSuccess = this->UpdateInternetStream(inCurrentTime, outError);
+		theSuccess = this->UpdateInternetStream(inCurrentTime, outError);
+	}
 
-    return theSuccess;
+	return theSuccess;
 }
 
 int UIHud::UpdateClientData(client_data_t *cdata, float time)

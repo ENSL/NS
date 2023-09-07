@@ -50,7 +50,7 @@ DESCRIPTION INFO_OPTIONS
 
 	"cl_ambientsound"
 	{
-		"Ambient sound volume (0 to 1)"
+		"Ambient sound volume (0 to 100)"
 		{ NUMBER 0.000000 1.000000 }
 		{ "0.000000" }
 	}

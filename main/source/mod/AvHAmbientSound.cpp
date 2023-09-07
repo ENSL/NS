@@ -90,28 +90,28 @@ void AvHAmbientSound::UpdateVolume(const Vector& inListenerPosition)
 {
 	if(this->mInitialized)
 	{
-	Vector theDistanceVector = inListenerPosition - this->mPosition;
-	float theDistance = sqrt(theDistanceVector[0]*theDistanceVector[0] + theDistanceVector[1]*theDistanceVector[1] + theDistanceVector[2]*theDistanceVector[2]);
+		Vector theDistanceVector = inListenerPosition - this->mPosition;
+		float theDistance = sqrt(theDistanceVector[0]*theDistanceVector[0] + theDistanceVector[1]*theDistanceVector[1] + theDistanceVector[2]*theDistanceVector[2]);
 
-	//FSOUND_SetPan(this->mChannel, FSOUND_STEREOPAN);
-	int theVolume = this->mVolume;
+		//FSOUND_SetPan(this->mChannel, FSOUND_STEREOPAN);
+		int theVolume = this->mVolume;
 
-	if(this->mFadeDistance > 0)
-	{
-		theVolume = this->mVolume - this->mVolume*(theDistance/(float)this->mFadeDistance);
-	}
+		if(this->mFadeDistance > 0)
+		{
+			theVolume = this->mVolume - this->mVolume*(theDistance/(float)this->mFadeDistance);
+		}
 
-		float ambientscale = (CVAR_GET_FLOAT("cl_ambientsound"));
+		float ambientscale = CVAR_GET_FLOAT("cl_ambientsound") * 0.01f;
 		ambientscale = min(max(0, ambientscale), 1);
 		theVolume = min(max(0, theVolume), 255);
 		theVolume *= ambientscale;
 		
-        FMOD_INSTANCE* theFMOD = gHUD.GetFMOD();
+		FMOD_INSTANCE* theFMOD = gHUD.GetFMOD();
 
-        if (theFMOD)
-        {
+		if (theFMOD)
+		{
 			theFMOD->FSOUND_SetVolume(this->mChannel, theVolume);
-        }
+		}
 
 	}
 }
