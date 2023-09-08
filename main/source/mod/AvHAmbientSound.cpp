@@ -100,11 +100,10 @@ void AvHAmbientSound::UpdateVolume(const Vector& inListenerPosition)
 		{
 			theVolume = this->mVolume - this->mVolume*(theDistance/(float)this->mFadeDistance);
 		}
-
-		float ambientscale = CVAR_GET_FLOAT("cl_ambientsound") * 0.01f;
-		ambientscale = min(max(0, ambientscale), 1);
-		theVolume = min(max(0, theVolume), 255);
-		theVolume *= ambientscale;
+		//cl_ambientsound 1 is original NS3.2 volume, now changable as well as scaled by the master volume.
+		float ambientscale = CVAR_GET_FLOAT("cl_ambientsound") * CVAR_GET_FLOAT("volume");
+		ambientscale = min(max(0, ambientscale), 2);
+		theVolume = min(max(0, theVolume * ambientscale), 255);
 		
 		FMOD_INSTANCE* theFMOD = gHUD.GetFMOD();
 

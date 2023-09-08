@@ -468,7 +468,9 @@ void UIHud::PlayRandomSong(void)
 //				// Set volume to half way.  TODO: This should use a real music volume variable
 //				FSOUND_SetPan(this->mCurrentChannel, FSOUND_STEREOPAN);
 //
-		int theVolume = (int)(cl_musicvolume->value);
+		//2023 - Making "volume" cvar a master volume. Multiplying by 155 as it was the original default value on the previous 0-255 cvar range.
+		int theVolume = min(max(0, cl_musicvolume->value * CVAR_GET_FLOAT("volume") * 155), 255);
+
 		//				this->mBytesInCurrentSong = FSOUND_Stream_GetLength(this->mCurrentSongStream);
 		
 		if(this->PlaySong(theRelativeSongName, theVolume, false, this->mCurrentSongStream, this->mCurrentChannel, this->mBytesInCurrentSong))
@@ -660,11 +662,14 @@ void UIHud::UpdateMusic(float inCurrentTime)
 			this->StopMusic();
 		}
 
-		if(this->mSongIsPlaying && ((int)(cl_musicvolume->value) != this->mCurrentVolume))
+		//2023 - Making "volume" cvar a master volume. Multiplying by 155 as it was the original default value on the previous 0-255 cvar range.
+		int musicVol = min(max(0, cl_musicvolume->value * CVAR_GET_FLOAT("volume") * 155), 255);;
+
+		if (this->mSongIsPlaying && (musicVol != this->mCurrentVolume))
 		{
-			this->mCurrentVolume = (int)(cl_musicvolume->value);
-			this->mCurrentVolume = min(max(0, this->mCurrentVolume), 255);
-			cl_musicvolume->value = this->mCurrentVolume;
+			this->mCurrentVolume = musicVol;
+			//this->mCurrentVolume = min(max(0, this->mCurrentVolume), 255);
+			//cl_musicvolume->value = this->mCurrentVolume;
 		 	mFMOD->FSOUND_SetVolume(this->mCurrentChannel, this->mCurrentVolume);
 		}
 

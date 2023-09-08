@@ -1628,7 +1628,7 @@ void InitInput (void)
 	cl_autohelp			= gEngfuncs.pfnRegisterVariable ( kvAutoHelp, "1.0", FCVAR_ARCHIVE );
 	cl_centerentityid	= gEngfuncs.pfnRegisterVariable ( kvCenterEntityID, "0.0", FCVAR_ARCHIVE );
 	cl_musicenabled		= gEngfuncs.pfnRegisterVariable ( kvMusicEnabled, "0", FCVAR_ARCHIVE );
-	cl_musicvolume		= gEngfuncs.pfnRegisterVariable ( kvMusicVolume, "155", FCVAR_ARCHIVE );
+	cl_musicvolume		= gEngfuncs.pfnRegisterVariable ( kvMusicVolume, "1", FCVAR_ARCHIVE );
 	cl_musicdir			= gEngfuncs.pfnRegisterVariable ( kvMusicDirectory, "", FCVAR_ARCHIVE);
 	cl_musicdelay		= gEngfuncs.pfnRegisterVariable ( kvMusicDelay, "90", FCVAR_ARCHIVE);
 	cl_dynamiclights	= gEngfuncs.pfnRegisterVariable ( kvDynamicLights, "1", FCVAR_ARCHIVE );
