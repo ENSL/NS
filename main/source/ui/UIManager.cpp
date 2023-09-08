@@ -295,10 +295,12 @@ bool UIManager::SetLMBActionRelative(const TRTag& inTag)
 void UIManager::SetMouseVisibility(bool inState)
 {
 	//  2021 - Check if we need to run code. Prevents showcursor from incrementing or decrementing outside of useful range.
-	if (g_iVisibleMouse != inState)
+    int NewDesiredState = (inState) ? 1 : 0;
+
+	if (g_iVisibleMouse != NewDesiredState)
 	{
 		// To change whether the mouse is visible, just change this variable
-		g_iVisibleMouse = inState;
+		g_iVisibleMouse = NewDesiredState;
 
 		// Update cursor
 		if(g_iVisibleMouse)

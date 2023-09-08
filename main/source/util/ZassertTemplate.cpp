@@ -102,7 +102,7 @@ ASSERTFUNC {
 	char buffer[4096]={0,};
 	strcpy( buffer, "The system has failed an assertion:\r\nAssert: \"" );
 	strcpy( buffer+strlen(buffer), (char *)msg );
-	sprintf( buffer+strlen(buffer), "\"  @ %s:%d\r\n", file, line );
+	sprintf( buffer+strlen(buffer), "\"  @ %s:%d\r\n", (char *)file, line );
 	if( appMsg && *appMsg ) {
 		sprintf( buffer+strlen(buffer), "%s\r\n", appMsg );
 	}

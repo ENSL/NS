@@ -3601,7 +3601,7 @@ int	AvHHud::MsgFunc_DebugCSP(const char* pszName, int iSize, void* pbuf)
 	NetMsg_DebugCSP( pbuf, iSize, weapon_data, next_attack );
 
 	char theServerInfoString[512];
-	sprintf(theServerInfoString, "Server: id: %d, clip: %d, prim attack: %f, idle: %f, next attack: %f", 
+	sprintf(theServerInfoString, "Server: id: %d, clip: %d, prim attack: %f, idle: %f, next sec attack: %f, next attack: %f", 
 		weapon_data.m_iId,
 		weapon_data.m_iClip,
 		weapon_data.m_flNextPrimaryAttack,
