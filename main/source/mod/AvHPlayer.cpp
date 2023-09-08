@@ -8428,8 +8428,6 @@ void AvHPlayer::StartTopDownMode()
         VectorCopy(this->pev->angles, this->mAnglesBeforeTopDown);
         VectorCopy(this->pev->v_angle, this->mViewAnglesBeforeTopDown);
         VectorCopy(this->pev->view_ofs, this->mViewOfsBeforeTopDown);
-		//ALERT(at_console, "v_angle0:%f v_angle1:%f v_angle2:%f\n", this->pev->v_angle[0], this->pev->v_angle[1], this->pev->v_angle[2]);
-		//ALERT(at_console, "saving0:%f saving1:%f saving2:%f\n", this->mViewAnglesBeforeTopDown[0], this->mViewAnglesBeforeTopDown[1], this->mViewAnglesBeforeTopDown[2]);
         this->mAnimExtensionBeforeTopDown = this->m_szAnimExtention;
 
         this->HolsterCurrent();
@@ -8859,8 +8857,6 @@ bool AvHPlayer::StopTopDownMode()
         VectorCopy(this->mAnglesBeforeTopDown, this->pev->angles);
         VectorCopy(this->mViewAnglesBeforeTopDown, this->pev->v_angle);
         VectorCopy(this->mViewOfsBeforeTopDown, this->pev->view_ofs);
-		//ALERT(at_console, "saved0:%f saved1:%f saved2:%f\n", this->mViewAnglesBeforeTopDown[0], this->mViewAnglesBeforeTopDown[1], this->mViewAnglesBeforeTopDown[2]);
-		//ALERT(at_console, "newvangle0:%f newvangle1:%f newvangle2:%f\n", this->pev->v_angle[0], this->pev->v_angle[1], this->pev->v_angle[2]);
 
         strcpy(this->m_szAnimExtention, this->mAnimExtensionBeforeTopDown.c_str());
 
@@ -10187,7 +10183,7 @@ void AvHPlayer::UpdateTopDownMode()
 {
     if((this->mClientInTopDownMode != this->mInTopDownMode) || (this->mSpecialPASOrigin != this->mClientSpecialPASOrigin))
     {
-		vec3_t& angles = this->mInTopDownMode ? this->mSpecialPASOrigin : this->mAnglesBeforeTopDown;
+		vec3_t& angles = this->mInTopDownMode ? this->mSpecialPASOrigin : this->mViewAnglesBeforeTopDown;
 		float position[3] = { angles.x, angles.y, angles.z };
 		NetMsg_SetTopDown_Position( this->pev, this->mInTopDownMode, position );
 
