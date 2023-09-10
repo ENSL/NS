@@ -76,6 +76,7 @@ private:
 	CGrid			m_PlayerGrids[NUM_ROWS];				// The grid with player and team info. 
 	CLabelHeader	m_PlayerEntries[NUM_COLUMNS][NUM_ROWS];	// Labels for the grid entries.
 
+	Panel*			m_BGPanel;
 	ScorePanel::HitTestPanel	m_HitTestPanel;
 	CommandButton				*m_pCloseButton;
 	CLabelHeader*	GetPlayerEntry(int x, int y)	{return &m_PlayerEntries[x][y];}
