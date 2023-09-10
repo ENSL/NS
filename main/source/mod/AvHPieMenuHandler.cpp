@@ -291,6 +291,13 @@ void AvHPieMenuHandler::cursorMoved(int x,int y,Panel* panel)
 //	char theMessage[128];
 //	sprintf(theMessage, "AvHPieMenuHandler::cursorMoved %d, %d (panel ptr: %d).\n", x, y, (int)panel);
 //	CenterPrint(theMessage);
+	if (sPieMenuOpen && CVAR_GET_FLOAT("m_rawinput") != 0)
+	{
+		if (SDL_GetRelativeMouseMode() != SDL_TRUE)
+		{
+			SDL_SetRelativeMouseMode(SDL_TRUE);
+		}
+	}
 }
 
 void AvHPieMenuHandler::cursorEntered(Panel* panel)

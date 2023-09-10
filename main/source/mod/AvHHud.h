@@ -673,6 +673,7 @@ private:
 
 	float					mTimeLastOverwatchPulse;
 	bool					mInTopDownMode;
+	int						mFramesSinceEnteredTopdownMode;
 	int						mNumLocalSelectEvents;
 	AvHMapMode				mMapMode;
 	//@2014 make this work for linux
