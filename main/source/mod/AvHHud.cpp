@@ -2237,6 +2237,27 @@ void AvHHud::ResetComponentsForUser3()
 					this->GetManager().UnhideComponent(kSelectAllImpulsePanel);
 					//this->GetManager().UnhideComponent(kTopDownHUDTopSpritePanel);
 					//this->GetManager().UnhideComponent(kTopDownHUDBottomSpritePanel);
+
+					if (this->mFramesSinceEnteredTopdownMode > 2)
+					{
+						// Workaround for not being able to center mouse with raw input enabled.
+						if (CVAR_GET_FLOAT("m_rawinput") != 0)
+						{
+							if (SDL_GetRelativeMouseMode() != SDL_TRUE)
+							{
+								SDL_SetRelativeMouseMode(SDL_TRUE);
+#ifdef WIN32
+								ShowCursor(TRUE);
+#endif
+							}
+						}
+					}
+					else
+					{
+						this->mFramesSinceEnteredTopdownMode++;
+					}
+
+
 				}
 				//this->GetManager().UnhideComponent(kReinforcementsLabel);
 				break;
@@ -2853,6 +2874,19 @@ int	AvHHud::MsgFunc_SetTopDown(const char* pszName, int iSize, void* pbuf)
 			// Switch to top down mode!
 			this->mInTopDownMode = true;
 			this->ShowMouse();
+
+			// Workaround for not being able to center mouse with raw input enabled.
+			if (CVAR_GET_FLOAT("m_rawinput") != 0)
+			{
+				SDL_SetRelativeMouseMode(SDL_FALSE);
+				gEngfuncs.pfnSetMousePos(gEngfuncs.GetWindowCenterX(), gEngfuncs.GetWindowCenterY());
+			}
+
+			this->mFramesSinceEnteredTopdownMode = 0;
+#ifdef WIN32
+			ShowCursor(FALSE);
+#endif
+
 		}
 		
 		if(is_top_down)
