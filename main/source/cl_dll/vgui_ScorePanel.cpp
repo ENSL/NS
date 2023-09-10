@@ -201,14 +201,14 @@ ScorePanel::ScorePanel(int x,int y,int wide,int tall) : Panel(0,0, ScreenWidth()
 	Font *smallfont = pSchemes->getFont(hSmallScheme);
 	Font *tinyfont = pSchemes->getFont(hTinyScheme);
 	
-	m_BGPanel = new Panel(0, 0, 0, 96);
+	m_BGPanel = new Panel(x, y, wide, tall);
 
 	m_BGPanel->setBgColor(0, 0, 0, 96);
 	m_BGPanel->setParent(this);
 	m_BGPanel->setPos(x, y);
 	m_BGPanel->setSize(wide, tall);
-	m_BGPanel->setBounds(x, y, wide, tall);
-	m_BGPanel->addInputSignal(this);
+	//m_BGPanel->setBounds(x, y, wide, tall);
+	//m_BGPanel->addInputSignal(this);
 
 
 
@@ -375,7 +375,7 @@ ScorePanel::ScorePanel(int x,int y,int wide,int tall) : Panel(0,0, ScreenWidth()
 	// Add the hit test panel. It is invisible and traps mouse clicks so we can go into squelch mode.
 	m_HitTestPanel.setBgColor(0,0,0,255);
 	m_HitTestPanel.setParent(this);
-	m_HitTestPanel.setBounds(0, 0, ScreenWidth(), ScreenWidth());
+	m_HitTestPanel.setBounds(-1, -1, ScreenWidth()+1, ScreenHeight()+1);
 	m_HitTestPanel.addInputSignal(this);
 
 	m_pCloseButton = new CommandButton( "x", wide-XRES(12 + 4), YRES(2), XRES( 12 ) , YRES( 12 ) );
