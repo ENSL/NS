@@ -52,6 +52,7 @@ private:
 	{
 	public:
 		virtual void	internalMousePressed(MouseCode code);
+		bool			frameSinceEnteredSquelchMode;
 	};
 
 
@@ -77,8 +78,8 @@ private:
 	CLabelHeader	m_PlayerEntries[NUM_COLUMNS][NUM_ROWS];	// Labels for the grid entries.
 
 	Panel*			m_BGPanel;
-	ScorePanel::HitTestPanel	m_HitTestPanel;
-	CommandButton				*m_pCloseButton;
+	//ScorePanel::HitTestPanel	m_HitTestPanel;
+	CommandButton	*m_pCloseButton;
 	CLabelHeader*	GetPlayerEntry(int x, int y)	{return &m_PlayerEntries[x][y];}
 
 	vgui::BitmapTGA *m_pTrackerIcon;
@@ -115,6 +116,9 @@ public:
 	bool			m_bHasBeenSorted[MAX_PLAYERS];
 	int				m_iLastKilledBy;
 	int				m_fLastKillTime;
+
+	ScorePanel::HitTestPanel	m_HitTestPanel;
+
 public:
 
 	ScorePanel(int x,int y,int wide,int tall);

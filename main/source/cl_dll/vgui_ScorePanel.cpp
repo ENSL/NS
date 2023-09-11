@@ -81,6 +81,7 @@
 #include "mod/AvHServerVariables.h"
 #include "util/STLUtil.h"
 #include "ui/ScoreboardIcon.h"
+#include <SDL2/SDL_mouse.h>
 /* @2014 
 #include "common/itrackeruser.h"
 extern ITrackerUser *g_pTrackerUser;
@@ -177,6 +178,24 @@ void ScorePanel::HitTestPanel::internalMousePressed(MouseCode code)
 		{
 			_inputSignalDar[i]->mousePressed(code,this);
 		}
+
+		// Workaround for not being able to center mouse with raw input enabled.
+		if (CVAR_GET_FLOAT("m_rawinput") != 0)
+		{
+			if (SDL_GetRelativeMouseMode() == SDL_TRUE)
+			{
+				SDL_SetRelativeMouseMode(SDL_FALSE);
+				gEngfuncs.pfnSetMousePos(gEngfuncs.GetWindowCenterX(), gEngfuncs.GetWindowCenterY());
+
+				//#ifdef WIN32
+				//ShowCursor(FALSE);
+				//#endif
+			}
+		}
+
+		this->frameSinceEnteredSquelchMode = false;
+
+
 	}
 }
 
@@ -205,15 +224,10 @@ ScorePanel::ScorePanel(int x,int y,int wide,int tall) : Panel(0,0, ScreenWidth()
 
 	m_BGPanel->setBgColor(0, 0, 0, 96);
 	m_BGPanel->setParent(this);
-	m_BGPanel->setPos(x, y);
-	m_BGPanel->setSize(wide, tall);
-	//m_BGPanel->setBounds(x, y, wide, tall);
-	//m_BGPanel->addInputSignal(this);
-
-
 
 	//setBgColor(0, 0, 0, 96);
 	setBgColor(0, 0, 0, 255);
+
 	m_pCurrentHighlightLabel = NULL;
 	m_iHighlightRow = -1;
 	// : 0001073
@@ -261,8 +275,8 @@ ScorePanel::ScorePanel(int x,int y,int wide,int tall) : Panel(0,0, ScreenWidth()
 	m_TitleLabel.setContentAlignment( vgui::Label::a_center );
 
 	LineBorder *border = new LineBorder(Color(60, 60, 60, 128));
-	setBorder(border);
-	setPaintBorderEnabled(true);
+	m_BGPanel->setBorder(border);
+	m_BGPanel->setPaintBorderEnabled(true);
 
 	int xpos = g_ColumnInfo[0].m_Width + 3;
 	if (ScreenWidth() >= 640)
@@ -1574,7 +1588,7 @@ void CLabelHeader::paintBackground()
 	}
 
 	Panel::paintBackground();
-
+	
 	setBgColor(oldBg);
 }
 		

@@ -2246,11 +2246,13 @@ void AvHHud::ResetComponentsForUser3()
 							if (SDL_GetRelativeMouseMode() != SDL_TRUE)
 							{
 								SDL_SetRelativeMouseMode(SDL_TRUE);
+
+#ifdef WIN32
+								//Reincrement windows cursor now that raw input is reenabled.
+								ShowCursor(TRUE);
+#endif
 							}
 						}
-#ifdef WIN32
-						ShowCursor(TRUE);
-#endif
 					}
 					else
 					{
@@ -2880,12 +2882,14 @@ int	AvHHud::MsgFunc_SetTopDown(const char* pszName, int iSize, void* pbuf)
 			{
 				SDL_SetRelativeMouseMode(SDL_FALSE);
 				gEngfuncs.pfnSetMousePos(gEngfuncs.GetWindowCenterX(), gEngfuncs.GetWindowCenterY());
+
+#ifdef WIN32
+				//Hide windows OS cursor while raw input is momentarily off.
+				ShowCursor(FALSE);
+#endif
 			}
 
 			this->mFramesSinceEnteredTopdownMode = 0;
-#ifdef WIN32
-			ShowCursor(FALSE);
-#endif
 
 		}
 		
@@ -5397,6 +5401,27 @@ void AvHHud::UpdatePieMenuControl()
 	if(theScoreBoardIsOpen)
 	{
 		AvHPieMenuHandler::SetPieMenuControl("");
+
+		//Scoreboard squelch mode mouse centering code. This isn't a great place to put this, but it's here because piemenu uses similar scoreboard logic and raw input centering, so we need to differentiate to prevent bugs.
+		if (theScoreBoard->m_HitTestPanel.frameSinceEnteredSquelchMode == true)
+		{
+			// Workaround for not being able to center mouse with raw input enabled.
+			if (CVAR_GET_FLOAT("m_rawinput") != 0)
+			{
+				if (SDL_GetRelativeMouseMode() != SDL_TRUE)
+				{
+					SDL_SetRelativeMouseMode(SDL_TRUE);
+					//#ifdef WIN32
+					//		ShowCursor(TRUE);
+					//#endif
+				}
+			}
+		}
+		else
+		{
+			theScoreBoard->m_HitTestPanel.frameSinceEnteredSquelchMode = true;
+			//theScoreBoard->m_frameSinceEnteredSquelchMode = true;
+		}
 	}
 	else
 	{
