@@ -2246,11 +2246,11 @@ void AvHHud::ResetComponentsForUser3()
 							if (SDL_GetRelativeMouseMode() != SDL_TRUE)
 							{
 								SDL_SetRelativeMouseMode(SDL_TRUE);
-#ifdef WIN32
-								ShowCursor(TRUE);
-#endif
 							}
 						}
+#ifdef WIN32
+						ShowCursor(TRUE);
+#endif
 					}
 					else
 					{
