@@ -2745,7 +2745,7 @@ bool AvHSHUGetCanDropItem(vec3_t& ioCenter, Vector& inMinSize, Vector& inMaxSize
 	//adjust origin to be base
 	float theOrigin[3] = { ioCenter[0], ioCenter[1], ioCenter[2] + inMinSize[2] };
 
-	CollisionChecker Checker(pmove, kHLPointHullIndex, CollisionChecker::HULL_TYPE_ALL, inIgnorePlayers, CollisionChecker::IGNORE_INTANGIBLE, inIgnoreIndex);
+	CollisionChecker Checker(pmove, kHLPointHullIndex, CollisionChecker::HULL_TYPE_ALL, inIgnorePlayers, CollisionChecker::IGNORE_NONE, inIgnoreIndex);
 	bool theCanDropItem = (Checker.GetContentsInCylinder(theOrigin,theRadius,theHeight) != CONTENTS_SOLID);
 
 
