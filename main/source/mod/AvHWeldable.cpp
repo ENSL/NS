@@ -322,7 +322,7 @@ void AvHWeldable::UpdateEntityState()
 			//this->pev->solid = 5;
 
 			this->pev->solid = SOLID_NOT;
-			this->pev->effects = EF_NODRAW;
+			//this->pev->effects = EF_NODRAW;
 			this->pev->takedamage = DAMAGE_NO;
 			this->pev->deadflag = DEAD_DEAD;
 
