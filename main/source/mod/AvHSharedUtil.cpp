@@ -444,9 +444,9 @@ vec3_t AvHSHUGetRealLocation(const vec3_t& inLocation, const vec3_t& inMinBox, c
 
 	if((outLocation.x == outLocation.y) && (outLocation.y == outLocation.z) && (outLocation.z == 0.0f))
 	{
-		outLocation.x = (inMinBox.x + inMaxBox.x)/2.0f;
-		outLocation.y = (inMinBox.y + inMaxBox.y)/2.0f;
-		outLocation.z = (inMinBox.z + inMaxBox.z)/2.0f;
+		outLocation.x = (inMinBox.x + inMaxBox.x) * 0.5f;
+		outLocation.y = (inMinBox.y + inMaxBox.y) * 0.5f;
+		outLocation.z = (inMinBox.z + inMaxBox.z) * 0.5f;
 	}
 	return outLocation;
 }

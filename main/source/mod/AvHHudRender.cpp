@@ -3618,6 +3618,16 @@ void AvHHud::RenderCommanderUI()
         AvHSpriteDrawTiles(mTopDownBottomSprite, 4, 1, 0, ScreenHeight()-theHeight, ScreenWidth(), ScreenHeight(), 0, 0, 1, 1);
 	}
 
+	if (this->mCommanderResourceLabel)
+	{
+		string theResourceText;
+		char theResourceBuffer[64];
+
+		LocalizeString(kMarineResourcePrefix, theResourceText);
+		sprintf(theResourceBuffer, "%s %d", theResourceText.c_str(), this->mVisualResources);
+		this->mCommanderResourceLabel->setText(64, theResourceBuffer);
+	}
+
 	// Draw scaled sprites for all ActionButtons
 	this->DrawActionButtons();
 

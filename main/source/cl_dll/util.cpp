@@ -22,6 +22,8 @@
 #include "stdlib.h"
 #include "math.h"
 
+#include <unordered_map>
+
 #include "hud.h"
 #include "cl_util.h"
 #include "common/cl_entity.h"
@@ -38,6 +40,9 @@ extern playermove_t *pmove;
 extern float HUD_GetFOV( void );
 vec3_t vec3_origin( 0, 0, 0 );
 extern vec3_t v_angles;
+
+std::unordered_map<const char*, std::string> LocalizationMap;
+
 //double sqrt(double x);
 //
 //float Length(const float *v)
@@ -269,45 +274,62 @@ AVHHSPRITE LoadSprite(const char *pszName)
 	return SPR_Load(sz);
 }
 
+void FlushLocalization()
+{
+	LocalizationMap.clear();
+}
+
 bool LocalizeString(const char* inMessage, string& outputString)
 {
 	#define kMaxLocalizedStringLength 1024
+	
+	// Don't localize empty strings
+	if (!strcmp(inMessage, ""))
+	{
+		return false;
+	}
 
 	bool theSuccess = false;
 	char theInputString[kMaxLocalizedStringLength];
 	char theOutputString[kMaxLocalizedStringLength];
 
-	// Don't localize empty strings
-	if(strcmp(inMessage, ""))
+	if(*inMessage != '#')
 	{
-		if(*inMessage != '#')
-		{
-			sprintf(theInputString, "#%s", inMessage);
-		}
-		else
-		{
-			sprintf(theInputString, "%s", inMessage);
-		}
-		
-		if((CHudTextMessage::LocaliseTextString(theInputString, theOutputString, kMaxLocalizedStringLength) != NULL))
-		{
-			outputString = theOutputString;
+		sprintf(theInputString, "#%s", inMessage);
+	}
+	else
+	{
+		sprintf(theInputString, "%s", inMessage);
+	}
 
-			if(theOutputString[0] != '#')
-			{
-				theSuccess = true;
-			}
-			else
-			{
-				string theTempString = theOutputString;
-				theTempString = theTempString.substr(1, theTempString.length());
-				outputString = theTempString;
-			}
+	
+	std::unordered_map<const char*, std::string>::const_iterator FoundLocalization = LocalizationMap.find(theInputString);
+
+	if (FoundLocalization != LocalizationMap.end())
+	{
+		outputString = FoundLocalization->second;
+		return true;
+	}
+		
+	if((CHudTextMessage::LocaliseTextString(theInputString, theOutputString, kMaxLocalizedStringLength) != NULL))
+	{
+		LocalizationMap[inMessage] = theOutputString;
+		outputString = theOutputString;
+
+		if(theOutputString[0] != '#')
+		{
+			theSuccess = true;
 		}
 		else
 		{
-			outputString = string("err: ") + theInputString;
+			string theTempString = theOutputString;
+			theTempString = theTempString.substr(1, theTempString.length());
+			outputString = theTempString;
 		}
+	}
+	else
+	{
+		outputString = string("err: ") + theInputString;
 	}
 	
 	return theSuccess;
