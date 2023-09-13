@@ -6825,16 +6825,6 @@ void AvHHud::UpdateResources(float inTimePassed)
 			}
 		}
 	}
-	
-	string theResourceText;
-	char theResourceBuffer[64];
-	
-	if(this->GetInTopDownMode() && this->mCommanderResourceLabel)
-	{
-		LocalizeString(kMarineResourcePrefix, theResourceText);
-		sprintf(theResourceBuffer, "%s %d", theResourceText.c_str(), this->mVisualResources);
-		this->mCommanderResourceLabel->setText(64, theResourceBuffer);
-	}
 
 	// Update visual resource indicators, expiring old ones
 	const float kNumericalInfoEffectLifetime = 1.1f;
