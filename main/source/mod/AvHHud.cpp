@@ -554,9 +554,20 @@ void AvHHud::AddTooltip(const char* inMessageText, bool inIsToolTip, float inToo
 	{
 		if(gEngfuncs.pfnGetCvarFloat(kvAutoHelp) || !inIsToolTip)
 		{
+			string theNewMessage = string(inMessageText);
+
+			// Don't add the tool tip if it is already on screen
+			for (AvHTooltip tip : mTooltips)
+			{
+				if (tip.GetText() == theNewMessage)
+				{
+					return;
+				}
+			}
+
 			AvHTooltip theNewTooltip;
 			
-			theNewTooltip.SetText(string(inMessageText));
+			theNewTooltip.SetText(theNewMessage);
 			theNewTooltip.SetNormalizedScreenX(1.0f - inTooltipWidth - kHelpMessageLeftEdgeInset);
 			theNewTooltip.SetNormalizedScreenY(0.01f);
 			theNewTooltip.SetCentered(false);

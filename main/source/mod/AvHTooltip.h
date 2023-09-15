@@ -76,6 +76,7 @@ public:
 	void		SetBoldR(int inR);
 	void		SetBoldG(int inG);
 	void		SetBoldB(int inB);
+	string		GetText() { return mText; }
 				
 private:		
 	bool		ChopStringOfMaxScreenWidth(int inMaxScreenWidth, string& ioBaseString, string& outChoppedString);
