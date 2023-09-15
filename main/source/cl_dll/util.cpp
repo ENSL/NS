@@ -313,7 +313,6 @@ bool LocalizeString(const char* inMessage, string& outputString)
 		
 	if((CHudTextMessage::LocaliseTextString(theInputString, theOutputString, kMaxLocalizedStringLength) != NULL))
 	{
-		LocalizationMap[inMessage] = theOutputString;
 		outputString = theOutputString;
 
 		if(theOutputString[0] != '#')
@@ -326,6 +325,8 @@ bool LocalizeString(const char* inMessage, string& outputString)
 			theTempString = theTempString.substr(1, theTempString.length());
 			outputString = theTempString;
 		}
+
+		LocalizationMap[inMessage] = outputString;
 	}
 	else
 	{
