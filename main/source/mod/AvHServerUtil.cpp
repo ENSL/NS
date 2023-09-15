@@ -1882,6 +1882,6 @@ float	ns_cvar_float(const cvar_t *cvar)
   {
     return 0;
   }
-  return atoi(cvar->string);
+  return atof(cvar->string);
 }
 
