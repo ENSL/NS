@@ -35,6 +35,7 @@ public:
 	virtual		~AvHTooltip();
 				
 	void		Draw();
+	void		DrawBorder(int x, int y, int a);
 				
 	void		FadeText(float inTimePassed, bool inFadeDown);
 

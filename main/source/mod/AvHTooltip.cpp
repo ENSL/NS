@@ -24,6 +24,7 @@
 #include "cl_dll/cl_util.h"
 #include "ui/UIUtil.h"
 #include "../util/Tokenizer.h"
+#include "mod/AvHSprites.h"
 
 AvHTooltip::AvHTooltip()
 {
@@ -46,7 +47,7 @@ AvHTooltip::AvHTooltip()
 	this->mBackgroundColorR = 0;
 	this->mBackgroundColorG = 0;
 	this->mBackgroundColorB = 0;
-	this->mBackgroundColorA = 25;
+	this->mBackgroundColorA = 40;
 	
 	this->mNeedsRecomputing = true;
 	
@@ -137,6 +138,9 @@ void AvHTooltip::Draw()
 		FillRGBA(theFillStartX, theFillStartY, this->mScreenWidth, this->mScreenHeight, this->mBackgroundColorR, this->mBackgroundColorG, this->mBackgroundColorB, theAlphaComponent);
 		vguiSimpleBox(theFillStartX, theFillStartY, theFillStartX + this->mScreenWidth, theFillStartY + this->mScreenHeight, this->mColorR, this->mColorG, this->mColorB, theAlphaComponent);
 		
+		//New higher performance box.
+		this->DrawBorder(theFillStartX, theFillStartY, theAlphaComponent);
+		
 		// Now draw each line, non-centered, left-aligned
 		int theLineNumber = 0;
 		StringList::iterator theStringListIter;
@@ -181,6 +185,36 @@ void AvHTooltip::Draw()
 	}
 }
 
+void AvHTooltip::DrawBorder(int x, int y, int a)
+{
+	gEngfuncs.pTriAPI->RenderMode(kRenderTransAlpha);
+	gEngfuncs.pTriAPI->CullFace(TRI_NONE);
+	gEngfuncs.pTriAPI->SpriteTexture((struct model_s*)gEngfuncs.GetSpritePointer(SPR_Load(kWhiteSprite)), 0);
+	gEngfuncs.pTriAPI->Color4f(this->mColorR, this->mColorG, this->mColorB, a * 0.003922f); //Passing 0-255 int into the RGB works but the alpha doesn't I guess?
+	gEngfuncs.pTriAPI->Begin(TRI_LINES);
+
+	//Begin verticies and coords.
+	gEngfuncs.pTriAPI->TexCoord2f(0.0f, 1.0f);
+	gEngfuncs.pTriAPI->Vertex3f(x, y, 0);
+	gEngfuncs.pTriAPI->Vertex3f(x, y + this->mScreenHeight + 1, 0); //+1 or it doesn't connect the lines.
+
+	gEngfuncs.pTriAPI->TexCoord2f(0.0f, 0.0f);
+	gEngfuncs.pTriAPI->Vertex3f(x, y + this->mScreenHeight, 0);
+	gEngfuncs.pTriAPI->Vertex3f(x + this->mScreenWidth, y + this->mScreenHeight, 0);
+
+	gEngfuncs.pTriAPI->TexCoord2f(1.0f, 0.0f);
+	gEngfuncs.pTriAPI->Vertex3f(x + this->mScreenWidth, y + this->mScreenHeight, 0);
+	gEngfuncs.pTriAPI->Vertex3f(x + this->mScreenWidth, y, 0);
+
+	gEngfuncs.pTriAPI->TexCoord2f(1.0f, 1.0f);
+	gEngfuncs.pTriAPI->Vertex3f(x + this->mScreenWidth, y, 0);
+	gEngfuncs.pTriAPI->Vertex3f(x, y, 0);
+
+	//End and return to normal render mode
+	gEngfuncs.pTriAPI->End();
+	gEngfuncs.pTriAPI->RenderMode(kRenderNormal);
+}
+
 void AvHTooltip::FadeText(float inTimePassed, bool inFadeDown)
 {
 	// Fade reticle nicely
@@ -202,6 +236,13 @@ void AvHTooltip::FadeText(float inTimePassed, bool inFadeDown)
 		else
 		{
 			this->SetA(max(0, min(255, theNewAlpha)));
+
+			//2023 - Reset text dso it doesn't render as invisible. NewAlpha of -1 float is visible.
+			if (inFadeDown && theNewAlpha <= 0 && theNewAlpha > -0.95f)
+			{
+				this->mText = "";
+				this->mLocalizedText = "";
+			}
 		}
 	}
 }
