@@ -90,7 +90,8 @@ void AvHParticleEditorHandler::ToggleEdit()
 				gHUD.ToggleMouse();
 
 				// Set mouse position to center so it doesn't jar our view
-				gEngfuncs.pfnSetMousePos(gEngfuncs.GetWindowCenterX(), gEngfuncs.GetWindowCenterY());
+				//gEngfuncs.pfnSetMousePos(gEngfuncs.GetWindowCenterX(), gEngfuncs.GetWindowCenterY());
+				gEngfuncs.pfnSetMousePos(ScreenWidth() / 2, ScreenHeight() / 2);
 				
 				sInEditMode = false;
 			}

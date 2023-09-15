@@ -2881,7 +2881,8 @@ int	AvHHud::MsgFunc_SetTopDown(const char* pszName, int iSize, void* pbuf)
 			if (CVAR_GET_FLOAT("m_rawinput") != 0)
 			{
 				SDL_SetRelativeMouseMode(SDL_FALSE);
-				gEngfuncs.pfnSetMousePos(gEngfuncs.GetWindowCenterX(), gEngfuncs.GetWindowCenterY());
+				//gEngfuncs.pfnSetMousePos(gEngfuncs.GetWindowCenterX(), gEngfuncs.GetWindowCenterY());
+				gEngfuncs.pfnSetMousePos(ScreenWidth() / 2, ScreenHeight() / 2);
 
 #ifdef WIN32
 				//Hide windows OS cursor while raw input is momentarily off.
