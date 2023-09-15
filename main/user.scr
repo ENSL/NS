@@ -132,18 +132,18 @@ DESCRIPTION INFO_OPTIONS
 		{ "1.000000" }
 	}
 	
-	"hud_minimapnames"
+	"hud_mapnames"
 	{
 		"Length of minimap names 1=unlim"
 		{ NUMBER 0.000000 30.000000 }
-		{ "0.000000" }
+		{ "5.000000" }
 	}
 	
-	"hud_minimapnamesComm"
+	"hud_mapnamesComm"
 	{
 		"Show names on minimap when commander"
 		{ BOOL }
-		{ "0" }
+		{ "1" }
 	}
 		
 	"cl_mutemenu"

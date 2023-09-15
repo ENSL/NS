@@ -131,6 +131,8 @@ private:
 
     float                           mLastUpdateTime;
 
+    bool                            mMapNamesFontLoaded;
+
 };
 
 #endif

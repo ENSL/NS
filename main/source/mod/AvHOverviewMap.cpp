@@ -85,6 +85,7 @@ void AvHOverviewMap::Init()
 	this->mMapName="";
 	this->mBlinkTime=0.0f;
 	this->mBlinkOn=false;
+	mMapNamesFontLoaded = false;
 
 	mLastUpdateTime = 0;
 }
@@ -441,11 +442,15 @@ void AvHOverviewMap::DrawMiniMapEntity(const DrawInfo& inDrawInfo, const Drawabl
 
 			//alien's minimap names
 			//if (inEntity.mIsLocalPlayer)
-			if (CVAR_GET_FLOAT("hud_minimapnames") != 0 && ((mUser3 != AVH_USER3_COMMANDER_PLAYER) || CVAR_GET_FLOAT("hud_minimapnamesComm") != 0))
+			if (CVAR_GET_FLOAT("hud_mapnames") != 0 && ((mUser3 != AVH_USER3_COMMANDER_PLAYER) || CVAR_GET_FLOAT("hud_mapnamesComm") != 0))
 			{
-				tFont.Load("sprites/nl/font_arial"); //font_arialsmall
+				if (!mMapNamesFontLoaded)
+				{
+					tFont.Load("sprites/nl/font_arial"); //font_arialsmall
+					mMapNamesFontLoaded = true;
+				}
 				//string theText;
-				char bufferb[1024];
+				char bufferb[128];
 
 				
 				if ((inEntity.mEntityNumber >= 1) && (inEntity.mEntityNumber <= gEngfuncs.GetMaxClients()))
@@ -458,25 +463,25 @@ void AvHOverviewMap::DrawMiniMapEntity(const DrawInfo& inDrawInfo, const Drawabl
 						//theText = thePlayerInfo.name;
 						//sprintf(bufferb, "%s", theText.c_str());
 
-						int tR = CVAR_GET_FLOAT("hud_minimapnamesRed");
-						int tG = CVAR_GET_FLOAT("hud_minimapnamesGreen");
-						int tB = CVAR_GET_FLOAT("hud_minimapnamesBlue");
+						int tR = CVAR_GET_FLOAT("hud_mapnamesRed");
+						int tG = CVAR_GET_FLOAT("hud_mapnamesGreen");
+						int tB = CVAR_GET_FLOAT("hud_mapnamesBlue");
 
 						sprintf(bufferb, "%s", thePlayerInfo.name);
 						
 						if (bufferb) {
 							std::string text(bufferb);
 
-							if (CVAR_GET_FLOAT("hud_minimapnames") >= 2) { //3 letter max
+							if (CVAR_GET_FLOAT("hud_mapnames") >= 2) { //3 letter max
 								//strcpy(rgDeathNoticeList[i].szVictim, killed_with.c_str() + 2);
 								//while (text.length() > 3) {
 								//	text[3]
 								//}
 								//bufferb
-								text = text.substr(0, max((int)CVAR_GET_FLOAT("hud_minimapnames"), 1));
+								text = text.substr(0, max((int)CVAR_GET_FLOAT("hud_mapnames"), 1));
 							}
 							
-							tFont.DrawStringCustom(x + 12 - text.length() * 3, y - 18, text.c_str(), tR, tG, tB, 0);
+							tFont.DrawStringCustom(x + 12 - text.length() * 3, y - 18, text.c_str(), tR, tG, tB, kRenderTransAdd);
 						}
 
 					}
