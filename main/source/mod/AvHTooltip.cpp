@@ -135,8 +135,10 @@ void AvHTooltip::Draw()
 		float theNormalizedAlpha = (float)this->mColorA/255;
 		int theAlphaComponent = theNormalizedAlpha*this->mBackgroundColorA;
 		
-		FillRGBA(theFillStartX, theFillStartY, this->mScreenWidth, this->mScreenHeight, this->mBackgroundColorR, this->mBackgroundColorG, this->mBackgroundColorB, theAlphaComponent);
-		vguiSimpleBox(theFillStartX, theFillStartY, theFillStartX + this->mScreenWidth, theFillStartY + this->mScreenHeight, this->mColorR, this->mColorG, this->mColorB, theAlphaComponent);
+		////Old NS 3.2 box around the text with AWFUL performance. Colors rendered wrong and the shaded background wasn't working either.
+		//FillRGBA(theFillStartX, theFillStartY, this->mScreenWidth, this->mScreenHeight, this->mBackgroundColorR, this->mBackgroundColorG, this->mBackgroundColorB, theAlphaComponent);
+		//vguiSimpleBox(theFillStartX, theFillStartY, theFillStartX + this->mScreenWidth, theFillStartY + this->mScreenHeight, this->mColorR, this->mColorG, this->mColorB, theAlphaComponent);
+
 		
 		//New higher performance box.
 		this->DrawBorder(theFillStartX, theFillStartY, theAlphaComponent);
