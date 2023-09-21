@@ -228,6 +228,7 @@ public:
 	bool				GetIsTesting(void) const;
 	bool				GetIsValidFutureTeam(AvHPlayer inPlayer, int inTeamNumber) const;
 	bool				GetCanJoinTeamInFuture(AvHPlayer* inPlayer, AvHTeamNumber theTeamNumber, string& outString) const;
+	bool				GetTeamHasRoomToJoin(AvHTeamNumber theTeamNumber) const;
 	const AvHBaseInfoLocationListType&		GetInfoLocations() const;
 	int					GetMaxWeight(void) const;
 	const char*			GetSpawnEntityName(AvHPlayer* inPlayer) const;
@@ -236,9 +237,14 @@ public:
 	int					GetTimeLimit() const;
 	int					GetWeightForItemAndAmmo(AvHWeaponID inWeapon, int inNumRounds) const;
 	bool				AttemptToJoinTeam(AvHPlayer* inPlayer, AvHTeamNumber theTeamNumber, bool inDisplayErrorMessage = true);
+	void				AutoAssignPlayer(AvHPlayer* inPlayer);
 	const AvHTeam*		GetTeam(AvHTeamNumber inTeamNumber) const;
 	const AvHTeam*		GetTeamA() const;
 	const AvHTeam*		GetTeamB() const;
+	AvHTeamNumber		GetTeamANumber();
+	AvHTeamNumber		GetTeamBNumber();
+	int					GetTeamAPlayerCount();
+	int					GetTeamBPlayerCount();
 	AvHTeam*			GetTeam(AvHTeamNumber inTeamNumber);
 	AvHTeam*			GetTeamA();
 	AvHTeam*			GetTeamB();
@@ -266,6 +272,12 @@ public:
     virtual bool		GetIsNSMode(void) const;
 	virtual bool		GetIsTrainingMode(void) const;
 
+	virtual bool		GetBotsEnabled(void) const;
+	virtual int			GetBotMinPlayerCount(void) const;
+	virtual int			GetBotSkill(void) const;
+
+
+
 	int					GetBaseHealthForMessageID(AvHMessageID inMessageID) const;
 	int					GetBuildTimeForMessageID(AvHMessageID inMessageID) const;
 	int					GetCostForMessageID(AvHMessageID inMessageID) const;
@@ -292,7 +304,7 @@ public:
 	int					GetStructureLimit();
 	void				RemoveEntityUnderAttack(int entIndex);
 protected:
-	void				AutoAssignPlayer(AvHPlayer* inPlayer);
+	
 	void				PerformMapValidityCheck();
 	virtual void		RecalculateMapMode( void );
 	bool				GetDeathMatchMode(void) const;

@@ -333,14 +333,11 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 	{
 		if(theAvHPlayer)
 		{
-			if(!(theAvHPlayer->pev->flags & FL_FAKECLIENT))
+			if (!theAvHPlayer->GetIsBeingDigested())
 			{
-				if(!theAvHPlayer->GetIsBeingDigested())
-				{
-					theAvHPlayer->SetPlayMode(PLAYMODE_READYROOM, true);
-				}
-				theSuccess = true;
+				theAvHPlayer->SetPlayMode(PLAYMODE_READYROOM, true);
 			}
+			theSuccess = true;
 		}
 		theSuccess = true;
 	}
@@ -348,26 +345,23 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 	{
 		if(theAvHPlayer)
 		{
-			if(!(theAvHPlayer->pev->flags & FL_FAKECLIENT))
+			if (!theAvHPlayer->GetIsBeingDigested())
 			{
-				if(!theAvHPlayer->GetIsBeingDigested())
+				// : 984
+				// Add a throttle on the readyroom key
+				const static int kReadyRoomThrottleTimeout = 2.0f;
+				if ((theAvHPlayer->GetTimeLastF4() == -1.0f) ||
+					(gpGlobals->time > theAvHPlayer->GetTimeLastF4() + kReadyRoomThrottleTimeout))
 				{
-					// : 984
-					// Add a throttle on the readyroom key
-					const static int kReadyRoomThrottleTimeout=2.0f;
-					if ( (theAvHPlayer->GetTimeLastF4() == -1.0f) || 
-						 (gpGlobals->time > theAvHPlayer->GetTimeLastF4() + kReadyRoomThrottleTimeout) )  
-					{
-						theAvHPlayer->SendMessage(kReadyRoomThrottleMessage);
-						theAvHPlayer->SetTimeLastF4(gpGlobals->time);
-					}
-					else if ( gpGlobals->time < theAvHPlayer->GetTimeLastF4() + kReadyRoomThrottleTimeout )
-					{
-						theAvHPlayer->SetPlayMode(PLAYMODE_READYROOM, true);
-					}
+					theAvHPlayer->SendMessage(kReadyRoomThrottleMessage);
+					theAvHPlayer->SetTimeLastF4(gpGlobals->time);
 				}
-				theSuccess = true;
+				else if (gpGlobals->time < theAvHPlayer->GetTimeLastF4() + kReadyRoomThrottleTimeout)
+				{
+					theAvHPlayer->SetPlayMode(PLAYMODE_READYROOM, true);
+				}
 			}
+			theSuccess = true;
 		}
 		theSuccess = true;
 	}
@@ -1369,24 +1363,12 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 	#ifdef WIN32
 	else if(FStrEq(pcmd, "createfake"))
 	{
-		if(this->GetCheatsEnabled())
+		if(!theAvHPlayer || theIsServerOp || theIsPlaytest || theIsDedicatedServer || this->GetCheatsEnabled())
 		{
-			char theFakeClientName[256];
-			sprintf(theFakeClientName, "Bot%d", RANDOM_LONG(0, 2000));
-			edict_t* BotEnt = (*g_engfuncs.pfnCreateFakeClient)(theFakeClientName);
-			
-			// create the player entity by calling MOD's player function
-			// (from LINK_ENTITY_TO_CLASS for player object)
-			player( VARS(BotEnt) );
-			
-			char ptr[128];  // allocate space for message from ClientConnect
-			ClientConnect( BotEnt, theFakeClientName, "127.0.0.1", ptr );
-			
-			// Pieter van Dijk - use instead of DispatchSpawn() - Hip Hip Hurray!
-			ClientPutInServer( BotEnt );
-			
-			BotEnt->v.flags |= FL_FAKECLIENT;
+			this->CreateAIPlayer(TEAM_IND);
 		}
+
+		return true;
 	}
 	#endif
 #endif
