@@ -353,7 +353,12 @@ void ClientPutInServer( edict_t *pEntity )
 
 	// Allocate a CBasePlayer for pev, and call spawn
 	pPlayer->SetPlayMode(PLAYMODE_READYROOM);
-	//pPlayer->Spawn();
+	
+	//if (pev->flags & FL_FAKECLIENT)
+	//{
+	//	pPlayer->Spawn();
+	//}
+	
 
 	// Reset interpolation during first frame
 	pPlayer->pev->effects |= EF_NOINTERP;

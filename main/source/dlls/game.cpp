@@ -123,6 +123,15 @@ cvar_t  avh_mapvoteratio            = {kvMapVoteRatio, ".6", FCVAR_SERVER};
 cvar_t  avh_blockscripts            = {kvBlockScripts, "1", FCVAR_SERVER};
 cvar_t  avh_jumpmode				= {kvJumpMode, "1", FCVAR_SERVER};
 cvar_t  avh_version					= {kvVersion, "330", FCVAR_SERVER};
+
+// AI Player Settings
+cvar_t	avh_botsenabled				= { kvBotsEnabled,"0", FCVAR_SERVER };			// Bots can be added to the server Y/N
+cvar_t	avh_botautomode				= { kvBotAutoMode,"0", FCVAR_SERVER };			// Defines automated behaviour for adding/removing bots
+cvar_t	avh_botminplayers			= { kvBotMinPlayers,"0", FCVAR_SERVER };		// If bots are enabled and auto mode == 2 then it will maintain this player count by adding/removing as needed
+cvar_t	avh_botskill				= { kvBotSkill,"0", FCVAR_SERVER };				// Sets the skill for the bots (0 = easiest, 3 = hardest)
+cvar_t	avh_botusemapdefaults		= { kvBotUseMapDefaults,"0", FCVAR_SERVER };	// Defines automated behaviour for adding/removing bots
+
+
 //playtest cvars
 cvar_t  avh_fastjp					= {kvfastjp, "0", FCVAR_SERVER};
 cvar_t  avh_randomrfk				= {kvRandomRfk, "1", FCVAR_SERVER};
@@ -204,6 +213,13 @@ void GameDLLInit( void )
 	CVAR_REGISTER (&defaultteam);
 	CVAR_REGISTER (&allowmonsters);
 	CVAR_REGISTER (&mp_chattime);
+
+	// Register AI player settings
+	CVAR_REGISTER(&avh_botsenabled);
+	CVAR_REGISTER(&avh_botautomode);
+	CVAR_REGISTER(&avh_botminplayers);
+	CVAR_REGISTER(&avh_botusemapdefaults);
+	CVAR_REGISTER(&avh_botskill);
 	
 	// Register AvH variables
 	CVAR_REGISTER (&avh_drawdamage);

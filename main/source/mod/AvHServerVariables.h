@@ -142,6 +142,12 @@ float	ns_cvar_float(const cvar_t *cvar);
 #define kvIronMan					"mp_ironman"
 #define kvIronManTime				"mp_ironmantime"
 
+#define kvBotsEnabled				"mp_botsenabled"
+#define kvBotMinPlayers				"mp_botminplayers"
+#define kvBotUseMapDefaults			"mp_botusemapdefaults"
+#define	kvBotSkill					"mp_botskill"
+#define kvBotAutoMode				"mp_botautomode"
+
 #define kvEasterEggChance			"mp_eastereggchance"
 #define kvUplink					"mp_uplink"
 #define kvMapVoteRatio              "mp_mapvoteratio"

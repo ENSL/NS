@@ -118,13 +118,15 @@ void WRITE_STRING(const char* inData);
 
 #ifdef AVH_SERVER
 
-#define WRITE_ENTITY	(*g_engfuncs.pfnWriteEntity)
-#define CVAR_REGISTER	(*g_engfuncs.pfnCVarRegister)
-#define CVAR_GET_FLOAT	(*g_engfuncs.pfnCVarGetFloat)
-#define CVAR_GET_STRING	(*g_engfuncs.pfnCVarGetString)
-#define CVAR_SET_FLOAT	(*g_engfuncs.pfnCVarSetFloat)
-#define CVAR_SET_STRING	(*g_engfuncs.pfnCVarSetString)
-#define CVAR_GET_POINTER (*g_engfuncs.pfnCVarGetPointer)
+#define WRITE_ENTITY				(*g_engfuncs.pfnWriteEntity)
+#define CVAR_REGISTER				(*g_engfuncs.pfnCVarRegister)
+#define CVAR_GET_FLOAT				(*g_engfuncs.pfnCVarGetFloat)
+#define CVAR_GET_STRING				(*g_engfuncs.pfnCVarGetString)
+#define CVAR_SET_FLOAT				(*g_engfuncs.pfnCVarSetFloat)
+#define CVAR_SET_STRING				(*g_engfuncs.pfnCVarSetString)
+#define CVAR_GET_POINTER			(*g_engfuncs.pfnCVarGetPointer)
+#define REGISTER_SERVER_FUNCTION	(*g_engfuncs.pfnAddServerCommand)
+#define RUN_AI_MOVE					(*g_engfuncs.pfnRunPlayerMove)
 
 #endif		// AVH_SERVER
 
