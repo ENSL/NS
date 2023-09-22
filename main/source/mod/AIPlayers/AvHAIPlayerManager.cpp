@@ -255,6 +255,13 @@ void AIMGR_AddAIPlayerToTeam(int Team)
 	int NewBotIndex = -1;
 	edict_t* BotEnt = nullptr;
 
+	// If game has ended, don't allow new bots to be added
+	if (GetGameRules()->GetVictoryTeam() != TEAM_IND)
+	{
+		return;
+	}
+
+
 	for (int i = 0; i < MAX_PLAYERS; i++)
 	{
 		if (!ActiveAIPlayers[i].Player)
@@ -287,6 +294,7 @@ void AIMGR_AddAIPlayerToTeam(int Team)
 	}
 
 	// Retrieve the current bot name and then cycle the index so the names are always unique
+	// Slap a [BOT] tag too so players know they're not human
 	string NewName = "[BOT]" + BotNames[BotNameIndex];
 
 	BotEnt = (*g_engfuncs.pfnCreateFakeClient)(NewName.c_str());
@@ -474,4 +482,18 @@ void AIMGR_RemoveBotsInReadyRoom()
 			memset(&ActiveAIPlayers[i], 0, sizeof(AvHAIPlayer));
 		}
 	}
+}
+
+void AIMGR_ResetRound()
+{
+	if (avh_botsenabled.value == 0) { return; } // Do nothing if we're not using bots
+
+	ALERT(at_console, "AI Manager Reset Round\n");
+}
+
+void AIMGR_NewMap()
+{
+	if (avh_botsenabled.value == 0) { return; } // Do nothing if we're not using bots
+
+	ALERT(at_console, "AI Manager New Map\n");
 }
