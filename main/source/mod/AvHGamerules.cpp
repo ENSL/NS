@@ -400,6 +400,7 @@ AvHGamerules::AvHGamerules() : mTeamA(TEAM_ONE), mTeamB(TEAM_TWO)
 
 	this->mGameInReset = false;
 
+	AIMGR_NewMap();
 	this->ResetGame();
 }
 
@@ -2692,6 +2693,8 @@ void AvHGamerules::ResetGame(bool inPreserveTeams)
 	gSvCheatsLastUpdateTime = -1.0f;
 	this->mHasPlayersToReset = false;
 	this->mLastPlayerResetTime = -1.0f;
+
+	AIMGR_ResetRound();
 }
 
 void AvHGamerules::RecalculateMapMode( void )
