@@ -66,6 +66,7 @@
 
 #include "AvHConstants.h"
 
+
 #ifdef AVH_SERVER
 #include "AvHGamerules.h"
 #include "AvHServerUtil.h"
@@ -86,8 +87,20 @@ bool AvHWebProjectile::CreateWeb()
 	AvHWebSpinner* theWebSpinner = NULL;
 	if(this->GetWebSpinner(theWebSpinner))
 	{
+		vec3_t NormalizedVelocity;
+		VectorCopy(this->pev->velocity, NormalizedVelocity);
+		NormalizedVelocity.Normalize();
+
+		TraceResult surfaceTraceResult;
+		UTIL_TraceLine(this->pev->origin, this->pev->origin + (NormalizedVelocity * 10.0f), dont_ignore_monsters, this->edict(), &surfaceTraceResult);
+
 		vec3_t theNewPoint = this->pev->origin;
-		
+
+		if (surfaceTraceResult.flFraction < 1.0f)
+		{
+			theNewPoint = theNewPoint + (surfaceTraceResult.vecPlaneNormal * 3.0f);
+		}
+				
 		vec3_t theLastPoint;
 		if(theWebSpinner->GetLastPoint(theLastPoint))
 		{

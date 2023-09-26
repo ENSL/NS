@@ -1738,13 +1738,23 @@ void AvHWebStrand::StrandThink()
 
 	if (!FNullEnt(Hit.pHit))
 	{
-		edict_t* webbedEdict = Hit.pHit;
-		AvHPlayer* theWebbedPlayer = dynamic_cast<AvHPlayer*>(CBaseEntity::Instance(webbedEdict));
-
-		if (theWebbedPlayer)
+		while (!FNullEnt(Hit.pHit) && Hit.flFraction < 0.99f)
 		{
-			StrandTouch(theWebbedPlayer);
+			edict_t* webbedEdict = Hit.pHit;
+			AvHPlayer* theWebbedPlayer = dynamic_cast<AvHPlayer*>(CBaseEntity::Instance(webbedEdict));
+
+			if (theWebbedPlayer && theWebbedPlayer->pev->team != this->pev->team && theWebbedPlayer->GetCanBeAffectedByEnemies())
+			{
+				StrandTouch(theWebbedPlayer);
+				break;
+			}
+			else
+			{
+				UTIL_TraceLine(Hit.vecEndPos, EndTrace, dont_ignore_monsters, Hit.pHit, &Hit);
+			}
 		}
+
+		
 	}
 
 	if (!this->mSolid)
