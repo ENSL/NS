@@ -3603,8 +3603,18 @@ void AvHGamerules::Think(void)
 
     if(GET_RUN_CODE(4))
     {
+		
 		AIMGR_UpdateAIPlayerCounts();
-		AIMGR_UpdateAIPlayers();
+		
+		if (avh_botsenabled.value > 0)
+		{
+			AIMGR_UpdateAIPlayers();
+
+			if (this->GetGameStarted())
+			{
+				AIMGR_UpdateAIMapData();
+			}
+		}
 
 	    if(!this->GetGameStarted())
 	    {

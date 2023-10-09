@@ -130,6 +130,7 @@ cvar_t	avh_botautomode				= { kvBotAutoMode,"0", FCVAR_SERVER };			// Defines au
 cvar_t	avh_botminplayers			= { kvBotMinPlayers,"0", FCVAR_SERVER };		// If bots are enabled and auto mode == 2 then it will maintain this player count by adding/removing as needed
 cvar_t	avh_botskill				= { kvBotSkill,"0", FCVAR_SERVER };				// Sets the skill for the bots (0 = easiest, 3 = hardest)
 cvar_t	avh_botusemapdefaults		= { kvBotUseMapDefaults,"0", FCVAR_SERVER };	// Defines automated behaviour for adding/removing bots
+cvar_t	avh_botcommandermode		= { kvBotCommanderMode,"0", FCVAR_SERVER };		// 0 = Bots never command, 1 = Only if no humans on team, 2 = If nobody takes charge
 
 
 //playtest cvars
@@ -220,6 +221,7 @@ void GameDLLInit( void )
 	CVAR_REGISTER(&avh_botminplayers);
 	CVAR_REGISTER(&avh_botusemapdefaults);
 	CVAR_REGISTER(&avh_botskill);
+	CVAR_REGISTER(&avh_botcommandermode);
 	
 	// Register AvH variables
 	CVAR_REGISTER (&avh_drawdamage);

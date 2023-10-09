@@ -97,13 +97,13 @@
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <CompileAs>Default</CompileAs>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\includes\lua\include;$(SolutionDir)\particles\;$(SolutionDir)\includes\vgui\include;$(SolutionDir)\includes\libcurl-7.50-nossl\include;$(SolutionDir)\common;$(SolutionDir)\public;$(SolutionDir)\util;$(SolutionDir)\engine;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\includes\lua\include;$(SolutionDir)\particles\;$(SolutionDir)\includes\vgui\include;$(SolutionDir)\includes\libcurl-7.50-nossl\include;$(SolutionDir)\common;$(SolutionDir)\public;$(SolutionDir)\util;$(SolutionDir)\detour\Include;$(SolutionDir)\engine;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>winmm.lib;ws2_32.lib;particles.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>winmm.lib;ws2_32.lib;particles.lib;detour.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>$(SolutionDir)\Debug\Server\$(TargetName).dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>$(SolutionDir)\Debug\Particles;$(SolutionDir)\includes\lpng1251;$(SolutionDir)\includes\zlib-1.2.8;$(SolutionDir)\includes\vgui\lib\win32_vc6;$(SolutionDir)\lib\public;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)\Debug\Particles;$(SolutionDir)\includes\lpng1251;$(SolutionDir)\includes\zlib-1.2.8;$(SolutionDir)\includes\vgui\lib\win32_vc6;$(SolutionDir)\Debug\Detour;$(SolutionDir)\lib\public;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>libcmt;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ModuleDefinitionFile>.\hl.def</ModuleDefinitionFile>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -154,10 +154,10 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <CompileAs>Default</CompileAs>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\includes\lua\include;$(SolutionDir)\particles\;$(SolutionDir)\includes\vgui\include;$(SolutionDir)\includes\libcurl-7.50-nossl\include;$(SolutionDir)\common;$(SolutionDir)\public;$(SolutionDir)\util;$(SolutionDir)\engine;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\includes\lua\include;$(SolutionDir)\detour\Include;$(SolutionDir)\particles\;$(SolutionDir)\includes\vgui\include;$(SolutionDir)\includes\libcurl-7.50-nossl\include;$(SolutionDir)\common;$(SolutionDir)\public;$(SolutionDir)\util;$(SolutionDir)\engine;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>winmm.lib;ws2_32.lib;particles.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>winmm.lib;ws2_32.lib;particles.lib;detour.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <IgnoreSpecificDefaultLibraries>gdi32.lib user32.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ModuleDefinitionFile>.\hl.def</ModuleDefinitionFile>
@@ -169,7 +169,7 @@
       <SetChecksum>false</SetChecksum>
       <TreatLinkerWarningAsErrors>false</TreatLinkerWarningAsErrors>
       <AdditionalOptions>/NODEFAULTLIB:LIBCMT %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalLibraryDirectories>$(SolutionDir)\Release\Particles;$(SolutionDir)\includes\lpng1251;$(SolutionDir)\includes\zlib-1.2.8;$(SolutionDir)\includes\vgui\lib\win32_vc6;$(SolutionDir)\lib\public;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)\Release\Particles;$(SolutionDir)\includes\lpng1251;$(SolutionDir)\includes\zlib-1.2.8;$(SolutionDir)\includes\vgui\lib\win32_vc6;$(SolutionDir)\Release\Detour;$(SolutionDir)\lib\public;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <OutputFile>$(SolutionDir)\Playtest\Server\$(TargetName).dll</OutputFile>
@@ -211,11 +211,11 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <CompileAs>Default</CompileAs>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\includes\lua\include;$(SolutionDir)\particles\;$(SolutionDir)\includes\vgui\include;$(SolutionDir)\includes\libcurl-7.50-nossl\include;$(SolutionDir)\common;$(SolutionDir)\public;$(SolutionDir)\util;$(SolutionDir)\engine;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\includes\lua\include;$(SolutionDir)\particles\;$(SolutionDir)\includes\vgui\include;$(SolutionDir)\includes\libcurl-7.50-nossl\include;$(SolutionDir)\common;$(SolutionDir)\public;$(SolutionDir)\util;$(SolutionDir)\detour\Include;$(SolutionDir)\engine;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OmitFramePointers>true</OmitFramePointers>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>winmm.lib;ws2_32.lib;particles.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>winmm.lib;ws2_32.lib;particles.lib;detour.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <IgnoreSpecificDefaultLibraries>gdi32.lib user32.lib;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <ModuleDefinitionFile>.\hl.def</ModuleDefinitionFile>
@@ -227,7 +227,7 @@
       <SetChecksum>false</SetChecksum>
       <TreatLinkerWarningAsErrors>false</TreatLinkerWarningAsErrors>
       <AdditionalOptions>/NODEFAULTLIB:LIBCMT %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalLibraryDirectories>$(SolutionDir)\Release\Particles;$(SolutionDir)\includes\lpng1251;$(SolutionDir)\includes\zlib-1.2.8;$(SolutionDir)\includes\vgui\lib\win32_vc6;$(SolutionDir)\lib\public;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)\Release\Detour;$(SolutionDir)\Release\Particles;$(SolutionDir)\includes\lpng1251;$(SolutionDir)\includes\zlib-1.2.8;$(SolutionDir)\includes\vgui\lib\win32_vc6;$(SolutionDir)\lib\public;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <OutputFile>$(SolutionDir)\Release\Server\$(TargetName).dll</OutputFile>
@@ -248,6 +248,16 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\mod\AIPlayers\AvHAIConfig.cpp" />
+    <ClCompile Include="..\mod\AIPlayers\AvHAIHelper.cpp" />
+    <ClCompile Include="..\mod\AIPlayers\AvHAIMath.cpp" />
+    <ClCompile Include="..\mod\AIPlayers\AvHAINavigation.cpp" />
+    <ClCompile Include="..\mod\AIPlayers\AvHAIPlayer.cpp" />
+    <ClCompile Include="..\mod\AIPlayers\AvHAIPlayerManager.cpp" />
+    <ClCompile Include="..\mod\AIPlayers\AvHAIPlayerUtil.cpp" />
+    <ClCompile Include="..\mod\AIPlayers\AvHAITactical.cpp" />
+    <ClCompile Include="..\mod\AIPlayers\AvHAITask.cpp" />
+    <ClCompile Include="..\mod\AIPlayers\AvHAIWeaponHelper.cpp" />
     <ClCompile Include="animating.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Server - Debug|Win32'">Disabled</Optimization>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Server - Debug|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -1371,6 +1381,17 @@
     <ClCompile Include="..\textrep\TRFactory.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\mod\AIPlayers\AvHAIConfig.h" />
+    <ClInclude Include="..\mod\AIPlayers\AvHAIConstants.h" />
+    <ClInclude Include="..\mod\AIPlayers\AvHAIHelper.h" />
+    <ClInclude Include="..\mod\AIPlayers\AvHAIMath.h" />
+    <ClInclude Include="..\mod\AIPlayers\AvHAINavigation.h" />
+    <ClInclude Include="..\mod\AIPlayers\AvHAIPlayer.h" />
+    <ClInclude Include="..\mod\AIPlayers\AvHAIPlayerManager.h" />
+    <ClInclude Include="..\mod\AIPlayers\AvHAIPlayerUtil.h" />
+    <ClInclude Include="..\mod\AIPlayers\AvHAITactical.h" />
+    <ClInclude Include="..\mod\AIPlayers\AvHAITask.h" />
+    <ClInclude Include="..\mod\AIPlayers\AvHAIWeaponHelper.h" />
     <ClInclude Include="activity.h" />
     <ClInclude Include="activitymap.h" />
     <ClInclude Include="animation.h" />

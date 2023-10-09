@@ -146,6 +146,8 @@ public:
 	
 	virtual void	SetResearching(bool inState);
 
+	virtual bool	GetIsResearching() { return this->mIsResearching; }
+
 	virtual bool	GetIsPersistent() const;
 	
 	virtual AvHTeamNumber	GetTeamNumber() const;

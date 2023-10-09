@@ -147,6 +147,7 @@ float	ns_cvar_float(const cvar_t *cvar);
 #define kvBotUseMapDefaults			"mp_botusemapdefaults"
 #define	kvBotSkill					"mp_botskill"
 #define kvBotAutoMode				"mp_botautomode"
+#define kvBotCommanderMode			"mp_botcommandermode"
 
 #define kvEasterEggChance			"mp_eastereggchance"
 #define kvUplink					"mp_uplink"
