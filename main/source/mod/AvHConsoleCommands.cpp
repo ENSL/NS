@@ -106,6 +106,8 @@
 #include "AvHNetworkMessages.h"
 #include "AvHNexusServer.h"
 
+#include "AIPlayers/AvHAINavigation.h"
+
 extern AvHParticleTemplateListServer	gParticleTemplateList;
 extern CVoiceGameMgr					g_VoiceGameMgr;
 extern int								gCommanderPointsAwardedEventID;
@@ -1365,7 +1367,21 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 	{
 		if(!theAvHPlayer || theIsServerOp || theIsPlaytest || theIsDedicatedServer || this->GetCheatsEnabled())
 		{
-			this->CreateAIPlayer(TEAM_IND);
+			char theFakeClientName[256];
+			sprintf(theFakeClientName, "Bot%d", RANDOM_LONG(0, 2000));
+			edict_t* BotEnt = (*g_engfuncs.pfnCreateFakeClient)(theFakeClientName);
+
+			// create the player entity by calling MOD's player function
+			// (from LINK_ENTITY_TO_CLASS for player object)
+			player(VARS(BotEnt));
+
+			char ptr[128];  // allocate space for message from ClientConnect
+			ClientConnect(BotEnt, theFakeClientName, "127.0.0.1", ptr);
+
+			// Pieter van Dijk - use instead of DispatchSpawn() - Hip Hip Hurray!
+			ClientPutInServer(BotEnt);
+
+			BotEnt->v.flags |= FL_FAKECLIENT;
 		}
 
 		return true;

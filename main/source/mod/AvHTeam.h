@@ -221,6 +221,8 @@ public:
 	EntityListType	GetSelectAllGroup();
 	void			SetSelectAllGroup(EntityListType& inGroup);
 
+	Vector			GetStartingLocation() { return mStartingLocation; }
+
 private:
 	void			AddTechNode(AvHMessageID inMessageID, AvHTechID inTechID, AvHTechID inPrereq1 = TECH_NULL, AvHTechID inPrereq2 = TECH_NULL, bool inAllowMultiples = true, bool inResearched = false);
 	void			SpawnResourceTower();

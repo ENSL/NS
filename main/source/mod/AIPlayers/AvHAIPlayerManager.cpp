@@ -1,10 +1,14 @@
 #include "AvHAIPlayerManager.h"
 #include "AvHAIPlayer.h"
+#include "AvHAIMath.h"
+#include "AvHAITactical.h"
+#include "AvHAINavigation.h"
+#include "AvHAIConfig.h"
 #include "../AvHGamerules.h"
 #include "../dlls/client.h"
 #include <time.h>
 
-float last_think_time = 0.0f;
+double last_think_time = 0.0;
 float BotDeltaTime = 0.01666667f;
 
 AvHAIPlayer ActiveAIPlayers[MAX_PLAYERS];
@@ -13,15 +17,55 @@ extern cvar_t avh_botautomode;
 extern cvar_t avh_botsenabled;
 extern cvar_t avh_botminplayers;
 extern cvar_t avh_botusemapdefaults;
+extern cvar_t avh_botcommandermode;
 
 float LastAIPlayerCountUpdate = 0.0f;
 
 int BotNameIndex = 0;
 
+float AIStartedTime = 0.0f; // Used to give 5-second grace period before adding bots
+
+string BotNames[MAX_PLAYERS] = { "MrRobot",
+									"Wall-E",
+									"BeepBoop",
+									"Robotnik",
+									"JonnyAutomaton",
+									"Burninator",
+									"SteelDeath",
+									"Meatbag",
+									"Undertaker",
+									"Botini",
+									"Robottle",
+									"Rusty",
+									"HeavyMetal",
+									"Combot",
+									"BagelLover",
+									"Screwdriver",
+									"LoveBug",
+									"iSmash",
+									"Chippy",
+									"Baymax",
+									"BoomerBot",
+									"Jarvis",
+									"Marvin",
+									"Data",
+									"Scrappy",
+									"Mortis",
+									"TerrorHertz",
+									"Omicron",
+									"Herbie",
+									"Robogeddon",
+									"Velociripper",
+									"TerminalFerocity"
+};
+
+
 void AIMGR_UpdateAIPlayerCounts()
 {
 	// Don't add or remove bots too quickly, otherwise it can cause lag or even overflows
 	if (gpGlobals->time - LastAIPlayerCountUpdate < 0.2f) { return; }
+
+	if (gpGlobals->time - AIStartedTime < AI_GRACE_PERIOD) { return; }
 
 	// If game has ended, kick bots that have dropped back to the ready room
 	if (GetGameRules()->GetVictoryTeam() != TEAM_IND)
@@ -32,6 +76,7 @@ void AIMGR_UpdateAIPlayerCounts()
 
 	LastAIPlayerCountUpdate = gpGlobals->time;
 
+	// If bots are disabled, ensure we've removed all bots from the game
 	if (avh_botsenabled.value == 0)
 	{
 		if (AIMGR_GetNumAIPlayers() > 0)
@@ -109,48 +154,67 @@ void AIMGR_UpdateTeamBalance()
 
 void AIMGR_UpdateFillTeams()
 {
+	const char* MapName = STRING(gpGlobals->mapname);
+
 	AvHTeamNumber teamA = GetGameRules()->GetTeamANumber();
 	AvHTeamNumber teamB = GetGameRules()->GetTeamBNumber();
 
 	int TeamSizeA = GetGameRules()->GetTeamAPlayerCount();
 	int TeamSizeB = GetGameRules()->GetTeamBPlayerCount();
-	int TotalPlayers = TeamSizeA + TeamSizeB;
-	int NumDesiredPlayers = min(gpGlobals->maxClients, (int)floorf(avh_botminplayers.value));
 
-	// We have exceeded our minimum desired player count, start removing bots to make more room for humans
-	if (TotalPlayers > NumDesiredPlayers)
-	{
-		AIMGR_RemoveAIPlayerFromTeam(0);
-		return;
-	}
+	int NumDesiredTeamA = (avh_botusemapdefaults.value > 0) ? CONFIG_GetTeamASizeForMap(MapName) : (int)ceilf(avh_botminplayers.value * 0.5f);
+	int NumDesiredTeamB = (avh_botusemapdefaults.value > 0) ? CONFIG_GetTeamBSizeForMap(MapName) : (int)floorf(avh_botminplayers.value * 0.5f);
 
-	// Add bots to ensure we reach the number of desired players
-	if (TotalPlayers < NumDesiredPlayers)
+	if ((NumDesiredTeamA + NumDesiredTeamB) > gpGlobals->maxClients)
 	{
-		AIMGR_AddAIPlayerToTeam(0);
-		return;
+		int Delta = (NumDesiredTeamA + NumDesiredTeamB) - gpGlobals->maxClients;
+
+		bool bRemoveB = true;
+		int BotsRemoved = 0;
+
+		while (BotsRemoved < Delta)
+		{
+			if (bRemoveB)
+			{
+				NumDesiredTeamB--;
+			}
+			else
+			{
+				NumDesiredTeamA--;
+			}
+			BotsRemoved++;
+			bRemoveB = !bRemoveB;
+		}
 	}
 	
-	if (TeamSizeA > (TeamSizeB + 1))
+	if (TeamSizeA < NumDesiredTeamA)
 	{
-		if (AIMGR_AIPlayerExistsOnTeam(teamA))
-		{
-			AIMGR_RemoveAIPlayerFromTeam(1);
-		
-		}
-
+		AIMGR_AddAIPlayerToTeam(1);
 		return;
 	}
 
-	if (TeamSizeB > (TeamSizeA + 1))
+	if (TeamSizeA > NumDesiredTeamA)
 	{
-		if (AIMGR_AIPlayerExistsOnTeam(teamB))
+		if (AIMGR_GetNumAIPlayersOnTeam(teamA) > 0)
+		{
+			AIMGR_RemoveAIPlayerFromTeam(1);
+			return;
+		}
+	}
+
+	if (TeamSizeB < NumDesiredTeamB)
+	{
+		AIMGR_AddAIPlayerToTeam(2);
+		return;
+	}
+
+	if (TeamSizeB > NumDesiredTeamB)
+	{
+		if (AIMGR_GetNumAIPlayersOnTeam(teamB) > 0)
 		{
 			AIMGR_RemoveAIPlayerFromTeam(2);
-
+			return;
 		}
-
-		return;
 	}
 
 }
@@ -262,7 +326,7 @@ void AIMGR_AddAIPlayerToTeam(int Team)
 	}
 
 
-	for (int i = 0; i < MAX_PLAYERS; i++)
+	for (int i = 0; i < gpGlobals->maxClients; i++)
 	{
 		if (!ActiveAIPlayers[i].Player)
 		{
@@ -275,6 +339,18 @@ void AIMGR_AddAIPlayerToTeam(int Team)
 	{
 		ALERT(at_console, "Bot limit reached, cannot add more\n");
 		return;
+	}
+
+	if (!NavmeshLoaded())
+	{
+		CONFIG_ParseConfigFile();
+
+		const char* theCStrLevelName = STRING(gpGlobals->mapname);
+
+		if (!loadNavigationData(theCStrLevelName))
+		{
+			return;
+		}
 	}
 
 	if (AIMGR_GetNumAIPlayers() == 0)
@@ -295,7 +371,7 @@ void AIMGR_AddAIPlayerToTeam(int Team)
 
 	// Retrieve the current bot name and then cycle the index so the names are always unique
 	// Slap a [BOT] tag too so players know they're not human
-	string NewName = "[BOT]" + BotNames[BotNameIndex];
+	string NewName = CONFIG_GetBotPrefix() + BotNames[BotNameIndex];
 
 	BotEnt = (*g_engfuncs.pfnCreateFakeClient)(NewName.c_str());
 
@@ -362,6 +438,12 @@ void AIMGR_AddAIPlayerToTeam(int Team)
 		ActiveAIPlayers[NewBotIndex].Player = theNewAIPlayer;
 		ActiveAIPlayers[NewBotIndex].Edict = BotEnt;
 		ActiveAIPlayers[NewBotIndex].Team = theNewAIPlayer->GetTeam();
+
+		AvHAIPlayer* NewBotRef = &ActiveAIPlayers[NewBotIndex];
+
+		const bot_skill BotSkillSettings = CONFIG_GetGlobalBotSkillLevel();
+
+		memcpy(&NewBotRef->BotSkillSettings, &BotSkillSettings, sizeof(bot_skill));
 	}
 	else
 	{
@@ -388,24 +470,46 @@ void AIMGR_UpdateAIPlayers()
 	// If bots are not enabled then do nothing
 	if (avh_botsenabled.value == 0) { return; }
 
-	static clock_t prevtime = 0.0f;
-	static clock_t currTime = 0.0f;
+	static float PrevTime = 0.0f;
+	static float CurrTime = 0.0f;
 
-	currTime = clock();
+	static float LastThinkTime = 0.0f;
 
-	double timeSinceLastThink = (double)((currTime - last_think_time) / CLOCKS_PER_SEC);
+	CurrTime = gpGlobals->time;
 
-	if (IS_DEDICATED_SERVER() || timeSinceLastThink >= BOT_MIN_FRAME_TIME)
+	if (CurrTime < PrevTime)
 	{
-		BotDeltaTime = timeSinceLastThink;
+		PrevTime = 0.0f;
+	}
 
+	if (CurrTime < LastThinkTime)
+	{
+		LastThinkTime = 0.0f;
+	}
 
-		for (int bot_index = 0; bot_index < MAX_PLAYERS; bot_index++)
+	float FrameDelta = CurrTime - PrevTime;
+	float ThinkDelta = CurrTime - LastThinkTime;
+	
+	for (int bot_index = 0; bot_index < MAX_PLAYERS; bot_index++)
+	{
+		if (!ActiveAIPlayers[bot_index].Player) { continue; } // Slot isn't filled
+
+		AvHAIPlayer* bot = &ActiveAIPlayers[bot_index];
+
+		BotUpdateViewRotation(bot, FrameDelta);
+
+		if (IS_DEDICATED_SERVER() || ThinkDelta >= BOT_MIN_FRAME_TIME)
 		{
-			if (!ActiveAIPlayers[bot_index].Player) { continue; } // Slot isn't filled
+			BotDeltaTime = ThinkDelta;
 
-			AvHAIPlayer* bot = &ActiveAIPlayers[bot_index];
-			
+			StartNewBotFrame(bot);
+
+			UpdateBotChat(bot);
+
+			TestNavThink(bot);
+
+			BotUpdateDesiredViewRotation(bot);
+
 			// Needed to correctly handle client prediction and physics calculations
 			byte adjustedmsec = BotThrottledMsec(bot);
 
@@ -415,11 +519,12 @@ void AIMGR_UpdateAIPlayers()
 			// Simulate PM_PlayerMove so client prediction and stuff can be executed correctly.
 			RUN_AI_MOVE(bot->Edict, bot->Edict->v.v_angle, bot->ForwardMove,
 				bot->SideMove, bot->UpMove, bot->Button, bot->Impulse, adjustedmsec);
-		}
 
+			LastThinkTime = gpGlobals->time;
+		}		
 	}
 
-	prevtime = currTime;
+	PrevTime = CurrTime;
 
 }
 
@@ -488,12 +593,118 @@ void AIMGR_ResetRound()
 {
 	if (avh_botsenabled.value == 0) { return; } // Do nothing if we're not using bots
 
+	// AI Players would be 0 if the round is being reset because a new game is starting. If the round is reset
+	// from a console command, or tournament mode readying up etc, then bot logic is unaffected
+	if (AIMGR_GetNumAIPlayers() == 0)
+	{
+		// This is used to track the 5-second "grace period" before adding bots to the game if fill teams is enabled
+		AIStartedTime = gpGlobals->time;
+	}
+
+	UTIL_PopulateDoors();
+	UTIL_PopulateWeldableObstacles();
+
+	AITAC_ClearMapAIData();
+
 	ALERT(at_console, "AI Manager Reset Round\n");
+}
+
+void AIMGR_ClearBotData()
+{
+	memset(&ActiveAIPlayers, 0, sizeof(ActiveAIPlayers));
 }
 
 void AIMGR_NewMap()
 {
 	if (avh_botsenabled.value == 0) { return; } // Do nothing if we're not using bots
 
+	AIStartedTime = gpGlobals->time;
 	ALERT(at_console, "AI Manager New Map\n");
+
+	if (NavmeshLoaded())
+	{
+		UnloadNavigationData();
+	}
+
+	CONFIG_ParseConfigFile();
+
+	const char* theCStrLevelName = STRING(gpGlobals->mapname);
+
+	if (!loadNavigationData(theCStrLevelName))
+	{
+		return;
+	}
+}
+
+AvHAIPlayer* AIMGR_GetAICommander(AvHTeamNumber Team)
+{
+	AvHPlayer* ActiveCommander = GetGameRules()->GetTeam(Team)->GetCommanderPlayer();
+
+	if (!ActiveCommander) { return nullptr; }
+
+	for (int i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (ActiveAIPlayers[i].Player == ActiveCommander)
+		{
+			return &ActiveAIPlayers[i];
+		}
+	}
+
+	return nullptr;
+}
+
+AvHAIPlayer* AIMGR_FindPlayerOnTeamWaitingBuildLink(const AvHTeamNumber Team, const AvHAIDeployableStructureType NewStructure, const Vector BuildLocation)
+{
+	for (int i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (ActiveAIPlayers[i].Player != nullptr && ActiveAIPlayers[i].Player->GetTeam() == Team)
+		{
+			if (ActiveAIPlayers[i].PrimaryBotTask.bIsWaitingForBuildLink && ActiveAIPlayers[i].PrimaryBotTask.StructureType == NewStructure)
+			{
+				if (vDist2DSq(BuildLocation, ActiveAIPlayers[i].PrimaryBotTask.TaskLocation) < sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
+				{
+					return &ActiveAIPlayers[i];
+				}
+				
+			}
+
+			if (ActiveAIPlayers[i].SecondaryBotTask.bIsWaitingForBuildLink && ActiveAIPlayers[i].SecondaryBotTask.StructureType == NewStructure)
+			{
+				if (vDist2DSq(BuildLocation, ActiveAIPlayers[i].SecondaryBotTask.TaskLocation) < sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
+				{
+					return &ActiveAIPlayers[i];
+				}
+			}
+
+			if (ActiveAIPlayers[i].WantsAndNeedsTask.bIsWaitingForBuildLink && ActiveAIPlayers[i].WantsAndNeedsTask.StructureType == NewStructure)
+			{
+				if (vDist2DSq(BuildLocation, ActiveAIPlayers[i].WantsAndNeedsTask.TaskLocation) < sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
+				{
+					return &ActiveAIPlayers[i];
+				}
+			}
+		}
+	}
+
+	return nullptr;
+}
+
+AvHTeamNumber AIMGR_GetEnemyTeam(const AvHTeamNumber FriendlyTeam)
+{
+	AvHTeamNumber TeamANumber = GetGameRules()->GetTeamANumber();
+	AvHTeamNumber TeamBNumber = GetGameRules()->GetTeamBNumber();
+
+	return (FriendlyTeam == TeamANumber) ? TeamBNumber : TeamANumber;
+}
+
+AvHAIPlayer* AIMGR_GetAIPlayerAtIndex(const int Index)
+{
+	if (Index < 0 || Index >= MAX_PLAYERS) { return nullptr; }
+
+	return &ActiveAIPlayers[Index];
+}
+
+void AIMGR_UpdateAIMapData()
+{
+	AITAC_UpdateMapAIData();
 }

@@ -2,9 +2,12 @@
 #define AVH_AI_PLAYER_MANAGER_H
 
 #include "../AvHConstants.h"
+#include "AvHAIPlayer.h"
 
 // Max rate bot can run its logic, default is 1/60th second. WARNING: Increasing the rate past 100hz causes bots to move and turn slowly due to GoldSrc limits!
 static const double BOT_MIN_FRAME_TIME = (1.0 / 60.0);
+// At map load / map restart, how long to wait before starting to add bots
+static const float AI_GRACE_PERIOD = 5.0f;
 
 
 // Called when the round restarts. Clears all tactical information but keeps navigation data.
@@ -34,5 +37,19 @@ void	AIMGR_UpdateFillTeams();
 int		AIMGR_GetNumAIPlayers();
 // Returns true if an AI player is on the requested team (does NOT include third-party bots like RCBot/Whichbot)
 int		AIMGR_AIPlayerExistsOnTeam(AvHTeamNumber Team);
+
+void	AIMGR_UpdateAIMapData();
+
+int AIMGR_GetNumAIPlayersOnTeam(AvHTeamNumber Team);
+
+AvHAIPlayer* AIMGR_GetAICommander(AvHTeamNumber Team);
+
+AvHAIPlayer* AIMGR_FindPlayerOnTeamWaitingBuildLink(const AvHTeamNumber Team, const AvHAIDeployableStructureType NewStructure, const Vector BuildLocation);
+
+AvHTeamNumber AIMGR_GetEnemyTeam(const AvHTeamNumber FriendlyTeam);
+
+AvHAIPlayer* AIMGR_GetAIPlayerAtIndex(const int Index);
+
+void AIMGR_ClearBotData();
 
 #endif
