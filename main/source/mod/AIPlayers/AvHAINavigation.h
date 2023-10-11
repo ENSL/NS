@@ -39,6 +39,8 @@ constexpr auto LERK_FLYING_NAV_PROFILE = 9;
 
 constexpr auto GORGE_BUILD_NAV_PROFILE = 10;
 
+constexpr auto MARINE_WELD_NAV_PROFILE = 11;
+
 constexpr auto MIN_PATH_RECALC_TIME = 0.33f; // How frequently can a bot recalculate its path? Default to max 3 times per second
 
 constexpr auto MAX_BOT_STUCK_TIME = 30.0f; // How long a bot can be stuck, unable to move, before giving up and suiciding
@@ -49,52 +51,50 @@ constexpr auto MAX_BOT_STUCK_TIME = 30.0f; // How long a bot can be stuck, unabl
 // Possible area types. Water, Road, Door and Grass are not used (left-over from Detour library)
 enum SamplePolyAreas
 {
-	SAMPLE_POLYAREA_GROUND = 0,
-	SAMPLE_POLYAREA_CROUCH = 1,
-	SAMPLE_POLYAREA_WATER = 2,
-	SAMPLE_POLYAREA_BLOCKED = 3,
-	SAMPLE_POLYAREA_WALLCLIMB = 4,
-	SAMPLE_POLYAREA_LADDER = 5,
-	SAMPLE_POLYAREA_DOOR = 6,
-	SAMPLE_POLYAREA_JUMP = 7,
-	SAMPLE_POLYAREA_HIGHJUMP = 8,
-	SAMPLE_POLYAREA_FALL = 9,
-	SAMPLE_POLYAREA_HIGHFALL = 10,
-	SAMPLE_POLYAREA_PHASEGATE = 11,
-	SAMPLE_POLYAREA_MSTRUCTURE = 12,
-	SAMPLE_POLYAREA_ASTRUCTURE = 13,
-	SAMPLE_POLYAREA_FLY = 14
+	SAMPLE_POLYAREA_GROUND = 0,			// Regular ground movement
+	SAMPLE_POLYAREA_CROUCH = 1,			// Requires crouched movement
+	SAMPLE_POLYAREA_WATER = 2,			// Swimming (NOT USED)
+	SAMPLE_POLYAREA_BLOCKED = 3,		// Requires a jump to get over
+	SAMPLE_POLYAREA_WALLCLIMB = 4,		// Requires the ability to wall climb (i.e. skulks/fades/lerks only)
+	SAMPLE_POLYAREA_LADDER = 5,			// Requires climbing a ladder (ignored by skulks)
+	SAMPLE_POLYAREA_DOOR = 6,			// Requires moving through a door (NOT USED)
+	SAMPLE_POLYAREA_JUMP = 7,			// Requires a jump to get through
+	SAMPLE_POLYAREA_HIGHJUMP = 8,		// Requires jumping from a great height
+	SAMPLE_POLYAREA_FALL = 9,			// Requires dropping down from a higher elevation
+	SAMPLE_POLYAREA_HIGHFALL = 10,		// Requires a large drop from a high height
+	SAMPLE_POLYAREA_PHASEGATE = 11,		// Requires accessing a phase gate (i.e. marines only)
+	SAMPLE_POLYAREA_MSTRUCTURE = 12,	// Requires bypassing a marine structure
+	SAMPLE_POLYAREA_ASTRUCTURE = 13,	// Requires bypassing an alien structure
+	SAMPLE_POLYAREA_FLY = 14,			// Requires the ability to fly (currently lerks only)
 };
 
 // Possible movement types. Swim and door are not used
 enum SamplePolyFlags
 {
-	SAMPLE_POLYFLAGS_WALK = 1 << 0,		// Simple walk to traverse
-	SAMPLE_POLYFLAGS_CROUCH = 1 << 1,		// Required crouching to traverse
-	SAMPLE_POLYFLAGS_SWIM = 1 << 2,		// Requires swimming to traverse (not used)
-	SAMPLE_POLYFLAGS_BLOCKED = 1 << 3,		// Blocked by an obstruction, but can be jumped over
-	SAMPLE_POLYFLAGS_WALLCLIMB = 1 << 4,		// Requires climbing a wall to traverse
-	SAMPLE_POLYFLAGS_LADDER = 1 << 5,		// Requires climbing a ladder to traverse
-	SAMPLE_POLYFLAGS_DOOR = 1 << 6,		// Requires opening a door to traverse (not used)
-	SAMPLE_POLYFLAGS_JUMP = 1 << 7,		// Requires a jump to traverse
-	SAMPLE_POLYFLAGS_HIGHJUMP = 1 << 8,		// Requires a jump from a high height to traverse
-	SAMPLE_POLYFLAGS_FALL = 1 << 9,		// Requires dropping down from a safe height to traverse
-	SAMPLE_POLYFLAGS_HIGHFALL = 1 << 10,		// Requires dropping from a high height to traverse
-	SAMPLE_POLYFLAGS_DISABLED = 1 << 11,		// Disabled, not usable by anyone
-	SAMPLE_POLYFLAGS_NOONOS = 1 << 12,		// This movement is not allowed by onos
-	SAMPLE_POLYFLAGS_PHASEGATE = 1 << 13,		// Requires using a phase gate to traverse
-	SAMPLE_POLYFLAGS_MSTRUCTURE = 1 << 14,		// Marine Structure in the way, must be destroyed if alien, or impassable if marine
-	SAMPLE_POLYFLAGS_ASTRUCTURE = 1 << 15,		// Structure in the way, must be destroyed if marine, or impassable if alien
-	SAMPLE_POLYFLAGS_FLY = 1 << 16,		// Structure in the way, must be destroyed if marine, or impassable if alien
-	SAMPLE_POLYFLAGS_ALL = 0xffff		// All abilities.
+	SAMPLE_POLYFLAGS_WALK = 1 << 0,			// Simple walk to traverse
+	SAMPLE_POLYFLAGS_BLOCKED = 1 << 1,		// Blocked by an obstruction, but can be jumped over
+	SAMPLE_POLYFLAGS_WALLCLIMB = 1 << 2,	// Requires climbing a wall to traverse
+	SAMPLE_POLYFLAGS_LADDER = 1 << 3,		// Requires climbing a ladder to traverse
+	SAMPLE_POLYFLAGS_DOOR = 1 << 4,			// Requires opening a door to traverse (not used)
+	SAMPLE_POLYFLAGS_JUMP = 1 << 5,			// Requires a jump to traverse
+	SAMPLE_POLYFLAGS_HIGHJUMP = 1 << 6,		// Requires a jump from a high height to traverse
+	SAMPLE_POLYFLAGS_FALL = 1 << 7,			// Requires dropping down from a safe height to traverse
+	SAMPLE_POLYFLAGS_HIGHFALL = 1 << 8,		// Requires dropping from a high height to traverse
+	SAMPLE_POLYFLAGS_DISABLED = 1 << 9,		// Disabled, not usable by anyone
+	SAMPLE_POLYFLAGS_NOONOS = 1 << 10,		// This movement is not allowed by onos
+	SAMPLE_POLYFLAGS_PHASEGATE = 1 << 11,	// Requires using a phase gate to traverse
+	SAMPLE_POLYFLAGS_MSTRUCTURE = 1 << 12,	// Marine Structure in the way, must be destroyed if alien, or impassable if marine
+	SAMPLE_POLYFLAGS_ASTRUCTURE = 1 << 13,	// Structure in the way, must be destroyed if marine, or impassable if alien
+	SAMPLE_POLYFLAGS_WELD = 1 << 14,		// Requires a welder to get through here
+	SAMPLE_POLYFLAGS_ALL = 0xffff			// All abilities.
 };
 
 // Door type. Not currently used, future feature so bots know how to open a door
 enum DoorActivationType
 {
-	DOOR_NONE,   // No type
-	DOOR_USE,    // Door activated by using it
-	DOOR_TRIGGER,// Door activated by trigger_once or trigger_multiple
+	DOOR_NONE,   // No type, cannot be activated (permanently open/shut)
+	DOOR_USE,    // Door activated by using it directly
+	DOOR_TRIGGER,// Door activated by touching a trigger_once or trigger_multiple
 	DOOR_BUTTON, // Door activated by pressing a button
 	DOOR_WELD,   // Door activated by welding something
 	DOOR_SHOOT   // Door activated by being shot
@@ -103,23 +103,22 @@ enum DoorActivationType
 typedef struct _DOOR_TRIGGER
 {
 	CBaseEntity* Entity = nullptr;
+	CBaseToggle* ToggleEnt = nullptr;
+	edict_t* Edict = nullptr;
 	DoorActivationType TriggerType = DOOR_NONE;
+	bool bIsActivated = false;
 } DoorTrigger;
 
 // Door reference. Not used, but is a future feature to allow bots to track if a door is open or not, and how to open it etc.
 typedef struct _NAV_DOOR
 {
-	CBaseEntity* DoorEntity = nullptr;
+	CBaseToggle* DoorEntity = nullptr;
 	edict_t* DoorEdict = nullptr; // Reference to the func_door
 	unsigned int ObstacleRefs[32][8]; // Dynamic obstacle ref. Used to add/remove the obstacle as the door is opened/closed
 	int NumObstacles = 0;
-	DoorTrigger TriggerEnts[8]; // Reference to the trigger edicts (e.g. func_trigger, func_button etc.)
-	int NumTriggers = 0; // How many triggers can activate the door (bot will pick best one)
+	vector<DoorTrigger> TriggerEnts; // Reference to the trigger edicts (e.g. func_trigger, func_button etc.)
 	DoorActivationType ActivationType = DOOR_NONE; // How the door should be opened
-	Vector PositionOne = g_vecZero; // Door's starting position
-	Vector PositionTwo = g_vecZero; // Door's open/close position (depending on if it starts open or not)
-	Vector CurrentPosition = g_vecZero; // Current world position
-	bool bStartOpen = false; // Does the door start open? (PositionOne = open position, not close position)
+	TOGGLE_STATE CurrentState = TS_AT_BOTTOM;
 	float OpenDelay = 0.0f; // How long the door takes to start opening after activation
 } nav_door;
 
@@ -463,6 +462,8 @@ void ClearBotPath(AvHAIPlayer* pBot);
 // Clears just the bot's current stuck movement attempt (see PerformUnstuckMove())
 void ClearBotStuckMovement(AvHAIPlayer* pBot);
 
+void UTIL_ClearDoorData();
+
 // Based on the direction the bot wants to move and it's current facing angle, sets the forward and side move, and the directional buttons to make the bot actually move
 void BotMovementInputs(AvHAIPlayer* pBot);
 
@@ -474,13 +475,14 @@ void OnBotEndLadder(AvHAIPlayer* pBot);
 // Tracks all doors and their current status
 void UTIL_PopulateDoors();
 
-// Mark the door with the matching target name as weldable. Weld-activated doors leave permanent markers on the nav mesh to block movement since they can only be triggered once
-void UTIL_MarkDoorWeldable(const char* DoorTargetName);
-
-void UTIL_UpdateWeldableDoors();
 void UTIL_UpdateWeldableObstacles();
+void UTIL_UpdateDoors(bool bInitial = false);
+void UTIL_UpdateDoorTriggers(nav_door* Door);
+void UTIL_PopulateTriggersForEntity(edict_t* Entity, vector<DoorTrigger>& TriggerList);
 
 void UTIL_PopulateWeldableObstacles();
+
+void UTIL_ApplyTempObstaclesToDoor(nav_door* DoorRef, const int Area);
 
 nav_door* UTIL_GetNavDoorByEdict(const edict_t* DoorEdict);
 

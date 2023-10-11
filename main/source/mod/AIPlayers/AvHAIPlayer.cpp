@@ -1451,6 +1451,18 @@ void StartNewBotFrame(AvHAIPlayer* pBot)
 
 }
 
+void DroneThink(AvHAIPlayer* pBot)
+{
+	AITASK_BotUpdateAndClearTasks(pBot);
+
+	pBot->CurrentTask = &pBot->PrimaryBotTask;
+
+	if (pBot->PrimaryBotTask.TaskType != TASK_NONE)
+	{
+		BotProgressTask(pBot, &pBot->PrimaryBotTask);
+	}
+}
+
 void TestNavThink(AvHAIPlayer* pBot)
 {
 	AITASK_BotUpdateAndClearTasks(pBot);
@@ -1487,4 +1499,10 @@ void TestNavThink(AvHAIPlayer* pBot)
 			AITASK_ClearBotTask(pBot, &pBot->PrimaryBotTask);
 		}
 	}
+}
+
+void BotSwitchToWeapon(AvHAIPlayer* pBot, AvHAIWeapon NewWeaponSlot)
+{
+	char* WeaponName = UTIL_WeaponTypeToClassname(NewWeaponSlot);
+	pBot->Player->SwitchWeapon(WeaponName);
 }

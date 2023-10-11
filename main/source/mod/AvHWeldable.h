@@ -43,6 +43,8 @@ public:
 	
 	bool			GetWeldOpens() const;
 
+	string			GetTargetOnFinish() const;
+
 	virtual void	KeyValue( KeyValueData* pkvd );
 	
 	virtual void	Killed( entvars_t *pevAttacker, int iGib );

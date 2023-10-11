@@ -4,6 +4,7 @@
 #include "AvHAITactical.h"
 #include "AvHAINavigation.h"
 #include "AvHAIConfig.h"
+#include "AvHAIWeaponHelper.h"
 #include "../AvHGamerules.h"
 #include "../dlls/client.h"
 #include <time.h>
@@ -489,8 +490,8 @@ void AIMGR_UpdateAIPlayers()
 
 	float FrameDelta = CurrTime - PrevTime;
 	float ThinkDelta = CurrTime - LastThinkTime;
-	
-	for (int bot_index = 0; bot_index < MAX_PLAYERS; bot_index++)
+		
+	for (int bot_index = 0; bot_index < gpGlobals->maxClients; bot_index++)
 	{
 		if (!ActiveAIPlayers[bot_index].Player) { continue; } // Slot isn't filled
 
@@ -506,7 +507,14 @@ void AIMGR_UpdateAIPlayers()
 
 			UpdateBotChat(bot);
 
-			TestNavThink(bot);
+			DroneThink(bot);
+
+			AvHAIWeapon DesiredWeapon = (bot->DesiredMoveWeapon != WEAPON_NONE) ? bot->DesiredMoveWeapon : bot->DesiredCombatWeapon;
+
+			if (DesiredWeapon != WEAPON_NONE && GetBotCurrentWeapon(bot) != DesiredWeapon)
+			{
+				BotSwitchToWeapon(bot, DesiredWeapon);
+			}
 
 			BotUpdateDesiredViewRotation(bot);
 
@@ -706,5 +714,6 @@ AvHAIPlayer* AIMGR_GetAIPlayerAtIndex(const int Index)
 
 void AIMGR_UpdateAIMapData()
 {
+	UTIL_UpdateTileCache();
 	AITAC_UpdateMapAIData();
 }

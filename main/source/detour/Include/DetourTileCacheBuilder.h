@@ -32,6 +32,7 @@ static const unsigned char DT_TILECACHE_CLIMBABLE_AREA = 4;
 static const unsigned char DT_TILECACHE_LADDER_AREA = 5;
 static const unsigned char DT_TILECACHE_MSTRUCTURE_AREA = 12;
 static const unsigned char DT_TILECACHE_ASTRUCTURE_AREA = 13;
+static const unsigned char DT_TILECACHE_WELD_AREA = 15;
 static const unsigned char DT_TILECACHE_WALKABLE_AREA = 63;
 static const unsigned short DT_TILECACHE_NULL_IDX = 0xffff;
 

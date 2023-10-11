@@ -3608,12 +3608,12 @@ void AvHGamerules::Think(void)
 		
 		if (avh_botsenabled.value > 0)
 		{
-			AIMGR_UpdateAIPlayers();
-
 			if (this->GetGameStarted())
 			{
 				AIMGR_UpdateAIMapData();
 			}
+
+			AIMGR_UpdateAIPlayers();
 		}
 
 	    if(!this->GetGameStarted())

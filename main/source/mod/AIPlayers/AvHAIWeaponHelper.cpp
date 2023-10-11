@@ -10,6 +10,7 @@
 #include "../AvHGamerules.h"
 #include "../AvHAlienWeaponConstants.h"
 #include "../AvHAlienWeapons.h"
+#include "../AvHMarineEquipmentConstants.h"
 #include "../AvHServerUtil.h"
 
 int BotGetCurrentWeaponClipAmmo(const AvHAIPlayer* pBot)
@@ -985,4 +986,78 @@ float UTIL_GetProjectileVelocityForWeapon(const AvHAIWeapon Weapon)
 	default:
 		return 0.0f; // Hitscan.
 	}
+}
+
+char* UTIL_WeaponTypeToClassname(const AvHAIWeapon WeaponType)
+{
+	switch (WeaponType)
+	{
+	case WEAPON_MARINE_MG:
+		return kwsMachineGun;
+	case WEAPON_MARINE_PISTOL:
+		return kwsPistol;
+	case WEAPON_MARINE_KNIFE:
+		return kwsKnife;
+	case WEAPON_MARINE_SHOTGUN:
+		return kwsShotGun;
+	case WEAPON_MARINE_HMG:
+		return kwsHeavyMachineGun;
+	case WEAPON_MARINE_WELDER:
+		return kwsWelder;
+	case WEAPON_MARINE_MINES:
+		return kwsMine;
+	case WEAPON_MARINE_GRENADE:
+		return kwsGrenade;
+	case WEAPON_MARINE_GL:
+		return kwsGrenadeGun;
+
+	case WEAPON_SKULK_BITE:
+		return kwsBiteGun;
+	case WEAPON_SKULK_PARASITE:
+		return kwsParasiteGun;
+	case WEAPON_SKULK_LEAP:
+		return kwsLeap;
+	case WEAPON_SKULK_XENOCIDE:
+		return kwsDivineWind;
+
+	case WEAPON_GORGE_SPIT:
+		return kwsSpitGun;
+	case WEAPON_GORGE_HEALINGSPRAY:
+		return kwsHealingSpray;
+	case WEAPON_GORGE_BILEBOMB:
+		return kwsBileBombGun;
+	case WEAPON_GORGE_WEB:
+		return kwsWebSpinner;
+
+	case WEAPON_LERK_BITE:
+		return kwsBite2Gun;
+	case WEAPON_LERK_SPORES:
+		return kwsSporeGun;
+	case WEAPON_LERK_UMBRA:
+		return kwsUmbraGun;
+	case WEAPON_LERK_PRIMALSCREAM:
+		return kwsPrimalScream;
+
+	case WEAPON_FADE_SWIPE:
+		return kwsSwipe;
+	case WEAPON_FADE_BLINK:
+		return kwsBlinkGun;
+	case WEAPON_FADE_METABOLIZE:
+		return kwsMetabolize;
+	case WEAPON_FADE_ACIDROCKET:
+		return kwsAcidRocketGun;
+
+	case WEAPON_ONOS_GORE:
+		return kwsClaws;
+	case WEAPON_ONOS_DEVOUR:
+		return kwsDevour;
+	case WEAPON_ONOS_STOMP:
+		return kwsStomp;
+	case WEAPON_ONOS_CHARGE:
+		return kwsCharge;
+	default:
+		return "";
+	}
+
+	return "";
 }

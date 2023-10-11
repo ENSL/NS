@@ -458,6 +458,22 @@ public:
 	string_t	m_globalstate;
 };
 
+class CEnvGlobal : public CPointEntity
+{
+public:
+	void	Spawn(void);
+	void	KeyValue(KeyValueData* pkvd);
+	void	Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
+
+	virtual int		Save(CSave& save);
+	virtual int		Restore(CRestore& restore);
+
+	static	TYPEDESCRIPTION m_SaveData[];
+
+	string_t	m_globalstate;
+	int			m_triggermode;
+	int			m_initialstate;
+};
 
 //
 // generic Delay entity.

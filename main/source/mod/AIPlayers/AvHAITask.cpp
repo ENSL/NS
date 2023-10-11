@@ -12,6 +12,7 @@
 #include "../AvHSharedUtil.h"
 #include "../AvHAlienWeaponConstants.h"
 #include "../AvHGamerules.h"
+#include "../AvHWeldable.h"
 
 void AITASK_ClearAllBotTasks(AvHAIPlayer* pBot)
 {
@@ -365,7 +366,22 @@ bool AITASK_IsWeldTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	if (!Task) { return false; }
 	if (FNullEnt(Task->TaskTarget)) { return false; }
 	if (Task->TaskTarget == pBot->Edict) { return false; }
-	if (!PlayerHasWeapon(pBot->Player, WEAPON_MARINE_WELDER)) { return false; }
+	if (!PlayerHasWeapon(pBot->Player, WEAPON_MARINE_WELDER))
+	{
+		if (FNullEnt(Task->TaskSecondaryTarget))
+		{
+			AvHAIDroppedItem* NearestWelder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, 0.0f, 0.0f, true);
+
+			if (NearestWelder)
+			{
+				Task->TaskSecondaryTarget = NearestWelder->edict;
+			}
+			else
+			{
+				return false;
+			}
+		}
+	}
 
 	if (IsEdictPlayer(Task->TaskTarget))
 	{
@@ -374,10 +390,22 @@ bool AITASK_IsWeldTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	}
 	else
 	{
-		if (!UTIL_IsBuildableStructureStillReachable(pBot, Task->TaskTarget)) { return false; }
+		if (IsEdictStructure(Task->TaskTarget))
+		{
+			if (!UTIL_IsBuildableStructureStillReachable(pBot, Task->TaskTarget)) { return false; }
 
-		return (Task->TaskTarget->v.health < Task->TaskTarget->v.max_health);
+			return (Task->TaskTarget->v.health < Task->TaskTarget->v.max_health);
+		}
+
+		AvHWeldable* WeldableRef = dynamic_cast<AvHWeldable*>(CBaseEntity::Instance(Task->TaskTarget));
+
+		if (WeldableRef)
+		{
+			return !WeldableRef->GetIsWelded();
+		}		
 	}
+
+	return false;
 }
 
 bool AITASK_IsAmmoPickupTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
@@ -2125,7 +2153,7 @@ void BotProgressTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	}
 	break;
 	case TASK_WELD:
-		MarineProgressWeldTask(pBot, Task);
+		BotProgressWeldTask(pBot, Task);
 		break;
 	case TASK_DEFEND:
 		BotProgressDefendTask(pBot, Task);
@@ -2156,10 +2184,18 @@ void BotProgressTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	}
 }
 
-void MarineProgressWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
+void BotProgressWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
-	//float DistFromWeldLocation = vDist2DSq(pBot->Edict->v.origin, Task->TaskTarget->v.origin);
 
+	if (!PlayerHasWeapon(pBot->Player, WEAPON_MARINE_WELDER))
+	{
+		if (!FNullEnt(Task->TaskSecondaryTarget))
+		{
+			MoveTo(pBot, Task->TaskSecondaryTarget->v.origin, MOVESTYLE_NORMAL);
+		}
+
+		return;
+	}
 
 	if (IsPlayerInUseRange(pBot->Edict, Task->TaskTarget))
 	{
@@ -2177,42 +2213,17 @@ void MarineProgressWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	}
 	else
 	{
-		MoveTo(pBot, Task->TaskTarget->v.origin, MOVESTYLE_NORMAL);
+		if (IsEdictPlayer(Task->TaskTarget) || IsEdictStructure(Task->TaskTarget))
+		{
+			MoveTo(pBot, Task->TaskTarget->v.origin, MOVESTYLE_NORMAL);
+		}
+		else
+		{
+			MoveTo(pBot, Task->TaskLocation, MOVESTYLE_NORMAL);
+		}
 	}
 
 	return;
-
-	if (vDist2DSq(pBot->Edict->v.origin, Task->TaskTarget->v.origin) > sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
-	{
-		MoveTo(pBot, Task->TaskTarget->v.origin, MOVESTYLE_NORMAL);
-		return;
-	}
-
-	if (!UTIL_PlayerHasLOSToEntity(pBot->Edict, Task->TaskTarget, 9999.0f, false))
-	{
-		BotLookAt(pBot, UTIL_GetCentreOfEntity(Task->TaskTarget));
-
-		Vector WeldLocation = pBot->BotNavInfo.TargetDestination;
-
-		if (vIsZero(WeldLocation) || vDist2DSq(pBot->Edict->v.origin, Task->TaskTarget->v.origin) > sqrf(UTIL_MetresToGoldSrcUnits(1.5f)))
-		{
-			int MoveProfile = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
-			WeldLocation = UTIL_GetRandomPointOnNavmeshInDonut(MoveProfile, Task->TaskTarget->v.origin, UTIL_MetresToGoldSrcUnits(1.0f), UTIL_MetresToGoldSrcUnits(1.5f));
-
-			if (vIsZero(WeldLocation))
-			{
-				WeldLocation = Task->TaskTarget->v.origin;
-			}
-		}
-
-		MoveTo(pBot, WeldLocation, MOVESTYLE_NORMAL);
-
-		return;
-	}
-	else
-	{
-		MoveTo(pBot, Task->TaskTarget->v.origin, MOVESTYLE_NORMAL);
-	}
 }
 
 void MarineProgressSecureHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
@@ -2613,6 +2624,61 @@ char* AITASK_TaskTypeToChar(const BotTaskType TaskType)
 	default:
 		return "INVALID";
 	}
+}
+
+void AITASK_SetWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Target, const bool bIsUrgent)
+{
+	if (FNullEnt(Target) || (Target->v.deadflag != DEAD_NO))
+	{
+		AITASK_ClearBotTask(pBot, Task);
+		return;
+	}
+
+	if (Task->TaskType == TASK_WELD && Task->TaskTarget == Target)
+	{
+		Task->bTaskIsUrgent = bIsUrgent;
+		return;
+	}
+
+	if (!PlayerHasWeapon(pBot->Player, WEAPON_MARINE_WELDER))
+	{
+		AvHAIDroppedItem* NearestWelder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, 0.0f, 0.0f, true);
+
+		if (!NearestWelder)
+		{
+			AITASK_ClearBotTask(pBot, Task);
+			return;
+		}
+		else
+		{
+			Task->TaskSecondaryTarget = NearestWelder->edict;
+		}
+	}
+
+	Task->TaskTarget = Target;
+	Task->TaskType = TASK_WELD;
+	Task->bTaskIsUrgent = bIsUrgent;
+	
+	if (IsEdictPlayer(Target) || IsEdictStructure(Target)) { return; }
+
+	Vector TargetLocation = UTIL_GetButtonFloorLocation(pBot->Edict->v.origin, Task->TaskTarget);
+
+	if (vIsZero(TargetLocation))
+	{
+		TargetLocation = Task->TaskTarget->v.origin;
+	}
+
+	int MoveProfile = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
+
+	Vector TaskLocation = FindClosestNavigablePointToDestination(MoveProfile, pBot->Edict->v.origin, TargetLocation, UTIL_MetresToGoldSrcUnits(5.0f));
+
+	if (vIsZero(TaskLocation))
+	{
+		AITASK_ClearBotTask(pBot, Task);
+		return;
+	}
+
+	Task->TaskLocation = TaskLocation;
 }
 
 void AITASK_SetAttackTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Target, const bool bIsUrgent)

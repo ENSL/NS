@@ -63,4 +63,6 @@ BotAttackResult PerformAttackLOSCheck(AvHAIPlayer* pBot, const AvHAIWeapon Weapo
 float UTIL_GetProjectileVelocityForWeapon(const AvHAIWeapon Weapon);
 bool IsAreaAffectedBySpores(const Vector Location);
 
+char* UTIL_WeaponTypeToClassname(const AvHAIWeapon WeaponType);
+
 #endif
