@@ -164,6 +164,35 @@ AvHAIBuildableStructure* AITAC_FindClosestDeployableToLocation(const Vector& Loc
 	return Result;
 }
 
+AvHAIDroppedItem* AITAC_FindClosestItemToLocation(const Vector& Location, const AvHAIDeployableItemType ItemType, float MinRadius, float MaxRadius, bool bConsiderPhaseDistance)
+{
+	AvHAIDroppedItem* Result = NULL;
+	float CurrMinDist = 0.0f;
+
+	float MinDistSq = sqrf(MinRadius);
+	float MaxDistSq = sqrf(MaxRadius);
+
+	bool bUseMinDist = MinDistSq > 0.1f;
+	bool bUseMaxDist = MaxDistSq > 0.1f;
+
+	for (auto& it : MarineDroppedItemMap)
+	{
+		if (!it.second.bIsReachableMarine) { continue; }
+		if (it.second.ItemType != ItemType) { continue; }
+
+		float DistSq = (bConsiderPhaseDistance) ? sqrf(AITAC_GetPhaseDistanceBetweenPoints(it.second.Location, Location)) : vDist2DSq(it.second.Location, Location);
+
+		if ((!bUseMinDist || DistSq >= MinDistSq) && (!bUseMaxDist || DistSq <= MaxDistSq) && (!Result || DistSq < CurrMinDist))
+		{
+			Result = &it.second;
+			CurrMinDist = DistSq;
+		}
+
+	}
+
+	return Result;
+}
+
 AvHAIBuildableStructure* AITAC_GetDeployableRefFromEdict(const edict_t* Structure)
 {
 	if (FNullEnt(Structure)) { return nullptr; }
@@ -550,6 +579,8 @@ void AITAC_UpdateMapAIData()
 		AITAC_RefreshMarineItems();
 		last_item_refresh_time = gpGlobals->time;
 	}
+
+	UTIL_UpdateDoors(false);
 
 	AITAC_RefreshHiveData();
 }

@@ -15,6 +15,9 @@
 #include "AvHAITask.h"
 #include "AvHAIWeaponHelper.h"
 
+#include "../AvHWeldable.h"
+#include "../AvHServerUtil.h"
+
 #include "../../dlls/triggers.h"
 
 #include <stdlib.h>
@@ -28,9 +31,9 @@
 #include "fastlz/fastlz.c"
 #include "DetourAlloc.h"
 
-nav_door NavDoors[32];
+vector<nav_door> NavDoors;
+
 nav_weldable NavWeldableObstacles[32];
-int NumDoors;
 int NumWeldableObstacles;
 
 struct NavMeshSetHeader
@@ -254,7 +257,7 @@ struct MeshProcess : public dtTileCacheMeshProcess
 			else if (polyAreas[i] == DT_TILECACHE_CROUCH_AREA)
 			{
 				polyAreas[i] = SAMPLE_POLYAREA_CROUCH;
-				polyFlags[i] = SAMPLE_POLYFLAGS_CROUCH;
+				polyFlags[i] = SAMPLE_POLYFLAGS_WALK;
 			}
 			else if (polyAreas[i] == DT_TILECACHE_BLOCKED_AREA)
 			{
@@ -270,6 +273,11 @@ struct MeshProcess : public dtTileCacheMeshProcess
 			{
 				polyAreas[i] = SAMPLE_POLYAREA_MSTRUCTURE;
 				polyFlags[i] = SAMPLE_POLYFLAGS_MSTRUCTURE;
+			}
+			else if (polyAreas[i] == DT_TILECACHE_WELD_AREA)
+			{
+				polyAreas[i] = SAMPLE_POLYAREA_GROUND;
+				polyFlags[i] = SAMPLE_POLYFLAGS_WELD;
 			}
 		}
 
@@ -532,10 +540,11 @@ void UnloadNavigationData()
 {
 	UnloadNavMeshes();
 
+	UTIL_ClearDoorData();
+
 	memset(NavProfiles, 0, sizeof(nav_profile));
-	memset(NavDoors, 0, sizeof(NavDoors));
 	memset(NavWeldableObstacles, 0, sizeof(NavWeldableObstacles));
-	NumDoors = 0;
+
 	NumWeldableObstacles = 0;
 
 	AIMGR_ClearBotData();
@@ -894,6 +903,7 @@ bool loadNavigationData(const char* mapname)
 	NavProfiles[MARINE_REGULAR_NAV_PROFILE].Filters.setExcludeFlags(0);
 	NavProfiles[MARINE_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
 	NavProfiles[MARINE_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_MSTRUCTURE);
+	NavProfiles[MARINE_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
 	NavProfiles[MARINE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
 	NavProfiles[MARINE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_PHASEGATE, 0.1f);
 	NavProfiles[MARINE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_JUMP, 1.5f);
@@ -907,12 +917,31 @@ bool loadNavigationData(const char* mapname)
 	NavProfiles[MARINE_REGULAR_NAV_PROFILE].bFlyingProfile = false;
 	NavProfiles[MARINE_REGULAR_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_MARINE;
 
+	NavProfiles[MARINE_WELD_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
+	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
+	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setExcludeFlags(0);
+	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
+	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_MSTRUCTURE);
+	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
+	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_PHASEGATE, 0.1f);
+	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_JUMP, 1.5f);
+	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
+	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALL, 1.0f);
+	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_LADDER, 1.0f);
+	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_HIGHFALL, 10.0f);
+	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_HIGHJUMP, 10.0f);
+	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 2.0f);
+	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_ASTRUCTURE, 20.0f);
+	NavProfiles[MARINE_WELD_NAV_PROFILE].bFlyingProfile = false;
+	NavProfiles[MARINE_WELD_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_MARINE;
+
 	NavProfiles[SKULK_REGULAR_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
 	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
 	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.setExcludeFlags(0);
 	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_LADDER);
 	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_ASTRUCTURE);
 	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
+	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
 	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
 	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_JUMP, 1.5f);
 	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALL, 1.0f);
@@ -930,6 +959,7 @@ bool loadNavigationData(const char* mapname)
 	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.setExcludeFlags(0);
 	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_ASTRUCTURE);
 	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
+	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
 	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
 	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_PHASEGATE, 0.1f);
 	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_JUMP, 1.5f);
@@ -950,6 +980,7 @@ bool loadNavigationData(const char* mapname)
 	NavProfiles[GORGE_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
 	NavProfiles[GORGE_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_ASTRUCTURE);
 	NavProfiles[GORGE_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
+	NavProfiles[GORGE_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
 	NavProfiles[GORGE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
 	NavProfiles[GORGE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_JUMP, 1.5f);
 	NavProfiles[GORGE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALL, 1.0f);
@@ -969,6 +1000,7 @@ bool loadNavigationData(const char* mapname)
 	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_ASTRUCTURE);
 	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
 	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_NOONOS);
+	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
 	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
 	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_JUMP, 3.0f);
 	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALL, 1.0f);
@@ -998,6 +1030,7 @@ bool loadNavigationData(const char* mapname)
 	NavProfiles[GORGE_BUILD_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_MSTRUCTURE);
 	NavProfiles[GORGE_BUILD_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
 	NavProfiles[GORGE_BUILD_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
+	NavProfiles[GORGE_BUILD_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
 	NavProfiles[GORGE_BUILD_NAV_PROFILE].bFlyingProfile = false;
 	NavProfiles[GORGE_BUILD_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_MARINE;
 
@@ -1007,6 +1040,7 @@ bool loadNavigationData(const char* mapname)
 	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_LADDER);
 	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_ASTRUCTURE);
 	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
+	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
 	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 50.0f);
 	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_JUMP, 1.0f);
 	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALL, 1.0f);
@@ -1025,6 +1059,7 @@ bool loadNavigationData(const char* mapname)
 	NavProfiles[GORGE_HIDE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
 	NavProfiles[GORGE_HIDE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_ASTRUCTURE);
 	NavProfiles[GORGE_HIDE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
+	NavProfiles[GORGE_HIDE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
 	NavProfiles[GORGE_HIDE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 5.0f);
 	NavProfiles[GORGE_HIDE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_JUMP, 1.5f);
 	NavProfiles[GORGE_HIDE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALL, 1.0f);
@@ -1042,6 +1077,7 @@ bool loadNavigationData(const char* mapname)
 	NavProfiles[LERK_FLYING_NAV_PROFILE].Filters.setExcludeFlags(0);
 	NavProfiles[LERK_FLYING_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_ASTRUCTURE);
 	NavProfiles[LERK_FLYING_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
+	NavProfiles[LERK_FLYING_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
 	NavProfiles[LERK_FLYING_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
 	NavProfiles[LERK_FLYING_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_JUMP, 1.0f);
 	NavProfiles[LERK_FLYING_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALL, 1.0f);
@@ -2254,33 +2290,42 @@ void CheckAndHandleDoorObstruction(AvHAIPlayer* pBot, const Vector MoveFrom, con
 		return;
 	}
 
-	CBaseDoor* BlockingDoor = GetClassPtr((CBaseDoor*)VARS(BlockingDoorEdict));
+	CBaseToggle* BlockingDoor = GetClassPtr((CBaseToggle*)VARS(BlockingDoorEdict));
 
 	if (!BlockingDoor) { return; }
 
+	Vector NearestPoint = UTIL_GetClosestPointOnEntityToLocation(pBot->Edict->v.origin, BlockingDoorEdict);
+
 	if (IsPlayerTouchingEntity(pBot->Edict, BlockingDoorEdict))
 	{
-		Vector NearestPoint = UTIL_GetClosestPointOnEntityToLocation(pBot->Edict->v.origin, BlockingDoorEdict);
-
 		Vector MoveDir = UTIL_GetVectorNormal2D(pBot->Edict->v.origin - NearestPoint);
 
 		pBot->desiredMovementDir = MoveDir;
 		return;
 	}
 
-	if (BlockingDoor->m_toggle_state == TS_GOING_UP)
+	// If the door is in the process of opening or closing, let it finish before doing anything else
+	if (BlockingDoor->m_toggle_state == TS_GOING_UP || BlockingDoor->m_toggle_state == TS_GOING_DOWN)
 	{
-		// Wait for the door to finish opening
-		pBot->desiredMovementDir = g_vecZero;
-		BotLookAt(pBot, BlockingDoorEdict);
+		if (vDist2DSq(pBot->Edict->v.origin, NearestPoint) < sqrf(UTIL_MetresToGoldSrcUnits(1.5f)))
+		{
+			// Wait for the door to finish opening
+			pBot->desiredMovementDir = g_vecZero;
+			BotLookAt(pBot, BlockingDoorEdict);
+		}
 		return;
 	}
 
-	// Door is closing/opening, let it finish first before deciding to try and open it
-	if (BlockingDoorEdict->v.velocity != g_vecZero || BlockingDoorEdict->v.avelocity != g_vecZero)
+	// If we're blocked by a door that's open, and its wait time isn't infinite (i.e. it will close shortly) then just wait it out
+	if (BlockingDoor->m_toggle_state == TS_AT_TOP && BlockingDoor->m_flWait >= 0.0f)
 	{
-		pBot->desiredMovementDir = g_vecZero;
-		BotLookAt(pBot, BlockingDoorEdict);
+		// Wait for the door to start closing
+		if (vDist2DSq(pBot->Edict->v.origin, NearestPoint) < sqrf(UTIL_MetresToGoldSrcUnits(1.5f)))
+		{
+			// Wait for the door to finish opening
+			pBot->desiredMovementDir = g_vecZero;
+			BotLookAt(pBot, BlockingDoorEdict);
+		}
 		return;
 	}
 
@@ -2288,6 +2333,7 @@ void CheckAndHandleDoorObstruction(AvHAIPlayer* pBot, const Vector MoveFrom, con
 
 	if (Door)
 	{
+		// Door opens just by being directly used
 		if (Door->ActivationType == DOOR_USE)
 		{
 			if (IsPlayerInUseRange(pBot->Edict, Door->DoorEdict))
@@ -2303,32 +2349,34 @@ void CheckAndHandleDoorObstruction(AvHAIPlayer* pBot, const Vector MoveFrom, con
 			return;
 		}
 
+		// Door must be shot to open
 		if (Door->ActivationType == DOOR_SHOOT)
 		{
 			BotAttackTarget(pBot, Door->DoorEdict);
 			return;
 		}
 
-		if (Door->ActivationType == DOOR_TRIGGER)
+
+		DoorTrigger* Trigger = UTIL_GetNearestDoorTrigger(pBot->Edict->v.origin, Door, nullptr);
+
+		if (Trigger)
 		{
-			DoorTrigger* Trigger = UTIL_GetNearestDoorTrigger(pBot->Edict->v.origin, Door, nullptr);
-
-			if (Trigger)
+			if (Trigger->TriggerType == DOOR_BUTTON)
 			{
-				if (Trigger->TriggerType == DOOR_BUTTON)
-				{
-					Vector UseLocation = UTIL_GetButtonFloorLocation(pBot->Edict->v.origin, Trigger->Entity->edict());
+				Vector UseLocation = UTIL_GetButtonFloorLocation(pBot->Edict->v.origin, Trigger->Edict);
 
-					AITASK_SetUseTask(pBot, &pBot->BotNavInfo.MovementTask, Trigger->Entity->edict(), UseLocation, true);
-				}
-				else
-				{
-					AITASK_SetTouchTask(pBot, &pBot->BotNavInfo.MovementTask, Trigger->Entity->edict(), true);
-						
-				}
-
-				return;
+				AITASK_SetUseTask(pBot, &pBot->BotNavInfo.MovementTask, Trigger->Edict, UseLocation, true);
 			}
+			else if (Trigger->TriggerType == DOOR_TRIGGER)
+			{
+				AITASK_SetTouchTask(pBot, &pBot->BotNavInfo.MovementTask, Trigger->Edict, true);	
+			}
+			else if (Trigger->TriggerType == DOOR_WELD)
+			{
+				AITASK_SetWeldTask(pBot, &pBot->BotNavInfo.MovementTask, Trigger->Edict, true);
+			}
+
+			return;
 		}
 	}
 	
@@ -2657,20 +2705,18 @@ DoorTrigger* UTIL_GetNearestDoorTrigger(const Vector Location, nav_door* Door, C
 {
 	if (!Door) { return nullptr; }
 
-	if (Door->NumTriggers == 0) { return nullptr; }
-
-	if (Door->NumTriggers == 1) { return &Door->TriggerEnts[0]; }
+	if (Door->TriggerEnts.size() == 0) { return nullptr; }
 
 	DoorTrigger* NearestTrigger = nullptr;
 	float NearestDist = 0.0f;
 
 	Vector DoorLocation = UTIL_GetCentreOfEntity(Door->DoorEdict);
 
-	for (int i = 0; i < Door->NumTriggers; i++)
+	for (auto it = Door->TriggerEnts.begin(); it != Door->TriggerEnts.end(); it++)
 	{
-		if (Door->TriggerEnts[i].Entity != nullptr && Door->TriggerEnts[i].Entity != IgnoreTrigger)
+		if (!FNullEnt(it->Edict) && it->Entity != IgnoreTrigger && it->bIsActivated)
 		{
-			Vector ButtonLocation = UTIL_GetButtonFloorLocation(Location, Door->TriggerEnts[i].Entity->edict());
+			Vector ButtonLocation = UTIL_GetButtonFloorLocation(Location, it->Edict);
 
 			if (!UTIL_IsPathBlockedByDoor(Location, ButtonLocation, Door->DoorEdict))
 			{
@@ -2678,10 +2724,10 @@ DoorTrigger* UTIL_GetNearestDoorTrigger(const Vector Location, nav_door* Door, C
 
 				if (!NearestTrigger || ThisDist < NearestDist)
 				{
-					NearestTrigger = &Door->TriggerEnts[i];
+					NearestTrigger = &(*it);
 					NearestDist = ThisDist;
 				}
-				
+
 			}
 		}
 	}
@@ -2852,7 +2898,7 @@ void NewMove(AvHAIPlayer* pBot)
 	// While moving, check to make sure we're not obstructed by a func_breakable, e.g. vent or window.
 	CheckAndHandleBreakableObstruction(pBot, MoveFrom, MoveTo);
 
-	if (gpGlobals->time - pBot->LastUseTime >= 3.0f)
+	if (gpGlobals->time - pBot->LastUseTime >= 1.0f)
 	{
 		CheckAndHandleDoorObstruction(pBot, MoveFrom, MoveTo);
 	}
@@ -4401,18 +4447,27 @@ int UTIL_GetMoveProfileForBot(const AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
 
 	switch (PlayerUser3)
 	{
-	case AVH_USER3_ALIEN_PLAYER1:
-		return UTIL_GetMoveProfileForSkulk(MoveStyle);
-	case AVH_USER3_ALIEN_PLAYER2:
-		return UTIL_GetMoveProfileForGorge(MoveStyle);
-	case AVH_USER3_ALIEN_PLAYER3:
-		return UTIL_GetMoveProfileForLerk(MoveStyle);
-	case AVH_USER3_ALIEN_PLAYER4:
-		return UTIL_GetMoveProfileForFade(MoveStyle);
-	case AVH_USER3_ALIEN_PLAYER5:
-		return UTIL_GetMoveProfileForOnos(MoveStyle);
-	default:
-		return MARINE_REGULAR_NAV_PROFILE;
+		case AVH_USER3_ALIEN_PLAYER1:
+			return UTIL_GetMoveProfileForSkulk(MoveStyle);
+		case AVH_USER3_ALIEN_PLAYER2:
+			return UTIL_GetMoveProfileForGorge(MoveStyle);
+		case AVH_USER3_ALIEN_PLAYER3:
+			return UTIL_GetMoveProfileForLerk(MoveStyle);
+		case AVH_USER3_ALIEN_PLAYER4:
+			return UTIL_GetMoveProfileForFade(MoveStyle);
+		case AVH_USER3_ALIEN_PLAYER5:
+			return UTIL_GetMoveProfileForOnos(MoveStyle);
+		default:
+		{
+			if (PlayerHasWeapon(pBot->Player, WEAPON_MARINE_WELDER))
+			{
+				return MARINE_WELD_NAV_PROFILE;
+			}
+			else
+			{
+				return MARINE_REGULAR_NAV_PROFILE;
+			}
+		}
 	}
 }
 
@@ -4623,17 +4678,25 @@ bool IsBotPermaStuck(AvHAIPlayer* pBot)
 
 bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle MoveStyle, const float MaxAcceptableDist)
 {
+	nav_status* BotNavInfo = &pBot->BotNavInfo;
+	
+	bool bHasMovementTask = (BotNavInfo->MovementTask.TaskType != TASK_NONE);
+	bool bIsPerformingMovementTask = false;
+	
+	if (bHasMovementTask)
+	{
+		bIsPerformingMovementTask = (vEquals(Destination, BotNavInfo->MovementTask.TaskLocation) || (!FNullEnt(BotNavInfo->MovementTask.TaskTarget) && vEquals(Destination, BotNavInfo->MovementTask.TaskTarget->v.origin)) || (!FNullEnt(BotNavInfo->MovementTask.TaskSecondaryTarget) && vEquals(Destination, BotNavInfo->MovementTask.TaskSecondaryTarget->v.origin)));
+	}
+
 	// Invalid destination, or we're already there
-	if (Destination != pBot->BotNavInfo.MovementTask.TaskLocation && (vIsZero(Destination) || BotIsAtLocation(pBot, Destination)))
+	if (!bIsPerformingMovementTask && (vIsZero(Destination) || BotIsAtLocation(pBot, Destination)))
 	{
 		ClearBotMovement(pBot);
 		
 		return true;
-	}
+	}	
 
-	nav_status* BotNavInfo = &pBot->BotNavInfo;
-
-	if (BotNavInfo->MovementTask.TaskType != TASK_NONE && Destination != BotNavInfo->MovementTask.TaskLocation)
+	if (bHasMovementTask && !bIsPerformingMovementTask)
 	{
 		if (AITASK_IsTaskStillValid(pBot, &BotNavInfo->MovementTask))
 		{
@@ -4721,7 +4784,7 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 			return true;
 		}
 
-		if (bDestinationChanged && Destination != BotNavInfo->MovementTask.TaskLocation)
+		if (bDestinationChanged && !bIsPerformingMovementTask)
 		{
 			AITASK_ClearBotTask(pBot, &pBot->BotNavInfo.MovementTask);
 		}
@@ -5143,6 +5206,8 @@ void BotFollowPath(AvHAIPlayer* pBot)
 		bool thing = true;
 	}
 
+	NewMove(pBot);
+
 	if (!bIsUsingPhaseGate && IsBotStuck(pBot, TargetMoveLocation))
 	{
 		if (BotNavInfo->TotalStuckTime > 3.0f)
@@ -5164,7 +5229,7 @@ void BotFollowPath(AvHAIPlayer* pBot)
 		}
 	}
 
-	NewMove(pBot);
+	
 
 }
 
@@ -5233,7 +5298,7 @@ void PerformUnstuckMove(AvHAIPlayer* pBot, const Vector MoveDestination)
 bool IsBotStuck(AvHAIPlayer* pBot, const Vector MoveDestination)
 {
 	// If invalid move destination then bail out
-	if (vIsZero(MoveDestination)) { return false; }
+	if (vIsZero(MoveDestination) || vIsZero(pBot->desiredMovementDir)) { return false; }
 
 	// If moving to a new destination set a new distance baseline. We do not reset the stuck timer
 	if (MoveDestination != pBot->BotNavInfo.StuckCheckMoveLocation)
@@ -6078,6 +6143,146 @@ Vector UTIL_GetButtonFloorLocation(const Vector UserLocation, edict_t* ButtonEdi
 	return NewButtonAccessPoint;
 }
 
+void UTIL_PopulateTriggersForEntity(edict_t* Entity, vector<DoorTrigger>& TriggerList)
+{
+	CBaseEntity* EntityRef = CBaseEntity::Instance(Entity);
+
+	if (!EntityRef) { return; }
+
+	CBaseButton* ButtonRef = dynamic_cast<CBaseButton*>(EntityRef);
+	AvHWeldable* WeldableRef = dynamic_cast<AvHWeldable*>(EntityRef);
+	CBaseTrigger* TriggerRef = dynamic_cast<CBaseTrigger*>(EntityRef);
+
+	if (ButtonRef || WeldableRef || TriggerRef)
+	{
+		CBaseToggle* ToggleRef = dynamic_cast<CBaseToggle*>(EntityRef);
+
+		DoorActivationType NewTriggerType = DOOR_NONE;
+
+		if (ButtonRef)
+		{
+			NewTriggerType = DOOR_BUTTON;
+		}
+		else if (TriggerRef)
+		{
+			NewTriggerType = DOOR_TRIGGER;
+		}
+		else if (WeldableRef)
+		{
+			NewTriggerType = DOOR_WELD;
+		}
+
+		DoorTrigger NewTrigger;
+		NewTrigger.Entity = EntityRef;
+		NewTrigger.Edict = EntityRef->edict();
+		NewTrigger.ToggleEnt = ToggleRef;
+		NewTrigger.TriggerType = NewTriggerType;
+		NewTrigger.bIsActivated = (!ToggleRef || !ToggleRef->IsLockedByMaster());
+
+		TriggerList.push_back(NewTrigger);
+
+		if (!NewTrigger.bIsActivated)
+		{
+			CBaseEntity* MasterEntity = UTIL_FindEntityByString(NULL, "targetname", STRING(ToggleRef->m_sMaster));
+
+			if (MasterEntity)
+			{
+				UTIL_PopulateTriggersForEntity(MasterEntity->edict(), TriggerList);
+			}
+		}
+
+		return;
+	}
+
+
+	CMultiSource* MultiSourceRef = dynamic_cast<CMultiSource*>(EntityRef);
+
+	if (MultiSourceRef)
+	{
+		for (int i = 0; i < MultiSourceRef->m_iTotal; i++)
+		{
+			UTIL_PopulateTriggersForEntity(MultiSourceRef->m_rgEntities[i]->edict(), TriggerList);
+		}
+
+		if (MultiSourceRef->m_globalstate)
+		{
+			const char* GlobalName = STRING(MultiSourceRef->m_globalstate);
+
+			CBaseEntity* EnvBaseRef = NULL;
+
+			while ((EnvBaseRef = UTIL_FindEntityByClassname(EnvBaseRef, "env_global")) != NULL)
+			{
+				CEnvGlobal* EnvGlobalRef = dynamic_cast<CEnvGlobal*>(EnvBaseRef);
+
+				if (FStrEq(STRING(EnvGlobalRef->m_globalstate), GlobalName))
+				{
+					UTIL_PopulateTriggersForEntity(EnvGlobalRef->edict(), TriggerList);
+				}				
+			}
+		}
+
+		return;		
+	}
+
+	const char* EntityName = STRING(Entity->v.targetname);
+
+	CBaseEntity* currTrigger = NULL;
+
+	while ((currTrigger = UTIL_FindEntityByString(currTrigger, "target", EntityName)) != NULL)
+	{
+		UTIL_PopulateTriggersForEntity(currTrigger->edict(), TriggerList);
+	}
+
+	FOR_ALL_ENTITIES(kwsWeldableClassName, AvHWeldable*)
+		if (theEntity->GetTargetOnFinish() == EntityName)
+		{
+			UTIL_PopulateTriggersForEntity(theEntity->edict(), TriggerList);
+		}
+	END_FOR_ALL_ENTITIES(kwsWeldableClassName)
+
+
+	while (((currTrigger = UTIL_FindEntityByClassname(currTrigger, "multi_manager")) != NULL))
+	{
+		CMultiManager* MMRef = dynamic_cast<CMultiManager*>(currTrigger);
+
+		bool bTargetsDoor = false;
+
+		if (MMRef)
+		{
+			for (int i = 0; i < MMRef->m_cTargets; i++)
+			{
+				if (FStrEq(EntityName, STRING(MMRef->m_iTargetName[i])))
+				{
+					bTargetsDoor = true;
+					break;
+				}
+			}
+		}
+
+		if (bTargetsDoor)
+		{
+			CBaseEntity* MMTrigger = NULL;
+
+			const char* MMNameChar = STRING(MMRef->pev->targetname);
+
+			while ((MMTrigger = UTIL_FindEntityByString(MMTrigger, "target", MMNameChar)) != NULL)
+			{
+				UTIL_PopulateTriggersForEntity(MMTrigger->edict(), TriggerList);
+			}
+
+			const string MMName = MMNameChar;
+
+			FOR_ALL_ENTITIES(kwsWeldableClassName, AvHWeldable*)
+				if (theEntity->GetTargetOnFinish() == MMName)
+				{
+					UTIL_PopulateTriggersForEntity(theEntity->edict(), TriggerList);
+				}
+			END_FOR_ALL_ENTITIES(kwsWeldableClassName)
+		}
+	}
+	
+}
+
 void UTIL_LinkTriggerToDoor(const edict_t* DoorEdict, nav_door* DoorRef)
 {
 
@@ -6085,32 +6290,49 @@ void UTIL_LinkTriggerToDoor(const edict_t* DoorEdict, nav_door* DoorRef)
 	const char* DoorTargetName = STRING(DoorEdict->v.targetname);
 	while ((currTrigger = UTIL_FindEntityByString(currTrigger, "target", DoorTargetName)) != NULL)
 	{
-		if (DoorRef->NumTriggers >= 8) { return; }
-
+		CBaseToggle* ToggleRef = dynamic_cast<CBaseToggle*>(currTrigger);
 		CBaseTrigger* TriggerRef = dynamic_cast<CBaseTrigger*>(currTrigger);
+		CBaseButton* ButtonRef = dynamic_cast<CBaseButton*>(currTrigger);		
+
+		DoorActivationType NewTriggerType = DOOR_NONE;
 
 		if (TriggerRef)
 		{
-			int CurrIndex = DoorRef->NumTriggers;
-			DoorRef->TriggerEnts[CurrIndex].Entity = currTrigger;
-			DoorRef->TriggerEnts[CurrIndex].TriggerType = DOOR_TRIGGER;
-			DoorRef->NumTriggers++;
-			continue;
+			NewTriggerType = DOOR_TRIGGER;
 		}
-
-		CBaseButton* ButtonRef = dynamic_cast<CBaseButton*>(currTrigger);
-
-		if (ButtonRef)
+		else if (ButtonRef)
 		{
-			int CurrIndex = DoorRef->NumTriggers;
-			DoorRef->TriggerEnts[CurrIndex].Entity = currTrigger;
-			DoorRef->TriggerEnts[CurrIndex].TriggerType = DOOR_BUTTON;
-			DoorRef->NumTriggers++;
-			continue;
+			NewTriggerType = DOOR_BUTTON;
 		}
+
+		DoorTrigger NewTrigger;
+		NewTrigger.Entity = currTrigger;
+		NewTrigger.Edict = currTrigger->edict();
+		NewTrigger.ToggleEnt = ToggleRef;
+		NewTrigger.TriggerType = NewTriggerType;
+		NewTrigger.bIsActivated = !currTrigger->IsLockedByMaster();
+
+		DoorRef->TriggerEnts.push_back(NewTrigger);
 	}
 
+	const string DoorName = DoorTargetName;
+
 	currTrigger = NULL;
+
+	FOR_ALL_ENTITIES(kwsWeldableClassName, AvHWeldable*)
+		if (theEntity->GetTargetOnFinish() == DoorName)
+		{
+			DoorTrigger NewTrigger;
+			NewTrigger.Entity = theEntity;
+			NewTrigger.Edict = theEntity->edict();
+			NewTrigger.TriggerType = DOOR_WELD;
+			NewTrigger.bIsActivated = !theEntity->IsLockedByMaster();
+
+			DoorRef->TriggerEnts.push_back(NewTrigger);
+		}
+	END_FOR_ALL_ENTITIES(kwsWeldableClassName)
+
+	
 
 	// If a door is activated via a multi_manager entity, then we need to find whatever trigger/button targets that multi_manager and tie it to the door
 
@@ -6135,32 +6357,50 @@ void UTIL_LinkTriggerToDoor(const edict_t* DoorEdict, nav_door* DoorRef)
 		if (bTargetsDoor)
 		{
 			CBaseEntity* MMTrigger = NULL;
-			while ((MMTrigger = UTIL_FindEntityByString(MMTrigger, "target", STRING(MMRef->pev->targetname))) != NULL)
-			{
-				if (DoorRef->NumTriggers >= 8) { return; }
 
+			const char* MMNameChar = STRING(MMRef->pev->targetname);
+
+			while ((MMTrigger = UTIL_FindEntityByString(MMTrigger, "target", MMNameChar)) != NULL)
+			{
+				DoorActivationType NewTriggerType = DOOR_NONE;
+
+				CBaseToggle* ToggleRef = dynamic_cast<CBaseToggle*>(MMTrigger);
 				CBaseTrigger* TriggerRef = dynamic_cast<CBaseTrigger*>(MMTrigger);
+				CBaseButton* ButtonRef = dynamic_cast<CBaseButton*>(MMTrigger);
 
 				if (TriggerRef)
 				{
-					int CurrIndex = DoorRef->NumTriggers;
-					DoorRef->TriggerEnts[CurrIndex].Entity = MMTrigger;
-					DoorRef->TriggerEnts[CurrIndex].TriggerType = DOOR_TRIGGER;
-					DoorRef->NumTriggers++;
-					continue;
+					NewTriggerType = DOOR_TRIGGER;
 				}
-
-				CBaseButton* ButtonRef = dynamic_cast<CBaseButton*>(MMTrigger);
-
-				if (ButtonRef)
+				else if (ButtonRef)
 				{
-					int CurrIndex = DoorRef->NumTriggers;
-					DoorRef->TriggerEnts[CurrIndex].Entity = MMTrigger;
-					DoorRef->TriggerEnts[CurrIndex].TriggerType = DOOR_BUTTON;
-					DoorRef->NumTriggers++;
-					continue;
+					NewTriggerType = DOOR_BUTTON;
 				}
+
+				DoorTrigger NewTrigger;
+				NewTrigger.Entity = currTrigger;
+				NewTrigger.Edict = currTrigger->edict();
+				NewTrigger.ToggleEnt = ToggleRef;
+				NewTrigger.TriggerType = NewTriggerType;
+				NewTrigger.bIsActivated = currTrigger->IsLockedByMaster();
+
+				DoorRef->TriggerEnts.push_back(NewTrigger);
 			}
+
+			const string MMName = MMNameChar;
+
+			FOR_ALL_ENTITIES(kwsWeldableClassName, AvHWeldable*)
+				if (theEntity->GetTargetOnFinish() == MMName)
+				{
+					DoorTrigger NewTrigger;
+					NewTrigger.Entity = theEntity;
+					NewTrigger.Edict = theEntity->edict();
+					NewTrigger.TriggerType = DOOR_WELD;
+					NewTrigger.bIsActivated = !theEntity->IsLockedByMaster();
+
+					DoorRef->TriggerEnts.push_back(NewTrigger);
+				}
+			END_FOR_ALL_ENTITIES(kwsWeldableClassName)
 		}
 	}
 
@@ -6233,73 +6473,60 @@ void UTIL_PopulateWeldableObstacles()
 	}
 }
 
-void UTIL_MarkDoorWeldable(const char* DoorTargetName)
+void UTIL_UpdateDoors(bool bInitial)
 {
-	for (int i = 0; i < NumDoors; i++)
+	for (auto it = NavDoors.begin(); it != NavDoors.end(); it++)
 	{
-		if (FStrEq(STRING(NavDoors[i].DoorEdict->v.targetname), DoorTargetName))
+		DoorActivationType PrevType = it->ActivationType;
+
+		UTIL_UpdateDoorTriggers(&(*it));
+				
+		CBaseToggle* DoorRef = it->DoorEntity;
+
+		if (!DoorRef) { continue; }
+
+		if (DoorRef->m_toggle_state == TS_GOING_UP || DoorRef->m_toggle_state == TS_GOING_DOWN)
 		{
-			NavDoors[i].ActivationType = DOOR_WELD;
-
-			if (NavDoors[i].NumObstacles > 0)
+			if (it->NumObstacles > 0)
 			{
-				for (int ii = 0; ii < NavDoors[i].NumObstacles; ii++)
+				for (int ii = 0; ii < it->NumObstacles; ii++)
 				{
-					UTIL_RemoveTemporaryObstacles(NavDoors[i].ObstacleRefs[ii]);
+					UTIL_RemoveTemporaryObstacles(it->ObstacleRefs[ii]);
 				}
-				NavDoors[i].NumObstacles = 0;
+
+				it->NumObstacles = 0;
+
 			}
+			continue;
+		}
 
-			float SizeX = NavDoors[i].DoorEdict->v.size.x;
-			float SizeY = NavDoors[i].DoorEdict->v.size.y;
-			float SizeZ = NavDoors[i].DoorEdict->v.size.z;
-
-			bool bUseXAxis = (SizeX >= SizeY);
-
-			float CylinderRadius = fminf(SizeX, SizeY) * 0.5f;
-
-			float Ratio = (bUseXAxis) ? (SizeX / (CylinderRadius * 2.0f)) : (SizeY / (CylinderRadius * 2.0f));
-
-			int NumObstacles = (int)ceil(Ratio);
-
-			if (NumObstacles > 32) { NumObstacles = 32; }
-
-			Vector Dir = (bUseXAxis) ? RIGHT_VECTOR : FWD_VECTOR;
-
-			Vector StartPoint = UTIL_GetCentreOfEntity(NavDoors[i].DoorEdict);
-
-			if (bUseXAxis)
+		if (bInitial || DoorRef->m_toggle_state != it->CurrentState || PrevType != it->ActivationType)
+		{
+			if (it->NumObstacles > 0)
 			{
-				StartPoint.x = NavDoors[i].DoorEdict->v.absmin.x + CylinderRadius;
-			}
-			else
-			{
-				StartPoint.y = NavDoors[i].DoorEdict->v.absmin.y + CylinderRadius;
-			}
-
-			StartPoint.z -= 25.0f;
-
-			Vector CurrentPoint = StartPoint;
-
-			NavDoors[i].NumObstacles = NumObstacles;
-
-			for (int ii = 0; ii < NumObstacles; ii++)
-			{
-				UTIL_AddTemporaryObstacles(CurrentPoint, CylinderRadius, SizeZ, DT_TILECACHE_NULL_AREA, NavDoors[i].ObstacleRefs[ii]);
-
-				if (bUseXAxis)
+				for (int ii = 0; ii < it->NumObstacles; ii++)
 				{
-					CurrentPoint.x += CylinderRadius * 2.0f;
+					UTIL_RemoveTemporaryObstacles(it->ObstacleRefs[ii]);
 				}
-				else
-				{
-					CurrentPoint.y += CylinderRadius * 2.0f;
-				}
+
+				it->NumObstacles = 0;
+
 			}
 
+			if (it->ActivationType == DOOR_NONE)
+			{
+				UTIL_ApplyTempObstaclesToDoor(&(*it), DT_TILECACHE_NULL_AREA);
+			}
 
+			if (it->ActivationType == DOOR_WELD)
+			{
+				UTIL_ApplyTempObstaclesToDoor(&(*it), DT_TILECACHE_WELD_AREA);
+			}
+
+			it->CurrentState = DoorRef->m_toggle_state;
 		}
 	}
+
 }
 
 void UTIL_UpdateWeldableObstacles()
@@ -6322,169 +6549,228 @@ void UTIL_UpdateWeldableObstacles()
 	}
 }
 
-void UTIL_UpdateWeldableDoors()
+void UTIL_ApplyTempObstaclesToDoor(nav_door* DoorRef, const int Area)
 {
-	for (int i = 0; i < NumDoors; i++)
+	if (!DoorRef) { return; }
+
+	if (DoorRef->NumObstacles > 0)
 	{
-		if (NavDoors[i].ActivationType == DOOR_WELD)
+		for (int ii = 0; ii < DoorRef->NumObstacles; ii++)
 		{
-			if (NavDoors[i].DoorEdict->v.velocity != g_vecZero || NavDoors[i].DoorEdict->v.avelocity != g_vecZero)
-			{
-				if (NavDoors[i].NumObstacles > 0)
-				{
-					for (int ii = 0; ii < NavDoors[i].NumObstacles; ii++)
-					{
-						UTIL_RemoveTemporaryObstacles(NavDoors[i].ObstacleRefs[ii]);
-					}
+			UTIL_RemoveTemporaryObstacles(DoorRef->ObstacleRefs[ii]);
+		}
 
-					NavDoors[i].NumObstacles = 0;
+		DoorRef->NumObstacles = 0;
 
-				}
-				continue;
-			}
+	}
 
-			Vector ThisLocation = UTIL_GetCentreOfEntity(NavDoors[i].DoorEdict);
+	if (FNullEnt(DoorRef->DoorEdict) || DoorRef->DoorEdict->free)
+	{
+		return;
+	}
 
-			if (ThisLocation != NavDoors[i].CurrentPosition)
-			{
-				float SizeX = NavDoors[i].DoorEdict->v.size.x;
-				float SizeY = NavDoors[i].DoorEdict->v.size.y;
-				float SizeZ = NavDoors[i].DoorEdict->v.size.z;
+	float SizeX = DoorRef->DoorEdict->v.size.x;
+	float SizeY = DoorRef->DoorEdict->v.size.y;
+	float SizeZ = DoorRef->DoorEdict->v.size.z;
 
-				bool bUseXAxis = (SizeX >= SizeY);
+	bool bUseXAxis = (SizeX >= SizeY);
 
-				float CylinderRadius = fminf(SizeX, SizeY) * 0.5f;
+	float CylinderRadius = fminf(SizeX, SizeY) * 0.5f;
 
-				float Ratio = (bUseXAxis) ? (SizeX / (CylinderRadius * 2.0f)) : (SizeY / (CylinderRadius * 2.0f));
+	float Ratio = (bUseXAxis) ? (SizeX / (CylinderRadius * 2.0f)) : (SizeY / (CylinderRadius * 2.0f));
 
-				int NumObstacles = (int)ceil(Ratio);
+	int NumObstacles = (int)ceil(Ratio);
 
-				if (NumObstacles > 32) { NumObstacles = 32; }
+	if (NumObstacles > 32) { NumObstacles = 32; }
 
-				Vector Dir = (bUseXAxis) ? RIGHT_VECTOR : FWD_VECTOR;
+	Vector Dir = (bUseXAxis) ? RIGHT_VECTOR : FWD_VECTOR;
 
-				Vector StartPoint = UTIL_GetCentreOfEntity(NavDoors[i].DoorEdict);
+	Vector StartPoint = UTIL_GetCentreOfEntity(DoorRef->DoorEdict);
 
-				if (bUseXAxis)
-				{
-					StartPoint.x = NavDoors[i].DoorEdict->v.absmin.x + CylinderRadius;
-				}
-				else
-				{
-					StartPoint.y = NavDoors[i].DoorEdict->v.absmin.y + CylinderRadius;
-				}
+	if (bUseXAxis)
+	{
+		StartPoint.x = DoorRef->DoorEdict->v.absmin.x + CylinderRadius;
+	}
+	else
+	{
+		StartPoint.y = DoorRef->DoorEdict->v.absmin.y + CylinderRadius;
+	}
 
-				StartPoint.z -= 25.0f;
+	StartPoint.z -= 25.0f;
 
-				Vector CurrentPoint = StartPoint;
+	Vector CurrentPoint = StartPoint;
 
-				NavDoors[i].NumObstacles = NumObstacles;
+	DoorRef->NumObstacles = NumObstacles;
 
-				for (int ii = 0; ii < NumObstacles; ii++)
-				{
-					UTIL_AddTemporaryObstacles(CurrentPoint, CylinderRadius, SizeZ, DT_TILECACHE_NULL_AREA, NavDoors[i].ObstacleRefs[ii]);
+	for (int ii = 0; ii < NumObstacles; ii++)
+	{
+		UTIL_AddTemporaryObstacles(CurrentPoint, CylinderRadius, SizeZ, Area, DoorRef->ObstacleRefs[ii]);
 
-					if (bUseXAxis)
-					{
-						CurrentPoint.x += CylinderRadius * 2.0f;
-					}
-					else
-					{
-						CurrentPoint.y += CylinderRadius * 2.0f;
-					}
-				}
-
-				NavDoors[i].CurrentPosition = ThisLocation;
-			}
+		if (bUseXAxis)
+		{
+			CurrentPoint.x += CylinderRadius * 2.0f;
+		}
+		else
+		{
+			CurrentPoint.y += CylinderRadius * 2.0f;
 		}
 	}
+
+
+}
+
+void UTIL_UpdateDoorTriggers(nav_door* Door)
+{
+	// Don't need to do anything if the door can be shot or opened by using it
+	if (!Door || Door->ActivationType == DOOR_USE || Door->ActivationType == DOOR_SHOOT) { return; }
+
+	if (Door->TriggerEnts.size() == 0)
+	{
+		// No more triggers left, door is dormant
+		Door->ActivationType = DOOR_NONE;
+		return;
+	}
+
+	DoorActivationType NewActivationType = DOOR_NONE;
+
+	for (auto it = Door->TriggerEnts.begin(); it != Door->TriggerEnts.end();)
+	{
+		if (FNullEnt(it->Edict) || it->Edict->free)
+		{
+			it = Door->TriggerEnts.erase(it);
+			continue;
+		}
+
+		if (it->TriggerType == DOOR_WELD)
+		{
+			AvHWeldable* WeldableRef = dynamic_cast<AvHWeldable*>(it->Entity);
+
+			if (WeldableRef && WeldableRef->GetIsWelded())
+			{
+				it = Door->TriggerEnts.erase(it);
+				continue;
+			}
+		}
+		
+		it->bIsActivated = (it->ToggleEnt) ? !it->ToggleEnt->IsLockedByMaster() : true;
+
+		if (it->bIsActivated)
+		{
+			if (it->TriggerType == DOOR_WELD)
+			{
+				NewActivationType = DOOR_WELD;
+			}
+			else
+			{
+				if (NewActivationType != DOOR_WELD)
+				{
+					NewActivationType = DOOR_TRIGGER;
+				}
+			}
+		}
+
+		it++;
+	}
+
+	Door->ActivationType = NewActivationType;
+}
+
+void UTIL_ClearDoorData()
+{
+	NavDoors.clear();
 }
 
 // TODO: Need to add orientated box obstacle for door
 void UTIL_PopulateDoors()
 {
-	memset(NavDoors, 0, sizeof(NavDoors));
-	NumDoors = 0;
+	UTIL_ClearDoorData();
 
 	CBaseEntity* currDoor = NULL;
 	while ((currDoor = UTIL_FindEntityByClassname(currDoor, "func_door")) != NULL)
 	{
-		NavDoors[NumDoors].DoorEntity = currDoor;
-		NavDoors[NumDoors].DoorEdict = currDoor->edict();
-		NavDoors[NumDoors].PositionOne = UTIL_GetCentreOfEntity(currDoor->edict());
-		NavDoors[NumDoors].PositionTwo = UTIL_GetCentreOfEntity(currDoor->edict()) + (currDoor->pev->movedir * (fabs(currDoor->pev->movedir.x * (currDoor->pev->size.x - 2)) + fabs(currDoor->pev->movedir.y * (currDoor->pev->size.y - 2)) + fabs(currDoor->pev->movedir.z * (currDoor->pev->size.z - 2)) - 0.0f));
-		NavDoors[NumDoors].CurrentPosition = NavDoors[NumDoors].PositionOne;
-		NavDoors[NumDoors].bStartOpen = (currDoor->pev->flags & DOOR_START_OPEN);
+		CBaseToggle* ToggleRef = dynamic_cast<CBaseToggle*>(currDoor);
+
+		if (!ToggleRef) { continue; }
+
+		nav_door NewDoor;
+		NewDoor.NumObstacles = 0;
+
+		NewDoor.DoorEntity = ToggleRef;
+		NewDoor.DoorEdict = currDoor->edict();
+		NewDoor.CurrentState = ToggleRef->m_toggle_state;
 
 		if (currDoor->pev->spawnflags & DOOR_USE_ONLY)
 		{
-			NavDoors[NumDoors].ActivationType = DOOR_USE;
+			NewDoor.ActivationType = DOOR_USE;
 		}
 		else
 		{
-			NavDoors[NumDoors].ActivationType = DOOR_TRIGGER;
-			UTIL_LinkTriggerToDoor(currDoor->edict(), &NavDoors[NumDoors]);
-
+			UTIL_PopulateTriggersForEntity(currDoor->edict(), NewDoor.TriggerEnts);
 		}
 
-		NumDoors++;
+		NavDoors.push_back(NewDoor);
 	}
 
 	currDoor = NULL;
 	while ((currDoor = UTIL_FindEntityByClassname(currDoor, "func_seethroughdoor")) != NULL)
 	{
-		NavDoors[NumDoors].DoorEntity = currDoor;
-		NavDoors[NumDoors].DoorEdict = currDoor->edict();
-		NavDoors[NumDoors].PositionOne = UTIL_GetCentreOfEntity(currDoor->edict());
-		NavDoors[NumDoors].PositionTwo = UTIL_GetCentreOfEntity(currDoor->edict()) + (currDoor->pev->movedir * (fabs(currDoor->pev->movedir.x * (currDoor->pev->size.x - 2)) + fabs(currDoor->pev->movedir.y * (currDoor->pev->size.y - 2)) + fabs(currDoor->pev->movedir.z * (currDoor->pev->size.z - 2)) - 0.0f));
-		NavDoors[NumDoors].CurrentPosition = NavDoors[NumDoors].PositionOne;
+		CBaseToggle* ToggleRef = dynamic_cast<CBaseToggle*>(currDoor);
+		if (!ToggleRef) { continue; }
+
+		nav_door NewDoor;
+		NewDoor.NumObstacles = 0;
+
+		NewDoor.DoorEntity = ToggleRef;
+		NewDoor.DoorEdict = currDoor->edict();
+		NewDoor.CurrentState = ToggleRef->m_toggle_state;
 
 		if (currDoor->pev->spawnflags & DOOR_USE_ONLY)
 		{
-			NavDoors[NumDoors].ActivationType = DOOR_USE;
+			NewDoor.ActivationType = DOOR_USE;
 		}
 		else
 		{
-			NavDoors[NumDoors].ActivationType = DOOR_TRIGGER;
-			UTIL_LinkTriggerToDoor(currDoor->edict(), &NavDoors[NumDoors]);
+			NewDoor.ActivationType = DOOR_TRIGGER;
+			UTIL_PopulateTriggersForEntity(currDoor->edict(), NewDoor.TriggerEnts);
 		}
 
-		NumDoors++;
 	}
 
 	currDoor = NULL;
 	while ((currDoor = UTIL_FindEntityByClassname(currDoor, "func_door_rotating")) != NULL)
 	{
-		NavDoors[NumDoors].DoorEntity = currDoor;
-		NavDoors[NumDoors].DoorEdict = currDoor->edict();
-		NavDoors[NumDoors].PositionOne = UTIL_GetCentreOfEntity(currDoor->edict());
-		NavDoors[NumDoors].PositionTwo = UTIL_GetCentreOfEntity(currDoor->edict()) + (currDoor->pev->movedir * (fabs(currDoor->pev->movedir.x * (currDoor->pev->size.x - 2)) + fabs(currDoor->pev->movedir.y * (currDoor->pev->size.y - 2)) + fabs(currDoor->pev->movedir.z * (currDoor->pev->size.z - 2)) - 0.0f));
-		NavDoors[NumDoors].CurrentPosition = NavDoors[NumDoors].PositionOne;
+		CBaseToggle* ToggleRef = dynamic_cast<CBaseToggle*>(currDoor);
+		if (!ToggleRef) { continue; }
+
+		nav_door NewDoor;
+		NewDoor.NumObstacles = 0;
+
+		NewDoor.DoorEntity = ToggleRef;
+		NewDoor.DoorEdict = currDoor->edict();
+		NewDoor.CurrentState = ToggleRef->m_toggle_state;
 
 		if (currDoor->pev->spawnflags & DOOR_USE_ONLY)
 		{
-			NavDoors[NumDoors].ActivationType = DOOR_USE;
+			NewDoor.ActivationType = DOOR_USE;
 		}
 		else
 		{
-			NavDoors[NumDoors].ActivationType = DOOR_TRIGGER;
-			UTIL_LinkTriggerToDoor(currDoor->edict(), &NavDoors[NumDoors]);
+			NewDoor.ActivationType = DOOR_TRIGGER;
+			UTIL_PopulateTriggersForEntity(currDoor->edict(), NewDoor.TriggerEnts);
 
 		}
-
-		NumDoors++;
 	}
 
-	//BSP_RegisterWeldables();
+	UTIL_UpdateDoors(true);
 }
 
 nav_door* UTIL_GetNavDoorByEdict(const edict_t* DoorEdict)
 {
-	for (int i = 0; i < NumDoors; i++)
+	for (auto it = NavDoors.begin(); it != NavDoors.end(); it++)
 	{
-		if (NavDoors[i].DoorEdict == DoorEdict)
+		if (it->DoorEdict == DoorEdict)
 		{
-			return &NavDoors[i];
+			return &(*it);
 		}
 	}
 

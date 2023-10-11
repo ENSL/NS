@@ -106,7 +106,12 @@
 #include "AvHNetworkMessages.h"
 #include "AvHNexusServer.h"
 
+#include "AIPlayers/AvHAIPlayerUtil.h"
+#include "AIPlayers/AvHAIHelper.h"
+#include "AIPlayers/AvHAIMath.h"
 #include "AIPlayers/AvHAINavigation.h"
+#include "AIPlayers/AvHAIPlayerManager.h"
+#include "AIPlayers/AvHAITask.h"
 
 extern AvHParticleTemplateListServer	gParticleTemplateList;
 extern CVoiceGameMgr					g_VoiceGameMgr;
@@ -1408,6 +1413,41 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
             theSuccess = true;
         }
     }
+	else if (FStrEq(pcmd, "tracedoor"))
+	{
+		Vector TraceStart = GetPlayerEyePosition(theAvHPlayer->edict()); // origin + pev->view_ofs
+		Vector LookDir = UTIL_GetForwardVector(theAvHPlayer->edict()->v.v_angle); // Converts view angles to normalized unit vector
+
+		Vector TraceEnd = TraceStart + (LookDir * 1000.0f);
+
+		edict_t* TracedEntity = UTIL_TraceEntity(theAvHPlayer->edict(), TraceStart, TraceEnd);
+
+		if (!FNullEnt(TracedEntity))
+		{
+			const nav_door* Door = UTIL_GetNavDoorByEdict(TracedEntity);
+
+			if (Door)
+			{
+				bool bThing = true;
+			}
+		}
+
+		theSuccess = true;
+	}
+	else if (FStrEq(pcmd, "cometome"))
+	{
+		for (int i = 0; i < AIMGR_GetNumAIPlayers(); i++)
+		{
+			AvHAIPlayer* thisBot = AIMGR_GetAIPlayerAtIndex(i);
+
+			if (thisBot)
+			{
+				AITASK_SetMoveTask(thisBot, &thisBot->PrimaryBotTask, theAvHPlayer->pev->origin, true);
+			}
+		}
+
+		theSuccess = true;
+	}
     else if( FStrEq( pcmd, kcRemoveUpgrade) )
     {
         // Allow even with cheats off right now, put this back in for first beta

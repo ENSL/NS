@@ -53,5 +53,8 @@ void UpdateBotChat(AvHAIPlayer* pBot);
 void StartNewBotFrame(AvHAIPlayer* pBot);
 
 void TestNavThink(AvHAIPlayer* pBot);
+void DroneThink(AvHAIPlayer* pBot);
+
+void BotSwitchToWeapon(AvHAIPlayer* pBot, AvHAIWeapon NewWeaponSlot);
 
 #endif

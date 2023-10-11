@@ -101,6 +101,11 @@ bool AvHWeldable::GetWeldOpens() const
 	return this->mWeldOpens;
 }
 
+string AvHWeldable::GetTargetOnFinish() const
+{
+	return this->mTargetOnFinish;
+}
+
 void AvHWeldable::KeyValue( KeyValueData* pkvd )
 {
 	// "Health to destroy once welded (-1 infinite)" : "-1"

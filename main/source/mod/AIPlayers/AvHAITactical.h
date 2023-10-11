@@ -50,6 +50,8 @@ Vector						AITAC_GetTeamStartingLocation(AvHTeamNumber Team);
 
 AvHAIResourceNode*			AITAC_GetRandomResourceNode();
 
+AvHAIDroppedItem*			AITAC_FindClosestItemToLocation(const Vector& Location, const AvHAIDeployableItemType ItemType, float MinRadius, float MaxRadius, bool bConsiderPhaseDistance);
+
 Vector AITAC_GetFloorLocationForHive(const AvHAIHiveDefinition* Hive);
 
 int AITAC_GetNumHives();
