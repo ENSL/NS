@@ -5,6 +5,8 @@
 
 #include "../AvHGamerules.h"
 
+int m_spriteTexture;
+
 bool UTIL_CommanderTrace(const edict_t* pEdict, const Vector& start, const Vector& end)
 {
 	TraceResult hit;
@@ -239,4 +241,121 @@ bool GetNearestMapLocationAtPoint(vec3_t SearchLocation, string& outLocation)
 	}
 
 	return theSuccess;
+}
+
+void UTIL_DrawLine(edict_t* pEntity, Vector start, Vector end)
+{
+	if (FNullEnt(pEntity) || pEntity->free) { return; }
+
+	MESSAGE_BEGIN(MSG_ONE, SVC_TEMPENTITY, NULL, pEntity);
+	WRITE_BYTE(TE_BEAMPOINTS);
+	WRITE_COORD(start.x);
+	WRITE_COORD(start.y);
+	WRITE_COORD(start.z);
+	WRITE_COORD(end.x);
+	WRITE_COORD(end.y);
+	WRITE_COORD(end.z);
+	WRITE_SHORT(m_spriteTexture);
+	WRITE_BYTE(1);               // framestart
+	WRITE_BYTE(10);              // framerate
+	WRITE_BYTE(1);              // life in 0.1's
+	WRITE_BYTE(5);           // width
+	WRITE_BYTE(0);           // noise
+
+	WRITE_BYTE(255);             // r, g, b
+	WRITE_BYTE(255);           // r, g, b
+	WRITE_BYTE(255);            // r, g, b
+
+	WRITE_BYTE(250);      // brightness
+	WRITE_BYTE(5);           // speed
+	MESSAGE_END();
+}
+
+void UTIL_DrawLine(edict_t* pEntity, Vector start, Vector end, float drawTimeSeconds)
+{
+	if (FNullEnt(pEntity) || pEntity->free) { return; }
+
+	int timeTenthSeconds = (int)floorf(drawTimeSeconds * 10.0f);
+	timeTenthSeconds = fmaxf(timeTenthSeconds, 1);
+
+	MESSAGE_BEGIN(MSG_ONE, SVC_TEMPENTITY, NULL, pEntity);
+	WRITE_BYTE(TE_BEAMPOINTS);
+	WRITE_COORD(start.x);
+	WRITE_COORD(start.y);
+	WRITE_COORD(start.z);
+	WRITE_COORD(end.x);
+	WRITE_COORD(end.y);
+	WRITE_COORD(end.z);
+	WRITE_SHORT(m_spriteTexture);
+	WRITE_BYTE(1);               // framestart
+	WRITE_BYTE(10);              // framerate
+	WRITE_BYTE(timeTenthSeconds);              // life in 0.1's
+	WRITE_BYTE(5);           // width
+	WRITE_BYTE(0);           // noise
+
+	WRITE_BYTE(255);             // r, g, b
+	WRITE_BYTE(255);           // r, g, b
+	WRITE_BYTE(255);            // r, g, b
+
+	WRITE_BYTE(250);      // brightness
+	WRITE_BYTE(5);           // speed
+	MESSAGE_END();
+}
+
+void UTIL_DrawLine(edict_t* pEntity, Vector start, Vector end, float drawTimeSeconds, int r, int g, int b)
+{
+	if (FNullEnt(pEntity) || pEntity->free) { return; }
+
+	int timeTenthSeconds = (int)floorf(drawTimeSeconds * 10.0f);
+
+	MESSAGE_BEGIN(MSG_ONE, SVC_TEMPENTITY, NULL, pEntity);
+	WRITE_BYTE(TE_BEAMPOINTS);
+	WRITE_COORD(start.x);
+	WRITE_COORD(start.y);
+	WRITE_COORD(start.z);
+	WRITE_COORD(end.x);
+	WRITE_COORD(end.y);
+	WRITE_COORD(end.z);
+	WRITE_SHORT(m_spriteTexture);
+	WRITE_BYTE(1);               // framestart
+	WRITE_BYTE(10);              // framerate
+	WRITE_BYTE(timeTenthSeconds);              // life in 0.1's
+	WRITE_BYTE(5);           // width
+	WRITE_BYTE(0);           // noise
+
+	WRITE_BYTE(r);             // r, g, b
+	WRITE_BYTE(g);           // r, g, b
+	WRITE_BYTE(b);            // r, g, b
+
+	WRITE_BYTE(250);      // brightness
+	WRITE_BYTE(5);           // speed
+	MESSAGE_END();
+}
+
+void UTIL_DrawLine(edict_t* pEntity, Vector start, Vector end, int r, int g, int b)
+{
+	if (FNullEnt(pEntity) || pEntity->free) { return; }
+
+	MESSAGE_BEGIN(MSG_ONE, SVC_TEMPENTITY, NULL, pEntity);
+	WRITE_BYTE(TE_BEAMPOINTS);
+	WRITE_COORD(start.x);
+	WRITE_COORD(start.y);
+	WRITE_COORD(start.z);
+	WRITE_COORD(end.x);
+	WRITE_COORD(end.y);
+	WRITE_COORD(end.z);
+	WRITE_SHORT(m_spriteTexture);
+	WRITE_BYTE(1);               // framestart
+	WRITE_BYTE(10);              // framerate
+	WRITE_BYTE(1);              // life in 0.1's
+	WRITE_BYTE(5);           // width
+	WRITE_BYTE(0);           // noise
+
+	WRITE_BYTE(r);             // r, g, b
+	WRITE_BYTE(g);           // r, g, b
+	WRITE_BYTE(b);            // r, g, b
+
+	WRITE_BYTE(250);      // brightness
+	WRITE_BYTE(5);           // speed
+	MESSAGE_END();
 }

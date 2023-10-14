@@ -79,7 +79,7 @@ AvHAIDeployableStructureType UTIL_IUSER3ToStructureType(const int inIUSER3);
 
 bool UTIL_ShouldStructureCollide(AvHAIDeployableStructureType StructureType);
 float UTIL_GetStructureRadiusForObstruction(AvHAIDeployableStructureType StructureType);
-unsigned char UTIL_GetAreaForObstruction(AvHAIDeployableStructureType StructureType);
+unsigned char UTIL_GetAreaForObstruction(AvHAIDeployableStructureType StructureType, const edict_t* BuildingEdict);
 
 bool UTIL_IsStructureElectrified(edict_t* Structure);
 bool UTIL_StructureIsFullyBuilt(edict_t* Structure);

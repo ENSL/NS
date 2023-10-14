@@ -244,35 +244,35 @@ struct MeshProcess : public dtTileCacheMeshProcess
 				polyAreas[i] = SAMPLE_POLYAREA_GROUND;
 				polyFlags[i] = SAMPLE_POLYFLAGS_WALK;
 			}
-			else if (polyAreas[i] == DT_TILECACHE_CLIMBABLE_AREA)
-			{
-				polyAreas[i] = SAMPLE_POLYAREA_WALLCLIMB;
-				polyFlags[i] = SAMPLE_POLYFLAGS_WALLCLIMB;
-			}
-			else if (polyAreas[i] == DT_TILECACHE_LADDER_AREA)
-			{
-				polyAreas[i] = SAMPLE_POLYAREA_LADDER;
-				polyFlags[i] = SAMPLE_POLYFLAGS_LADDER;
-			}
 			else if (polyAreas[i] == DT_TILECACHE_CROUCH_AREA)
 			{
 				polyAreas[i] = SAMPLE_POLYAREA_CROUCH;
 				polyFlags[i] = SAMPLE_POLYFLAGS_WALK;
+			}
+			else if (polyAreas[i] == DT_TILECACHE_WALLCLIMB_AREA)
+			{
+				polyAreas[i] = SAMPLE_POLYAREA_GROUND;
+				polyFlags[i] = SAMPLE_POLYFLAGS_WALLCLIMB;
+			}
+			else if (polyAreas[i] == DT_TILECACHE_LADDER_AREA)
+			{
+				polyAreas[i] = SAMPLE_POLYAREA_GROUND;
+				polyFlags[i] = SAMPLE_POLYFLAGS_LADDER;
 			}
 			else if (polyAreas[i] == DT_TILECACHE_BLOCKED_AREA)
 			{
 				polyAreas[i] = SAMPLE_POLYAREA_BLOCKED;
 				polyFlags[i] = SAMPLE_POLYFLAGS_BLOCKED;
 			}
-			else if (polyAreas[i] == DT_TILECACHE_ASTRUCTURE_AREA)
+			else if (polyAreas[i] == DT_TILECACHE_TEAM1STRUCTURE_AREA)
 			{
-				polyAreas[i] = SAMPLE_POLYAREA_ASTRUCTURE;
-				polyFlags[i] = SAMPLE_POLYFLAGS_ASTRUCTURE;
+				polyAreas[i] = SAMPLE_POLYAREA_BLOCKED;
+				polyFlags[i] = SAMPLE_POLYFLAGS_BLOCKED | SAMPLE_POLYFLAGS_TEAM1STRUCTURE;
 			}
-			else if (polyAreas[i] == DT_TILECACHE_MSTRUCTURE_AREA)
+			else if (polyAreas[i] == DT_TILECACHE_TEAM2STRUCTURE_AREA)
 			{
-				polyAreas[i] = SAMPLE_POLYAREA_MSTRUCTURE;
-				polyFlags[i] = SAMPLE_POLYFLAGS_MSTRUCTURE;
+				polyAreas[i] = SAMPLE_POLYAREA_BLOCKED;
+				polyFlags[i] = SAMPLE_POLYFLAGS_BLOCKED | SAMPLE_POLYFLAGS_TEAM2STRUCTURE;
 			}
 			else if (polyAreas[i] == DT_TILECACHE_WELD_AREA)
 			{
@@ -306,8 +306,8 @@ void UTIL_UpdateTileCache()
 Vector UTIL_AdjustPointAwayFromNavWall(const Vector Location, const float MaxDistanceFromWall)
 {
 
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(SKULK_REGULAR_NAV_PROFILE);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(SKULK_REGULAR_NAV_PROFILE);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(BaseNavProfiles[SKULK_BASE_NAV_PROFILE]);
+	const dtQueryFilter* m_navFilter = &BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters;
 
 	float Pos[3] = { Location.x, Location.z, -Location.y };
 
@@ -331,7 +331,7 @@ Vector UTIL_AdjustPointAwayFromNavWall(const Vector Location, const float MaxDis
 
 		float AdjustLoc[3] = { AdjustLocation.x, AdjustLocation.z, -AdjustLocation.y };
 
-		if (UTIL_TraceNav(SKULK_REGULAR_NAV_PROFILE, Location, AdjustLocation, 0.1f))
+		if (UTIL_TraceNav(BaseNavProfiles[ALL_NAV_PROFILE], Location, AdjustLocation, 0.1f))
 		{
 			return AdjustLocation;
 		}
@@ -346,12 +346,8 @@ Vector UTIL_AdjustPointAwayFromNavWall(const Vector Location, const float MaxDis
 
 Vector UTIL_GetNearestPointOnNavWall(AvHAIPlayer* pBot, const float MaxRadius)
 {
-	int NavProfileIndex = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
-
-	if (NavProfileIndex < 0) { return g_vecZero; }
-
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfileIndex);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(NavProfileIndex);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(pBot->BotNavInfo.NavProfile);
+	const dtQueryFilter* m_navFilter = &pBot->BotNavInfo.NavProfile.Filters;
 
 	Vector Location = pBot->CurrentFloorPosition;
 
@@ -372,20 +368,16 @@ Vector UTIL_GetNearestPointOnNavWall(AvHAIPlayer* pBot, const float MaxRadius)
 	return g_vecZero;
 }
 
-Vector UTIL_GetNearestPointOnNavWall(const int NavProfileIndex, const Vector Location, const float MaxRadius)
+Vector UTIL_GetNearestPointOnNavWall(const nav_profile &NavProfile, const Vector Location, const float MaxRadius)
 {
-	if (NavProfileIndex < 0)
-	{
-		return g_vecZero;
-	}
 
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfileIndex);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(NavProfileIndex);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfile);
+	const dtQueryFilter* m_navFilter = &NavProfile.Filters;
 
 	// Invalid nav profile
 	if (!m_navQuery) { return g_vecZero; }
 
-	dtPolyRef StartPoly = UTIL_GetNearestPolyRefForLocation(NavProfileIndex, Location);
+	dtPolyRef StartPoly = UTIL_GetNearestPolyRefForLocation(NavProfile, Location);
 
 	// Not on the nav mesh
 	if (StartPoly == 0) { return Location; }
@@ -542,7 +534,7 @@ void UnloadNavigationData()
 
 	UTIL_ClearDoorData();
 
-	memset(NavProfiles, 0, sizeof(nav_profile));
+	memset(BaseNavProfiles, 0, sizeof(nav_profile));
 	memset(NavWeldableObstacles, 0, sizeof(NavWeldableObstacles));
 
 	NumWeldableObstacles = 0;
@@ -888,6 +880,101 @@ bool LoadNavMesh(const char* mapname)
 	return true;
 }
 
+void UTIL_PopulateBaseNavProfiles()
+{
+	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
+	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].bFlyingProfile = false;
+	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_MARINE;
+	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
+	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 2.0f);
+	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
+	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALLDAMAGE, 10.0f);
+	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
+	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
+	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
+
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].bFlyingProfile = false;
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_SKULK;
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 1.0f);
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALLDAMAGE, 1.0f);
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_WALLCLIMB, 1.0f);
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_DUCKJUMP);
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_LADDER);
+
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].bFlyingProfile = false;
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_MARINE;
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALLDAMAGE, 10.0f);
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_DUCKJUMP);
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
+
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].bFlyingProfile = true;
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_SKULK;
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 1.0f);
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALLDAMAGE, 1.0f);
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_WALLCLIMB, 1.0f);
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
+
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].bFlyingProfile = false;
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_SKULK;
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.5f);
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 1.0f);
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALLDAMAGE, 1.0f);
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_WALLCLIMB, 1.0f);
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
+
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].NavMeshIndex = ONOS_NAV_MESH;
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].bFlyingProfile = false;
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_ONOS;
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 2.0f);
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 1.0f);
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALLDAMAGE, 10.0f);
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_NOONOS);
+
+	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].NavMeshIndex = BUILDING_NAV_MESH;
+	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
+	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
+	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].bFlyingProfile = false;
+	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_MARINE;
+
+	BaseNavProfiles[ALL_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
+	BaseNavProfiles[ALL_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
+	BaseNavProfiles[ALL_NAV_PROFILE].Filters.setExcludeFlags(0);
+	BaseNavProfiles[ALL_NAV_PROFILE].bFlyingProfile = false;
+	BaseNavProfiles[ALL_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_SKULK;
+}
+
 bool loadNavigationData(const char* mapname)
 {
 
@@ -898,203 +985,7 @@ bool loadNavigationData(const char* mapname)
 		return false;
 	}
 	
-	NavProfiles[MARINE_REGULAR_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
-	NavProfiles[MARINE_REGULAR_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
-	NavProfiles[MARINE_REGULAR_NAV_PROFILE].Filters.setExcludeFlags(0);
-	NavProfiles[MARINE_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
-	NavProfiles[MARINE_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_MSTRUCTURE);
-	NavProfiles[MARINE_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
-	NavProfiles[MARINE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
-	NavProfiles[MARINE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_PHASEGATE, 0.1f);
-	NavProfiles[MARINE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_JUMP, 1.5f);
-	NavProfiles[MARINE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
-	NavProfiles[MARINE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALL, 1.0f);
-	NavProfiles[MARINE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_LADDER, 1.0f);
-	NavProfiles[MARINE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_HIGHFALL, 10.0f);
-	NavProfiles[MARINE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_HIGHJUMP, 10.0f);
-	NavProfiles[MARINE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 2.0f);
-	NavProfiles[MARINE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_ASTRUCTURE, 20.0f);
-	NavProfiles[MARINE_REGULAR_NAV_PROFILE].bFlyingProfile = false;
-	NavProfiles[MARINE_REGULAR_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_MARINE;
-
-	NavProfiles[MARINE_WELD_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
-	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
-	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setExcludeFlags(0);
-	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
-	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_MSTRUCTURE);
-	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
-	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_PHASEGATE, 0.1f);
-	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_JUMP, 1.5f);
-	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
-	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALL, 1.0f);
-	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_LADDER, 1.0f);
-	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_HIGHFALL, 10.0f);
-	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_HIGHJUMP, 10.0f);
-	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 2.0f);
-	NavProfiles[MARINE_WELD_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_ASTRUCTURE, 20.0f);
-	NavProfiles[MARINE_WELD_NAV_PROFILE].bFlyingProfile = false;
-	NavProfiles[MARINE_WELD_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_MARINE;
-
-	NavProfiles[SKULK_REGULAR_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
-	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
-	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.setExcludeFlags(0);
-	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_LADDER);
-	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_ASTRUCTURE);
-	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
-	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
-	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
-	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_JUMP, 1.5f);
-	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALL, 1.0f);
-	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_WALLCLIMB, 1.0f);
-	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_HIGHFALL, 1.0f);
-	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_HIGHJUMP, 1.0f);
-	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
-	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
-	NavProfiles[SKULK_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_MSTRUCTURE, 20.0f);
-	NavProfiles[SKULK_REGULAR_NAV_PROFILE].bFlyingProfile = false;
-	NavProfiles[SKULK_REGULAR_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_SKULK;
-
-	NavProfiles[FADE_REGULAR_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
-	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
-	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.setExcludeFlags(0);
-	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_ASTRUCTURE);
-	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
-	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
-	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
-	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_PHASEGATE, 0.1f);
-	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_JUMP, 1.5f);
-	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALL, 1.0f);
-	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_LADDER, 2.0f);
-	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_HIGHFALL, 1.0f);
-	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_HIGHJUMP, 1.0f);
-	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 2.0f);
-	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_WALLCLIMB, 1.0f);
-	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
-	NavProfiles[FADE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_MSTRUCTURE, 20.0f);
-	NavProfiles[FADE_REGULAR_NAV_PROFILE].bFlyingProfile = false;
-	NavProfiles[FADE_REGULAR_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_SKULK;
-
-	NavProfiles[GORGE_REGULAR_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
-	NavProfiles[GORGE_REGULAR_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
-	NavProfiles[GORGE_REGULAR_NAV_PROFILE].Filters.setExcludeFlags(0);
-	NavProfiles[GORGE_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
-	NavProfiles[GORGE_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_ASTRUCTURE);
-	NavProfiles[GORGE_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
-	NavProfiles[GORGE_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
-	NavProfiles[GORGE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
-	NavProfiles[GORGE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_JUMP, 1.5f);
-	NavProfiles[GORGE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALL, 1.0f);
-	NavProfiles[GORGE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_LADDER, 1.0f);
-	NavProfiles[GORGE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_HIGHFALL, 10.0f);
-	NavProfiles[GORGE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_HIGHJUMP, 10.0f);
-	NavProfiles[GORGE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
-	NavProfiles[GORGE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
-	NavProfiles[GORGE_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_MSTRUCTURE, 20.0f);
-	NavProfiles[GORGE_REGULAR_NAV_PROFILE].bFlyingProfile = false;
-	NavProfiles[GORGE_REGULAR_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_MARINE;
-
-	NavProfiles[ONOS_REGULAR_NAV_PROFILE].NavMeshIndex = ONOS_NAV_MESH;
-	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
-	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.setExcludeFlags(0);
-	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
-	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_ASTRUCTURE);
-	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
-	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_NOONOS);
-	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
-	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
-	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_JUMP, 3.0f);
-	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALL, 1.0f);
-	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_LADDER, 1.0f);
-	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_HIGHFALL, 10.0f);
-	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_HIGHJUMP, 10.0f);
-	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 3.0f);
-	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
-	NavProfiles[ONOS_REGULAR_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_MSTRUCTURE, 10.0f);
-	NavProfiles[ONOS_REGULAR_NAV_PROFILE].bFlyingProfile = false;
-	NavProfiles[ONOS_REGULAR_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_ONOS;
-
-	NavProfiles[BUILDING_REGULAR_NAV_PROFILE].NavMeshIndex = BUILDING_NAV_MESH;
-	NavProfiles[BUILDING_REGULAR_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
-	NavProfiles[BUILDING_REGULAR_NAV_PROFILE].Filters.setExcludeFlags(0);
-	NavProfiles[BUILDING_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_BLOCKED);
-	NavProfiles[BUILDING_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_ASTRUCTURE);
-	NavProfiles[BUILDING_REGULAR_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_MSTRUCTURE);
-	NavProfiles[BUILDING_REGULAR_NAV_PROFILE].bFlyingProfile = false;
-	NavProfiles[BUILDING_REGULAR_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_MARINE;
-
-	NavProfiles[GORGE_BUILD_NAV_PROFILE].NavMeshIndex = BUILDING_NAV_MESH;
-	NavProfiles[GORGE_BUILD_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
-	NavProfiles[GORGE_BUILD_NAV_PROFILE].Filters.setExcludeFlags(0);
-	NavProfiles[GORGE_BUILD_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_BLOCKED);
-	NavProfiles[GORGE_BUILD_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_ASTRUCTURE);
-	NavProfiles[GORGE_BUILD_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_MSTRUCTURE);
-	NavProfiles[GORGE_BUILD_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
-	NavProfiles[GORGE_BUILD_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
-	NavProfiles[GORGE_BUILD_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
-	NavProfiles[GORGE_BUILD_NAV_PROFILE].bFlyingProfile = false;
-	NavProfiles[GORGE_BUILD_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_MARINE;
-
-	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
-	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
-	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].Filters.setExcludeFlags(0);
-	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_LADDER);
-	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_ASTRUCTURE);
-	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
-	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
-	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 50.0f);
-	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_JUMP, 1.0f);
-	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALL, 1.0f);
-	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_WALLCLIMB, 1.0f);
-	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_HIGHFALL, 1.0f);
-	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_HIGHJUMP, 1.0f);
-	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
-	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
-	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_MSTRUCTURE, 20.0f);
-	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].bFlyingProfile = false;
-	NavProfiles[SKULK_AMBUSH_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_SKULK;
-
-	NavProfiles[GORGE_HIDE_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
-	NavProfiles[GORGE_HIDE_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
-	NavProfiles[GORGE_HIDE_NAV_PROFILE].Filters.setExcludeFlags(0);
-	NavProfiles[GORGE_HIDE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
-	NavProfiles[GORGE_HIDE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_ASTRUCTURE);
-	NavProfiles[GORGE_HIDE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
-	NavProfiles[GORGE_HIDE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
-	NavProfiles[GORGE_HIDE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 5.0f);
-	NavProfiles[GORGE_HIDE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_JUMP, 1.5f);
-	NavProfiles[GORGE_HIDE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALL, 1.0f);
-	NavProfiles[GORGE_HIDE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_LADDER, 1.0f);
-	NavProfiles[GORGE_HIDE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_HIGHFALL, 10.0f);
-	NavProfiles[GORGE_HIDE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_HIGHJUMP, 10.0f);
-	NavProfiles[GORGE_HIDE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
-	NavProfiles[GORGE_HIDE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
-	NavProfiles[GORGE_HIDE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_MSTRUCTURE, 20.0f);
-	NavProfiles[GORGE_HIDE_NAV_PROFILE].bFlyingProfile = false;
-	NavProfiles[GORGE_HIDE_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_MARINE;
-
-	NavProfiles[LERK_FLYING_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
-	NavProfiles[LERK_FLYING_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
-	NavProfiles[LERK_FLYING_NAV_PROFILE].Filters.setExcludeFlags(0);
-	NavProfiles[LERK_FLYING_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_ASTRUCTURE);
-	NavProfiles[LERK_FLYING_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
-	NavProfiles[LERK_FLYING_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
-	NavProfiles[LERK_FLYING_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
-	NavProfiles[LERK_FLYING_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_JUMP, 1.0f);
-	NavProfiles[LERK_FLYING_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALL, 1.0f);
-	NavProfiles[LERK_FLYING_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_WALLCLIMB, 1.0f);
-	NavProfiles[LERK_FLYING_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_HIGHFALL, 1.0f);
-	NavProfiles[LERK_FLYING_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_HIGHJUMP, 1.0f);
-	NavProfiles[LERK_FLYING_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
-	NavProfiles[LERK_FLYING_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
-	NavProfiles[LERK_FLYING_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_MSTRUCTURE, 20.0f);
-	NavProfiles[LERK_FLYING_NAV_PROFILE].bFlyingProfile = true;
-	NavProfiles[LERK_FLYING_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_SKULK;
-
-	NavProfiles[ALL_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
-	NavProfiles[ALL_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
-	NavProfiles[ALL_NAV_PROFILE].Filters.setExcludeFlags(0);
-	NavProfiles[ALL_NAV_PROFILE].bFlyingProfile = false;
-	NavProfiles[ALL_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_SKULK;
+	UTIL_PopulateBaseNavProfiles();
 
 	return true;
 }
@@ -1106,12 +997,8 @@ bool NavmeshLoaded()
 
 Vector UTIL_GetRandomPointOnNavmesh(const AvHAIPlayer* pBot)
 {
-	int NavProfileIndex = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
-
-	if (NavProfileIndex < 0) { return g_vecZero; }
-
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfileIndex);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(NavProfileIndex);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(pBot->BotNavInfo.NavProfile);
+	const dtQueryFilter* m_navFilter = &pBot->BotNavInfo.NavProfile.Filters;
 
 	if (!m_navQuery)
 	{
@@ -1141,7 +1028,7 @@ Vector UTIL_GetRandomPointOnNavmesh(const AvHAIPlayer* pBot)
 
 Vector UTIL_GetRandomPointOnNavmeshInRadiusOfAreaType(SamplePolyFlags Flag, const Vector origin, const float MaxRadius)
 {
-	const dtNavMeshQuery* m_NavQuery = UTIL_GetNavMeshQueryForProfile(ALL_NAV_PROFILE);
+	const dtNavMeshQuery* m_NavQuery = UTIL_GetNavMeshQueryForProfile(BaseNavProfiles[ALL_NAV_PROFILE]);
 
 	if (!m_NavQuery) { return g_vecZero; }
 
@@ -1181,10 +1068,10 @@ Vector UTIL_GetRandomPointOnNavmeshInRadiusOfAreaType(SamplePolyFlags Flag, cons
 	return Result;
 }
 
-Vector UTIL_GetRandomPointOnNavmeshInRadius(const int NavProfileIndex, const Vector origin, const float MaxRadius)
+Vector UTIL_GetRandomPointOnNavmeshInRadius(const nav_profile &NavProfile, const Vector origin, const float MaxRadius)
 {
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfileIndex);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(NavProfileIndex);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfile);
+	const dtQueryFilter* m_navFilter = &NavProfile.Filters;
 
 	if (!m_navQuery) { return g_vecZero; }
 
@@ -1220,10 +1107,10 @@ Vector UTIL_GetRandomPointOnNavmeshInRadius(const int NavProfileIndex, const Vec
 	return Result;
 }
 
-Vector UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(const int NavProfileIndex, const Vector origin, const float MaxRadius)
+Vector UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(const nav_profile& NavProfile, const Vector origin, const float MaxRadius)
 {
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfileIndex);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(NavProfileIndex);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfile);
+	const dtQueryFilter* m_navFilter = &NavProfile.Filters;
 
 	if (!m_navQuery) { return g_vecZero; }
 
@@ -1259,7 +1146,7 @@ Vector UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(const int NavProfi
 	return Result;
 }
 
-Vector UTIL_GetRandomPointOnNavmeshInDonut(const int NavProfile, const Vector origin, const float MinRadius, const float MaxRadius)
+Vector UTIL_GetRandomPointOnNavmeshInDonut(const nav_profile& NavProfile, const Vector origin, const float MinRadius, const float MaxRadius)
 {
 	int maxIterations = 0;
 	float MinRadiusSq = sqrf(MinRadius);
@@ -1279,7 +1166,7 @@ Vector UTIL_GetRandomPointOnNavmeshInDonut(const int NavProfile, const Vector or
 	return g_vecZero;
 }
 
-Vector UTIL_GetRandomPointOnNavmeshInDonutIgnoreReachability(const int NavProfile, const Vector origin, const float MinRadius, const float MaxRadius)
+Vector UTIL_GetRandomPointOnNavmeshInDonutIgnoreReachability(const nav_profile& NavProfile, const Vector origin, const float MinRadius, const float MaxRadius)
 {
 	int maxIterations = 0;
 	float MinRadiusSq = sqrf(MinRadius);
@@ -1304,13 +1191,13 @@ static float frand()
 	return (float)rand() / (float)RAND_MAX;
 }
 
-dtStatus FindPhaseGatePathToPoint(const int NavProfileIndex, Vector FromLocation, Vector ToLocation, bot_path_node* path, int* pathSize, float MaxAcceptableDistance)
+dtStatus FindPhaseGatePathToPoint(const nav_profile& NavProfile, Vector FromLocation, Vector ToLocation, bot_path_node* path, int* pathSize, float MaxAcceptableDistance)
 {
 	*pathSize = 0;
 
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfileIndex);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfileIndex);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(NavProfileIndex);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfile);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfile);
+	const dtQueryFilter* m_navFilter = &NavProfile.Filters;
 
 	if (!m_navQuery || vIsZero(FromLocation) || vIsZero(ToLocation))
 	{
@@ -1340,14 +1227,14 @@ dtStatus FindPhaseGatePathToPoint(const int NavProfileIndex, Vector FromLocation
 
 	if (TotalDist > vDist2DSq(FromLocation, ToLocation)) { return DT_FAILURE; }
 
-	dtStatus RouteToFirstPhaseGate = FindPathClosestToPoint(NavProfileIndex, FromLocation, StartPhaseGate->edict->v.origin, PathToPhaseStart, &PhaseStartPathSize, max_ai_use_reach);
+	dtStatus RouteToFirstPhaseGate = FindPathClosestToPoint(NavProfile, FromLocation, StartPhaseGate->edict->v.origin, PathToPhaseStart, &PhaseStartPathSize, max_ai_use_reach);
 
 	if (dtStatusFailed(RouteToFirstPhaseGate))
 	{
 		return DT_FAILURE;
 	}
 
-	dtStatus RouteToFinalPoint = FindPathClosestToPoint(NavProfileIndex, EndPhaseGate->edict->v.origin, ToLocation, PathToFinalDestination, &PhaseEndPathSize, MaxAcceptableDistance);
+	dtStatus RouteToFinalPoint = FindPathClosestToPoint(NavProfile, EndPhaseGate->edict->v.origin, ToLocation, PathToFinalDestination, &PhaseEndPathSize, MaxAcceptableDistance);
 
 	if (dtStatusFailed(RouteToFinalPoint))
 	{
@@ -1365,7 +1252,7 @@ dtStatus FindPhaseGatePathToPoint(const int NavProfileIndex, Vector FromLocation
 
 	// Add a node to inform the bot they have to use the phase gate
 	path[CurrPathIndex].Location = EndPhaseGate->edict->v.origin + Vector(0.0f, 0.0f, 10.0f);
-	path[CurrPathIndex].area = SAMPLE_POLYAREA_PHASEGATE;
+	path[CurrPathIndex].area = SAMPLE_POLYAREA_GROUND;
 	path[CurrPathIndex].flag = SAMPLE_POLYFLAGS_PHASEGATE;
 	path[CurrPathIndex].poly = UTIL_GetNearestPolyRefForEntity(EndPhaseGate->edict);
 	path[CurrPathIndex].requiredZ = EndPhaseGate->edict->v.origin.z;
@@ -1384,13 +1271,11 @@ dtStatus FindPhaseGatePathToPoint(const int NavProfileIndex, Vector FromLocation
 }
 
 // Special path finding that takes flight movement into account
-dtStatus FindFlightPathToPoint(const int NavProfileIndex, Vector FromLocation, Vector ToLocation, bot_path_node* path, int* pathSize, float MaxAcceptableDistance)
+dtStatus FindFlightPathToPoint(const nav_profile &NavProfile, Vector FromLocation, Vector ToLocation, bot_path_node* path, int* pathSize, float MaxAcceptableDistance)
 {
-	if (NavProfileIndex < 0) { return DT_FAILURE; }
-
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfileIndex);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfileIndex);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(NavProfileIndex);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfile);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfile);
+	const dtQueryFilter* m_navFilter = &NavProfile.Filters;
 
 	if (!m_navQuery || !m_navMesh || !m_navFilter || vIsZero(FromLocation) || vIsZero(ToLocation))
 	{
@@ -1465,7 +1350,13 @@ dtStatus FindFlightPathToPoint(const int NavProfileIndex, Vector FromLocation, V
 	unsigned char CurrArea;
 	unsigned char ThisArea;
 
+	unsigned short CurrFlags;
+	unsigned short ThisFlags;
+
 	m_navMesh->getPolyArea(StraightPolyPath[0], &CurrArea);
+	m_navMesh->getPolyFlags(StraightPolyPath[0], &CurrFlags);
+
+	CurrFlags &= ~(SAMPLE_POLYFLAGS_TEAM1STRUCTURE | SAMPLE_POLYFLAGS_TEAM2STRUCTURE);
 
 	// At this point we have our path.  Copy it to the path store
 	int nIndex = 0;
@@ -1486,6 +1377,9 @@ dtStatus FindFlightPathToPoint(const int NavProfileIndex, Vector FromLocation, V
 		NextPathPoint.y = -StraightPath[nIndex++];
 
 		m_navMesh->getPolyArea(StraightPolyPath[nVert], &ThisArea);
+		m_navMesh->getPolyFlags(StraightPolyPath[nVert], &ThisFlags);
+
+		ThisFlags &= ~(SAMPLE_POLYFLAGS_TEAM1STRUCTURE | SAMPLE_POLYFLAGS_TEAM2STRUCTURE);
 
 		if (ThisArea == SAMPLE_POLYAREA_GROUND || ThisArea == SAMPLE_POLYAREA_CROUCH)
 		{
@@ -1503,7 +1397,7 @@ dtStatus FindFlightPathToPoint(const int NavProfileIndex, Vector FromLocation, V
 
 		float NewRequiredZ = NextPathPoint.z;
 
-		if (CurrArea == SAMPLE_POLYAREA_WALLCLIMB || CurrArea == SAMPLE_POLYAREA_LADDER)
+		if (CurrFlags == SAMPLE_POLYFLAGS_WALLCLIMB || CurrFlags == SAMPLE_POLYFLAGS_LADDER)
 		{
 			NewRequiredZ = UTIL_FindZHeightForWallClimb(PrevPoint, NextPathPoint, head_hull);
 			
@@ -1511,7 +1405,7 @@ dtStatus FindFlightPathToPoint(const int NavProfileIndex, Vector FromLocation, V
 
 			path[CurrentPathPoint].requiredZ = ClimbStartPoint.z;
 			path[CurrentPathPoint].Location = ClimbStartPoint;
-			path[CurrentPathPoint].flag = straightPathFlags[nVert];
+			path[CurrentPathPoint].flag = CurrFlags;
 			path[CurrentPathPoint].area = CurrArea;
 			path[CurrentPathPoint].poly = StraightPolyPath[nVert];
 
@@ -1522,7 +1416,7 @@ dtStatus FindFlightPathToPoint(const int NavProfileIndex, Vector FromLocation, V
 
 			path[CurrentPathPoint].requiredZ = ClimbEndPoint.z;
 			path[CurrentPathPoint].Location = ClimbEndPoint;
-			path[CurrentPathPoint].flag = straightPathFlags[nVert];
+			path[CurrentPathPoint].flag = CurrFlags;
 			path[CurrentPathPoint].area = CurrArea;
 			path[CurrentPathPoint].poly = StraightPolyPath[nVert];
 
@@ -1530,14 +1424,14 @@ dtStatus FindFlightPathToPoint(const int NavProfileIndex, Vector FromLocation, V
 			NumPathPoints++;	
 		}
 
-		if (CurrArea == SAMPLE_POLYAREA_JUMP || CurrArea == SAMPLE_POLYAREA_HIGHJUMP)
+		if (CurrFlags == SAMPLE_POLYFLAGS_JUMP)
 		{
 			float MaxHeight = fmaxf(PrevPoint.z, NextPathPoint.z);
 			MaxHeight += 60.0f;
 
 			path[CurrentPathPoint].requiredZ = MaxHeight;
 			path[CurrentPathPoint].Location = Vector(PrevPoint.x, PrevPoint.y, MaxHeight);
-			path[CurrentPathPoint].flag = straightPathFlags[nVert];
+			path[CurrentPathPoint].flag = CurrFlags;
 			path[CurrentPathPoint].area = CurrArea;
 			path[CurrentPathPoint].poly = StraightPolyPath[nVert];
 
@@ -1546,7 +1440,7 @@ dtStatus FindFlightPathToPoint(const int NavProfileIndex, Vector FromLocation, V
 
 			path[CurrentPathPoint].requiredZ = MaxHeight;
 			path[CurrentPathPoint].Location = Vector(NextPathPoint.x, NextPathPoint.y, MaxHeight);
-			path[CurrentPathPoint].flag = straightPathFlags[nVert];
+			path[CurrentPathPoint].flag = CurrFlags;
 			path[CurrentPathPoint].area = CurrArea;
 			path[CurrentPathPoint].poly = StraightPolyPath[nVert];
 
@@ -1554,13 +1448,13 @@ dtStatus FindFlightPathToPoint(const int NavProfileIndex, Vector FromLocation, V
 			NumPathPoints++;
 		}
 
-		if (CurrArea == SAMPLE_POLYAREA_FALL || CurrArea == SAMPLE_POLYAREA_HIGHFALL)
+		if (CurrFlags == SAMPLE_POLYFLAGS_FALL)
 		{
 			Vector MidPoint = PrevPoint + ((NextPathPoint - PrevPoint) * 0.5f);
 
 			path[CurrentPathPoint].requiredZ = PrevPoint.z;
 			path[CurrentPathPoint].Location = Vector(MidPoint.x, MidPoint.y, PrevPoint.z);
-			path[CurrentPathPoint].flag = straightPathFlags[nVert];
+			path[CurrentPathPoint].flag = CurrFlags;
 			path[CurrentPathPoint].area = CurrArea;
 			path[CurrentPathPoint].poly = StraightPolyPath[nVert];
 
@@ -1569,7 +1463,7 @@ dtStatus FindFlightPathToPoint(const int NavProfileIndex, Vector FromLocation, V
 
 			path[CurrentPathPoint].requiredZ = NextPathPoint.z;
 			path[CurrentPathPoint].Location = Vector(MidPoint.x, MidPoint.y, NextPathPoint.z);
-			path[CurrentPathPoint].flag = straightPathFlags[nVert];
+			path[CurrentPathPoint].flag = CurrFlags;
 			path[CurrentPathPoint].area = CurrArea;
 			path[CurrentPathPoint].poly = StraightPolyPath[nVert];
 
@@ -1579,11 +1473,12 @@ dtStatus FindFlightPathToPoint(const int NavProfileIndex, Vector FromLocation, V
 
 		path[CurrentPathPoint].requiredZ = NextPathPoint.z;
 		path[CurrentPathPoint].Location = NextPathPoint;
-		path[CurrentPathPoint].flag = straightPathFlags[nVert];
+		path[CurrentPathPoint].flag = CurrFlags;
 		path[CurrentPathPoint].area = CurrArea;
 		path[CurrentPathPoint].poly = StraightPolyPath[nVert];
 
 		CurrArea = ThisArea;
+		CurrFlags = ThisFlags;
 
 		CurrentPathPoint++;
 	}
@@ -1639,13 +1534,11 @@ Vector UTIL_FindHighestSuccessfulTracePoint(const Vector TraceFrom, const Vector
 	return CurrentHighest;
 }
 
-dtStatus FindPathClosestToPoint(const int NavProfileIndex, const Vector FromLocation, const Vector ToLocation, bot_path_node* path, int* pathSize, float MaxAcceptableDistance)
+dtStatus FindPathClosestToPoint(const nav_profile& NavProfile, const Vector FromLocation, const Vector ToLocation, bot_path_node* path, int* pathSize, float MaxAcceptableDistance)
 {
-	if (NavProfileIndex < 0) { return DT_FAILURE; }
-
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfileIndex);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfileIndex);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(NavProfileIndex);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfile);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfile);
+	const dtQueryFilter* m_navFilter = &NavProfile.Filters;
 
 	if (!m_navQuery || !m_navMesh || !m_navFilter || vIsZero(FromLocation) || vIsZero(ToLocation))
 	{
@@ -1717,10 +1610,15 @@ dtStatus FindPathClosestToPoint(const int NavProfileIndex, const Vector FromLoca
 	int pathLengthInBytes = MAX_AI_PATH_SIZE * sizeof(bot_path_node);
 	memset(path, 0, pathLengthInBytes);
 
+	unsigned short CurrFlags;
 	unsigned char CurrArea;
 	unsigned char ThisArea;
+	unsigned short ThisFlags;
 
+	m_navMesh->getPolyFlags(StraightPolyPath[0], &CurrFlags);
 	m_navMesh->getPolyArea(StraightPolyPath[0], &CurrArea);
+
+	CurrFlags &= ~(SAMPLE_POLYFLAGS_TEAM1STRUCTURE | SAMPLE_POLYFLAGS_TEAM2STRUCTURE);
 
 	// At this point we have our path.  Copy it to the path store
 	int nIndex = 0;
@@ -1737,7 +1635,10 @@ dtStatus FindPathClosestToPoint(const int NavProfileIndex, const Vector FromLoca
 		path[(nVert)].Location.z = StraightPath[nIndex++];
 		path[(nVert)].Location.y = -StraightPath[nIndex++];
 
-		 m_navMesh->getPolyArea(StraightPolyPath[nVert], &ThisArea);
+		m_navMesh->getPolyArea(StraightPolyPath[nVert], &ThisArea);
+		m_navMesh->getPolyFlags(StraightPolyPath[nVert], &ThisFlags);
+
+		ThisFlags &= ~(SAMPLE_POLYFLAGS_TEAM1STRUCTURE | SAMPLE_POLYFLAGS_TEAM2STRUCTURE);
 
 		if (ThisArea == SAMPLE_POLYAREA_GROUND || ThisArea == SAMPLE_POLYAREA_CROUCH)
 		{
@@ -1754,7 +1655,7 @@ dtStatus FindPathClosestToPoint(const int NavProfileIndex, const Vector FromLoca
 		{
 			path[(nVert)].Location = hit.vecEndPos;
 			
-			if (CurrArea != SAMPLE_POLYAREA_JUMP)
+			if (CurrFlags != SAMPLE_POLYFLAGS_JUMP)
 			{
 				path[(nVert)].Location.z += 20.0f;
 			}
@@ -1762,12 +1663,12 @@ dtStatus FindPathClosestToPoint(const int NavProfileIndex, const Vector FromLoca
 
 		path[(nVert)].requiredZ = path[(nVert)].Location.z;
 
-		if (CurrArea == SAMPLE_POLYAREA_WALLCLIMB || CurrArea == SAMPLE_POLYAREA_LADDER)
+		if (CurrFlags == SAMPLE_POLYFLAGS_WALLCLIMB || CurrFlags == SAMPLE_POLYFLAGS_LADDER)
 		{
 			float NewRequiredZ = UTIL_FindZHeightForWallClimb(path[(nVert - 1)].Location, path[(nVert)].Location, head_hull);
 			path[(nVert)].requiredZ = fmaxf(NewRequiredZ, path[(nVert)].Location.z);
 
-			if (CurrArea == SAMPLE_POLYAREA_LADDER)
+			if (CurrFlags == SAMPLE_POLYFLAGS_LADDER)
 			{
 				path[(nVert)].requiredZ += 5.0f;
 			}
@@ -1778,157 +1679,14 @@ dtStatus FindPathClosestToPoint(const int NavProfileIndex, const Vector FromLoca
 			path[(nVert)].requiredZ = path[(nVert)].Location.z;
 		}
 
-		path[(nVert)].flag = straightPathFlags[nVert];
+		path[(nVert)].flag = CurrFlags;
 		path[(nVert)].area = CurrArea;
 		path[(nVert)].poly = StraightPolyPath[nVert];
 
 		CurrArea = ThisArea;
+		CurrFlags = ThisFlags;
 
 		NodeFromLocation = path[(nVert)].Location;
-	}
-
-	*pathSize = nVertCount;
-
-	return DT_SUCCESS;
-}
-
-dtStatus FindDetailedPathClosestToPoint(const int NavProfileIndex, const Vector FromLocation, const Vector ToLocation, bot_path_node* path, int* pathSize, float MaxAcceptableDistance)
-{
-	if (NavProfileIndex < 0) { return DT_FAILURE; }
-
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfileIndex);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfileIndex);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(NavProfileIndex);
-
-	if (!m_navQuery || !m_navMesh || !m_navFilter || vIsZero(FromLocation) || vIsZero(ToLocation))
-	{
-		return DT_FAILURE;
-	}
-
-	float pStartPos[3] = { FromLocation.x, FromLocation.z, -FromLocation.y };
-	float pEndPos[3] = { ToLocation.x, ToLocation.z, -ToLocation.y };
-
-	dtStatus status;
-	dtPolyRef StartPoly;
-	float StartNearest[3];
-	dtPolyRef EndPoly;
-	float EndNearest[3];
-	dtPolyRef PolyPath[MAX_PATH_POLY];
-	dtPolyRef StraightPolyPath[MAX_AI_PATH_SIZE];
-	int nPathCount = 0;
-	float StraightPath[MAX_AI_PATH_SIZE * 3];
-	unsigned char straightPathFlags[MAX_AI_PATH_SIZE];
-	memset(straightPathFlags, 0, sizeof(straightPathFlags));
-	int nVertCount = 0;
-
-	// find the start polygon
-	status = m_navQuery->findNearestPoly(pStartPos, pExtents, m_navFilter, &StartPoly, StartNearest);
-	if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK))
-	{
-		//BotSay(pBot, "findNearestPoly start failed!");
-		return (status & DT_STATUS_DETAIL_MASK); // couldn't find a polygon
-	}
-
-	// find the end polygon
-	status = m_navQuery->findNearestPoly(pEndPos, pExtents, m_navFilter, &EndPoly, EndNearest);
-	if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK))
-	{
-		//BotSay(pBot, "findNearestPoly end failed!");
-		return (status & DT_STATUS_DETAIL_MASK); // couldn't find a polygon
-	}
-
-	status = m_navQuery->findPath(StartPoly, EndPoly, StartNearest, EndNearest, m_navFilter, PolyPath, &nPathCount, MAX_PATH_POLY);
-
-	if (PolyPath[nPathCount - 1] != EndPoly)
-	{
-		float epos[3];
-		dtVcopy(epos, EndNearest);
-
-		m_navQuery->closestPointOnPoly(PolyPath[nPathCount - 1], EndNearest, epos, 0);
-
-		if (dtVdistSqr(EndNearest, epos) > sqrf(MaxAcceptableDistance))
-		{
-			return DT_FAILURE;
-		}
-		else
-		{
-			dtVcopy(EndNearest, epos);
-		}
-	}
-
-	status = m_navQuery->findStraightPath(StartNearest, EndNearest, PolyPath, nPathCount, StraightPath, straightPathFlags, StraightPolyPath, &nVertCount, MAX_AI_PATH_SIZE, DT_STRAIGHTPATH_ALL_CROSSINGS);
-	if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK))
-	{
-		return (status & DT_STATUS_DETAIL_MASK); // couldn't create a path
-	}
-
-	if (nVertCount == 0)
-	{
-		return DT_FAILURE; // couldn't find a path
-	}
-
-	int pathLengthInBytes = MAX_AI_PATH_SIZE * sizeof(bot_path_node);
-	memset(path, 0, pathLengthInBytes);
-
-	unsigned char CurrArea;
-	unsigned char ThisArea;
-
-	m_navMesh->getPolyArea(StraightPolyPath[0], &CurrArea);
-
-	// At this point we have our path.  Copy it to the path store
-	int nIndex = 0;
-	TraceResult hit;
-	Vector TraceStart;
-
-	for (int nVert = 0; nVert < nVertCount; nVert++)
-	{
-		path[(nVert)].Location.x = StraightPath[nIndex++];
-		path[(nVert)].Location.z = StraightPath[nIndex++];
-		path[(nVert)].Location.y = -StraightPath[nIndex++];
-
-		m_navMesh->getPolyArea(StraightPolyPath[nVert], &ThisArea);
-
-		if (ThisArea == SAMPLE_POLYAREA_GROUND || ThisArea == SAMPLE_POLYAREA_CROUCH)
-		{
-			path[(nVert)].Location = UTIL_AdjustPointAwayFromNavWall(path[(nVert)].Location, 16.0f);
-		}
-
-		TraceStart.x = path[(nVert)].Location.x;
-		TraceStart.y = path[(nVert)].Location.y;
-		TraceStart.z = path[(nVert)].Location.z;
-
-		UTIL_TraceLine(TraceStart, (TraceStart - Vector(0.0f, 0.0f, 100.0f)), ignore_monsters, ignore_glass, nullptr, &hit);
-
-		if (hit.flFraction < 1.0f)
-		{
-			bool isCrouchedArea = (CurrArea == SAMPLE_POLYAREA_CROUCH);
-
-			path[(nVert)].Location = hit.vecEndPos + Vector(0.0f, 0.0f, 18.0f);
-		}
-
-		path[(nVert)].requiredZ = path[(nVert)].Location.z;
-
-		if (CurrArea == SAMPLE_POLYAREA_WALLCLIMB || CurrArea == SAMPLE_POLYAREA_LADDER)
-		{
-			float NewRequiredZ = UTIL_FindZHeightForWallClimb(path[(nVert - 1)].Location, path[(nVert)].Location, head_hull);
-			path[(nVert)].requiredZ = fmaxf(NewRequiredZ, path[(nVert)].Location.z);
-
-			if (CurrArea == SAMPLE_POLYAREA_LADDER)
-			{
-				path[(nVert)].requiredZ += 5.0f;
-			}
-
-		}
-		else
-		{
-			path[(nVert)].requiredZ = path[(nVert)].Location.z;
-		}
-
-		path[(nVert)].flag = straightPathFlags[nVert];
-		path[(nVert)].area = CurrArea;
-		path[(nVert)].poly = StraightPolyPath[nVert];
-
-		CurrArea = ThisArea;
 	}
 
 	*pathSize = nVertCount;
@@ -1940,13 +1698,9 @@ dtStatus FindPathClosestToPoint(AvHAIPlayer* pBot, const BotMoveStyle MoveStyle,
 {
 	if (!pBot) { return DT_FAILURE; }
 
-	int NavProfileIndex = UTIL_GetMoveProfileForBot(pBot, MoveStyle);
-
-	if (NavProfileIndex < 0) { return DT_FAILURE; }
-
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfileIndex);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfileIndex);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(NavProfileIndex);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(pBot->BotNavInfo.NavProfile);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(pBot->BotNavInfo.NavProfile);
+	const dtQueryFilter* m_navFilter = &pBot->BotNavInfo.NavProfile.Filters;
 
 
 	if (!m_navQuery || !m_navMesh || !m_navFilter || vIsZero(FromLocation) || vIsZero(ToLocation))
@@ -1961,7 +1715,7 @@ dtStatus FindPathClosestToPoint(AvHAIPlayer* pBot, const BotMoveStyle MoveStyle,
 
 	if (IsPlayerMarine(pBot->Edict) && AITAC_GetNumDeployablesNearLocation(ZERO_VECTOR, &PGFilter) > 1)
 	{
-		dtStatus PhaseStatus = FindPhaseGatePathToPoint(NavProfileIndex, pBot->Edict->v.origin, ToLocation, path, pathSize, MaxAcceptableDistance);
+		dtStatus PhaseStatus = FindPhaseGatePathToPoint(pBot->BotNavInfo.NavProfile, pBot->Edict->v.origin, ToLocation, path, pathSize, MaxAcceptableDistance);
 
 		if (dtStatusSucceed(PhaseStatus))
 		{
@@ -2035,9 +1789,13 @@ dtStatus FindPathClosestToPoint(AvHAIPlayer* pBot, const BotMoveStyle MoveStyle,
 	int pathLengthInBytes = MAX_AI_PATH_SIZE * sizeof(bot_path_node);
 	memset(path, 0, pathLengthInBytes);
 
+	unsigned short CurrFlags;
 	unsigned char CurrArea;
 
+	m_navMesh->getPolyFlags(StraightPolyPath[0], &CurrFlags);
 	m_navMesh->getPolyArea(StraightPolyPath[0], &CurrArea);
+
+	CurrFlags &= ~(SAMPLE_POLYFLAGS_TEAM1STRUCTURE | SAMPLE_POLYFLAGS_TEAM2STRUCTURE);
 
 	// At this point we have our path.  Copy it to the path store
 	int nIndex = 0;
@@ -2061,7 +1819,7 @@ dtStatus FindPathClosestToPoint(AvHAIPlayer* pBot, const BotMoveStyle MoveStyle,
 		TraceStart.y = path[(nVert)].Location.y;
 		TraceStart.z = path[(nVert)].Location.z + 18.0f;
 
-		if (CurrArea != SAMPLE_POLYAREA_JUMP || path[(nVert)].FromLocation.z > path[(nVert)].Location.z)
+		if (CurrFlags != SAMPLE_POLYFLAGS_JUMP || path[(nVert)].FromLocation.z > path[(nVert)].Location.z)
 		{
 
 			UTIL_TraceHull(TraceStart, (TraceStart - Vector(0.0f, 0.0f, 100.0f)), ignore_monsters, head_hull, nullptr, &hit);
@@ -2089,13 +1847,13 @@ dtStatus FindPathClosestToPoint(AvHAIPlayer* pBot, const BotMoveStyle MoveStyle,
 		// This what allows bots to climb over railings without having to explicitly place nav points on the railing itself
 		path[(nVert)].requiredZ = path[(nVert)].Location.z;
 
-		if (CurrArea == SAMPLE_POLYAREA_WALLCLIMB || CurrArea == SAMPLE_POLYAREA_LADDER)
+		if (CurrFlags == SAMPLE_POLYFLAGS_WALLCLIMB || CurrFlags == SAMPLE_POLYFLAGS_LADDER)
 		{
 			int HullNum = GetPlayerHullIndex(pBot->Edict, false);
 			float NewRequiredZ = UTIL_FindZHeightForWallClimb(path[(nVert - 1)].Location, path[(nVert)].Location, HullNum);
 			path[(nVert)].requiredZ = fmaxf(NewRequiredZ, path[(nVert)].Location.z);
 
-			if (CurrArea == SAMPLE_POLYAREA_LADDER)
+			if (CurrFlags == SAMPLE_POLYFLAGS_LADDER)
 			{
 				path[(nVert)].requiredZ += 5.0f;
 			}
@@ -2110,7 +1868,10 @@ dtStatus FindPathClosestToPoint(AvHAIPlayer* pBot, const BotMoveStyle MoveStyle,
 		path[(nVert)].area = CurrArea;
 		path[(nVert)].poly = StraightPolyPath[nVert];
 
-		m_navMesh->getPolyArea(StraightPolyPath[nVert], &CurrArea);
+		m_navMesh->getPolyFlags(StraightPolyPath[nVert], &CurrFlags);
+		m_navMesh->getPolyArea(StraightPolyPath[0], &CurrArea);
+
+		CurrFlags &= ~(SAMPLE_POLYFLAGS_TEAM1STRUCTURE | SAMPLE_POLYFLAGS_TEAM2STRUCTURE);
 
 		NodeFromLocation = path[(nVert)].Location;
 	}
@@ -2120,11 +1881,11 @@ dtStatus FindPathClosestToPoint(AvHAIPlayer* pBot, const BotMoveStyle MoveStyle,
 	return DT_SUCCESS;
 }
 
-bool UTIL_PointIsReachable(const int NavProfileIndex, const Vector FromLocation, const Vector ToLocation, const float MaxAcceptableDistance)
+bool UTIL_PointIsReachable(const nav_profile &NavProfile, const Vector FromLocation, const Vector ToLocation, const float MaxAcceptableDistance)
 {
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfileIndex);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfileIndex);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(NavProfileIndex);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfile);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfile);
+	const dtQueryFilter* m_navFilter = &NavProfile.Filters;
 
 	if (!m_navQuery || vIsZero(FromLocation) || vIsZero(ToLocation))
 	{
@@ -2190,7 +1951,7 @@ bool HasBotReachedPathPoint(const AvHAIPlayer* pBot)
 
 	edict_t* pEdict = pBot->Edict;
 
-	int CurrentNavArea = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].area;
+	SamplePolyFlags CurrentNavFlag = (SamplePolyFlags)pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].flag;
 	Vector CurrentMoveDest = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].Location;
 	Vector PrevMoveDest = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint - 1].Location;
 
@@ -2206,9 +1967,9 @@ bool HasBotReachedPathPoint(const AvHAIPlayer* pBot)
 	
 	float playerRadius = GetPlayerRadius(pBot->Player);
 
-	switch (CurrentNavArea)
+	switch (CurrentNavFlag)
 	{
-	case SAMPLE_POLYAREA_GROUND:
+	case SAMPLE_POLYFLAGS_WALK:
 		if (!bIsAtFinalPathPoint)
 		{
 			return (bAtOrPastDestination || (vDist2D(pEdict->v.origin, CurrentMoveDest) <= 8.0f && (fabs(pBot->CurrentFloorPosition.z - CurrentMoveDest.z) < 50.0f)));
@@ -2217,14 +1978,10 @@ bool HasBotReachedPathPoint(const AvHAIPlayer* pBot)
 		{
 			return ((vDist2D(pEdict->v.origin, CurrentMoveDest) < playerRadius && bDestIsDirectlyReachable) || bAtOrPastDestination);
 		}
-	case SAMPLE_POLYAREA_CROUCH:
-		return (vDist2D(pEdict->v.origin, CurrentMoveDest) < playerRadius && bDestIsDirectlyReachable);
-	case SAMPLE_POLYAREA_BLOCKED:
+	case SAMPLE_POLYFLAGS_BLOCKED:
 		return bAtOrPastDestination;
-	case SAMPLE_POLYAREA_FALL:
-	case SAMPLE_POLYAREA_HIGHFALL:
-	case SAMPLE_POLYAREA_JUMP:
-	case SAMPLE_POLYAREA_HIGHJUMP:
+	case SAMPLE_POLYFLAGS_FALL:
+	case SAMPLE_POLYFLAGS_JUMP:
 		if (!bIsAtFinalPathPoint)
 		{
 			Vector thisMoveDir = UTIL_GetVectorNormal2D(pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].Location - pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint - 1].Location);
@@ -2239,16 +1996,15 @@ bool HasBotReachedPathPoint(const AvHAIPlayer* pBot)
 			else
 			{
 				return bAtOrPastDestination && pBot->BotNavInfo.IsOnGround && fabs(pBot->CurrentFloorPosition.z - CurrentMoveDest.z) < 50.0f;
-				//return (vDist2D(pEdict->v.origin, CurrentMoveDest) <= playerRadius && (fabs(pBot->CurrentFloorPosition.z - CurrentMoveDest.z) < 50.0f) && pBot->BotNavInfo.IsOnGround);
 			}
 		}
 		else
 		{
 			return (vDist2D(pEdict->v.origin, CurrentMoveDest) <= playerRadius && (pEdict->v.origin.z - CurrentMoveDest.z) < 50.0f && pBot->BotNavInfo.IsOnGround);
 		}
-	case SAMPLE_POLYAREA_WALLCLIMB:
+	case SAMPLE_POLYFLAGS_WALLCLIMB:
 		return (bAtOrPastDestination && pBot->CollisionHullTopLocation.z > CurrentMoveDest.z);
-	case SAMPLE_POLYAREA_LADDER:
+	case SAMPLE_POLYFLAGS_LADDER:
 		if (CurrentMoveDest.z > PrevMoveDest.z)
 		{
 			return ((BotPoly == DestinationPoly) && UTIL_QuickTrace(pEdict, pEdict->v.origin, CurrentMoveDest));
@@ -2391,16 +2147,11 @@ edict_t* UTIL_GetDoorBlockingPathPoint(bot_path_node* PathNode, edict_t* SearchD
 
 	TraceResult doorHit;
 
-	if (PathNode->area == SAMPLE_POLYAREA_LADDER || PathNode->area == SAMPLE_POLYAREA_WALLCLIMB)
+	if (PathNode->flag == SAMPLE_POLYFLAGS_LADDER || PathNode->flag == SAMPLE_POLYFLAGS_WALLCLIMB)
 	{
 		Vector TargetLoc = Vector(FromLoc.x, FromLoc.y, PathNode->requiredZ);
 
 		UTIL_TraceLine(FromLoc, TargetLoc, ignore_monsters, dont_ignore_glass, nullptr, &doorHit);
-
-		if (!FNullEnt(doorHit.pHit))
-		{
-			const char* HitName = STRING(doorHit.pHit->v.classname);
-		}
 
 		if (!FNullEnt(SearchDoor))
 		{
@@ -2424,11 +2175,6 @@ edict_t* UTIL_GetDoorBlockingPathPoint(bot_path_node* PathNode, edict_t* SearchD
 
 		UTIL_TraceLine(TargetLoc, TargetLoc2, ignore_monsters, dont_ignore_glass, nullptr, &doorHit);
 
-		if (!FNullEnt(doorHit.pHit))
-		{
-			const char* HitName2 = STRING(doorHit.pHit->v.classname);
-		}
-
 		if (!FNullEnt(SearchDoor))
 		{
 			if (doorHit.pHit == SearchDoor) { return doorHit.pHit; }
@@ -2447,16 +2193,11 @@ edict_t* UTIL_GetDoorBlockingPathPoint(bot_path_node* PathNode, edict_t* SearchD
 		}
 
 	}
-	else if (PathNode->area == SAMPLE_POLYAREA_FALL || PathNode->area == SAMPLE_POLYAREA_HIGHFALL)
+	else if (PathNode->flag == SAMPLE_POLYFLAGS_FALL)
 	{
 		Vector TargetLoc = Vector(ToLoc.x, ToLoc.y, FromLoc.z);
 
 		UTIL_TraceLine(FromLoc, TargetLoc, ignore_monsters, dont_ignore_glass, nullptr, &doorHit);
-
-		if (!FNullEnt(doorHit.pHit))
-		{
-			const char* HitName3 = STRING(doorHit.pHit->v.classname);
-		}
 
 		if (!FNullEnt(SearchDoor))
 		{
@@ -2477,11 +2218,6 @@ edict_t* UTIL_GetDoorBlockingPathPoint(bot_path_node* PathNode, edict_t* SearchD
 
 		UTIL_TraceLine(TargetLoc, ToLoc + Vector(0.0f, 0.0f, 10.0f), ignore_monsters, dont_ignore_glass, nullptr, &doorHit);
 
-		if (!FNullEnt(doorHit.pHit))
-		{
-			const char* HitName4 = STRING(doorHit.pHit->v.classname);
-		}
-
 		if (!FNullEnt(SearchDoor))
 		{
 			if (doorHit.pHit == SearchDoor) { return doorHit.pHit; }
@@ -2500,12 +2236,7 @@ edict_t* UTIL_GetDoorBlockingPathPoint(bot_path_node* PathNode, edict_t* SearchD
 		}
 	}
 
-	UTIL_TraceLine(FromLoc, ToLoc + Vector(0.0f, 0.0f, 10.0f), ignore_monsters, dont_ignore_glass, nullptr, &doorHit);
-
-	if (!FNullEnt(doorHit.pHit))
-	{
-		const char* HitName5 = STRING(doorHit.pHit->v.classname);
-	}
+	UTIL_TraceLine(FromLoc + Vector(0.0f, 0.0f, 16.0f), ToLoc + Vector(0.0f, 0.0f, 16.0f), ignore_monsters, dont_ignore_glass, nullptr, &doorHit);
 
 	if (!FNullEnt(SearchDoor))
 	{
@@ -2528,7 +2259,236 @@ edict_t* UTIL_GetDoorBlockingPathPoint(bot_path_node* PathNode, edict_t* SearchD
 	return nullptr;
 }
 
-edict_t* UTIL_GetDoorBlockingPathPoint(const Vector FromLocation, const Vector ToLocation, const unsigned char Area, edict_t* SearchDoor)
+edict_t* UTIL_GetBreakableBlockingPathPoint(AvHAIPlayer* pBot, bot_path_node* PathNode, edict_t* SearchBreakable)
+{
+	Vector FromLoc = PathNode->FromLocation;
+	Vector ToLoc = PathNode->Location;
+
+	TraceResult breakableHit;
+
+	if (PathNode->flag == SAMPLE_POLYFLAGS_LADDER || PathNode->flag == SAMPLE_POLYFLAGS_WALLCLIMB)
+	{
+		Vector TargetLoc = Vector(FromLoc.x, FromLoc.y, PathNode->requiredZ);
+
+		UTIL_TraceLine(FromLoc, TargetLoc, dont_ignore_monsters, dont_ignore_glass, pBot->Edict->v.pContainingEntity, &breakableHit);
+		UTIL_DrawLine(INDEXENT(1), FromLoc, TargetLoc);
+
+		if (!FNullEnt(SearchBreakable))
+		{
+			if (breakableHit.pHit == SearchBreakable) { return breakableHit.pHit; }
+		}
+		else
+		{
+			if (!FNullEnt(breakableHit.pHit))
+			{
+				if (strcmp(STRING(breakableHit.pHit->v.classname), "func_breakable") == 0)
+				{
+					return breakableHit.pHit;
+				}
+			}
+
+		}
+
+		Vector TargetLoc2 = Vector(ToLoc.x, ToLoc.y, PathNode->requiredZ);
+
+		UTIL_TraceLine(TargetLoc, TargetLoc2, dont_ignore_monsters, dont_ignore_glass, pBot->Edict->v.pContainingEntity, &breakableHit);
+		UTIL_DrawLine(INDEXENT(1), TargetLoc, TargetLoc2);
+
+		if (!FNullEnt(SearchBreakable))
+		{
+			if (breakableHit.pHit == SearchBreakable) { return breakableHit.pHit; }
+		}
+		else
+		{
+			if (!FNullEnt(breakableHit.pHit))
+			{
+				if (strcmp(STRING(breakableHit.pHit->v.classname), "func_breakable") == 0)
+				{
+					return breakableHit.pHit;
+				}
+			}
+		}
+
+	}
+	else if (PathNode->flag == SAMPLE_POLYFLAGS_FALL)
+	{
+		Vector TargetLoc = Vector(ToLoc.x, ToLoc.y, FromLoc.z);
+
+		UTIL_TraceLine(FromLoc, TargetLoc, dont_ignore_monsters, dont_ignore_glass, pBot->Edict->v.pContainingEntity, &breakableHit);
+		UTIL_DrawLine(INDEXENT(1), FromLoc, TargetLoc);
+
+		if (!FNullEnt(SearchBreakable))
+		{
+			if (breakableHit.pHit == SearchBreakable) { return breakableHit.pHit; }
+		}
+		else
+		{
+			if (!FNullEnt(breakableHit.pHit))
+			{
+				if (strcmp(STRING(breakableHit.pHit->v.classname), "func_breakable") == 0)
+				{
+					return breakableHit.pHit;
+				}
+			}
+		}
+
+		UTIL_TraceLine(TargetLoc, ToLoc + Vector(0.0f, 0.0f, 10.0f), dont_ignore_monsters, dont_ignore_glass, pBot->Edict->v.pContainingEntity, &breakableHit);
+		UTIL_DrawLine(INDEXENT(1), TargetLoc, ToLoc + Vector(0.0f, 0.0f, 10.0f));
+
+		if (!FNullEnt(SearchBreakable))
+		{
+			if (breakableHit.pHit == SearchBreakable) { return breakableHit.pHit; }
+		}
+		else
+		{
+			if (!FNullEnt(breakableHit.pHit))
+			{
+				if (strcmp(STRING(breakableHit.pHit->v.classname), "func_breakable") == 0)
+				{
+					return breakableHit.pHit;
+				}
+			}
+		}
+	}
+
+	UTIL_TraceLine(FromLoc, ToLoc, dont_ignore_monsters, dont_ignore_glass, pBot->Edict->v.pContainingEntity, &breakableHit);
+	UTIL_DrawLine(INDEXENT(1), FromLoc, ToLoc);
+
+
+	if (!FNullEnt(SearchBreakable))
+	{
+		if (breakableHit.pHit == SearchBreakable) { return breakableHit.pHit; }
+	}
+	else
+	{
+		if (!FNullEnt(breakableHit.pHit))
+		{
+			if (strcmp(STRING(breakableHit.pHit->v.classname), "func_breakable") == 0)
+			{
+				return breakableHit.pHit;
+			}
+		}
+	}
+
+
+	return nullptr;
+}
+
+edict_t* UTIL_GetBreakableBlockingPathPoint(AvHAIPlayer* pBot, const Vector FromLocation, const Vector ToLocation, const unsigned short MovementFlag, edict_t* SearchBreakable)
+{
+	Vector FromLoc = FromLocation;
+	Vector ToLoc = ToLocation;
+
+	TraceResult breakableHit;
+
+	if (MovementFlag == SAMPLE_POLYFLAGS_LADDER || MovementFlag == SAMPLE_POLYFLAGS_WALLCLIMB)
+	{
+		Vector TargetLoc = Vector(FromLoc.x, FromLoc.y, ToLocation.z);
+
+		UTIL_TraceLine(FromLoc, TargetLoc, dont_ignore_monsters, dont_ignore_glass, pBot->Edict->v.pContainingEntity, &breakableHit);
+		UTIL_DrawLine(INDEXENT(1), FromLoc, TargetLoc);
+
+		if (!FNullEnt(SearchBreakable))
+		{
+			if (breakableHit.pHit == SearchBreakable) { return breakableHit.pHit; }
+		}
+		else
+		{
+			if (!FNullEnt(breakableHit.pHit))
+			{
+				if (strcmp(STRING(breakableHit.pHit->v.classname), "func_breakable") == 0)
+				{
+					return breakableHit.pHit;
+				}
+			}
+
+		}
+
+		Vector TargetLoc2 = Vector(ToLoc.x, ToLoc.y, ToLocation.z);
+
+		UTIL_TraceLine(TargetLoc, TargetLoc2, dont_ignore_monsters, dont_ignore_glass, pBot->Edict->v.pContainingEntity, &breakableHit);
+		UTIL_DrawLine(INDEXENT(1), TargetLoc, TargetLoc2);
+
+		if (!FNullEnt(SearchBreakable))
+		{
+			if (breakableHit.pHit == SearchBreakable) { return breakableHit.pHit; }
+		}
+		else
+		{
+			if (!FNullEnt(breakableHit.pHit))
+			{
+				if (strcmp(STRING(breakableHit.pHit->v.classname), "func_breakable") == 0)
+				{
+					return breakableHit.pHit;
+				}
+			}
+		}
+
+	}
+	else if (MovementFlag == SAMPLE_POLYFLAGS_FALL)
+	{
+		Vector TargetLoc = Vector(ToLoc.x, ToLoc.y, FromLoc.z);
+
+		UTIL_TraceLine(FromLoc, TargetLoc, dont_ignore_monsters, dont_ignore_glass, pBot->Edict->v.pContainingEntity, &breakableHit);
+		UTIL_DrawLine(INDEXENT(1), FromLoc, TargetLoc);
+
+		if (!FNullEnt(SearchBreakable))
+		{
+			if (breakableHit.pHit == SearchBreakable) { return breakableHit.pHit; }
+		}
+		else
+		{
+			if (!FNullEnt(breakableHit.pHit))
+			{
+				if (strcmp(STRING(breakableHit.pHit->v.classname), "func_breakable") == 0)
+				{
+					return breakableHit.pHit;
+				}
+			}
+		}
+
+		UTIL_TraceLine(TargetLoc, ToLoc + Vector(0.0f, 0.0f, 10.0f), dont_ignore_monsters, dont_ignore_glass, pBot->Edict->v.pContainingEntity, &breakableHit);
+		UTIL_DrawLine(INDEXENT(1), TargetLoc, ToLoc + Vector(0.0f, 0.0f, 10.0f));
+
+		if (!FNullEnt(SearchBreakable))
+		{
+			if (breakableHit.pHit == SearchBreakable) { return breakableHit.pHit; }
+		}
+		else
+		{
+			if (!FNullEnt(breakableHit.pHit))
+			{
+				if (strcmp(STRING(breakableHit.pHit->v.classname), "func_breakable") == 0)
+				{
+					return breakableHit.pHit;
+				}
+			}
+		}
+	}
+
+	UTIL_TraceLine(FromLoc, ToLoc, dont_ignore_monsters, dont_ignore_glass, pBot->Edict->v.pContainingEntity, &breakableHit);
+	UTIL_DrawLine(INDEXENT(1), FromLoc, ToLoc);
+
+	if (!FNullEnt(SearchBreakable))
+	{
+		if (breakableHit.pHit == SearchBreakable) { return breakableHit.pHit; }
+	}
+	else
+	{
+		if (!FNullEnt(breakableHit.pHit))
+		{
+			if (strcmp(STRING(breakableHit.pHit->v.classname), "func_breakable") == 0)
+			{
+				return breakableHit.pHit;
+			}
+		}
+	}
+
+
+	return nullptr;
+}
+
+edict_t* UTIL_GetDoorBlockingPathPoint(const Vector FromLocation, const Vector ToLocation, const unsigned short MovementFlag, edict_t* SearchDoor)
 {
 
 	Vector FromLoc = FromLocation;
@@ -2536,7 +2496,7 @@ edict_t* UTIL_GetDoorBlockingPathPoint(const Vector FromLocation, const Vector T
 
 	TraceResult doorHit;
 
-	if (Area == SAMPLE_POLYAREA_LADDER || Area == SAMPLE_POLYAREA_WALLCLIMB)
+	if (MovementFlag == SAMPLE_POLYFLAGS_LADDER || MovementFlag == SAMPLE_POLYFLAGS_WALLCLIMB)
 	{
 		Vector TargetLoc = Vector(FromLoc.x, FromLoc.y, ToLocation.z);
 
@@ -2564,11 +2524,6 @@ edict_t* UTIL_GetDoorBlockingPathPoint(const Vector FromLocation, const Vector T
 
 		UTIL_TraceLine(TargetLoc, TargetLoc2, ignore_monsters, dont_ignore_glass, nullptr, &doorHit);
 
-		if (!FNullEnt(doorHit.pHit))
-		{
-			const char* HitName2 = STRING(doorHit.pHit->v.classname);
-		}
-
 		if (!FNullEnt(SearchDoor))
 		{
 			if (doorHit.pHit == SearchDoor) { return doorHit.pHit; }
@@ -2587,16 +2542,11 @@ edict_t* UTIL_GetDoorBlockingPathPoint(const Vector FromLocation, const Vector T
 		}
 
 	}
-	else if (Area == SAMPLE_POLYAREA_FALL || Area == SAMPLE_POLYAREA_HIGHFALL)
+	else if (MovementFlag == SAMPLE_POLYFLAGS_FALL)
 	{
 		Vector TargetLoc = Vector(ToLoc.x, ToLoc.y, FromLoc.z);
 
 		UTIL_TraceLine(FromLoc, TargetLoc, ignore_monsters, dont_ignore_glass, nullptr, &doorHit);
-
-		if (!FNullEnt(doorHit.pHit))
-		{
-			const char* HitName3 = STRING(doorHit.pHit->v.classname);
-		}
 
 		if (!FNullEnt(SearchDoor))
 		{
@@ -2617,10 +2567,6 @@ edict_t* UTIL_GetDoorBlockingPathPoint(const Vector FromLocation, const Vector T
 
 		UTIL_TraceLine(TargetLoc, ToLoc + Vector(0.0f, 0.0f, 10.0f), ignore_monsters, dont_ignore_glass, nullptr, &doorHit);
 
-		if (!FNullEnt(doorHit.pHit))
-		{
-			const char* HitName4 = STRING(doorHit.pHit->v.classname);
-		}
 
 		if (!FNullEnt(SearchDoor))
 		{
@@ -2641,11 +2587,6 @@ edict_t* UTIL_GetDoorBlockingPathPoint(const Vector FromLocation, const Vector T
 	}
 
 	UTIL_TraceLine(FromLoc, ToLoc + Vector(0.0f, 0.0f, 10.0f), ignore_monsters, dont_ignore_glass, nullptr, &doorHit);
-
-	if (!FNullEnt(doorHit.pHit))
-	{
-		const char* HitName5 = STRING(doorHit.pHit->v.classname);
-	}
 
 	if (!FNullEnt(SearchDoor))
 	{
@@ -2670,7 +2611,7 @@ edict_t* UTIL_GetDoorBlockingPathPoint(const Vector FromLocation, const Vector T
 
 bool UTIL_IsPathBlockedByDoor(const Vector StartLoc, const Vector EndLoc, edict_t* SearchDoor)
 {
-	Vector ValidNavmeshPoint = UTIL_ProjectPointToNavmesh(EndLoc, MARINE_REGULAR_NAV_PROFILE);
+	Vector ValidNavmeshPoint = UTIL_ProjectPointToNavmesh(EndLoc, BaseNavProfiles[ALL_NAV_PROFILE]);
 
 	if (!ValidNavmeshPoint)
 	{
@@ -2683,7 +2624,7 @@ bool UTIL_IsPathBlockedByDoor(const Vector StartLoc, const Vector EndLoc, edict_
 
 	// Now we find a path backwards from the valid nav mesh point to our location, trying to get as close as we can to it
 
-	dtStatus PathFindingStatus = FindPathClosestToPoint(MARINE_REGULAR_NAV_PROFILE, StartLoc, ValidNavmeshPoint, Path, &PathSize, 50.0f);
+	dtStatus PathFindingStatus = FindPathClosestToPoint(BaseNavProfiles[ALL_NAV_PROFILE], StartLoc, ValidNavmeshPoint, Path, &PathSize, 50.0f);
 
 	if (dtStatusSucceed(PathFindingStatus))
 	{
@@ -2737,74 +2678,74 @@ DoorTrigger* UTIL_GetNearestDoorTrigger(const Vector Location, nav_door* Door, C
 
 void CheckAndHandleBreakableObstruction(AvHAIPlayer* pBot, const Vector MoveFrom, const Vector MoveTo)
 {
-	Vector MoveTarget = MoveTo;
+	edict_t* BlockingBreakableEdict = UTIL_GetBreakableBlockingPathPoint(pBot, pBot->Edict->v.origin, pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].Location, SAMPLE_POLYAREA_GROUND, nullptr);
 
-	if (MoveTarget.z > pBot->Edict->v.origin.z)
+	if (FNullEnt(BlockingBreakableEdict))
 	{
-		MoveTarget.z += 32.0f;
+		if (pBot->BotNavInfo.CurrentPathPoint < pBot->BotNavInfo.PathSize - 1)
+		{
+			BlockingBreakableEdict = UTIL_GetBreakableBlockingPathPoint(pBot, &pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint + 1], nullptr);
+		}
+	}
+
+	if (FNullEnt(BlockingBreakableEdict))
+	{
+		if (pBot->BotNavInfo.CurrentPathPoint < pBot->BotNavInfo.PathSize - 2)
+		{
+			BlockingBreakableEdict = UTIL_GetBreakableBlockingPathPoint(pBot, &pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint + 2], nullptr);
+		}
+	}
+
+	if (FNullEnt(BlockingBreakableEdict))
+	{
+		return;
+	}
+
+	Vector ClosestPoint = UTIL_GetClosestPointOnEntityToLocation(pBot->Edict->v.origin, BlockingBreakableEdict);
+
+	AvHAIWeapon DesiredWeapon = UTIL_GetBotPrimaryWeapon(pBot);
+
+	if (IsPlayerMarine(pBot->Player))
+	{
+		DesiredWeapon = BotMarineChooseBestWeapon(pBot, nullptr);
 	}
 	else
 	{
-		MoveTarget.z -= 32.0f;
-	}
-
-	Vector TraceDir = UTIL_GetVectorNormal(MoveTarget - pBot->Edict->v.origin);
-
-	Vector TraceEnd = pBot->Edict->v.origin + (TraceDir * 50.0f);
-
-	bool bBrokenGlass = false;
-
-	TraceResult breakableHit;
-	UTIL_TraceLine(pBot->Edict->v.origin, TraceEnd, ignore_monsters, dont_ignore_glass, pBot->Edict->v.pContainingEntity, &breakableHit);
-
-	if (breakableHit.flFraction < 1.0f)
-	{
-		if (strcmp(STRING(breakableHit.pHit->v.classname), "func_breakable") == 0)
+		if (IsPlayerSkulk(pBot->Edict))
 		{
-			pBot->desiredMovementDir = g_vecZero;
-
-			bool bIsPlayerMarine = IsPlayerMarine(pBot->Edict);
-			AvHAIWeapon BreakWeapon = (bIsPlayerMarine) ? WEAPON_MARINE_KNIFE : UTIL_GetBotPrimaryWeapon(pBot);
-
-			pBot->DesiredCombatWeapon = BreakWeapon;
-
-			BotLookAt(pBot, breakableHit.pHit);
-
-			if (GetBotCurrentWeapon(pBot) == BreakWeapon)
-			{
-				pBot->Button |= IN_ATTACK;
-			}
-
-			bBrokenGlass = true;
+			DesiredWeapon = (BlockingBreakableEdict->v.health <= 20) ? WEAPON_SKULK_PARASITE : WEAPON_SKULK_BITE;
 		}
 	}
 
-	if (!bBrokenGlass)
+	float DesiredRange = GetMaxIdealWeaponRange(DesiredWeapon);
+
+	if (vDist2DSq(pBot->Edict->v.origin, ClosestPoint) < sqrf(16.0f))
 	{
-		TraceEnd = pBot->Edict->v.origin + (pBot->desiredMovementDir * 50.0f);
-
-		UTIL_TraceLine(pBot->Edict->v.origin - (pBot->desiredMovementDir * 10.0f), TraceEnd, dont_ignore_monsters, dont_ignore_glass, pBot->Edict->v.pContainingEntity, &breakableHit);
-
-		if (breakableHit.flFraction < 1.0f)
+		if (pBot->Edict->v.oldbuttons & IN_DUCK)
 		{
-			if (strcmp(STRING(breakableHit.pHit->v.classname), "func_breakable") == 0)
+			pBot->Button |= IN_DUCK;
+		}
+		else
+		{
+			if (pBot->CurrentEyePosition.z - ClosestPoint.z > 32.0f)
 			{
-				pBot->desiredMovementDir = g_vecZero;
-
-				bool bIsPlayerMarine = IsPlayerMarine(pBot->Edict);
-				AvHAIWeapon BreakWeapon = (bIsPlayerMarine) ? WEAPON_MARINE_KNIFE : UTIL_GetBotPrimaryWeapon(pBot);
-
-				pBot->DesiredCombatWeapon = BreakWeapon;
-
-				BotLookAt(pBot, breakableHit.pHit);
-
-				if (GetBotCurrentWeapon(pBot) == BreakWeapon)
-				{
-					pBot->Button |= IN_ATTACK;
-				}
+				pBot->Button |= IN_DUCK;
 			}
 		}
 	}
+
+	if (vDist3DSq(ClosestPoint, pBot->CurrentEyePosition) < sqrf(DesiredRange))
+	{
+		BotLookAt(pBot, BlockingBreakableEdict);
+
+		pBot->DesiredMoveWeapon = DesiredWeapon;
+
+		if (GetBotCurrentWeapon(pBot) == DesiredWeapon)
+		{
+			pBot->Button |= IN_ATTACK;
+		}
+	}
+	
 }
 
 void NewMove(AvHAIPlayer* pBot)
@@ -2816,13 +2757,20 @@ void NewMove(AvHAIPlayer* pBot)
 	}
 
 	SamplePolyAreas CurrentNavArea = (SamplePolyAreas)pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].area;
+	unsigned short CurrentNavFlags = (SamplePolyFlags)pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].flag;
+
+	SamplePolyFlags CurrentNavFlag = (SamplePolyFlags)CurrentNavFlags;
 
 	unsigned char NextArea = SAMPLE_POLYAREA_GROUND;
+	unsigned char NextFlag = SAMPLE_POLYFLAGS_WALK;
 
 	if (pBot->BotNavInfo.CurrentPathPoint < (pBot->BotNavInfo.PathSize - 1))
 	{
 		NextArea = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint + 1].area;
+		NextFlag = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint + 1].flag;
 	}
+
+	bool bIsNearNextPoint = (pBot->BotNavInfo.CurrentPathPoint < (pBot->BotNavInfo.PathSize - 1)) && vDist2DSq(pBot->Edict->v.origin, pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint + 1].FromLocation) <= sqrf(50.0f);
 
 	Vector MoveFrom = g_vecZero;
 
@@ -2837,26 +2785,26 @@ void NewMove(AvHAIPlayer* pBot)
 
 	Vector MoveTo = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].Location;
 
-
-
-	switch (CurrentNavArea)
+	if (CanPlayerCrouch(pBot->Edict) && (CurrentNavArea == SAMPLE_POLYAREA_CROUCH || (NextArea == SAMPLE_POLYAREA_CROUCH && bIsNearNextPoint)))
 	{
-	case SAMPLE_POLYAREA_GROUND:
-	case SAMPLE_POLYAREA_CROUCH:
+		pBot->Button |= IN_DUCK;
+	}
+
+	switch (CurrentNavFlag)
+	{
+	case SAMPLE_POLYFLAGS_WALK:
 		GroundMove(pBot, MoveFrom, MoveTo);
 		break;
-	case SAMPLE_POLYAREA_FALL:
-	case SAMPLE_POLYAREA_HIGHFALL:
+	case SAMPLE_POLYFLAGS_FALL:
 		FallMove(pBot, MoveFrom, MoveTo);
 		break;
-	case SAMPLE_POLYAREA_JUMP:
-	case SAMPLE_POLYAREA_HIGHJUMP:
+	case SAMPLE_POLYFLAGS_JUMP:
 		JumpMove(pBot, MoveFrom, MoveTo);
 		break;
-	case SAMPLE_POLYAREA_BLOCKED:
+	case SAMPLE_POLYFLAGS_BLOCKED:
 		BlockedMove(pBot, MoveFrom, MoveTo);
 		break;
-	case SAMPLE_POLYAREA_WALLCLIMB:
+	case SAMPLE_POLYFLAGS_WALLCLIMB:
 	{
 		if (IsPlayerSkulk(pBot->Edict))
 		{
@@ -2868,10 +2816,10 @@ void NewMove(AvHAIPlayer* pBot)
 		}
 	}
 	break;
-	case SAMPLE_POLYAREA_LADDER:
+	case SAMPLE_POLYFLAGS_LADDER:
 		LadderMove(pBot, MoveFrom, MoveTo, pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].requiredZ, NextArea);
 		break;
-	case SAMPLE_POLYAREA_PHASEGATE:
+	case SAMPLE_POLYFLAGS_PHASEGATE:
 		PhaseGateMove(pBot, MoveFrom, MoveTo);
 		break;
 	default:
@@ -2931,10 +2879,8 @@ void GroundMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoin
 	Vector endTrcLft = stTrcLft + (vForward * 24.0f);
 	Vector endTrcRt = stTrcRt + (vForward * 24.0f);
 
-	int NavProfileIndex = UTIL_GetMoveProfileForBot(pBot, pBot->BotNavInfo.MoveStyle);
-
-	bool bumpLeft = !UTIL_PointIsDirectlyReachable(NavProfileIndex, stTrcLft, endTrcLft);
-	bool bumpRight = !UTIL_PointIsDirectlyReachable(NavProfileIndex, stTrcRt, endTrcRt);
+	bool bumpLeft = !UTIL_PointIsDirectlyReachable(pBot->BotNavInfo.NavProfile, stTrcLft, endTrcLft);
+	bool bumpRight = !UTIL_PointIsDirectlyReachable(pBot->BotNavInfo.NavProfile, stTrcRt, endTrcRt);
 
 	pBot->desiredMovementDir = vForward;
 
@@ -2979,7 +2925,7 @@ void GroundMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoin
 			LeapDist = UTIL_MetresToGoldSrcUnits(1.0f);
 		}
 
-		if (CanBotLeap(pBot) && vDist2DSq(pBot->Edict->v.origin, EndPoint) > sqrf(LeapDist) && UTIL_PointIsDirectlyReachable(NavProfileIndex, pBot->Edict->v.origin, EndPoint))
+		if (CanBotLeap(pBot) && vDist2DSq(pBot->Edict->v.origin, EndPoint) > sqrf(LeapDist) && UTIL_PointIsDirectlyReachable(pBot->BotNavInfo.NavProfile, pBot->Edict->v.origin, EndPoint))
 		{
 			float CombatWeaponEnergyCost = GetEnergyCostForWeapon(pBot->DesiredCombatWeapon);
 			float RequiredEnergy = (CombatWeaponEnergyCost + GetLeapCost(pBot)) - (GetPlayerEnergyRegenPerSecond(pEdict) * 0.5f); // We allow for around .5s of regen time as well
@@ -3000,27 +2946,9 @@ void GroundMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoin
 
 	pBot->desiredMovementDir = UTIL_GetVectorNormal2D(pBot->desiredMovementDir);
 
-	bool bCanDuck = (IsPlayerMarine(pBot->Edict) || IsPlayerFade(pBot->Edict) || IsPlayerOnos(pBot->Edict));
-
-	if (!bCanDuck) { return; }
-
-	// If this is a crouch type movement, then crouch
-	if (pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].area == SAMPLE_POLYAREA_CROUCH)
-	{
-		pBot->Button |= IN_DUCK;
-		return;
-	}
-
-	// Start ducking early if the next path point after this one is a crouch move
-	if ((pBot->BotNavInfo.CurrentPathPoint < (pBot->BotNavInfo.PathSize - 1)) && pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint + 1].area == SAMPLE_POLYAREA_CROUCH && vDist2DSq(pEdict->v.origin, EndPoint) < sqrf(50.0f))
-	{
-		pBot->Button |= IN_DUCK;
-		return;
-	}
-
 	Vector HeadLocation = GetPlayerTopOfCollisionHull(pEdict, false);
 
-	// Also crouch if we have something in our way at head height
+	// Crouch if we have something in our way at head height
 	if (!UTIL_QuickTrace(pBot->Edict, HeadLocation, (HeadLocation + (pBot->desiredMovementDir * 50.0f))))
 	{
 		pBot->Button |= IN_DUCK;
@@ -3394,7 +3322,7 @@ bool IsBotOffPath(const AvHAIPlayer* pBot)
 	
 
 	// If we're trying to use a phase gate, then we're fine as long as there is a phase gate within reach at the start and end teleport points
-	if (pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].area == SAMPLE_POLYAREA_PHASEGATE)
+	if (pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].flag == SAMPLE_POLYFLAGS_PHASEGATE)
 	{
 		DeployableSearchFilter PGFilter;
 		PGFilter.DeployableTypes = STRUCTURE_MARINE_PHASEGATE;
@@ -3434,8 +3362,6 @@ bool IsBotOffPath(const AvHAIPlayer* pBot)
 		}
 	}
 
-	
-
 	float PlayerRadiusSq = sqrf(GetPlayerRadius(pBot->Player));
 	float PlayerHeight = GetPlayerHeight(pBot->Edict, false);
 
@@ -3443,7 +3369,7 @@ bool IsBotOffPath(const AvHAIPlayer* pBot)
 
 	Vector PointOnPath = vClosestPointOnLine2D(MoveFrom, MoveTo, pBot->CurrentFloorPosition);
 
-	if (pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].area == SAMPLE_POLYAREA_WALLCLIMB)
+	if (pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].flag == SAMPLE_POLYFLAGS_WALLCLIMB)
 	{
 		return (vEquals(PointOnPath, MoveTo, 2.0f) && !IsPlayerClimbingWall(pBot->Edict) && pBot->CollisionHullTopLocation.z < MoveTo.z);
 	}
@@ -3454,7 +3380,7 @@ bool IsBotOffPath(const AvHAIPlayer* pBot)
 
 
 	// TODO: This sucks
-	if (pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].area == SAMPLE_POLYAREA_GROUND || pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].area == SAMPLE_POLYAREA_CROUCH)
+	if (pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].flag == SAMPLE_POLYFLAGS_WALK)
 	{
 
 		bool bAtMoveStart = vEquals(PointOnPath, MoveFrom, 2.0f);
@@ -3483,7 +3409,7 @@ bool IsBotOffPath(const AvHAIPlayer* pBot)
 		return false;
 	}
 
-	if (pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].area == SAMPLE_POLYAREA_JUMP || pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].area == SAMPLE_POLYAREA_HIGHJUMP)
+	if (pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].flag == SAMPLE_POLYFLAGS_JUMP)
 	{
 		Vector ExactJumpTarget = UTIL_GetGroundLocation(MoveTo);
 
@@ -3495,7 +3421,7 @@ bool IsBotOffPath(const AvHAIPlayer* pBot)
 		return false;
 	}
 
-	if (pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].area == SAMPLE_POLYAREA_FALL || pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].area == SAMPLE_POLYAREA_HIGHFALL)
+	if (pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].flag == SAMPLE_POLYFLAGS_FALL)
 	{
 		if (vEquals(PointOnPath, MoveTo, 2.0f) && fabs(pBot->CurrentFloorPosition.z - MoveTo.z) > PlayerHeight)
 		{
@@ -3665,10 +3591,8 @@ void MoveDirectlyTo(AvHAIPlayer* pBot, const Vector Destination)
 	Vector endTrcLft = stTrcLft + (vForward * 24.0f);
 	Vector endTrcRt = stTrcRt + (vForward * 24.0f);
 
-	int NavProfileIndex = UTIL_GetMoveProfileForBot(pBot, pBot->BotNavInfo.MoveStyle);
-
-	const bool bumpLeft = !UTIL_PointIsDirectlyReachable(NavProfileIndex, stTrcLft, endTrcLft);
-	const bool bumpRight = !UTIL_PointIsDirectlyReachable(NavProfileIndex, stTrcRt, endTrcRt);
+	const bool bumpLeft = !UTIL_PointIsDirectlyReachable(pBot->BotNavInfo.NavProfile, stTrcLft, endTrcLft);
+	const bool bumpRight = !UTIL_PointIsDirectlyReachable(pBot->BotNavInfo.NavProfile, stTrcRt, endTrcRt);
 
 	pBot->desiredMovementDir = vForward;
 
@@ -3733,11 +3657,9 @@ void MoveDirectlyTo(AvHAIPlayer* pBot, const Vector Destination)
 
 bool UTIL_PointIsDirectlyReachable(const AvHAIPlayer* pBot, const Vector targetPoint)
 {
-	int NavProfileIndex = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
-
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfileIndex);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfileIndex);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(NavProfileIndex);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(pBot->BotNavInfo.NavProfile);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(pBot->BotNavInfo.NavProfile);
+	const dtQueryFilter* m_navFilter = &pBot->BotNavInfo.NavProfile.Filters;
 
 	if (!m_navQuery) { return false; }
 
@@ -3795,11 +3717,9 @@ bool UTIL_PointIsDirectlyReachable(const AvHAIPlayer* pBot, const Vector targetP
 
 bool UTIL_PointIsDirectlyReachable(const AvHAIPlayer* pBot, const Vector start, const Vector target)
 {
-	int NavProfileIndex = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
-
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfileIndex);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfileIndex);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(NavProfileIndex);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(pBot->BotNavInfo.NavProfile);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(pBot->BotNavInfo.NavProfile);
+	const dtQueryFilter* m_navFilter = &pBot->BotNavInfo.NavProfile.Filters;
 
 	if (!m_navQuery) { return false; }
 
@@ -3852,56 +3772,32 @@ bool UTIL_PointIsDirectlyReachable(const AvHAIPlayer* pBot, const Vector start, 
 
 }
 
-const dtNavMesh* UTIL_GetNavMeshForProfile(const int NavProfileIndex)
+const dtNavMesh* UTIL_GetNavMeshForProfile(const nav_profile& NavProfile)
 {
-	if (NavProfileIndex < 0 || NavProfileIndex >(MAX_NAV_PROFILES - 1)) { return nullptr; }
+	if (NavProfile.NavMeshIndex < 0 || NavProfile.NavMeshIndex >= MAX_NAV_MESHES) { return nullptr; }
 
-	if (NavProfiles[NavProfileIndex].NavMeshIndex > MAX_NAV_MESHES - 1) { return nullptr; }
-
-	return NavMeshes[NavProfiles[NavProfileIndex].NavMeshIndex].navMesh;
+	return NavMeshes[NavProfile.NavMeshIndex].navMesh;
 }
 
-const dtNavMeshQuery* UTIL_GetNavMeshQueryForProfile(const int NavProfileIndex)
+const dtNavMeshQuery* UTIL_GetNavMeshQueryForProfile(const nav_profile& NavProfile)
 {
-	if (NavProfileIndex < 0 || NavProfileIndex >(MAX_NAV_PROFILES - 1)) { return nullptr; }
+	if (NavProfile.NavMeshIndex < 0 || NavProfile.NavMeshIndex >= MAX_NAV_MESHES) { return nullptr; }
 
-	if (NavProfiles[NavProfileIndex].NavMeshIndex > MAX_NAV_MESHES - 1) { return nullptr; }
-
-	return NavMeshes[NavProfiles[NavProfileIndex].NavMeshIndex].navQuery;
+	return NavMeshes[NavProfile.NavMeshIndex].navQuery;
 }
 
-const dtQueryFilter* UTIL_GetNavMeshFilterForProfile(const int NavProfileIndex)
+const dtTileCache* UTIL_GetTileCacheForProfile(const nav_profile& NavProfile)
 {
-	if (NavProfileIndex < 0 || NavProfileIndex >(MAX_NAV_PROFILES - 1)) { return nullptr; }
+	if (NavProfile.NavMeshIndex < 0 || NavProfile.NavMeshIndex >= MAX_NAV_MESHES) { return nullptr; }
 
-	if (NavProfiles[NavProfileIndex].NavMeshIndex > MAX_NAV_MESHES - 1) { return nullptr; }
-
-	return &NavProfiles[NavProfileIndex].Filters;
+	return NavMeshes[NavProfile.NavMeshIndex].tileCache;
 }
 
-const dtTileCache* UTIL_GetTileCacheForProfile(const int NavProfileIndex)
+bool UTIL_PointIsDirectlyReachable(const nav_profile &NavProfile, const Vector start, const Vector target)
 {
-	if (NavProfileIndex < 0 || NavProfileIndex >(MAX_NAV_PROFILES - 1)) { return nullptr; }
-
-	if (NavProfiles[NavProfileIndex].NavMeshIndex > MAX_NAV_MESHES - 1) { return nullptr; }
-
-	return NavMeshes[NavProfiles[NavProfileIndex].NavMeshIndex].tileCache;
-}
-
-AvHAIReachabilityStatus UTIL_GetReachabilityFlagForProfile(const int NavProfileIndex)
-{
-	if (NavProfileIndex < 0 || NavProfileIndex >(MAX_NAV_PROFILES - 1)) { return AI_REACHABILITY_NONE; }
-
-	if (NavProfiles[NavProfileIndex].NavMeshIndex > MAX_NAV_MESHES - 1) { return AI_REACHABILITY_NONE; }
-
-	return NavProfiles[NavProfileIndex].ReachabilityFlag;
-}
-
-bool UTIL_PointIsDirectlyReachable(const int NavProfileIndex, const Vector start, const Vector target)
-{
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfileIndex);
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfileIndex);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(NavProfileIndex);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfile);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfile);
+	const dtQueryFilter* m_navFilter = &NavProfile.Filters;
 
 	if (!m_navMesh) { return false; }
 
@@ -3969,11 +3865,11 @@ bool UTIL_PointIsDirectlyReachable(const int NavProfileIndex, const Vector start
 	return (Height == 0.0f || Height == EndNearest[1]);
 }
 
-bool UTIL_TraceNav(const int NavProfileIndex, const Vector start, const Vector target, const float MaxAcceptableDistance)
+bool UTIL_TraceNav(const nav_profile &NavProfile, const Vector start, const Vector target, const float MaxAcceptableDistance)
 {
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfileIndex);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfileIndex);
-	const dtQueryFilter* m_Filter = UTIL_GetNavMeshFilterForProfile(NavProfileIndex);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfile);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfile);
+	const dtQueryFilter* m_Filter = &NavProfile.Filters;
 
 	if (!m_navQuery) { return false; }
 
@@ -4042,11 +3938,11 @@ bool UTIL_TraceNav(const int NavProfileIndex, const Vector start, const Vector t
 	return (Height == 0.0f || Height == EndNearest[1]);
 }
 
-void UTIL_TraceNavLine(const int NavProfileIndex, const Vector Start, const Vector End, nav_hitresult* HitResult)
+void UTIL_TraceNavLine(const nav_profile &NavProfile, const Vector Start, const Vector End, nav_hitresult* HitResult)
 {
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfileIndex);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfileIndex);
-	const dtQueryFilter* m_Filter = UTIL_GetNavMeshFilterForProfile(NavProfileIndex);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfile);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfile);
+	const dtQueryFilter* m_Filter = &NavProfile.Filters;
 
 	if (!m_navQuery)
 	{
@@ -4120,7 +4016,7 @@ void UTIL_TraceNavLine(const int NavProfileIndex, const Vector Start, const Vect
 		Vector Dir = UTIL_GetVectorNormal(End - Start);
 		Vector Point = Start + (Dir * HitResult->flFraction);
 
-		HitLocation = UTIL_ProjectPointToNavmesh(Point, Vector(100.0f, 100.0f, 100.0f), NavProfileIndex);
+		HitLocation = UTIL_ProjectPointToNavmesh(Point, Vector(100.0f, 100.0f, 100.0f), NavProfile);
 	}
 
 	HitResult->TraceEndPoint = HitLocation;
@@ -4128,9 +4024,9 @@ void UTIL_TraceNavLine(const int NavProfileIndex, const Vector Start, const Vect
 
 bool UTIL_PointIsDirectlyReachable(const Vector start, const Vector target)
 {
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(ALL_NAV_PROFILE);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(ALL_NAV_PROFILE);
-	const dtQueryFilter* m_Filter = UTIL_GetNavMeshFilterForProfile(ALL_NAV_PROFILE);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(BaseNavProfiles[ALL_NAV_PROFILE]);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(BaseNavProfiles[ALL_NAV_PROFILE]);
+	const dtQueryFilter* m_Filter = &BaseNavProfiles[ALL_NAV_PROFILE].Filters;
 
 	if (!m_navQuery) { return false; }
 
@@ -4200,9 +4096,9 @@ bool UTIL_PointIsDirectlyReachable(const Vector start, const Vector target)
 
 float UTIL_PointIsDirectlyReachable_DEBUG(const Vector start, const Vector target)
 {
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(ALL_NAV_PROFILE);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(ALL_NAV_PROFILE);
-	const dtQueryFilter* m_Filter = UTIL_GetNavMeshFilterForProfile(ALL_NAV_PROFILE);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(BaseNavProfiles[ALL_NAV_PROFILE]);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(BaseNavProfiles[ALL_NAV_PROFILE]);
+	const dtQueryFilter* m_Filter = &BaseNavProfiles[ALL_NAV_PROFILE].Filters;
 
 	if (!m_navQuery) { return 0.0f; }
 
@@ -4281,11 +4177,11 @@ float UTIL_PointIsDirectlyReachable_DEBUG(const Vector start, const Vector targe
 	return 2.2f;
 }
 
-dtPolyRef UTIL_GetNearestPolyRefForLocation(const int NavProfileIndex, const Vector Location)
+dtPolyRef UTIL_GetNearestPolyRefForLocation(const nav_profile& NavProfile, const Vector Location)
 {
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfileIndex);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfileIndex);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(NavProfileIndex);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfile);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfile);
+	const dtQueryFilter* m_navFilter = &NavProfile.Filters;
 
 	if (!m_navQuery) { return 0; }
 
@@ -4303,9 +4199,9 @@ dtPolyRef UTIL_GetNearestPolyRefForLocation(const int NavProfileIndex, const Vec
 
 dtPolyRef UTIL_GetNearestPolyRefForLocation(const Vector Location)
 {
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(ALL_NAV_PROFILE);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(ALL_NAV_PROFILE);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(ALL_NAV_PROFILE);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(BaseNavProfiles[ALL_NAV_PROFILE]);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(BaseNavProfiles[ALL_NAV_PROFILE]);
+	const dtQueryFilter* m_navFilter = &BaseNavProfiles[ALL_NAV_PROFILE].Filters;
 
 	if (!m_navQuery) { return 0; }
 
@@ -4323,9 +4219,9 @@ dtPolyRef UTIL_GetNearestPolyRefForLocation(const Vector Location)
 
 dtPolyRef UTIL_GetNearestPolyRefForEntity(const edict_t* Edict)
 {
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(ALL_NAV_PROFILE);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(ALL_NAV_PROFILE);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(ALL_NAV_PROFILE);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(BaseNavProfiles[ALL_NAV_PROFILE]);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(BaseNavProfiles[ALL_NAV_PROFILE]);
+	const dtQueryFilter* m_navFilter = &BaseNavProfiles[ALL_NAV_PROFILE].Filters;
 
 	if (!m_navQuery) { return 0; }
 
@@ -4343,13 +4239,11 @@ dtPolyRef UTIL_GetNearestPolyRefForEntity(const edict_t* Edict)
 	return result;
 }
 
-unsigned char UTIL_GetNavAreaAtLocation(const int NavProfile, const Vector Location)
+unsigned char UTIL_GetNavAreaAtLocation(const nav_profile &NavProfile, const Vector Location)
 {
-	if (NavProfile < 0 || NavProfile > MAX_NAV_PROFILES - 1) { return SAMPLE_POLYAREA_BLOCKED; }
-
 	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfile);
 	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfile);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(NavProfile);
+	const dtQueryFilter* m_navFilter = &NavProfile.Filters;
 
 	if (!m_navQuery) { return (unsigned char)SAMPLE_POLYAREA_BLOCKED; }
 
@@ -4378,9 +4272,9 @@ unsigned char UTIL_GetNavAreaAtLocation(const int NavProfile, const Vector Locat
 
 unsigned char UTIL_GetNavAreaAtLocation(const Vector Location)
 {
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(ALL_NAV_PROFILE);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(ALL_NAV_PROFILE);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(ALL_NAV_PROFILE);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(BaseNavProfiles[ALL_NAV_PROFILE]);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(BaseNavProfiles[ALL_NAV_PROFILE]);
+	const dtQueryFilter* m_navFilter = &BaseNavProfiles[ALL_NAV_PROFILE].Filters;
 
 	if (!m_navQuery) { return 0; }
 
@@ -4415,111 +4309,14 @@ const char* UTIL_NavmeshAreaToChar(const unsigned char Area)
 		return "Blocked";
 	case SAMPLE_POLYAREA_CROUCH:
 		return "Crouch";
-	case SAMPLE_POLYAREA_DOOR:
-		return "Door";
-	case SAMPLE_POLYAREA_FALL:
-		return "Fall";
 	case SAMPLE_POLYAREA_GROUND:
 		return "Ground";
-	case SAMPLE_POLYAREA_HIGHFALL:
-		return "High Fall";
-	case SAMPLE_POLYAREA_HIGHJUMP:
-		return "High Jump";
-	case SAMPLE_POLYAREA_JUMP:
-		return "Jump";
-	case SAMPLE_POLYAREA_LADDER:
-		return "Ladder";
-	case SAMPLE_POLYAREA_WALLCLIMB:
-		return "Wall Climb";
-	case SAMPLE_POLYAREA_WATER:
-		return "Water";
 	default:
 		return "INVALID";
 
 	}
 
 	return "INVALID";
-}
-
-int UTIL_GetMoveProfileForBot(const AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
-{
-	AvHUser3 PlayerUser3 = pBot->Player->GetUser3();
-
-	switch (PlayerUser3)
-	{
-		case AVH_USER3_ALIEN_PLAYER1:
-			return UTIL_GetMoveProfileForSkulk(MoveStyle);
-		case AVH_USER3_ALIEN_PLAYER2:
-			return UTIL_GetMoveProfileForGorge(MoveStyle);
-		case AVH_USER3_ALIEN_PLAYER3:
-			return UTIL_GetMoveProfileForLerk(MoveStyle);
-		case AVH_USER3_ALIEN_PLAYER4:
-			return UTIL_GetMoveProfileForFade(MoveStyle);
-		case AVH_USER3_ALIEN_PLAYER5:
-			return UTIL_GetMoveProfileForOnos(MoveStyle);
-		default:
-		{
-			if (PlayerHasWeapon(pBot->Player, WEAPON_MARINE_WELDER))
-			{
-				return MARINE_WELD_NAV_PROFILE;
-			}
-			else
-			{
-				return MARINE_REGULAR_NAV_PROFILE;
-			}
-		}
-	}
-}
-
-int UTIL_GetMoveProfileForMarine(const BotMoveStyle MoveStyle)
-{
-	return MARINE_REGULAR_NAV_PROFILE;
-}
-
-int UTIL_GetMoveProfileForSkulk(const BotMoveStyle MoveStyle)
-{
-	switch (MoveStyle)
-	{
-	case MOVESTYLE_AMBUSH:
-	case MOVESTYLE_HIDE:
-		return SKULK_AMBUSH_NAV_PROFILE;
-	default:
-		return SKULK_REGULAR_NAV_PROFILE;
-	}
-}
-
-int UTIL_GetMoveProfileForGorge(const BotMoveStyle MoveStyle)
-{
-	switch (MoveStyle)
-	{
-	case MOVESTYLE_HIDE:
-		return GORGE_HIDE_NAV_PROFILE;
-	default:
-		return GORGE_REGULAR_NAV_PROFILE;
-	}
-}
-
-int UTIL_GetMoveProfileForLerk(const BotMoveStyle MoveStyle)
-{
-	switch (MoveStyle)
-	{
-	case MOVESTYLE_NORMAL:
-		return LERK_FLYING_NAV_PROFILE;
-	default:
-		return GORGE_REGULAR_NAV_PROFILE;
-	}
-
-	return GORGE_REGULAR_NAV_PROFILE;
-}
-
-int UTIL_GetMoveProfileForFade(const BotMoveStyle MoveStyle)
-{
-	return FADE_REGULAR_NAV_PROFILE;
-}
-
-int UTIL_GetMoveProfileForOnos(const BotMoveStyle MoveStyle)
-{
-	return ONOS_REGULAR_NAV_PROFILE;
 }
 
 void UTIL_UpdateBotMovementStatus(AvHAIPlayer* pBot)
@@ -4559,7 +4356,7 @@ bool AbortCurrentMove(AvHAIPlayer* pBot, const Vector NewDestination)
 
 	Vector MoveFrom = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint - 1].Location;
 	Vector MoveTo = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].Location;
-	unsigned char area = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].area;
+	unsigned short flag = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].flag;
 
 	Vector ClosestPointOnLine = vClosestPointOnLine2D(MoveFrom, MoveTo, pBot->Edict->v.origin);
 
@@ -4574,7 +4371,7 @@ bool AbortCurrentMove(AvHAIPlayer* pBot, const Vector NewDestination)
 
 	bool bReverseCourse = (vDist3DSq(DestinationPointOnLine, MoveFrom) < vDist3DSq(DestinationPointOnLine, MoveTo));
 
-	if (area == SAMPLE_POLYAREA_GROUND || area == SAMPLE_POLYAREA_CROUCH)
+	if (flag == SAMPLE_POLYFLAGS_WALK)
 	{
 		if (UTIL_PointIsDirectlyReachable(pBot->Edict->v.origin, MoveFrom) || UTIL_PointIsDirectlyReachable(pBot->Edict->v.origin, MoveTo))
 		{
@@ -4591,7 +4388,7 @@ bool AbortCurrentMove(AvHAIPlayer* pBot, const Vector NewDestination)
 		}
 	}
 
-	if (area == SAMPLE_POLYAREA_WALLCLIMB)
+	if (flag == SAMPLE_POLYFLAGS_WALLCLIMB)
 	{
 		if (bReverseCourse)
 		{
@@ -4603,7 +4400,7 @@ bool AbortCurrentMove(AvHAIPlayer* pBot, const Vector NewDestination)
 		}
 	}
 
-	if (area == SAMPLE_POLYAREA_LADDER)
+	if (flag == SAMPLE_POLYFLAGS_LADDER)
 	{
 		if (bReverseCourse)
 		{
@@ -4633,12 +4430,12 @@ bool AbortCurrentMove(AvHAIPlayer* pBot, const Vector NewDestination)
 		}
 	}
 
-	if (area == SAMPLE_POLYAREA_PHASEGATE)
+	if (flag == SAMPLE_POLYFLAGS_PHASEGATE)
 	{
 		return true;
 	}
 
-	if (area == SAMPLE_POLYAREA_JUMP || area == SAMPLE_POLYAREA_HIGHJUMP || area == SAMPLE_POLYAREA_BLOCKED)
+	if (flag == SAMPLE_POLYFLAGS_JUMP || flag == SAMPLE_POLYFLAGS_BLOCKED)
 	{
 		if (bReverseCourse)
 		{
@@ -4650,7 +4447,7 @@ bool AbortCurrentMove(AvHAIPlayer* pBot, const Vector NewDestination)
 		}
 	}
 
-	if (area == SAMPLE_POLYAREA_FALL || area == SAMPLE_POLYAREA_HIGHFALL)
+	if (flag == SAMPLE_POLYFLAGS_FALL)
 	{
 		FallMove(pBot, MoveFrom, MoveTo);
 	}
@@ -4674,6 +4471,225 @@ bool IsBotPermaStuck(AvHAIPlayer* pBot)
 	pBot->TimeSinceLastMovement += AIMGR_GetBotDeltaTime();
 
 	return (pBot->TimeSinceLastMovement >= 30.0f);
+}
+
+void SetBaseNavProfile(AvHAIPlayer* pBot)
+{
+	pBot->BotNavInfo.bNavProfileChanged = true;
+
+	if (IsPlayerMarine(pBot->Player))
+	{
+		memcpy(&pBot->BotNavInfo.NavProfile, &BaseNavProfiles[MARINE_BASE_NAV_PROFILE], sizeof(nav_profile));
+		return;
+	}
+
+	switch (pBot->Edict->v.iuser3)
+	{
+	case AVH_USER3_ALIEN_PLAYER1:
+		memcpy(&pBot->BotNavInfo.NavProfile, &BaseNavProfiles[SKULK_BASE_NAV_PROFILE], sizeof(nav_profile));
+		return;
+	case AVH_USER3_ALIEN_PLAYER2:
+		memcpy(&pBot->BotNavInfo.NavProfile, &BaseNavProfiles[GORGE_BASE_NAV_PROFILE], sizeof(nav_profile));
+		return;
+	case AVH_USER3_ALIEN_PLAYER3:
+		memcpy(&pBot->BotNavInfo.NavProfile, &BaseNavProfiles[LERK_BASE_NAV_PROFILE], sizeof(nav_profile));
+		return;
+	case AVH_USER3_ALIEN_PLAYER4:
+		memcpy(&pBot->BotNavInfo.NavProfile, &BaseNavProfiles[FADE_BASE_NAV_PROFILE], sizeof(nav_profile));
+		return;
+	case AVH_USER3_ALIEN_PLAYER5:
+		memcpy(&pBot->BotNavInfo.NavProfile, &BaseNavProfiles[ONOS_BASE_NAV_PROFILE], sizeof(nav_profile));
+		return;
+
+	}
+}
+
+void UpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
+{
+	pBot->BotNavInfo.bNavProfileChanged = false;
+
+	if (IsPlayerMarine(pBot->Player))
+	{
+		MarineUpdateBotMoveProfile(pBot, MoveStyle);
+		return;
+	}
+
+	switch (pBot->Edict->v.iuser3)
+	{
+		case AVH_USER3_ALIEN_PLAYER1:
+			SkulkUpdateBotMoveProfile(pBot, MoveStyle);
+			return;
+		case AVH_USER3_ALIEN_PLAYER2:
+			GorgeUpdateBotMoveProfile(pBot, MoveStyle);
+			return;
+		case AVH_USER3_ALIEN_PLAYER3:
+			LerkUpdateBotMoveProfile(pBot, MoveStyle);
+			return;
+		case AVH_USER3_ALIEN_PLAYER4:
+			FadeUpdateBotMoveProfile(pBot, MoveStyle);
+			return;
+		case AVH_USER3_ALIEN_PLAYER5:
+			OnosUpdateBotMoveProfile(pBot, MoveStyle);
+			return;
+
+	}
+
+}
+
+void MarineUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
+{
+	nav_profile* NavProfile = &pBot->BotNavInfo.NavProfile;
+
+	bool bHasWelder = PlayerHasWeapon(pBot->Player, WEAPON_MARINE_WELDER);
+
+	if (!bHasWelder)
+	{
+		AvHAIDroppedItem* NearbyWelder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, 0.0f, UTIL_MetresToGoldSrcUnits(10.0f), true);
+
+		bHasWelder = (NearbyWelder != nullptr);
+	}
+
+	bool bHadWelder = !(NavProfile->Filters.getExcludeFlags() & SAMPLE_POLYFLAGS_WELD);
+
+	if (bHasWelder != bHadWelder)
+	{
+		pBot->BotNavInfo.bNavProfileChanged = true;
+
+		if (bHasWelder)
+		{
+			NavProfile->Filters.removeExcludeFlags(SAMPLE_POLYFLAGS_WELD);
+			NavProfile->ReachabilityFlag = AI_REACHABILITY_WELDER;
+		}
+		else
+		{
+			NavProfile->Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
+			NavProfile->ReachabilityFlag = AI_REACHABILITY_MARINE;
+		}
+	}
+
+	if (MoveStyle == pBot->BotNavInfo.MoveStyle) { return; }
+
+	pBot->BotNavInfo.bNavProfileChanged = true;
+	pBot->BotNavInfo.MoveStyle = MoveStyle;
+
+	if (MoveStyle == MOVESTYLE_NORMAL)
+	{
+		NavProfile->Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
+		NavProfile->Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 2.0f);
+		return;
+	}
+
+	if (MoveStyle == MOVESTYLE_HIDE || MoveStyle == MOVESTYLE_AMBUSH)
+	{
+		NavProfile->Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 3.0f);
+		NavProfile->Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
+		return;
+	}
+}
+
+void SkulkUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
+{
+	if (MoveStyle == pBot->BotNavInfo.MoveStyle) { return; }
+
+	pBot->BotNavInfo.bNavProfileChanged = true;
+	pBot->BotNavInfo.MoveStyle = MoveStyle;
+
+	nav_profile* NavProfile = &pBot->BotNavInfo.NavProfile;
+
+	if (MoveStyle == MOVESTYLE_NORMAL)
+	{
+		NavProfile->Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
+		NavProfile->Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
+		return;
+	}
+
+	if (MoveStyle == MOVESTYLE_HIDE || MoveStyle == MOVESTYLE_AMBUSH)
+	{
+		NavProfile->Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 10.0f);
+		NavProfile->Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
+		NavProfile->Filters.setAreaCost(SAMPLE_POLYAREA_WALLCLIMB, 1.0f);
+		return;
+	}
+}
+
+void GorgeUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
+{
+	if (MoveStyle == pBot->BotNavInfo.MoveStyle) { return; }
+
+	pBot->BotNavInfo.bNavProfileChanged = true;
+	pBot->BotNavInfo.MoveStyle = MoveStyle;
+
+	nav_profile* NavProfile = &pBot->BotNavInfo.NavProfile;
+
+	if (MoveStyle == MOVESTYLE_NORMAL)
+	{
+		NavProfile->Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
+		NavProfile->Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
+		return;
+	}
+
+	if (MoveStyle == MOVESTYLE_HIDE || MoveStyle == MOVESTYLE_AMBUSH)
+	{
+		NavProfile->Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 10.0f);
+		NavProfile->Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
+		return;
+	}
+}
+
+void LerkUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
+{
+	if (MoveStyle == pBot->BotNavInfo.MoveStyle) { return; }
+
+	pBot->BotNavInfo.bNavProfileChanged = true;
+	pBot->BotNavInfo.MoveStyle = MoveStyle;
+
+	nav_profile* NavProfile = &pBot->BotNavInfo.NavProfile;
+
+	if (MoveStyle == MOVESTYLE_NORMAL)
+	{
+		NavProfile->Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
+		NavProfile->Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
+		NavProfile->bFlyingProfile = true;
+		return;
+	}
+
+	if (MoveStyle == MOVESTYLE_HIDE || MoveStyle == MOVESTYLE_AMBUSH)
+	{
+		NavProfile->bFlyingProfile = false;
+		NavProfile->Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 10.0f);
+		NavProfile->Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
+		return;
+	}
+}
+
+void FadeUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
+{
+	if (MoveStyle == pBot->BotNavInfo.MoveStyle) { return; }
+
+	pBot->BotNavInfo.bNavProfileChanged = true;
+	pBot->BotNavInfo.MoveStyle = MoveStyle;
+
+	nav_profile* NavProfile = &pBot->BotNavInfo.NavProfile;
+
+	if (MoveStyle == MOVESTYLE_NORMAL)
+	{
+		NavProfile->Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
+		NavProfile->Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
+		return;
+	}
+
+	if (MoveStyle == MOVESTYLE_HIDE || MoveStyle == MOVESTYLE_AMBUSH)
+	{
+		NavProfile->Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 10.0f);
+		NavProfile->Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
+		return;
+	}
+}
+
+void OnosUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
+{
+	// Onos doesn't really do much other than the usual movement
+	return;
 }
 
 bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle MoveStyle, const float MaxAcceptableDist)
@@ -4758,17 +4774,16 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 			return true;
 		}
 	}
-
-	int MoveProfile = UTIL_GetMoveProfileForBot(pBot, pBot->BotNavInfo.MoveStyle);
-	bool bIsFlyingProfile = NavProfiles[MoveProfile].bFlyingProfile;
-
-	bool bMoveStyleChanged = (MoveStyle != pBot->BotNavInfo.MoveStyle);
-	bool bNavProfileChanged = (MoveProfile != pBot->BotNavInfo.LastMoveProfile);
+	
+	UpdateBotMoveProfile(pBot, MoveStyle);
+	
+	bool bIsFlyingProfile = pBot->BotNavInfo.NavProfile.bFlyingProfile;
+	bool bNavProfileChanged = pBot->BotNavInfo.bNavProfileChanged;
 	bool bCanRecalculatePath = (gpGlobals->time - pBot->BotNavInfo.LastPathCalcTime > MIN_PATH_RECALC_TIME);
 	bool bDestinationChanged = (!vEquals(Destination, BotNavInfo->TargetDestination, GetPlayerRadius(pBot->Player)));
 
 	// Only recalculate the path if there isn't a path, or something has changed and enough time has elapsed since the last path calculation
-	bool bShouldCalculatePath = bCanRecalculatePath && (BotNavInfo->PathSize == 0 || (bMoveStyleChanged || bNavProfileChanged || bDestinationChanged || BotNavInfo->bPendingRecalculation));
+	bool bShouldCalculatePath = bCanRecalculatePath && (BotNavInfo->PathSize == 0 || (bNavProfileChanged || bDestinationChanged || BotNavInfo->bPendingRecalculation));
 
 	if (bShouldCalculatePath)
 	{
@@ -4792,14 +4807,9 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 		pBot->BotNavInfo.LastPathCalcTime = gpGlobals->time;
 		BotNavInfo->bPendingRecalculation = false;
 
-		pBot->BotNavInfo.MoveStyle = MoveStyle;
-		pBot->BotNavInfo.LastMoveProfile = MoveProfile;
-
-		
-
 		BotNavInfo->TargetDestination = Destination;
 
-		Vector ValidNavmeshPoint = UTIL_ProjectPointToNavmesh(Destination, Vector(max_ai_use_reach, max_ai_use_reach, max_ai_use_reach), MoveProfile);
+		Vector ValidNavmeshPoint = UTIL_ProjectPointToNavmesh(Destination, Vector(max_ai_use_reach, max_ai_use_reach, max_ai_use_reach), pBot->BotNavInfo.NavProfile);
 
 		// Destination is not on the nav mesh, so we can't get close enough
 		if (vIsZero(ValidNavmeshPoint))
@@ -4812,7 +4822,7 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 		
 		if (bIsFlyingProfile)
 		{
-			PathFindingStatus = FindFlightPathToPoint(MoveProfile, pBot->CurrentFloorPosition, ValidNavmeshPoint, BotNavInfo->CurrentPath, &BotNavInfo->PathSize, MaxAcceptableDist);
+			PathFindingStatus = FindFlightPathToPoint(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, ValidNavmeshPoint, BotNavInfo->CurrentPath, &BotNavInfo->PathSize, MaxAcceptableDist);
 		}
 		else
 		{
@@ -4895,10 +4905,9 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 
 Vector FindClosestPointBackOnPath(AvHAIPlayer* pBot)
 {
-	int NavProfileIndex = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
 
 	DeployableSearchFilter ResNodeFilter;
-	ResNodeFilter.ReachabilityFlags = UTIL_GetReachabilityFlagForProfile(NavProfileIndex);
+	ResNodeFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
 
 	AvHAIResourceNode* NearestResNode = AITAC_FindNearestResourceNodeToLocation(pBot->Edict->v.origin, &ResNodeFilter);
 
@@ -4906,7 +4915,7 @@ Vector FindClosestPointBackOnPath(AvHAIPlayer* pBot)
 
 	Vector ValidNavmeshPoint = NearestResNode->Location;
 
-	ValidNavmeshPoint = UTIL_ProjectPointToNavmesh(ValidNavmeshPoint, NavProfileIndex);
+	ValidNavmeshPoint = UTIL_ProjectPointToNavmesh(ValidNavmeshPoint, pBot->BotNavInfo.NavProfile);
 
 	if (vIsZero(ValidNavmeshPoint))
 	{
@@ -4919,7 +4928,7 @@ Vector FindClosestPointBackOnPath(AvHAIPlayer* pBot)
 
 	// Now we find a path backwards from the valid nav mesh point to our location, trying to get as close as we can to it
 
-	dtStatus BackwardFindingStatus = FindPathClosestToPoint(NavProfileIndex, ValidNavmeshPoint, pBot->CurrentFloorPosition, BackwardsPath, &BackwardsPathSize, 500.0f);
+	dtStatus BackwardFindingStatus = FindPathClosestToPoint(pBot->BotNavInfo.NavProfile, ValidNavmeshPoint, pBot->CurrentFloorPosition, BackwardsPath, &BackwardsPathSize, 500.0f);
 
 	if (dtStatusSucceed(BackwardFindingStatus))
 	{
@@ -4940,7 +4949,7 @@ Vector FindClosestPointBackOnPath(AvHAIPlayer* pBot)
 	return g_vecZero;
 }
 
-Vector FindClosestNavigablePointToDestination(const int NavProfileIndex, const Vector FromLocation, const Vector ToLocation, float MaxAcceptableDistance)
+Vector FindClosestNavigablePointToDestination(const nav_profile &NavProfile, const Vector FromLocation, const Vector ToLocation, float MaxAcceptableDistance)
 {
 	bot_path_node Path[MAX_AI_PATH_SIZE];
 	memset(Path, 0, sizeof(Path));
@@ -4948,7 +4957,7 @@ Vector FindClosestNavigablePointToDestination(const int NavProfileIndex, const V
 
 	// Now we find a path backwards from the valid nav mesh point to our location, trying to get as close as we can to it
 
-	dtStatus PathFindingResult = FindPathClosestToPoint(NavProfileIndex, FromLocation, ToLocation, Path, &PathSize, MaxAcceptableDistance);
+	dtStatus PathFindingResult = FindPathClosestToPoint(NavProfile, FromLocation, ToLocation, Path, &PathSize, MaxAcceptableDistance);
 
 	if (dtStatusSucceed(PathFindingResult))
 	{
@@ -5197,9 +5206,9 @@ void BotFollowPath(AvHAIPlayer* pBot)
 
 	Vector TargetMoveLocation = BotNavInfo->CurrentPath[BotNavInfo->CurrentPathPoint].Location;
 
-	bool bIsUsingPhaseGate = (BotNavInfo->CurrentPath[BotNavInfo->CurrentPathPoint].area == SAMPLE_POLYAREA_PHASEGATE);
+	bool bIsUsingPhaseGate = (BotNavInfo->CurrentPath[BotNavInfo->CurrentPathPoint].flag == SAMPLE_POLYFLAGS_PHASEGATE);
 
-	bool bIsJumping = (BotNavInfo->CurrentPath[BotNavInfo->CurrentPathPoint].area == SAMPLE_POLYAREA_JUMP);
+	bool bIsJumping = (BotNavInfo->CurrentPath[BotNavInfo->CurrentPathPoint].flag == SAMPLE_POLYFLAGS_JUMP);
 
 	if (bIsJumping)
 	{
@@ -5364,9 +5373,9 @@ bool BotIsAtLocation(const AvHAIPlayer* pBot, const Vector Destination)
 
 Vector UTIL_ProjectPointToNavmesh(const Vector Location)
 {
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(ALL_NAV_PROFILE);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(ALL_NAV_PROFILE);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(ALL_NAV_PROFILE);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(BaseNavProfiles[ALL_NAV_PROFILE]);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(BaseNavProfiles[ALL_NAV_PROFILE]);
+	const dtQueryFilter* m_navFilter = &BaseNavProfiles[ALL_NAV_PROFILE].Filters;
 
 	if (!m_navQuery) { return g_vecZero; }
 
@@ -5394,9 +5403,9 @@ Vector UTIL_ProjectPointToNavmesh(const Vector Location)
 
 Vector UTIL_ProjectPointToNavmesh(const Vector Location, const Vector Extents)
 {
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(ALL_NAV_PROFILE);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(ALL_NAV_PROFILE);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(ALL_NAV_PROFILE);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(BaseNavProfiles[ALL_NAV_PROFILE]);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(BaseNavProfiles[ALL_NAV_PROFILE]);
+	const dtQueryFilter* m_navFilter = &BaseNavProfiles[ALL_NAV_PROFILE].Filters;
 
 	if (!m_navQuery) { return g_vecZero; }
 
@@ -5423,11 +5432,11 @@ Vector UTIL_ProjectPointToNavmesh(const Vector Location, const Vector Extents)
 	}
 }
 
-Vector UTIL_ProjectPointToNavmesh(const Vector Location, const int NavProfileIndex)
+Vector UTIL_ProjectPointToNavmesh(const Vector Location, const nav_profile &NavProfile)
 {
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfileIndex);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfileIndex);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(NavProfileIndex);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfile);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfile);
+	const dtQueryFilter* m_navFilter = &NavProfile.Filters;
 
 	if (!m_navQuery) { return g_vecZero; }
 
@@ -5448,11 +5457,11 @@ Vector UTIL_ProjectPointToNavmesh(const Vector Location, const int NavProfileInd
 	}
 }
 
-Vector UTIL_ProjectPointToNavmesh(const Vector Location, const Vector Extents, const int NavProfileIndex)
+Vector UTIL_ProjectPointToNavmesh(const Vector Location, const Vector Extents, const nav_profile& NavProfile)
 {
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfileIndex);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfileIndex);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(NavProfileIndex);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfile);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfile);
+	const dtQueryFilter* m_navFilter = &NavProfile.Filters;
 
 	if (!m_navQuery) { return g_vecZero; }
 
@@ -5475,11 +5484,11 @@ Vector UTIL_ProjectPointToNavmesh(const Vector Location, const Vector Extents, c
 	}
 }
 
-bool UTIL_PointIsOnNavmesh(const Vector Location, const int NavProfileIndex)
+bool UTIL_PointIsOnNavmesh(const Vector Location, const nav_profile &NavProfile)
 {
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfileIndex);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfileIndex);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(NavProfileIndex);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfile);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfile);
+	const dtQueryFilter* m_navFilter = &NavProfile.Filters;
 
 	if (!m_navQuery) { return false; }
 
@@ -5496,11 +5505,11 @@ bool UTIL_PointIsOnNavmesh(const Vector Location, const int NavProfileIndex)
 
 }
 
-bool UTIL_PointIsOnNavmesh(const int NavProfileIndex, const Vector Location, const Vector SearchExtents)
+bool UTIL_PointIsOnNavmesh(const nav_profile& NavProfile, const Vector Location, const Vector SearchExtents)
 {
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfileIndex);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfileIndex);
-	const dtQueryFilter* m_navFilter = UTIL_GetNavMeshFilterForProfile(NavProfileIndex);
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfile);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfile);
+	const dtQueryFilter* m_navFilter = &NavProfile.Filters;
 
 	if (!m_navQuery) { return false; }
 
@@ -5525,8 +5534,6 @@ void HandlePlayerAvoidance(AvHAIPlayer* pBot, const Vector MoveDestination)
 	float avoidDistSq = sqrf(50.0f);
 	const Vector BotLocation = pBot->Edict->v.origin;
 	const Vector MoveDir = UTIL_GetVectorNormal2D((MoveDestination - pBot->Edict->v.origin));
-
-	const int NavProfileIndex = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
 
 	for (int i = 1; i <= gpGlobals->maxClients; i++)
 	{
@@ -5562,14 +5569,14 @@ void HandlePlayerAvoidance(AvHAIPlayer* pBot, const Vector MoveDestination)
 					Vector PreferredMoveDir = (MoveRightVector * modifier);
 
 					// First see if we have enough room to move in our preferred avoidance direction
-					if (UTIL_TraceNav(NavProfileIndex, BotLocation, BotLocation + (PreferredMoveDir * 32.0f), 2.0f))
+					if (UTIL_TraceNav(pBot->BotNavInfo.NavProfile, BotLocation, BotLocation + (PreferredMoveDir * 32.0f), 2.0f))
 					{
 						pBot->desiredMovementDir = PreferredMoveDir;
 						return;
 					}
 
 					// Then try the opposite direction
-					if (UTIL_TraceNav(NavProfileIndex, BotLocation, BotLocation - (PreferredMoveDir * 32.0f), 2.0f))
+					if (UTIL_TraceNav(pBot->BotNavInfo.NavProfile, BotLocation, BotLocation - (PreferredMoveDir * 32.0f), 2.0f))
 					{
 						pBot->desiredMovementDir = -PreferredMoveDir;
 						return;
@@ -5586,12 +5593,12 @@ void HandlePlayerAvoidance(AvHAIPlayer* pBot, const Vector MoveDestination)
 	}
 }
 
-float UTIL_GetPathCostBetweenLocations(const int NavProfileIndex, const Vector FromLocation, const Vector ToLocation)
+float UTIL_GetPathCostBetweenLocations(const nav_profile &NavProfile , const Vector FromLocation, const Vector ToLocation)
 {
 	bot_path_node path[MAX_AI_PATH_SIZE];
 	int pathSize;
 
-	dtStatus pathFindResult = FindPathClosestToPoint(NavProfileIndex, FromLocation, ToLocation, path, &pathSize, max_ai_use_reach);
+	dtStatus pathFindResult = FindPathClosestToPoint(NavProfile, FromLocation, ToLocation, path, &pathSize, max_ai_use_reach);
 
 	if (!dtStatusSucceed(pathFindResult)) { return 0.0f; }
 
@@ -5601,7 +5608,7 @@ float UTIL_GetPathCostBetweenLocations(const int NavProfileIndex, const Vector F
 	while (currPathPoint < (pathSize - 1))
 	{
 
-		result += vDist2DSq(path[currPathPoint - 1].Location, path[currPathPoint].Location) * NavProfiles[NavProfileIndex].Filters.getAreaCost(path[currPathPoint].area);
+		result += vDist2DSq(path[currPathPoint - 1].Location, path[currPathPoint].Location) * NavProfile.Filters.getAreaCost(path[currPathPoint].area);
 		currPathPoint++;
 	}
 
@@ -5638,7 +5645,7 @@ bool BotRecalcPath(AvHAIPlayer* pBot, const Vector Destination)
 {
 	ClearBotPath(pBot);
 
-	Vector ValidNavmeshPoint = UTIL_ProjectPointToNavmesh(Destination, Vector(max_ai_use_reach, max_ai_use_reach, max_ai_use_reach), pBot->BotNavInfo.MoveStyle);
+	Vector ValidNavmeshPoint = UTIL_ProjectPointToNavmesh(Destination, Vector(max_ai_use_reach, max_ai_use_reach, max_ai_use_reach), pBot->BotNavInfo.NavProfile);
 
 	// We can't actually get close enough to this point to consider it "reachable"
 	if (vIsZero(ValidNavmeshPoint))
@@ -5970,7 +5977,7 @@ void BotMovementInputs(AvHAIPlayer* pBot)
 		pBot->Button |= IN_MOVELEFT;
 	}
 
-	if (pBot->BotNavInfo.PathSize == 0 || pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].area != SAMPLE_POLYAREA_LADDER)
+	if (pBot->BotNavInfo.PathSize == 0 || pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].flag != SAMPLE_POLYFLAGS_LADDER)
 	{
 		if (pBot->Player->IsOnLadder())
 		{
@@ -6099,7 +6106,7 @@ Vector UTIL_GetButtonFloorLocation(const Vector UserLocation, edict_t* ButtonEdi
 {
 	Vector ClosestPoint = UTIL_GetClosestPointOnEntityToLocation(UserLocation, ButtonEdict);
 
-	Vector ButtonAccessPoint = UTIL_ProjectPointToNavmesh(ClosestPoint, Vector(100.0f, 100.0f, 100.0f), MARINE_REGULAR_NAV_PROFILE);
+	Vector ButtonAccessPoint = UTIL_ProjectPointToNavmesh(ClosestPoint, Vector(100.0f, 100.0f, 100.0f), BaseNavProfiles[ALL_NAV_PROFILE]);
 
 	if (vIsZero(ButtonAccessPoint))
 	{
@@ -6133,7 +6140,7 @@ Vector UTIL_GetButtonFloorLocation(const Vector UserLocation, edict_t* ButtonEdi
 		NewProjection = ClosestPoint + Vector(0.0f, 0.0f, 100.0f);
 	}
 
-	Vector NewButtonAccessPoint = UTIL_ProjectPointToNavmesh(NewProjection, MARINE_REGULAR_NAV_PROFILE);
+	Vector NewButtonAccessPoint = UTIL_ProjectPointToNavmesh(NewProjection, BaseNavProfiles[ALL_NAV_PROFILE]);
 
 	if (vIsZero(NewButtonAccessPoint))
 	{
@@ -6705,6 +6712,7 @@ void UTIL_PopulateDoors()
 		}
 		else
 		{
+			NewDoor.TriggerEnts.clear();
 			UTIL_PopulateTriggersForEntity(currDoor->edict(), NewDoor.TriggerEnts);
 		}
 
@@ -6730,7 +6738,7 @@ void UTIL_PopulateDoors()
 		}
 		else
 		{
-			NewDoor.ActivationType = DOOR_TRIGGER;
+			NewDoor.TriggerEnts.clear();
 			UTIL_PopulateTriggersForEntity(currDoor->edict(), NewDoor.TriggerEnts);
 		}
 
@@ -6755,7 +6763,7 @@ void UTIL_PopulateDoors()
 		}
 		else
 		{
-			NewDoor.ActivationType = DOOR_TRIGGER;
+			NewDoor.TriggerEnts.clear();
 			UTIL_PopulateTriggersForEntity(currDoor->edict(), NewDoor.TriggerEnts);
 
 		}

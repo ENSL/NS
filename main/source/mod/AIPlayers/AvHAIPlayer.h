@@ -50,11 +50,16 @@ Vector GetVisiblePointOnPlayerFromObserver(edict_t* Observer, edict_t* TargetPla
 
 void UpdateBotChat(AvHAIPlayer* pBot);
 
+void ClearBotInputs(AvHAIPlayer* pBot);
 void StartNewBotFrame(AvHAIPlayer* pBot);
 
 void TestNavThink(AvHAIPlayer* pBot);
 void DroneThink(AvHAIPlayer* pBot);
 
 void BotSwitchToWeapon(AvHAIPlayer* pBot, AvHAIWeapon NewWeaponSlot);
+
+bool ShouldBotThink(AvHAIPlayer* pBot);
+
+void BotResumePlay(AvHAIPlayer* pBot);
 
 #endif

@@ -206,6 +206,23 @@ float GetPlayerRadius(const AvHPlayer* Player)
 	}
 }
 
+bool CanPlayerCrouch(const edict_t* Player)
+{
+	if (FNullEnt(Player) || Player->free || !IsEdictPlayer(Player)) { return false; }
+
+	switch (Player->v.iuser3)
+	{
+		case AVH_USER3_ALIEN_PLAYER1:
+		case AVH_USER3_ALIEN_PLAYER2:
+		case AVH_USER3_ALIEN_PLAYER3:
+			return false;
+		default:
+			return true;
+	}
+
+	return false;
+}
+
 int GetPlayerHullIndex(const edict_t* Player, const bool bIsCrouching)
 {
 	if (!Player) { return 0; }
@@ -642,33 +659,35 @@ bool PlayerHasWeapon(const AvHPlayer* Player, const AvHAIWeapon DesiredCombatWea
 		case WEAPON_LERK_BITE:
 		case WEAPON_FADE_SWIPE:
 		case WEAPON_ONOS_GORE:
-			DesiredWeaponIndex = 0;
+			DesiredWeaponIndex = 1;
 			break;
 		case WEAPON_SKULK_PARASITE:
 		case WEAPON_GORGE_HEALINGSPRAY:
 		case WEAPON_LERK_SPORES:
 		case WEAPON_FADE_BLINK:
 		case WEAPON_ONOS_DEVOUR:
-			DesiredWeaponIndex = 1;
+			DesiredWeaponIndex = 2;
 			break;
 		case WEAPON_SKULK_LEAP:
 		case WEAPON_GORGE_BILEBOMB:
 		case WEAPON_LERK_UMBRA:
 		case WEAPON_FADE_METABOLIZE:
 		case WEAPON_ONOS_STOMP:
-			DesiredWeaponIndex = 2;
+			DesiredWeaponIndex = 3;
 			break;
 		case WEAPON_SKULK_XENOCIDE:
 		case WEAPON_GORGE_WEB:
 		case WEAPON_LERK_PRIMALSCREAM:
 		case WEAPON_FADE_ACIDROCKET:
 		case WEAPON_ONOS_CHARGE:
-			DesiredWeaponIndex = 3;
+			DesiredWeaponIndex = 4;
 			break;
 		default:
 			DesiredWeaponIndex = -1;
 			break;
 	}
+
+	if (DesiredWeaponIndex < 0) { return false; }
 
 	AvHBasePlayerWeapon* Weapon = dynamic_cast<AvHBasePlayerWeapon*>(Player->m_rgpPlayerItems[DesiredWeaponIndex]);
 

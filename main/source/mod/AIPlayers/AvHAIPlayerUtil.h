@@ -77,6 +77,8 @@ int GetPlayerMaxArmour(const edict_t* Player);
 // Returns the player's current energy (between 0.0 and 1.0)
 float GetPlayerEnergy(const edict_t* Player);
 
+// Can the player duck? Skulks, gorges and lerks cannot
+bool CanPlayerCrouch(const edict_t* Player);
 
 // Returns player resources (for marines will be team resources)
 int GetPlayerResources(const edict_t* Player);

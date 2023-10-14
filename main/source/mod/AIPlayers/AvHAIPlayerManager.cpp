@@ -5,6 +5,7 @@
 #include "AvHAINavigation.h"
 #include "AvHAIConfig.h"
 #include "AvHAIWeaponHelper.h"
+#include "AvHAIHelper.h"
 #include "../AvHGamerules.h"
 #include "../dlls/client.h"
 #include <time.h>
@@ -25,6 +26,8 @@ float LastAIPlayerCountUpdate = 0.0f;
 int BotNameIndex = 0;
 
 float AIStartedTime = 0.0f; // Used to give 5-second grace period before adding bots
+
+extern int m_spriteTexture;
 
 string BotNames[MAX_PLAYERS] = { "MrRobot",
 									"Wall-E",
@@ -503,20 +506,33 @@ void AIMGR_UpdateAIPlayers()
 		{
 			BotDeltaTime = ThinkDelta;
 
-			StartNewBotFrame(bot);
-
-			UpdateBotChat(bot);
-
-			DroneThink(bot);
-
-			AvHAIWeapon DesiredWeapon = (bot->DesiredMoveWeapon != WEAPON_NONE) ? bot->DesiredMoveWeapon : bot->DesiredCombatWeapon;
-
-			if (DesiredWeapon != WEAPON_NONE && GetBotCurrentWeapon(bot) != DesiredWeapon)
+			if (ShouldBotThink(bot))
 			{
-				BotSwitchToWeapon(bot, DesiredWeapon);
-			}
+				if (bot->bIsInactive)
+				{
+					BotResumePlay(bot);
+				}
 
-			BotUpdateDesiredViewRotation(bot);
+				StartNewBotFrame(bot);
+
+				UpdateBotChat(bot);
+
+				DroneThink(bot);
+
+				AvHAIWeapon DesiredWeapon = (bot->DesiredMoveWeapon != WEAPON_NONE) ? bot->DesiredMoveWeapon : bot->DesiredCombatWeapon;
+
+				if (DesiredWeapon != WEAPON_NONE && GetBotCurrentWeapon(bot) != DesiredWeapon)
+				{
+					BotSwitchToWeapon(bot, DesiredWeapon);
+				}
+
+				BotUpdateDesiredViewRotation(bot);
+			}
+			else
+			{
+				ClearBotInputs(bot);
+				bot->bIsInactive = true;
+			}
 
 			// Needed to correctly handle client prediction and physics calculations
 			byte adjustedmsec = BotThrottledMsec(bot);
@@ -642,6 +658,8 @@ void AIMGR_NewMap()
 	{
 		return;
 	}
+
+	AIMGR_BotPrecache();
 }
 
 AvHAIPlayer* AIMGR_GetAICommander(AvHTeamNumber Team)
@@ -716,4 +734,9 @@ void AIMGR_UpdateAIMapData()
 {
 	UTIL_UpdateTileCache();
 	AITAC_UpdateMapAIData();
+}
+
+void AIMGR_BotPrecache()
+{
+	m_spriteTexture = PRECACHE_MODEL("sprites/zbeam6.spr");
 }

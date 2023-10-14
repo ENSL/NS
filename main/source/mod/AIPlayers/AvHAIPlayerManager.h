@@ -9,6 +9,7 @@ static const double BOT_MIN_FRAME_TIME = (1.0 / 60.0);
 // At map load / map restart, how long to wait before starting to add bots
 static const float AI_GRACE_PERIOD = 5.0f;
 
+void AIMGR_BotPrecache();
 
 // Called when the round restarts. Clears all tactical information but keeps navigation data.
 void	AIMGR_ResetRound();
