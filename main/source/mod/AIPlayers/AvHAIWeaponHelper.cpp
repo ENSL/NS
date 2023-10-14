@@ -164,7 +164,7 @@ void InterruptReload(AvHAIPlayer* pBot)
 
 AvHAIWeapon UTIL_GetBotPrimaryWeapon(const AvHAIPlayer* pBot)
 {
-	AvHBasePlayerWeapon* Weapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[0]);
+	AvHBasePlayerWeapon* Weapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[1]);
 
 	if (Weapon)
 	{
@@ -205,7 +205,7 @@ AvHAIWeapon GetBotMarineSecondaryWeapon(const AvHAIPlayer* pBot)
 
 int BotGetPrimaryWeaponMaxAmmoReserve(AvHAIPlayer* pBot)
 {
-	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[0]);
+	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[1]);
 
 	if (theBasePlayerWeapon)
 	{
@@ -217,7 +217,7 @@ int BotGetPrimaryWeaponMaxAmmoReserve(AvHAIPlayer* pBot)
 
 int BotGetPrimaryWeaponAmmoReserve(AvHAIPlayer* pBot)
 {
-	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[0]);
+	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[1]);
 
 	if (theBasePlayerWeapon)
 	{
@@ -229,7 +229,7 @@ int BotGetPrimaryWeaponAmmoReserve(AvHAIPlayer* pBot)
 
 int BotGetSecondaryWeaponAmmoReserve(AvHAIPlayer* pBot)
 {
-	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[1]);
+	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[2]);
 
 	if (theBasePlayerWeapon)
 	{
@@ -241,7 +241,7 @@ int BotGetSecondaryWeaponAmmoReserve(AvHAIPlayer* pBot)
 
 int BotGetPrimaryWeaponClipAmmo(const AvHAIPlayer* pBot)
 {
-	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[0]);
+	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[1]);
 
 	if (theBasePlayerWeapon)
 	{
@@ -253,7 +253,7 @@ int BotGetPrimaryWeaponClipAmmo(const AvHAIPlayer* pBot)
 
 int BotGetSecondaryWeaponClipAmmo(const AvHAIPlayer* pBot)
 {
-	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[1]);
+	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[2]);
 
 	if (theBasePlayerWeapon)
 	{
@@ -265,7 +265,7 @@ int BotGetSecondaryWeaponClipAmmo(const AvHAIPlayer* pBot)
 
 int BotGetPrimaryWeaponMaxClipSize(const AvHAIPlayer* pBot)
 {
-	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[0]);
+	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[1]);
 
 	if (theBasePlayerWeapon)
 	{
@@ -277,7 +277,7 @@ int BotGetPrimaryWeaponMaxClipSize(const AvHAIPlayer* pBot)
 
 int BotGetSecondaryWeaponMaxClipSize(const AvHAIPlayer* pBot)
 {
-	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[1]);
+	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[2]);
 
 	if (theBasePlayerWeapon)
 	{
@@ -289,7 +289,7 @@ int BotGetSecondaryWeaponMaxClipSize(const AvHAIPlayer* pBot)
 
 int BotGetSecondaryWeaponMaxAmmoReserve(AvHAIPlayer* pBot)
 {
-	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[1]);
+	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[2]);
 
 	if (theBasePlayerWeapon)
 	{
@@ -326,19 +326,19 @@ float GetMaxIdealWeaponRange(const AvHAIWeapon Weapon)
 	case WEAPON_SKULK_XENOCIDE:
 		return UTIL_MetresToGoldSrcUnits(5.0f);
 	case WEAPON_ONOS_GORE:
-		return kClawsRange;
+		return BALANCE_VAR(kClawsRange);
 	case WEAPON_ONOS_DEVOUR:
-		return kDevourRange;
+		return BALANCE_VAR(kDevourRange);
 	case WEAPON_FADE_SWIPE:
-		return kSwipeRange;
+		return BALANCE_VAR(kSwipeRange);
 	case WEAPON_SKULK_BITE:
-		return kBiteRange;
+		return BALANCE_VAR(kBiteRange);
 	case WEAPON_LERK_BITE:
-		return kBite2Range;
+		return BALANCE_VAR(kBite2Range);
 	case WEAPON_GORGE_HEALINGSPRAY:
-		return kHealingSprayRange;
+		return BALANCE_VAR(kHealingSprayRange);
 	case WEAPON_MARINE_WELDER:
-		return kWelderRange;
+		return BALANCE_VAR(kWelderRange);
 	default:
 		return max_player_use_reach;
 	}
@@ -428,7 +428,7 @@ Vector UTIL_GetGrenadeThrowTarget(edict_t* Player, const Vector TargetLocation, 
 	bot_path_node CheckPath[MAX_AI_PATH_SIZE];
 	int PathSize = 0;
 
-	dtStatus Status = FindPathClosestToPoint(ALL_NAV_PROFILE, Player->v.origin, TargetLocation, CheckPath, &PathSize, ExplosionRadius);
+	dtStatus Status = FindPathClosestToPoint(BaseNavProfiles[ALL_NAV_PROFILE], Player->v.origin, TargetLocation, CheckPath, &PathSize, ExplosionRadius);
 
 	if (dtStatusSucceed(Status))
 	{

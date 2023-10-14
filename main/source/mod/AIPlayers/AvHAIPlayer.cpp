@@ -257,9 +257,7 @@ void BotLeap(AvHAIPlayer* pBot, const Vector TargetLocation)
 
 	Vector LookLocation = TargetLocation;
 
-	int NavProfileIndex = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
-
-	unsigned char NavArea = UTIL_GetNavAreaAtLocation(NavProfileIndex, pBot->Edict->v.origin);
+	unsigned char NavArea = UTIL_GetNavAreaAtLocation(pBot->BotNavInfo.NavProfile, pBot->Edict->v.origin);
 
 	if (NavArea == SAMPLE_POLYAREA_CROUCH)
 	{
@@ -377,7 +375,7 @@ void LinkDeployedObjectToCommanderAction(AvHAIPlayer* Commander, AvHAIBuildableS
 
 	if (Action->NumDesiredInstances > 1)
 	{
-		Action->BuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(MARINE_REGULAR_NAV_PROFILE, Action->BuildLocation, UTIL_MetresToGoldSrcUnits(1.0f));
+		Action->BuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], Action->BuildLocation, UTIL_MetresToGoldSrcUnits(1.0f));
 	}
 
 	Action->bIsAwaitingBuildLink = false;
@@ -543,15 +541,13 @@ void BotAttackTarget(AvHAIPlayer* pBot, edict_t* Target)
 		{
 			Vector NewAttackLocation = ZERO_VECTOR;
 
-			int BotMoveProfile = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
-
 			if (vIsZero(pBot->BotNavInfo.ActualMoveDestination))
 			{
-				NewAttackLocation = FindClosestNavigablePointToDestination(BotMoveProfile, pBot->CurrentFloorPosition, UTIL_GetEntityGroundLocation(Target), WeaponRange);
+				NewAttackLocation = FindClosestNavigablePointToDestination(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, UTIL_GetEntityGroundLocation(Target), WeaponRange);
 			}
 			else
 			{
-				NewAttackLocation = UTIL_GetRandomPointOnNavmeshInRadius(BotMoveProfile, pBot->CurrentFloorPosition, 2.0f);
+				NewAttackLocation = UTIL_GetRandomPointOnNavmeshInRadius(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, 2.0f);
 
 				// Did we find a clear spot we could attack from? If so, make that our new move destination
 				if (NewAttackLocation != ZERO_VECTOR && UTIL_TraceEntity(pBot->Edict, NewAttackLocation + Vector(0.0f, 0.0f, 32.0f), UTIL_GetCentreOfEntity(Target)) == Target)
@@ -1405,16 +1401,21 @@ void UpdateBotChat(AvHAIPlayer* pBot)
 	}
 }
 
-void StartNewBotFrame(AvHAIPlayer* pBot)
+void ClearBotInputs(AvHAIPlayer* pBot)
 {
-	edict_t* pEdict = pBot->Edict;
-
 	pBot->Button = 0;
 	pBot->ForwardMove = 0.0f;
 	pBot->SideMove = 0.0f;
 	pBot->UpMove = 0.0f;
 	pBot->Impulse = 0;
 	pBot->Button = 0;
+}
+
+void StartNewBotFrame(AvHAIPlayer* pBot)
+{
+	edict_t* pEdict = pBot->Edict;
+
+	ClearBotInputs(pBot);
 	pBot->CurrentEyePosition = GetPlayerEyePosition(pEdict);
 	pBot->CurrentFloorPosition = UTIL_GetEntityGroundLocation(pEdict);
 	pBot->LookTargetLocation = ZERO_VECTOR;
@@ -1482,15 +1483,13 @@ void TestNavThink(AvHAIPlayer* pBot)
 	}
 	else
 	{
-		int MoveProfile = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
-
 		AvHAIResourceNode* RandomNode = AITAC_GetRandomResourceNode();
 
 		if (!RandomNode) { return; }
 
 		Vector RandomPoint = RandomNode->Location;
 
-		if (RandomPoint != ZERO_VECTOR && UTIL_PointIsReachable(MoveProfile, pBot->Edict->v.origin, RandomPoint, max_player_use_reach))
+		if (RandomPoint != ZERO_VECTOR && UTIL_PointIsReachable(pBot->BotNavInfo.NavProfile, pBot->Edict->v.origin, RandomPoint, max_player_use_reach))
 		{
 			AITASK_SetMoveTask(pBot, &pBot->PrimaryBotTask, RandomPoint, true);
 		}
@@ -1505,4 +1504,17 @@ void BotSwitchToWeapon(AvHAIPlayer* pBot, AvHAIWeapon NewWeaponSlot)
 {
 	char* WeaponName = UTIL_WeaponTypeToClassname(NewWeaponSlot);
 	pBot->Player->SwitchWeapon(WeaponName);
+}
+
+bool ShouldBotThink(AvHAIPlayer* pBot)
+{
+	return IsPlayerActiveInGame(pBot->Edict) && !IsPlayerGestating(pBot->Edict);
+}
+
+void BotResumePlay(AvHAIPlayer* pBot)
+{
+	ClearBotMovement(pBot);
+	SetBaseNavProfile(pBot);
+
+	pBot->bIsInactive = false;
 }

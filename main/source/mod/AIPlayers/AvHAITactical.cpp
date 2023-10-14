@@ -232,7 +232,7 @@ AvHAIBuildableStructure* AITAC_GetNearestDeployableDirectlyReachable(AvHAIPlayer
 
 			if (it.second.StructureType & Filter->DeployableTypes)
 			{
-				if (!UTIL_PointIsDirectlyReachable(UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL), pBot->Edict->v.origin, it.second.Location)) { continue; }
+				if (!UTIL_PointIsDirectlyReachable(pBot->BotNavInfo.NavProfile, pBot->Edict->v.origin, it.second.Location)) { continue; }
 
 				float DistSq = (Filter->bConsiderPhaseDistance) ? sqrf(AITAC_GetPhaseDistanceBetweenPoints(it.second.Location, Location)) : vDist2DSq(it.second.Location, Location);
 
@@ -255,7 +255,7 @@ AvHAIBuildableStructure* AITAC_GetNearestDeployableDirectlyReachable(AvHAIPlayer
 
 			if (it.second.StructureType & Filter->DeployableTypes)
 			{
-				if (!UTIL_PointIsDirectlyReachable(UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL), pBot->Edict->v.origin, it.second.Location)) { continue; }
+				if (!UTIL_PointIsDirectlyReachable(pBot->BotNavInfo.NavProfile, pBot->Edict->v.origin, it.second.Location)) { continue; }
 
 				float DistSq = (Filter->bConsiderPhaseDistance) ? sqrf(AITAC_GetPhaseDistanceBetweenPoints(it.second.Location, Location)) : vDist2DSq(it.second.Location, Location);
 
@@ -338,7 +338,7 @@ Vector AITAC_GetFloorLocationForHive(const AvHAIHiveDefinition* Hive)
 	FOR_ALL_ENTITIES(kesTeamStart, AvHTeamStartEntity*)
 		if (NearestNavigableLoc == ZERO_VECTOR)
 		{
-			NearestNavigableLoc = FindClosestNavigablePointToDestination(MARINE_REGULAR_NAV_PROFILE, theEntity->pev->origin, HiveFloorLoc, UTIL_MetresToGoldSrcUnits(10.0f));
+			NearestNavigableLoc = FindClosestNavigablePointToDestination(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], theEntity->pev->origin, HiveFloorLoc, UTIL_MetresToGoldSrcUnits(10.0f));
 		}
 	END_FOR_ALL_ENTITIES(kesTeamStart);
 
@@ -493,9 +493,9 @@ void AITAC_RefreshResourceNodes()
 			ResourceNodes[NumTotalResNodes].Location = theEntity->pev->origin;
 			ResourceNodes[NumTotalResNodes].ReachabilityFlags = AI_REACHABILITY_NONE;
 
-			bool bIsReachableMarine = UTIL_PointIsReachable(MARINE_REGULAR_NAV_PROFILE, AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResourceNodes[NumTotalResNodes].Location, max_player_use_reach);
-			bool bIsReachableSkulk = UTIL_PointIsReachable(SKULK_REGULAR_NAV_PROFILE, AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResourceNodes[NumTotalResNodes].Location, max_player_use_reach);
-			bool bIsReachableOnos = UTIL_PointIsReachable(ONOS_REGULAR_NAV_PROFILE, AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResourceNodes[NumTotalResNodes].Location, max_player_use_reach);
+			bool bIsReachableMarine = UTIL_PointIsReachable(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResourceNodes[NumTotalResNodes].Location, max_player_use_reach);
+			bool bIsReachableSkulk = UTIL_PointIsReachable(BaseNavProfiles[SKULK_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResourceNodes[NumTotalResNodes].Location, max_player_use_reach);
+			bool bIsReachableOnos = UTIL_PointIsReachable(BaseNavProfiles[ONOS_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResourceNodes[NumTotalResNodes].Location, max_player_use_reach);
 
 			if (bIsReachableMarine)
 			{
@@ -861,11 +861,11 @@ void AITAC_UpdateMarineItem(CBaseEntity* Item, AvHAIDeployableItemType ItemType)
 		}
 		else
 		{
-			MarineDroppedItemMap[EntIndex].bOnNavMesh = UTIL_PointIsOnNavmesh(MARINE_REGULAR_NAV_PROFILE, ItemEdict->v.origin, Vector(max_player_use_reach, max_player_use_reach, max_player_use_reach));
+			MarineDroppedItemMap[EntIndex].bOnNavMesh = UTIL_PointIsOnNavmesh(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], ItemEdict->v.origin, Vector(max_player_use_reach, max_player_use_reach, max_player_use_reach));
 
 			if (MarineDroppedItemMap[EntIndex].bOnNavMesh)
 			{
-				MarineDroppedItemMap[EntIndex].bIsReachableMarine = UTIL_PointIsReachable(MARINE_REGULAR_NAV_PROFILE, AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ItemEdict->v.origin, max_player_use_reach);
+				MarineDroppedItemMap[EntIndex].bIsReachableMarine = UTIL_PointIsReachable(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ItemEdict->v.origin, max_player_use_reach);
 			}
 			else
 			{
@@ -937,7 +937,7 @@ void AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 
 		if (bShouldCollide)
 		{
-			unsigned int area = UTIL_GetAreaForObstruction(StructureType);
+			unsigned int area = UTIL_GetAreaForObstruction(StructureType, BuildingEdict);
 			float Radius = UTIL_GetStructureRadiusForObstruction(StructureType);
 			UTIL_AddTemporaryObstacles(UTIL_GetCentreOfEntity(BuildingMap[EntIndex].edict), Radius, 100.0f, area, BuildingMap[EntIndex].ObstacleRefs);
 		}
@@ -953,12 +953,12 @@ void AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 
 	if (vIsZero(BuildingMap[EntIndex].Location) || !vEquals(BaseBuildable->pev->origin, BuildingMap[EntIndex].Location, 5.0f))
 	{
-		bool bIsOnNavMesh = UTIL_PointIsOnNavmesh(MARINE_REGULAR_NAV_PROFILE, UTIL_GetEntityGroundLocation(BuildingEdict), Vector(max_player_use_reach, max_player_use_reach, max_player_use_reach));
+		bool bIsOnNavMesh = UTIL_PointIsOnNavmesh(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], UTIL_GetEntityGroundLocation(BuildingEdict), Vector(max_player_use_reach, max_player_use_reach, max_player_use_reach));
 		if (bIsOnNavMesh)
 		{
-			bool bIsReachableMarine = UTIL_PointIsReachable(MARINE_REGULAR_NAV_PROFILE, AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(BuildingEdict), max_player_use_reach);
-			bool bIsReachableSkulk = UTIL_PointIsReachable(SKULK_REGULAR_NAV_PROFILE, AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(BuildingEdict), max_player_use_reach);
-			bool bIsReachableOnos = UTIL_PointIsReachable(ONOS_REGULAR_NAV_PROFILE, AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(BuildingEdict), max_player_use_reach);
+			bool bIsReachableMarine = UTIL_PointIsReachable(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(BuildingEdict), max_player_use_reach);
+			bool bIsReachableSkulk = UTIL_PointIsReachable(BaseNavProfiles[SKULK_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(BuildingEdict), max_player_use_reach);
+			bool bIsReachableOnos = UTIL_PointIsReachable(BaseNavProfiles[ONOS_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(BuildingEdict), max_player_use_reach);
 
 			if (bIsReachableMarine)
 			{
@@ -1237,9 +1237,14 @@ AvHAIDeployableStructureType UTIL_IUSER3ToStructureType(const int inIUSER3)
 
 }
 
-unsigned char UTIL_GetAreaForObstruction(AvHAIDeployableStructureType StructureType)
+unsigned char UTIL_GetAreaForObstruction(AvHAIDeployableStructureType StructureType, const edict_t* BuildingEdict)
 {
 	if (StructureType == STRUCTURE_NONE) { return DT_TILECACHE_NULL_AREA; }
+
+	AvHTeamNumber TeamA = GetGameRules()->GetTeamANumber();
+	AvHTeamNumber TeamB = GetGameRules()->GetTeamBNumber();
+
+	unsigned char StructureArea = (BuildingEdict->v.team == TeamA) ? DT_TILECACHE_TEAM1STRUCTURE_AREA : DT_TILECACHE_TEAM2STRUCTURE_AREA;
 
 	switch (StructureType)
 	{
@@ -1248,10 +1253,9 @@ unsigned char UTIL_GetAreaForObstruction(AvHAIDeployableStructureType StructureT
 	case STRUCTURE_MARINE_ARMOURY:
 	case STRUCTURE_MARINE_ADVARMOURY:
 	case STRUCTURE_MARINE_OBSERVATORY:
-		return DT_TILECACHE_MSTRUCTURE_AREA;
 	case STRUCTURE_ALIEN_RESTOWER:
 	case STRUCTURE_ALIEN_HIVE:
-		return DT_TILECACHE_ASTRUCTURE_AREA;
+		return StructureArea;
 	default:
 		return DT_TILECACHE_BLOCKED_AREA;
 	}
@@ -1342,9 +1346,7 @@ bool UTIL_IsBuildableStructureStillReachable(AvHAIPlayer* pBot, const edict_t* S
 
 	if (!StructureRef) { return false; }
 
-	int MoveProfile = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
-
-	return (StructureRef->ReachabilityFlags & UTIL_GetReachabilityFlagForProfile(MoveProfile)) != 0;
+	return (StructureRef->ReachabilityFlags & pBot->BotNavInfo.NavProfile.ReachabilityFlag) != 0;
 }
 
 bool UTIL_IsDroppedItemStillReachable(AvHAIPlayer* pBot, const edict_t* Item)
@@ -1759,7 +1761,7 @@ Vector UTIL_GetNextMinePosition(edict_t* StructureToMine)
 		}
 	}
 
-	Vector BuildLocation = UTIL_GetRandomPointOnNavmeshInDonut(MARINE_REGULAR_NAV_PROFILE, StructureToMine->v.origin, Size, Size + 16.0f);
+	Vector BuildLocation = UTIL_GetRandomPointOnNavmeshInDonut(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], StructureToMine->v.origin, Size, Size + 16.0f);
 
 	return BuildLocation;
 }

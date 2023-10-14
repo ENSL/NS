@@ -385,14 +385,14 @@ bool AITASK_IsWeldTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (IsEdictPlayer(Task->TaskTarget))
 	{
-		if (!IsPlayerMarine(Task->TaskTarget) || !IsPlayerActiveInGame(Task->TaskTarget)) { return false; }
+		if (Task->TaskTarget->v.team != pBot->Edict->v.team || !IsPlayerMarine(Task->TaskTarget) || !IsPlayerActiveInGame(Task->TaskTarget)) { return false; }
 		return (Task->TaskTarget->v.armorvalue < GetPlayerMaxArmour(Task->TaskTarget));
 	}
 	else
 	{
 		if (IsEdictStructure(Task->TaskTarget))
 		{
-			if (!UTIL_IsBuildableStructureStillReachable(pBot, Task->TaskTarget)) { return false; }
+			if (Task->TaskTarget->v.team != pBot->Edict->v.team || !UTIL_IsBuildableStructureStillReachable(pBot, Task->TaskTarget)) { return false; }
 
 			return (Task->TaskTarget->v.health < Task->TaskTarget->v.max_health);
 		}
@@ -1064,7 +1064,7 @@ void BotProgressMineStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 			if (Task->BuildAttempts > 3)
 			{
 				float Size = fmaxf(Task->TaskTarget->v.size.x, Task->TaskTarget->v.size.y);
-				Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(BUILDING_REGULAR_NAV_PROFILE, Task->TaskTarget->v.origin, Size + 8.0f);
+				Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE], Task->TaskTarget->v.origin, Size + 8.0f);
 			}
 			else
 			{
@@ -1318,7 +1318,7 @@ void BotProgressReinforceStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (Task->TaskLocation != g_vecZero)
 	{
-		dtPolyRef Poly = UTIL_GetNavAreaAtLocation(BUILDING_REGULAR_NAV_PROFILE, Task->TaskLocation);
+		dtPolyRef Poly = UTIL_GetNavAreaAtLocation(BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE], Task->TaskLocation);
 
 		if (Poly != SAMPLE_POLYAREA_GROUND)
 		{
@@ -1332,7 +1332,7 @@ void BotProgressReinforceStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 		Vector TargetLocation = (ReinforcedStructure == STRUCTURE_ALIEN_HIVE) ? UTIL_GetFloorUnderEntity(Task->TaskTarget) : Task->TaskTarget->v.origin;
 
-		Vector BuildLocation = FindClosestNavigablePointToDestination(MARINE_REGULAR_NAV_PROFILE, AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), TargetLocation, UTIL_MetresToGoldSrcUnits(50.0f));
+		Vector BuildLocation = FindClosestNavigablePointToDestination(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), TargetLocation, UTIL_MetresToGoldSrcUnits(50.0f));
 
 		if (BuildLocation != g_vecZero)
 		{
@@ -1340,7 +1340,7 @@ void BotProgressReinforceStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 			float MaxDist = fmaxf(UTIL_MetresToGoldSrcUnits(1.0f), (UTIL_MetresToGoldSrcUnits(5.0f) - currDist));
 
-			Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(GORGE_BUILD_NAV_PROFILE, BuildLocation, MaxDist);
+			Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[GORGE_BASE_NAV_PROFILE], BuildLocation, MaxDist);
 		}
 
 		if (vIsZero(Task->TaskLocation)) { return; }
@@ -1640,11 +1640,11 @@ void BotProgressEvolveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	{
 		if ((gpGlobals->time - Task->TaskStartedTime) > 1.0f)
 		{
-			Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(BUILDING_REGULAR_NAV_PROFILE, pBot->Edict->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+			Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE], pBot->Edict->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
 
 			if (vIsZero(Task->TaskLocation))
 			{
-				Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(GORGE_REGULAR_NAV_PROFILE, pBot->Edict->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+				Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[GORGE_BASE_NAV_PROFILE], pBot->Edict->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
 			}
 
 			Task->TaskStartedTime = 0.0f;
@@ -1675,14 +1675,14 @@ void BotProgressEvolveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		}
 		else
 		{
-			if (vDist2DSq(pBot->Edict->v.origin, UTIL_GetEntityGroundLocation(Task->TaskTarget)) > sqrf(UTIL_MetresToGoldSrcUnits(10.0f)) || UTIL_GetNavAreaAtLocation(GORGE_BUILD_NAV_PROFILE, pBot->Edict->v.origin) != SAMPLE_POLYAREA_GROUND)
+			if (vDist2DSq(pBot->Edict->v.origin, UTIL_GetEntityGroundLocation(Task->TaskTarget)) > sqrf(UTIL_MetresToGoldSrcUnits(10.0f)) || UTIL_GetNavAreaAtLocation(BaseNavProfiles[GORGE_BASE_NAV_PROFILE], pBot->Edict->v.origin) != SAMPLE_POLYAREA_GROUND)
 			{
 				MoveTo(pBot, UTIL_GetEntityGroundLocation(Task->TaskTarget), MOVESTYLE_NORMAL);
 				return;
 			}
 			else
 			{
-				Task->TaskLocation = FindClosestNavigablePointToDestination(GORGE_BUILD_NAV_PROFILE, pBot->Edict->v.origin, UTIL_GetEntityGroundLocation(Task->TaskTarget), UTIL_MetresToGoldSrcUnits(10.0f));
+				Task->TaskLocation = FindClosestNavigablePointToDestination(BaseNavProfiles[GORGE_BASE_NAV_PROFILE], pBot->Edict->v.origin, UTIL_GetEntityGroundLocation(Task->TaskTarget), UTIL_MetresToGoldSrcUnits(10.0f));
 
 				if (vIsZero(Task->TaskLocation))
 				{
@@ -1691,7 +1691,7 @@ void BotProgressEvolveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 				if (Task->TaskLocation != g_vecZero)
 				{
-					Vector FinalEvolveLoc = UTIL_GetRandomPointOnNavmeshInRadius(GORGE_BUILD_NAV_PROFILE, Task->TaskLocation, UTIL_MetresToGoldSrcUnits(5.0f));
+					Vector FinalEvolveLoc = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[GORGE_BASE_NAV_PROFILE], Task->TaskLocation, UTIL_MetresToGoldSrcUnits(5.0f));
 
 					if (FinalEvolveLoc != g_vecZero)
 					{
@@ -1777,7 +1777,7 @@ void AlienProgressBuildHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (Task->bIsWaitingForBuildLink)
 	{
-		Task->TaskLocation = FindClosestNavigablePointToDestination(GORGE_REGULAR_NAV_PROFILE, pBot->Edict->v.origin, Hive->FloorLocation, UTIL_MetresToGoldSrcUnits(7.5f));
+		Task->TaskLocation = FindClosestNavigablePointToDestination(BaseNavProfiles[GORGE_BASE_NAV_PROFILE], pBot->Edict->v.origin, Hive->FloorLocation, UTIL_MetresToGoldSrcUnits(7.5f));
 
 		if (vIsZero(Task->TaskLocation))
 		{
@@ -1789,7 +1789,7 @@ void AlienProgressBuildHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 		float MaxDist = (UTIL_MetresToGoldSrcUnits(7.5f) - Dist);
 
-		Vector AltLocation = UTIL_GetRandomPointOnNavmeshInRadius(GORGE_REGULAR_NAV_PROFILE, Task->TaskLocation, MaxDist);
+		Vector AltLocation = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[GORGE_BASE_NAV_PROFILE], Task->TaskLocation, MaxDist);
 
 		if (AltLocation != g_vecZero)
 		{
@@ -1899,18 +1899,18 @@ void AlienProgressBuildTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (Task->bIsWaitingForBuildLink)
 	{
-		Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(GORGE_BUILD_NAV_PROFILE, Task->TaskLocation, UTIL_MetresToGoldSrcUnits(2.0f));		
+		Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[GORGE_BASE_NAV_PROFILE], Task->TaskLocation, UTIL_MetresToGoldSrcUnits(2.0f));
 		Task->bIsWaitingForBuildLink = false;
 	}
 
 	// If we are building a chamber
 	if (Task->StructureType != STRUCTURE_ALIEN_RESTOWER)
 	{
-		dtPolyRef Poly = UTIL_GetNavAreaAtLocation(BUILDING_REGULAR_NAV_PROFILE, Task->TaskLocation);
+		dtPolyRef Poly = UTIL_GetNavAreaAtLocation(BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE], Task->TaskLocation);
 
 		if (Poly != SAMPLE_POLYAREA_GROUND)
 		{
-			Vector NewLocation = UTIL_GetRandomPointOnNavmeshInRadius(BUILDING_REGULAR_NAV_PROFILE, Task->TaskLocation, UTIL_MetresToGoldSrcUnits(2.0f));
+			Vector NewLocation = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE], Task->TaskLocation, UTIL_MetresToGoldSrcUnits(2.0f));
 
 			if (NewLocation != g_vecZero)
 			{
@@ -2416,7 +2416,7 @@ void BotGuardLocation(AvHAIPlayer* pBot, const Vector GuardLocation)
 		}
 		else
 		{
-			pBot->GuardInfo.GuardLookLocation = UTIL_GetRandomPointOnNavmeshInRadius(SKULK_REGULAR_NAV_PROFILE, pBot->Edict->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+			pBot->GuardInfo.GuardLookLocation = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[SKULK_BASE_NAV_PROFILE], pBot->Edict->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
 
 			pBot->GuardInfo.GuardLookLocation.z = pBot->CurrentEyePosition.z;
 		}
@@ -2425,7 +2425,7 @@ void BotGuardLocation(AvHAIPlayer* pBot, const Vector GuardLocation)
 
 		Vector NewMoveCentre = GuardLocation - (LookDir * UTIL_MetresToGoldSrcUnits(2.0f));
 
-		Vector NewMoveLoc = UTIL_GetRandomPointOnNavmeshInRadius(MARINE_REGULAR_NAV_PROFILE, NewMoveCentre, UTIL_MetresToGoldSrcUnits(2.0f));
+		Vector NewMoveLoc = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], NewMoveCentre, UTIL_MetresToGoldSrcUnits(2.0f));
 
 		if (NewMoveLoc != g_vecZero)
 		{
@@ -2471,7 +2471,7 @@ void AITASK_GenerateGuardWatchPoints(AvHAIPlayer* pBot, const Vector& GuardLocat
 
 	bool bEnemyIsAlien = GetGameRules()->GetTeam(EnemyTeam)->GetTeamType() == AVH_CLASS_TYPE_ALIEN;
 
-	int MoveProfileIndex = (bEnemyIsAlien) ? SKULK_REGULAR_NAV_PROFILE : MARINE_REGULAR_NAV_PROFILE;
+	const nav_profile NavProfile = (bEnemyIsAlien) ? BaseNavProfiles[SKULK_BASE_NAV_PROFILE] : BaseNavProfiles[MARINE_BASE_NAV_PROFILE];
 
 	bot_path_node path[MAX_AI_PATH_SIZE];
 	int pathSize = 0;
@@ -2485,7 +2485,7 @@ void AITASK_GenerateGuardWatchPoints(AvHAIPlayer* pBot, const Vector& GuardLocat
 
 		if (UTIL_QuickTrace(pEdict, GuardLocation + Vector(0.0f, 0.0f, 10.0f), Hive->Location) || vDist2DSq(GuardLocation, Hive->Location) < sqrf(UTIL_MetresToGoldSrcUnits(10.0f))) { continue; }
 
-		dtStatus SearchResult = FindPathClosestToPoint(MoveProfileIndex, Hive->FloorLocation, GuardLocation, path, &pathSize, 500.0f);
+		dtStatus SearchResult = FindPathClosestToPoint(NavProfile, Hive->FloorLocation, GuardLocation, path, &pathSize, 500.0f);
 
 		if (dtStatusSucceed(SearchResult))
 		{
@@ -2498,7 +2498,7 @@ void AITASK_GenerateGuardWatchPoints(AvHAIPlayer* pBot, const Vector& GuardLocat
 		}
 	}
 	
-	dtStatus SearchResult = FindPathClosestToPoint(MoveProfileIndex, AITAC_GetTeamStartingLocation(EnemyTeam), GuardLocation, path, &pathSize, 500.0f);
+	dtStatus SearchResult = FindPathClosestToPoint(NavProfile, AITAC_GetTeamStartingLocation(EnemyTeam), GuardLocation, path, &pathSize, 500.0f);
 
 	if (dtStatusSucceed(SearchResult))
 	{
@@ -2512,7 +2512,7 @@ void AITASK_GenerateGuardWatchPoints(AvHAIPlayer* pBot, const Vector& GuardLocat
 
 	if (vDist2DSq(GuardLocation, AITAC_GetTeamStartingLocation(pBot->Player->GetTeam())) > sqrf(UTIL_MetresToGoldSrcUnits(15.0f)))
 	{
-		dtStatus SearchResult = FindPathClosestToPoint(MoveProfileIndex, AITAC_GetTeamStartingLocation(pBot->Player->GetTeam()), GuardLocation, path, &pathSize, 500.0f);
+		dtStatus SearchResult = FindPathClosestToPoint(NavProfile, AITAC_GetTeamStartingLocation(pBot->Player->GetTeam()), GuardLocation, path, &pathSize, 500.0f);
 
 		if (dtStatusSucceed(SearchResult))
 		{
@@ -2658,6 +2658,7 @@ void AITASK_SetWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Targe
 	Task->TaskTarget = Target;
 	Task->TaskType = TASK_WELD;
 	Task->bTaskIsUrgent = bIsUrgent;
+	Task->TaskLength = 0.0f;
 	
 	if (IsEdictPlayer(Target) || IsEdictStructure(Target)) { return; }
 
@@ -2668,9 +2669,7 @@ void AITASK_SetWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Targe
 		TargetLocation = Task->TaskTarget->v.origin;
 	}
 
-	int MoveProfile = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
-
-	Vector TaskLocation = FindClosestNavigablePointToDestination(MoveProfile, pBot->Edict->v.origin, TargetLocation, UTIL_MetresToGoldSrcUnits(5.0f));
+	Vector TaskLocation = FindClosestNavigablePointToDestination(pBot->BotNavInfo.NavProfile, pBot->Edict->v.origin, TargetLocation, UTIL_MetresToGoldSrcUnits(5.0f));
 
 	if (vIsZero(TaskLocation))
 	{
@@ -2709,10 +2708,8 @@ void AITASK_SetAttackTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Tar
 		return;
 	}
 
-	int BotProfile = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
-
 	// Get as close as possible to the target
-	Vector AttackLocation = FindClosestNavigablePointToDestination(BotProfile, pBot->CurrentFloorPosition, UTIL_GetEntityGroundLocation(Target), UTIL_MetresToGoldSrcUnits(20.0f));
+	Vector AttackLocation = FindClosestNavigablePointToDestination(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, UTIL_GetEntityGroundLocation(Target), UTIL_MetresToGoldSrcUnits(20.0f));
 
 	if (AttackLocation != g_vecZero)
 	{
@@ -2736,10 +2733,8 @@ void AITASK_SetMoveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, const Vector L
 
 	if (vIsZero(Location)) { return; }
 
-	int BotProfile = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
-
 	// Get as close as possible to desired location
-	Vector MoveLocation = FindClosestNavigablePointToDestination(BotProfile, pBot->CurrentFloorPosition, Location, UTIL_MetresToGoldSrcUnits(20.0f));
+	Vector MoveLocation = FindClosestNavigablePointToDestination(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, Location, UTIL_MetresToGoldSrcUnits(20.0f));
 
 	if (!vIsZero(MoveLocation))
 	{
@@ -2760,12 +2755,12 @@ void AITASK_SetBuildTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, const AvHAIDe
 	if (vIsZero(Location)) { return; }
 
 	// Get as close as possible to desired location
-	Vector BuildLocation = FindClosestNavigablePointToDestination(GORGE_REGULAR_NAV_PROFILE, AITAC_GetTeamStartingLocation(pBot->Player->GetTeam()), Location, UTIL_MetresToGoldSrcUnits(10.0f));
-	BuildLocation = UTIL_ProjectPointToNavmesh(BuildLocation, BUILDING_REGULAR_NAV_PROFILE);
+	Vector BuildLocation = FindClosestNavigablePointToDestination(BaseNavProfiles[GORGE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(pBot->Player->GetTeam()), Location, UTIL_MetresToGoldSrcUnits(10.0f));
+	BuildLocation = UTIL_ProjectPointToNavmesh(BuildLocation, BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE]);
 
 	if (vIsZero(BuildLocation))
 	{
-		BuildLocation = FindClosestNavigablePointToDestination(UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL), pBot->CurrentFloorPosition, Location, UTIL_MetresToGoldSrcUnits(10.0f));
+		BuildLocation = FindClosestNavigablePointToDestination(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, Location, UTIL_MetresToGoldSrcUnits(10.0f));
 	}
 
 	if (BuildLocation != g_vecZero)
@@ -2804,10 +2799,8 @@ void AITASK_SetBuildTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Stru
 
 	if (Task->TaskType == TASK_BUILD && Task->TaskTarget == StructureToBuild) { return; }
 
-	int BotProfile = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
-
 	// Get as close as possible to desired location
-	Vector BuildLocation = FindClosestNavigablePointToDestination(BotProfile, pBot->CurrentFloorPosition, UTIL_GetEntityGroundLocation(StructureToBuild), 80.0f);
+	Vector BuildLocation = FindClosestNavigablePointToDestination(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, UTIL_GetEntityGroundLocation(StructureToBuild), 80.0f);
 
 	if (BuildLocation != g_vecZero)
 	{
@@ -2863,9 +2856,7 @@ void AITASK_SetDefendTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Tar
 	Task->TaskTarget = Target;
 	Task->bTaskIsUrgent = bIsUrgent;
 
-	int MoveProfile = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
-
-	Vector DefendPoint = FindClosestNavigablePointToDestination(MoveProfile, pBot->CurrentFloorPosition, UTIL_GetEntityGroundLocation(Target), UTIL_MetresToGoldSrcUnits(10.0f));
+	Vector DefendPoint = FindClosestNavigablePointToDestination(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, UTIL_GetEntityGroundLocation(Target), UTIL_MetresToGoldSrcUnits(10.0f));
 
 	if (DefendPoint != g_vecZero)
 	{
@@ -2931,11 +2922,9 @@ void AITASK_SetUseTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Target
 		return;
 	}
 
-	int MoveProfile = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
-
 	Task->TaskType = TASK_USE;
 	Task->TaskTarget = Target;
-	Task->TaskLocation = FindClosestNavigablePointToDestination(MoveProfile, pBot->CurrentFloorPosition, UTIL_ProjectPointToNavmesh(UTIL_GetCentreOfEntity(Target)), UTIL_MetresToGoldSrcUnits(10.0f));
+	Task->TaskLocation = FindClosestNavigablePointToDestination(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, UTIL_ProjectPointToNavmesh(UTIL_GetCentreOfEntity(Target)), UTIL_MetresToGoldSrcUnits(10.0f));
 	Task->bTaskIsUrgent = bIsUrgent;
 	Task->TaskLength = 10.0f;
 	Task->TaskStartedTime = gpGlobals->time;
@@ -2949,11 +2938,9 @@ void AITASK_SetUseTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Target
 		return;
 	}
 
-	int MoveProfile = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
-
 	Task->TaskType = TASK_USE;
 	Task->TaskTarget = Target;
-	Task->TaskLocation = FindClosestNavigablePointToDestination(MoveProfile, pBot->CurrentFloorPosition, UseLocation, UTIL_MetresToGoldSrcUnits(10.0f));
+	Task->TaskLocation = FindClosestNavigablePointToDestination(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, UseLocation, UTIL_MetresToGoldSrcUnits(10.0f));
 	Task->bTaskIsUrgent = bIsUrgent;
 	Task->TaskLength = 10.0f;
 	Task->TaskStartedTime = gpGlobals->time;
@@ -2967,11 +2954,9 @@ void AITASK_SetTouchTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Targ
 		return;
 	}
 
-	int MoveProfile = UTIL_GetMoveProfileForBot(pBot, MOVESTYLE_NORMAL);
-
 	Task->TaskType = TASK_TOUCH;
 	Task->TaskTarget = Target;
-	Task->TaskLocation = FindClosestNavigablePointToDestination(MoveProfile, pBot->CurrentFloorPosition, UTIL_ProjectPointToNavmesh(UTIL_GetCentreOfEntity(Target)), UTIL_MetresToGoldSrcUnits(10.0f));
+	Task->TaskLocation = FindClosestNavigablePointToDestination(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, UTIL_ProjectPointToNavmesh(UTIL_GetCentreOfEntity(Target)), UTIL_MetresToGoldSrcUnits(10.0f));
 	Task->bTaskIsUrgent = bIsUrgent;
 }
 

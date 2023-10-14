@@ -3,6 +3,9 @@
 #ifndef AVH_AI_CONSTANTS_H
 #define AVH_AI_CONSTANTS_H
 
+#include "DetourStatus.h"
+#include "DetourNavMeshQuery.h"
+
 #include "../AvHHive.h"
 #include "../AvHEntities.h"
 
@@ -98,7 +101,8 @@ typedef enum _AI_REACHABILITY_STATUS
 	AI_REACHABILITY_NONE = 0,
 	AI_REACHABILITY_MARINE = 1u << 0,
 	AI_REACHABILITY_SKULK = 1u << 1,
-	AI_REACHABILITY_ONOS = 1u << 2
+	AI_REACHABILITY_ONOS = 1u << 2,
+	AI_REACHABILITY_WELDER = 1u << 3,
 } AvHAIReachabilityStatus;
 
 // Data structure used to track resource nodes in the map
@@ -188,6 +192,15 @@ typedef enum _STRUCTUREPURPOSE
 	STRUCTURE_PURPOSE_FORTIFY
 
 } StructurePurpose;
+
+// A nav profile combines a nav mesh reference (indexed into NavMeshes) and filters to determine how a bot should find paths
+typedef struct _NAV_PROFILE
+{
+	int NavMeshIndex = -1;
+	dtQueryFilter Filters;
+	bool bFlyingProfile = false;
+	AvHAIReachabilityStatus ReachabilityFlag = AI_REACHABILITY_NONE;
+} nav_profile;
 
 typedef struct _DEPLOYABLE_SEARCH_FILTER
 {
@@ -434,7 +447,6 @@ typedef struct _NAV_STATUS
 
 	BotMoveStyle MoveStyle = MOVESTYLE_NORMAL; // Current desired move style (e.g. normal, ambush, hide). Will trigger new path calculations if this changes
 	float LastPathCalcTime = 0.0f; // When the bot last calculated a path, to limit how frequently it can recalculate
-	int LastMoveProfile = -1; // The last navigation profile used by the bot. Will trigger new path calculations if this changes (e.g. changed class, changed move style)
 
 	bool bPendingRecalculation = false; // This bot should recalculate its path as soon as it can
 
@@ -442,6 +454,9 @@ typedef struct _NAV_STATUS
 	float NextZigTime; // Controls how frequently they zig or zag
 
 	AvHAIPlayerTask MovementTask;
+
+	nav_profile NavProfile;
+	bool bNavProfileChanged = false;
 
 } nav_status;
 
@@ -506,6 +521,7 @@ typedef struct AVH_AI_PLAYER
 	byte			AdjustedMsec = 0;
 
 	bool bIsPendingKill = false;
+	bool bIsInactive = false;
 
 	float LastUseTime = 0.0f;
 
