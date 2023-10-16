@@ -416,6 +416,7 @@ typedef struct _NAV_STATUS
 
 	Vector TargetDestination = g_vecZero; // Desired destination
 	Vector ActualMoveDestination = g_vecZero; // Actual destination on nav mesh
+	Vector PathDestination = g_vecZero; // Where the path is currently headed to
 
 	Vector LastNavMeshPosition = g_vecZero; // Tracks the last place the bot was on the nav mesh. Useful if accidentally straying off it
 
@@ -457,6 +458,9 @@ typedef struct _NAV_STATUS
 
 	nav_profile NavProfile;
 	bool bNavProfileChanged = false;
+
+	unsigned short SpecialMovementFlags = 0; // Any special movement flags required for this path (e.g. needs a welder, needs a jetpack etc.)
+
 
 } nav_status;
 

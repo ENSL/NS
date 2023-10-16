@@ -11,6 +11,9 @@
 
 #include "../AvHMessage.h"
 
+extern nav_mesh NavMeshes[MAX_NAV_MESHES]; // Array of nav meshes. Currently only 3 are used (building, onos, and regular)
+extern nav_profile BaseNavProfiles[MAX_NAV_PROFILES]; // Array of nav profiles
+
 void BotJump(AvHAIPlayer* pBot)
 {
 	if (pBot->BotNavInfo.IsOnGround)
@@ -1450,6 +1453,11 @@ void StartNewBotFrame(AvHAIPlayer* pBot)
 
 	pBot->BotNavInfo.bShouldWalk = false;
 
+	if (pBot->BotNavInfo.NavProfile.ReachabilityFlag == AI_REACHABILITY_NONE)
+	{
+		SetBaseNavProfile(pBot);
+	}
+
 }
 
 void DroneThink(AvHAIPlayer* pBot)
@@ -1462,6 +1470,8 @@ void DroneThink(AvHAIPlayer* pBot)
 	{
 		BotProgressTask(pBot, &pBot->PrimaryBotTask);
 	}
+
+	AIDEBUG_DrawBotPath(pBot);
 }
 
 void TestNavThink(AvHAIPlayer* pBot)

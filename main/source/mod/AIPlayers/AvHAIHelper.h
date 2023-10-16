@@ -30,6 +30,8 @@ bool GetNearestMapLocationAtPoint(vec3_t SearchLocation, string& outLocation);
 
 AvHAIDeployableStructureType GetDeployableObjectTypeFromEdict(const edict_t* StructureEdict);
 
+void AIDEBUG_DrawBotPath(AvHAIPlayer* pBot);
+
 // Draws a white line between start and end for the given player (pEntity) for 0.1s
 void UTIL_DrawLine(edict_t* pEntity, Vector start, Vector end);
 // Draws a white line between start and end for the given player (pEntity) for given number of seconds

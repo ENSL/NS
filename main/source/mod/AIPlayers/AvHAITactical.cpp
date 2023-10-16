@@ -50,6 +50,9 @@ unsigned int ItemRefreshFrame = 0;
 Vector TeamAStartingLocation = ZERO_VECTOR;
 Vector TeamBStartingLocation = ZERO_VECTOR;
 
+extern nav_mesh NavMeshes[MAX_NAV_MESHES]; // Array of nav meshes. Currently only 3 are used (building, onos, and regular)
+extern nav_profile BaseNavProfiles[MAX_NAV_PROFILES]; // Array of nav profiles
+
 
 bool AITAC_DeployableExistsAtLocation(const Vector& Location, const DeployableSearchFilter* Filter)
 {
@@ -162,6 +165,17 @@ AvHAIBuildableStructure* AITAC_FindClosestDeployableToLocation(const Vector& Loc
 	}
 
 	return Result;
+}
+
+AvHAIDroppedItem* AITAC_GetDroppedItemRefFromEdict(edict_t* ItemEdict)
+{
+	if (FNullEnt(ItemEdict)) { return nullptr; }
+
+	int EntIndex = ENTINDEX(ItemEdict);
+
+	if (EntIndex < 0) { return nullptr; }
+
+	return &MarineDroppedItemMap[EntIndex];
 }
 
 AvHAIDroppedItem* AITAC_FindClosestItemToLocation(const Vector& Location, const AvHAIDeployableItemType ItemType, float MinRadius, float MaxRadius, bool bConsiderPhaseDistance)
