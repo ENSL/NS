@@ -14,6 +14,9 @@
 #include "../AvHGamerules.h"
 #include "../AvHWeldable.h"
 
+extern nav_mesh NavMeshes[MAX_NAV_MESHES]; // Array of nav meshes. Currently only 3 are used (building, onos, and regular)
+extern nav_profile BaseNavProfiles[MAX_NAV_PROFILES]; // Array of nav profiles
+
 void AITASK_ClearAllBotTasks(AvHAIPlayer* pBot)
 {
 	AITASK_ClearBotTask(pBot, &pBot->PrimaryBotTask);
@@ -2626,6 +2629,59 @@ char* AITASK_TaskTypeToChar(const BotTaskType TaskType)
 	}
 }
 
+void AITASK_SetPickupTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Target, const bool bIsUrgent)
+{
+	if (FNullEnt(Target) || (Target->v.effects & EF_NODRAW))
+	{
+		AITASK_ClearBotTask(pBot, Task);
+		return;
+	}
+
+	if (Task->TaskTarget == Target)
+	{
+		Task->bTaskIsUrgent = bIsUrgent;
+		return;
+	}
+
+	AvHAIDroppedItem* ItemToPickup = AITAC_GetDroppedItemRefFromEdict(Target);
+
+	if (!ItemToPickup || FNullEnt(ItemToPickup->edict) || !ItemToPickup->bIsReachableMarine)
+	{
+		AITASK_ClearBotTask(pBot, Task);
+		return;
+	}
+
+	Vector PickupLocation = FindClosestNavigablePointToDestination(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, Target->v.origin, max_player_use_reach);
+
+	if (vIsZero(PickupLocation))
+	{
+		AITASK_ClearBotTask(pBot, Task);
+		return;
+	}
+
+	switch (ItemToPickup->ItemType)
+	{
+		case DEPLOYABLE_ITEM_AMMO:
+			Task->TaskType = TASK_GET_AMMO;
+			break;
+		case DEPLOYABLE_ITEM_HEALTHPACK:
+			Task->TaskType = TASK_GET_HEALTH;
+			break;
+		case DEPLOYABLE_ITEM_JETPACK:
+		case DEPLOYABLE_ITEM_HEAVYARMOUR:
+			Task->TaskType = TASK_GET_EQUIPMENT;
+			break;
+		default:
+			Task->TaskType = TASK_GET_WEAPON;
+			break;
+	}
+
+	Task->TaskTarget = Target;
+	Task->TaskLocation = PickupLocation;
+	Task->bTaskIsUrgent = bIsUrgent;
+
+}
+
 void AITASK_SetWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Target, const bool bIsUrgent)
 {
 	if (FNullEnt(Target) || (Target->v.deadflag != DEAD_NO))
@@ -2940,7 +2996,7 @@ void AITASK_SetUseTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Target
 
 	Task->TaskType = TASK_USE;
 	Task->TaskTarget = Target;
-	Task->TaskLocation = FindClosestNavigablePointToDestination(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, UseLocation, UTIL_MetresToGoldSrcUnits(10.0f));
+	Task->TaskLocation = UseLocation;
 	Task->bTaskIsUrgent = bIsUrgent;
 	Task->TaskLength = 10.0f;
 	Task->TaskStartedTime = gpGlobals->time;

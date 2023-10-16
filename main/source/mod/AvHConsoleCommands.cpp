@@ -1424,11 +1424,16 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 		if (!FNullEnt(TracedEntity))
 		{
-			const nav_door* Door = UTIL_GetNavDoorByEdict(TracedEntity);
+			nav_door* Door = UTIL_GetNavDoorByEdict(TracedEntity);
 
 			if (Door)
 			{
-				bool bThing = true;
+				DoorTrigger* Trigger = UTIL_GetNearestDoorTrigger(theAvHPlayer->pev->origin, Door, nullptr);
+
+				if (Trigger)
+				{
+					UTIL_DrawLine(INDEXENT(1), theAvHPlayer->pev->origin, UTIL_GetButtonFloorLocation(theAvHPlayer->pev->origin, Trigger->Edict), 10.0f);
+				}
 			}
 		}
 

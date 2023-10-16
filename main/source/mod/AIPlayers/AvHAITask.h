@@ -66,6 +66,7 @@ void AITASK_SetReinforceStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, 
 void AITASK_SetSecureHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Target, const Vector WaitLocation, bool bIsUrgent);
 void AITASK_SetMineStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Target, bool bIsUrgent);
 void AITASK_SetWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Target, const bool bIsUrgent);
+void AITASK_SetPickupTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Target, const bool bIsUrgent);
 
 void BotProgressTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 

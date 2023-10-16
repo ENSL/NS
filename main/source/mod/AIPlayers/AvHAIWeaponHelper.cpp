@@ -13,6 +13,9 @@
 #include "../AvHMarineEquipmentConstants.h"
 #include "../AvHServerUtil.h"
 
+extern nav_mesh NavMeshes[MAX_NAV_MESHES]; // Array of nav meshes. Currently only 3 are used (building, onos, and regular)
+extern nav_profile BaseNavProfiles[MAX_NAV_PROFILES]; // Array of nav profiles
+
 int BotGetCurrentWeaponClipAmmo(const AvHAIPlayer* pBot)
 {
 	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_pActiveItem);

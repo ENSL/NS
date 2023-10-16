@@ -2,6 +2,7 @@
 #include "AvHAIMath.h"
 #include "AvHAIPlayerUtil.h"
 #include "AvHAITactical.h"
+#include "AvHAINavigation.h"
 
 #include "../AvHGamerules.h"
 
@@ -241,6 +242,41 @@ bool GetNearestMapLocationAtPoint(vec3_t SearchLocation, string& outLocation)
 	}
 
 	return theSuccess;
+}
+
+void AIDEBUG_DrawBotPath(AvHAIPlayer* pBot)
+{
+	if (pBot->BotNavInfo.PathSize == 0) { return; }
+
+	for (int i = 0; i < pBot->BotNavInfo.PathSize; i++)
+	{
+		Vector FromLoc = pBot->BotNavInfo.CurrentPath[i].FromLocation;
+		Vector ToLoc = pBot->BotNavInfo.CurrentPath[i].Location;
+
+		switch (pBot->BotNavInfo.CurrentPath[i].flag)
+		{
+			case SAMPLE_POLYFLAGS_WELD:
+			case SAMPLE_POLYFLAGS_DOOR:
+				UTIL_DrawLine(INDEXENT(1), FromLoc, ToLoc, 255, 0, 0);
+				break;
+			case SAMPLE_POLYFLAGS_JUMP:
+			case SAMPLE_POLYFLAGS_DUCKJUMP:
+				UTIL_DrawLine(INDEXENT(1), FromLoc, ToLoc, 255, 255, 0);
+				break;
+			case SAMPLE_POLYFLAGS_LADDER:
+				UTIL_DrawLine(INDEXENT(1), FromLoc, ToLoc, 0, 0, 255);
+				break;
+			case SAMPLE_POLYFLAGS_WALLCLIMB:
+				UTIL_DrawLine(INDEXENT(1), FromLoc, ToLoc, 0, 128, 0);
+				break;
+			case SAMPLE_POLYFLAGS_BLOCKED:
+				UTIL_DrawLine(INDEXENT(1), FromLoc, ToLoc, 128, 128, 128);
+				break;
+			default:
+				UTIL_DrawLine(INDEXENT(1), FromLoc, ToLoc);
+				break;
+		}
+	}
 }
 
 void UTIL_DrawLine(edict_t* pEntity, Vector start, Vector end)

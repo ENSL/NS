@@ -20,7 +20,7 @@
 */
 
 constexpr auto MIN_PATH_RECALC_TIME = 0.33f; // How frequently can a bot recalculate its path? Default to max 3 times per second
-constexpr auto MAX_BOT_STUCK_TIME = 30.0f; // How long a bot can be stuck, unable to move, before giving up and suiciding
+constexpr auto MAX_BOT_STUCK_TIME = 0.0f; // How long a bot can be stuck, unable to move, before giving up and suiciding
 
 constexpr auto MARINE_BASE_NAV_PROFILE = 0;
 constexpr auto SKULK_BASE_NAV_PROFILE = 1;
@@ -40,7 +40,8 @@ enum SamplePolyAreas
 	SAMPLE_POLYAREA_CROUCH		= 1,	// Requires crouched movement
 	SAMPLE_POLYAREA_BLOCKED		= 2,	// Requires a jump to get over
 	SAMPLE_POLYAREA_FALLDAMAGE	= 3,	// Requires taking fall damage (if not immune to it)
-	SAMPLE_POLYAREA_WALLCLIMB	= 4		// Requires the ability to wall-stick, fly or blink
+	SAMPLE_POLYAREA_WALLCLIMB	= 4,	// Requires the ability to wall-stick, fly or blink
+	SAMPLE_POLYAREA_OBSTRUCTION	= 5		// There is a door or weldable object in the way
 };
 
 // Possible movement types. Swim and door are not used
@@ -58,6 +59,7 @@ enum SamplePolyFlags
 	SAMPLE_POLYFLAGS_TEAM1STRUCTURE = 1 << 9,	// A team 1 structure is in the way that cannot be jumped over. Impassable to team 1 players
 	SAMPLE_POLYFLAGS_TEAM2STRUCTURE = 1 << 10,	// A team 2 structure is in the way that cannot be jumped over. Impassable to team 2 players
 	SAMPLE_POLYFLAGS_WELD			= 1 << 11,	// Requires a welder to get through here
+	SAMPLE_POLYFLAGS_DOOR			= 1 << 12,	// Requires a welder to get through here
 
 	SAMPLE_POLYFLAGS_DISABLED		= 1 << 15,	// Disabled, not usable by anyone
 	SAMPLE_POLYFLAGS_ALL			= 0xffff	// All abilities.
@@ -145,9 +147,6 @@ static const int DOOR_USE_ONLY = 256; // Flag used by GoldSrc to determine if a 
 static const int DOOR_START_OPEN = 1;
 
 static const float CHECK_STUCK_INTERVAL = 0.1f; // How frequently should the bot check if it's stuck?
-
-static nav_mesh NavMeshes[MAX_NAV_MESHES]; // Array of nav meshes. Currently only 3 are used (building, onos, and regular)
-static nav_profile BaseNavProfiles[MAX_NAV_PROFILES]; // Array of nav profiles
 
 // Returns true if a valid nav mesh has been loaded into memory
 bool NavmeshLoaded();
@@ -244,12 +243,12 @@ void PhaseGateMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndP
 // Will check for any func_breakable which might be in the way (e.g. window, vent) and make the bot aim and attack it to break it. Marines will switch to knife to break it.
 void CheckAndHandleBreakableObstruction(AvHAIPlayer* pBot, const Vector MoveFrom, const Vector MoveTo);
 
-void CheckAndHandleDoorObstruction(AvHAIPlayer* pBot, const Vector MoveFrom, const Vector MoveTo);
+void CheckAndHandleDoorObstruction(AvHAIPlayer* pBot);
 
 DoorTrigger* UTIL_GetNearestDoorTrigger(const Vector Location, nav_door* Door, CBaseEntity* IgnoreTrigger);
 bool UTIL_IsPathBlockedByDoor(const Vector StartLoc, const Vector EndLoc, edict_t* SearchDoor);
 
-edict_t* UTIL_GetDoorBlockingPathPoint(bot_path_node* PathNode, edict_t* SearchDoor);
+edict_t* UTIL_GetDoorBlockingPathPoint(AvHAIPlayer* pBot, bot_path_node* PathNode, edict_t* SearchDoor);
 edict_t* UTIL_GetDoorBlockingPathPoint(const Vector FromLocation, const Vector ToLocation, const unsigned short MovementFlag, edict_t* SearchDoor);
 edict_t* UTIL_GetBreakableBlockingPathPoint(AvHAIPlayer* pBot, bot_path_node* PathNode, edict_t* SearchBreakable);
 edict_t* UTIL_GetBreakableBlockingPathPoint(AvHAIPlayer* pBot, const Vector FromLocation, const Vector ToLocation, const unsigned short MovementFlag, edict_t* SearchBreakable);
