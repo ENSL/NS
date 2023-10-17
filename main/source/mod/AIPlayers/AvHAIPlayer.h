@@ -62,4 +62,6 @@ bool ShouldBotThink(AvHAIPlayer* pBot);
 
 void BotResumePlay(AvHAIPlayer* pBot);
 
+void UpdateCommanderOrders(AvHAIPlayer* pBot);
+
 #endif

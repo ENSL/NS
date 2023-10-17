@@ -90,7 +90,7 @@ void AITASK_OnCompleteCommanderTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 		AvHAIBuildableStructure* NearbyAlienTower = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &EnemyResTowerFilter);
 
-		if (!NearbyAlienTower)
+		if (NearbyAlienTower)
 		{
 			const AvHAIResourceNode* NodeRef = AITAC_GetNearestResourceNodeToLocation(NearbyAlienTower->Location);
 			if (NodeRef)
@@ -2196,13 +2196,22 @@ void BotProgressWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		{
 			MoveTo(pBot, Task->TaskSecondaryTarget->v.origin, MOVESTYLE_NORMAL);
 		}
+		else
+		{
+			AvHAIDroppedItem* Welder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, 0.0f, 0.0f, true);
+
+			if (Welder)
+			{
+				Task->TaskSecondaryTarget = Welder->edict;
+			}
+		}
 
 		return;
 	}
 
 	if (IsPlayerInUseRange(pBot->Edict, Task->TaskTarget))
 	{
-		BotLookAt(pBot, UTIL_GetClosestPointOnEntityToLocation(pBot->CurrentEyePosition, Task->TaskTarget));
+		BotLookAt(pBot, UTIL_GetClosestPointOnEntityToLocation(pBot->Edict->v.origin, Task->TaskTarget));
 		pBot->DesiredCombatWeapon = WEAPON_MARINE_WELDER;
 
 		if (GetBotCurrentWeapon(pBot) != WEAPON_MARINE_WELDER)
@@ -2280,7 +2289,7 @@ void MarineProgressSecureHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		return;
 	}
 
-	const AvHAIResourceNode* ResNode = AITAC_GetResourceNodeAtIndex(Hive->HiveResNodeIndex);
+	const AvHAIResourceNode* ResNode = Hive->HiveResNodeRef;
 
 	if (ResNode && ResNode->OwningTeam != pBot->Player->GetTeam())
 	{
@@ -2780,7 +2789,7 @@ void AITASK_SetAttackTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Tar
 
 void AITASK_SetMoveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, const Vector Location, bool bIsUrgent)
 {
-	if (Task->TaskType == TASK_MOVE && vDist2DSq(Task->TaskLocation, Location) < sqrf(100.0f))
+	if (Task->TaskType == TASK_MOVE && vDist2DSq(Task->TaskLocation, Location) < sqrf(16.0f))
 	{
 		Task->bTaskIsUrgent = bIsUrgent;
 		return;

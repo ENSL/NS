@@ -12,6 +12,7 @@
 
 #include "DetourStatus.h"
 #include "DetourNavMeshQuery.h"
+#include "DetourTileCache.h"
 #include "AvHAIPlayer.h"
 
 /*	Navigation profiles determine which nav mesh (regular, onos, building) is used for queries, and what
@@ -31,7 +32,7 @@ constexpr auto ONOS_BASE_NAV_PROFILE = 5;
 constexpr auto STRUCTURE_BASE_NAV_PROFILE = 6;
 constexpr auto ALL_NAV_PROFILE = 7;
 
-#define MAX_PATH_POLY 512 // Max nav mesh polys that can be traversed in a path. This should be sufficient for any sized map.
+constexpr auto MAX_PATH_POLY = 512; // Max nav mesh polys that can be traversed in a path. This should be sufficient for any sized map.
 
 // Possible area types. Water, Road, Door and Grass are not used (left-over from Detour library)
 enum SamplePolyAreas

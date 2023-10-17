@@ -36,19 +36,15 @@ void						AITAC_LinkAlienStructureToTask(AvHAIPlayer* pBot, AvHAIBuildableStruct
 
 float						AITAC_GetPhaseDistanceBetweenPoints(const Vector StartPoint, const Vector EndPoint);
 
-int							AITAC_FindNearestResNodeIndexToLocation(const Vector& Location);
-
 const AvHAIHiveDefinition*	AITAC_GetHiveAtIndex(int Index);
 const AvHAIHiveDefinition*	AITAC_GetHiveNearestLocation(const Vector SearchLocation);
 
 Vector						AITAC_GetCommChairLocation(AvHTeamNumber Team);
 edict_t*					AITAC_GetCommChair(AvHTeamNumber Team);
 
-AvHAIResourceNode*			AITAC_GetResourceNodeAtIndex(const int Index);
-
 Vector						AITAC_GetTeamStartingLocation(AvHTeamNumber Team);
 
-AvHAIResourceNode*			AITAC_GetRandomResourceNode();
+AvHAIResourceNode*			AITAC_GetRandomResourceNode(const unsigned int ReachabilityFlags);
 
 AvHAIDroppedItem*			AITAC_FindClosestItemToLocation(const Vector& Location, const AvHAIDeployableItemType ItemType, float MinRadius, float MaxRadius, bool bConsiderPhaseDistance);
 
@@ -70,7 +66,7 @@ void AITAC_ClearMapAIData();
 // Clear out all the hive information
 void AITAC_ClearHiveInfo();
 
-bool AITAC_AlienHiveNeedsReinforcing(int HiveIndex);
+bool AITAC_AlienHiveNeedsReinforcing(const AvHAIHiveDefinition* Hive);
 
 void AITAC_RefreshMarineItems();
 void AITAC_UpdateMarineItem(CBaseEntity* Item, AvHAIDeployableItemType ItemType);
