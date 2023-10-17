@@ -32,9 +32,7 @@
 #include "DetourAlloc.h"
 
 vector<nav_door> NavDoors;
-
-nav_weldable NavWeldableObstacles[32];
-int NumWeldableObstacles;
+vector<nav_weldable> NavWeldableObstacles;
 
 nav_mesh NavMeshes[MAX_NAV_MESHES]; // Array of nav meshes. Currently only 3 are used (building, onos, and regular)
 nav_profile BaseNavProfiles[MAX_NAV_PROFILES]; // Array of nav profiles
@@ -541,11 +539,9 @@ void UnloadNavigationData()
 	UnloadNavMeshes();
 
 	UTIL_ClearDoorData();
+	UTIL_ClearWeldablesData();
 
 	memset(BaseNavProfiles, 0, sizeof(nav_profile));
-	memset(NavWeldableObstacles, 0, sizeof(NavWeldableObstacles));
-
-	NumWeldableObstacles = 0;
 
 	AIMGR_ClearBotData();
 
@@ -905,6 +901,7 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
+	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
 
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].bFlyingProfile = false;
@@ -2068,9 +2065,21 @@ void CheckAndHandleDoorObstruction(AvHAIPlayer* pBot)
 
 	if (FNullEnt(BlockingDoorEdict)) { return; }
 
-	CBaseToggle* BlockingDoor = GetClassPtr((CBaseToggle*)VARS(BlockingDoorEdict));
+	CBaseToggle* BlockingDoor = dynamic_cast<CBaseToggle*>(CBaseEntity::Instance(BlockingDoorEdict));
 
-	if (!BlockingDoor) { return; }
+	if (!BlockingDoor)
+	{
+		AvHWeldable* WeldableRef = dynamic_cast<AvHWeldable*>(CBaseEntity::Instance(BlockingDoorEdict));
+
+		if (!WeldableRef)
+		{
+			return;
+		}
+
+		AITASK_SetWeldTask(pBot, &pBot->BotNavInfo.MovementTask, BlockingDoorEdict, true);
+
+		return;
+	}
 
 	Vector NearestPoint = UTIL_GetClosestPointOnEntityToLocation(pBot->Edict->v.origin, BlockingDoorEdict);
 
@@ -2185,7 +2194,8 @@ edict_t* UTIL_GetDoorBlockingPathPoint(AvHAIPlayer* pBot, bot_path_node* PathNod
 			{
 				if (strcmp(STRING(doorHit.pHit->v.classname), "func_door") == 0
 					|| strcmp(STRING(doorHit.pHit->v.classname), "func_seethroughdoor") == 0
-					|| strcmp(STRING(doorHit.pHit->v.classname), "func_door_rotating") == 0)
+					|| strcmp(STRING(doorHit.pHit->v.classname), "func_door_rotating") == 0
+					|| strcmp(STRING(doorHit.pHit->v.classname), "avhweldable") == 0)
 				{
 					return doorHit.pHit;
 				}
@@ -2207,7 +2217,8 @@ edict_t* UTIL_GetDoorBlockingPathPoint(AvHAIPlayer* pBot, bot_path_node* PathNod
 			{
 				if (strcmp(STRING(doorHit.pHit->v.classname), "func_door") == 0
 					|| strcmp(STRING(doorHit.pHit->v.classname), "func_seethroughdoor") == 0
-					|| strcmp(STRING(doorHit.pHit->v.classname), "func_door_rotating") == 0)
+					|| strcmp(STRING(doorHit.pHit->v.classname), "func_door_rotating") == 0
+					|| strcmp(STRING(doorHit.pHit->v.classname), "avhweldable") == 0)
 				{
 					return doorHit.pHit;
 				}
@@ -2231,7 +2242,8 @@ edict_t* UTIL_GetDoorBlockingPathPoint(AvHAIPlayer* pBot, bot_path_node* PathNod
 			{
 				if (strcmp(STRING(doorHit.pHit->v.classname), "func_door") == 0
 					|| strcmp(STRING(doorHit.pHit->v.classname), "func_seethroughdoor") == 0
-					|| strcmp(STRING(doorHit.pHit->v.classname), "func_door_rotating") == 0)
+					|| strcmp(STRING(doorHit.pHit->v.classname), "func_door_rotating") == 0
+					|| strcmp(STRING(doorHit.pHit->v.classname), "avhweldable") == 0)
 				{
 					return doorHit.pHit;
 				}
@@ -2250,7 +2262,8 @@ edict_t* UTIL_GetDoorBlockingPathPoint(AvHAIPlayer* pBot, bot_path_node* PathNod
 			{
 				if (strcmp(STRING(doorHit.pHit->v.classname), "func_door") == 0
 					|| strcmp(STRING(doorHit.pHit->v.classname), "func_seethroughdoor") == 0
-					|| strcmp(STRING(doorHit.pHit->v.classname), "func_door_rotating") == 0)
+					|| strcmp(STRING(doorHit.pHit->v.classname), "func_door_rotating") == 0
+					|| strcmp(STRING(doorHit.pHit->v.classname), "avhweldable") == 0)
 				{
 					return doorHit.pHit;
 				}
@@ -2272,7 +2285,8 @@ edict_t* UTIL_GetDoorBlockingPathPoint(AvHAIPlayer* pBot, bot_path_node* PathNod
 		{
 			if (strcmp(STRING(doorHit.pHit->v.classname), "func_door") == 0
 				|| strcmp(STRING(doorHit.pHit->v.classname), "func_seethroughdoor") == 0
-				|| strcmp(STRING(doorHit.pHit->v.classname), "func_door_rotating") == 0)
+				|| strcmp(STRING(doorHit.pHit->v.classname), "func_door_rotating") == 0
+				|| strcmp(STRING(doorHit.pHit->v.classname), "avhweldable") == 0)
 			{
 				return doorHit.pHit;
 			}
@@ -2526,7 +2540,8 @@ edict_t* UTIL_GetDoorBlockingPathPoint(const Vector FromLocation, const Vector T
 			{
 				if (strcmp(STRING(doorHit.pHit->v.classname), "func_door") == 0
 					|| strcmp(STRING(doorHit.pHit->v.classname), "func_seethroughdoor") == 0
-					|| strcmp(STRING(doorHit.pHit->v.classname), "func_door_rotating") == 0)
+					|| strcmp(STRING(doorHit.pHit->v.classname), "func_door_rotating") == 0
+					|| strcmp(STRING(doorHit.pHit->v.classname), "avhweldable") == 0 )
 				{
 					return doorHit.pHit;
 				}
@@ -2548,7 +2563,8 @@ edict_t* UTIL_GetDoorBlockingPathPoint(const Vector FromLocation, const Vector T
 			{
 				if (strcmp(STRING(doorHit.pHit->v.classname), "func_door") == 0
 					|| strcmp(STRING(doorHit.pHit->v.classname), "func_seethroughdoor") == 0
-					|| strcmp(STRING(doorHit.pHit->v.classname), "func_door_rotating") == 0)
+					|| strcmp(STRING(doorHit.pHit->v.classname), "func_door_rotating") == 0
+					|| strcmp(STRING(doorHit.pHit->v.classname), "avhweldable") == 0)
 				{
 					return doorHit.pHit;
 				}
@@ -2572,7 +2588,8 @@ edict_t* UTIL_GetDoorBlockingPathPoint(const Vector FromLocation, const Vector T
 			{
 				if (strcmp(STRING(doorHit.pHit->v.classname), "func_door") == 0
 					|| strcmp(STRING(doorHit.pHit->v.classname), "func_seethroughdoor") == 0
-					|| strcmp(STRING(doorHit.pHit->v.classname), "func_door_rotating") == 0)
+					|| strcmp(STRING(doorHit.pHit->v.classname), "func_door_rotating") == 0
+					|| strcmp(STRING(doorHit.pHit->v.classname), "avhweldable") == 0)
 				{
 					return doorHit.pHit;
 				}
@@ -2592,7 +2609,8 @@ edict_t* UTIL_GetDoorBlockingPathPoint(const Vector FromLocation, const Vector T
 			{
 				if (strcmp(STRING(doorHit.pHit->v.classname), "func_door") == 0
 					|| strcmp(STRING(doorHit.pHit->v.classname), "func_seethroughdoor") == 0
-					|| strcmp(STRING(doorHit.pHit->v.classname), "func_door_rotating") == 0)
+					|| strcmp(STRING(doorHit.pHit->v.classname), "func_door_rotating") == 0
+					|| strcmp(STRING(doorHit.pHit->v.classname), "avhweldable") == 0)
 				{
 					return doorHit.pHit;
 				}
@@ -2612,7 +2630,8 @@ edict_t* UTIL_GetDoorBlockingPathPoint(const Vector FromLocation, const Vector T
 		{
 			if (strcmp(STRING(doorHit.pHit->v.classname), "func_door") == 0
 				|| strcmp(STRING(doorHit.pHit->v.classname), "func_seethroughdoor") == 0
-				|| strcmp(STRING(doorHit.pHit->v.classname), "func_door_rotating") == 0)
+				|| strcmp(STRING(doorHit.pHit->v.classname), "func_door_rotating") == 0
+				|| strcmp(STRING(doorHit.pHit->v.classname), "avhweldable") == 0)
 			{
 				return doorHit.pHit;
 			}
@@ -4766,13 +4785,15 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 		bool bHasMovementTask = (BotNavInfo->MovementTask.TaskType != TASK_NONE);
 
 		Vector MoveTaskDestination = g_vecZero;
+		Vector MoveTaskOrigin = g_vecZero;
 
 		if (bHasMovementTask)
 		{
-			MoveTaskDestination = (!vIsZero(BotNavInfo->MovementTask.TaskLocation)) ? BotNavInfo->MovementTask.TaskLocation : BotNavInfo->MovementTask.TaskTarget->v.origin;
+			MoveTaskDestination = BotNavInfo->MovementTask.TaskLocation;
+			MoveTaskOrigin = (!FNullEnt(BotNavInfo->MovementTask.TaskTarget)) ? BotNavInfo->MovementTask.TaskTarget->v.origin : g_vecZero;
 		}
 
-		bool bUltimateDestinationChanged = !vEquals(Destination, BotNavInfo->TargetDestination, GetPlayerRadius(pBot->Player)) && !vEquals(Destination, MoveTaskDestination);
+		bool bUltimateDestinationChanged = !vEquals(Destination, BotNavInfo->TargetDestination, GetPlayerRadius(pBot->Player)) && !vEquals(Destination, MoveTaskDestination) && !vEquals(Destination, MoveTaskOrigin);
 
 		bool bHasReachedDestination = BotIsAtLocation(pBot, BotNavInfo->TargetDestination);
 
@@ -4781,13 +4802,17 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 			// First abort our current move so we don't try to recalculate half-way up a wall or ladder
 			if (bIsFlyingProfile || AbortCurrentMove(pBot, Destination))
 			{
-				ClearBotPath(pBot);
+				// Don't clear the path if we're in the middle of a movement task
+				if (!vEquals(Destination, MoveTaskDestination) && !vEquals(Destination, MoveTaskOrigin))
+				{
+					ClearBotPath(pBot);
+				}
 				return true;
 			}
 		}
 		else
 		{
-			if (bHasMovementTask && !vEquals(Destination, MoveTaskDestination))
+			if (bHasMovementTask && !vEquals(Destination, MoveTaskDestination) && !vEquals(Destination, MoveTaskOrigin))
 			{
 				if (AITASK_IsTaskStillValid(pBot, &BotNavInfo->MovementTask))
 				{
@@ -4817,6 +4842,7 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 
 		pBot->BotNavInfo.LastPathCalcTime = gpGlobals->time;
 		BotNavInfo->bPendingRecalculation = false;
+		BotNavInfo->bNavProfileChanged = false;
 
 		if (vIsZero(BotNavInfo->TargetDestination))
 		{
@@ -6468,15 +6494,15 @@ void UTIL_LinkTriggerToDoor(const edict_t* DoorEdict, nav_door* DoorRef)
 
 void UTIL_PopulateWeldableObstacles()
 {
-	memset(NavWeldableObstacles, 0, sizeof(NavWeldableObstacles));
-	NumWeldableObstacles = 0;
+	UTIL_ClearWeldablesData();
 
 	CBaseEntity* currWeldable = NULL;
 	while (((currWeldable = UTIL_FindEntityByClassname(currWeldable, "avhweldable")) != NULL))
 	{
 		if (currWeldable->pev->solid == SOLID_BSP)
 		{
-			NavWeldableObstacles[NumWeldableObstacles].WeldableEdict = currWeldable->edict();
+			nav_weldable NewWeldable;
+			NewWeldable.WeldableEdict = currWeldable->edict();
 
 			float SizeX = currWeldable->pev->size.x;
 			float SizeY = currWeldable->pev->size.y;
@@ -6511,11 +6537,11 @@ void UTIL_PopulateWeldableObstacles()
 
 			Vector CurrentPoint = StartPoint;
 
-			NavWeldableObstacles[NumWeldableObstacles].NumObstacles = NumObstacles;
+			NewWeldable.NumObstacles = NumObstacles;
 
 			for (int ii = 0; ii < NumObstacles; ii++)
 			{
-				UTIL_AddTemporaryObstacles(CurrentPoint, CylinderRadius, SizeZ, DT_TILECACHE_NULL_AREA, NavWeldableObstacles[NumWeldableObstacles].ObstacleRefs[ii]);
+				UTIL_AddTemporaryObstacles(CurrentPoint, CylinderRadius, SizeZ, DT_TILECACHE_WELD_AREA, NewWeldable.ObstacleRefs[ii]);
 
 				if (bUseXAxis)
 				{
@@ -6527,7 +6553,7 @@ void UTIL_PopulateWeldableObstacles()
 				}
 			}
 
-			NumWeldableObstacles++;
+			NavWeldableObstacles.push_back(NewWeldable);
 		}
 	}
 }
@@ -6593,20 +6619,24 @@ void UTIL_UpdateDoors(bool bInitial)
 
 void UTIL_UpdateWeldableObstacles()
 {
-	for (int i = 0; i < NumWeldableObstacles; i++)
+	for (auto it = NavWeldableObstacles.begin(); it != NavWeldableObstacles.end();)
 	{
-		if (NavWeldableObstacles[i].NumObstacles == 0) { continue; }
-
-		edict_t* WeldableEdict = NavWeldableObstacles[i].WeldableEdict;
+		edict_t* WeldableEdict = it->WeldableEdict;
 
 		if (FNullEnt(WeldableEdict) || WeldableEdict->v.deadflag != DEAD_NO || WeldableEdict->v.solid != SOLID_BSP)
 		{
-			for (int ii = 0; ii < NavWeldableObstacles[i].NumObstacles; ii++)
+			for (int ii = 0; ii < it->NumObstacles; ii++)
 			{
-				UTIL_RemoveTemporaryObstacles(NavWeldableObstacles[i].ObstacleRefs[ii]);
+				UTIL_RemoveTemporaryObstacles(it->ObstacleRefs[ii]);
 			}
 
-			NavWeldableObstacles[i].NumObstacles = 0;
+			it->NumObstacles = 0;
+
+			it = NavWeldableObstacles.erase(it);
+		}
+		else
+		{
+			it++;
 		}
 	}
 }
@@ -6666,7 +6696,7 @@ void UTIL_ApplyTempObstaclesToDoor(nav_door* DoorRef, const int Area)
 
 	for (int ii = 0; ii < NumObstacles; ii++)
 	{
-		UTIL_AddTemporaryObstacles(CurrentPoint, CylinderRadius, SizeZ * 2.0f, Area, DoorRef->ObstacleRefs[ii]);
+		UTIL_AddTemporaryObstacles(CurrentPoint, CylinderRadius, SizeZ, Area, DoorRef->ObstacleRefs[ii]);
 
 		if (bUseXAxis)
 		{
@@ -6738,12 +6768,46 @@ void UTIL_UpdateDoorTriggers(nav_door* Door)
 
 void UTIL_ClearDoorData()
 {
+	for (auto it = NavDoors.begin(); it != NavDoors.end(); it++)
+	{
+		if (it->NumObstacles > 0)
+		{
+			for (int ii = 0; ii < it->NumObstacles; ii++)
+			{
+				UTIL_RemoveTemporaryObstacles(it->ObstacleRefs[ii]);
+			}
+
+			it->NumObstacles = 0;
+
+		}
+	}
+
 	NavDoors.clear();
+}
+
+void UTIL_ClearWeldablesData()
+{
+	for (auto it = NavWeldableObstacles.begin(); it != NavWeldableObstacles.end(); it++)
+	{
+		if (it->NumObstacles > 0)
+		{
+			for (int ii = 0; ii < it->NumObstacles; ii++)
+			{
+				UTIL_RemoveTemporaryObstacles(it->ObstacleRefs[ii]);
+			}
+
+			it->NumObstacles = 0;
+
+		}
+	}
+
+	NavWeldableObstacles.clear();
 }
 
 // TODO: Need to add orientated box obstacle for door
 void UTIL_PopulateDoors()
 {
+
 	UTIL_ClearDoorData();
 
 	CBaseEntity* currDoor = NULL;

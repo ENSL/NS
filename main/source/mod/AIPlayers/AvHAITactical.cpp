@@ -595,6 +595,7 @@ void AITAC_UpdateMapAIData()
 	}
 
 	UTIL_UpdateDoors(false);
+	UTIL_UpdateWeldableObstacles();
 
 	AITAC_RefreshHiveData();
 }
@@ -968,15 +969,32 @@ void AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 	if (vIsZero(BuildingMap[EntIndex].Location) || !vEquals(BaseBuildable->pev->origin, BuildingMap[EntIndex].Location, 5.0f))
 	{
 		bool bIsOnNavMesh = UTIL_PointIsOnNavmesh(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], UTIL_GetEntityGroundLocation(BuildingEdict), Vector(max_player_use_reach, max_player_use_reach, max_player_use_reach));
+		
 		if (bIsOnNavMesh)
 		{
 			bool bIsReachableMarine = UTIL_PointIsReachable(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(BuildingEdict), max_player_use_reach);
 			bool bIsReachableSkulk = UTIL_PointIsReachable(BaseNavProfiles[SKULK_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(BuildingEdict), max_player_use_reach);
 			bool bIsReachableOnos = UTIL_PointIsReachable(BaseNavProfiles[ONOS_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(BuildingEdict), max_player_use_reach);
 
+			// Check if basic marines can reach. If they can then no need to separately check welder marines as they automatically can. If not, separately check for welders.
 			if (bIsReachableMarine)
 			{
 				BuildingMap[EntIndex].ReachabilityFlags |= AI_REACHABILITY_MARINE;
+				BuildingMap[EntIndex].ReachabilityFlags |= AI_REACHABILITY_WELDER;
+			}
+			else
+			{
+				nav_profile WelderProfile;
+				memcpy(&WelderProfile, &BaseNavProfiles[MARINE_BASE_NAV_PROFILE], sizeof(nav_profile));
+
+				WelderProfile.Filters.removeExcludeFlags(SAMPLE_POLYFLAGS_WELD);
+
+				bool bIsReachableWelder = UTIL_PointIsReachable(WelderProfile, AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(BuildingEdict), max_player_use_reach);
+
+				if (bIsReachableWelder)
+				{
+					BuildingMap[EntIndex].ReachabilityFlags |= AI_REACHABILITY_WELDER;
+				}
 			}
 
 			if (bIsReachableSkulk)
@@ -988,6 +1006,8 @@ void AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 			{
 				BuildingMap[EntIndex].ReachabilityFlags |= AI_REACHABILITY_ONOS;
 			}
+
+			
 
 		}
 		else

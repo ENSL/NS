@@ -425,6 +425,7 @@ void ClearBotPath(AvHAIPlayer* pBot);
 void ClearBotStuckMovement(AvHAIPlayer* pBot);
 
 void UTIL_ClearDoorData();
+void UTIL_ClearWeldablesData();
 
 // Based on the direction the bot wants to move and it's current facing angle, sets the forward and side move, and the directional buttons to make the bot actually move
 void BotMovementInputs(AvHAIPlayer* pBot);
