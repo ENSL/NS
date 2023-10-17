@@ -2202,7 +2202,7 @@ void BotProgressWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (IsPlayerInUseRange(pBot->Edict, Task->TaskTarget))
 	{
-		BotLookAt(pBot, UTIL_GetCentreOfEntity(Task->TaskTarget));
+		BotLookAt(pBot, UTIL_GetClosestPointOnEntityToLocation(pBot->CurrentEyePosition, Task->TaskTarget));
 		pBot->DesiredCombatWeapon = WEAPON_MARINE_WELDER;
 
 		if (GetBotCurrentWeapon(pBot) != WEAPON_MARINE_WELDER)
@@ -2714,6 +2714,7 @@ void AITASK_SetWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Targe
 	Task->TaskTarget = Target;
 	Task->TaskType = TASK_WELD;
 	Task->bTaskIsUrgent = bIsUrgent;
+	Task->TaskLocation = ZERO_VECTOR;
 	Task->TaskLength = 0.0f;
 	
 	if (IsEdictPlayer(Target) || IsEdictStructure(Target)) { return; }
