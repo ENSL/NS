@@ -1458,6 +1458,13 @@ void StartNewBotFrame(AvHAIPlayer* pBot)
 		SetBaseNavProfile(pBot);
 	}
 
+	UpdateBotMoveProfile(pBot, pBot->BotNavInfo.MoveStyle);
+
+	if (IsPlayerMarine(pBot->Edict))
+	{
+		UpdateCommanderOrders(pBot);
+	}
+
 }
 
 void DroneThink(AvHAIPlayer* pBot)
@@ -1466,7 +1473,12 @@ void DroneThink(AvHAIPlayer* pBot)
 
 	pBot->CurrentTask = &pBot->PrimaryBotTask;
 
-	if (pBot->PrimaryBotTask.TaskType != TASK_NONE)
+	if (pBot->CommanderTask.TaskType != TASK_NONE)
+	{
+		BotProgressTask(pBot, &pBot->CommanderTask);
+		AITASK_ClearBotTask(pBot, &pBot->PrimaryBotTask);
+	}
+	else if (pBot->PrimaryBotTask.TaskType != TASK_NONE)
 	{
 		BotProgressTask(pBot, &pBot->PrimaryBotTask);
 	}
@@ -1489,11 +1501,10 @@ void TestNavThink(AvHAIPlayer* pBot)
 		}
 
 		BotProgressTask(pBot, &pBot->PrimaryBotTask);
-		//BotDrawPath(pBot, 0.0f, true);
 	}
 	else
 	{
-		AvHAIResourceNode* RandomNode = AITAC_GetRandomResourceNode();
+		AvHAIResourceNode* RandomNode = AITAC_GetRandomResourceNode(pBot->BotNavInfo.NavProfile.ReachabilityFlag);
 
 		if (!RandomNode) { return; }
 
@@ -1527,4 +1538,30 @@ void BotResumePlay(AvHAIPlayer* pBot)
 	SetBaseNavProfile(pBot);
 
 	pBot->bIsInactive = false;
+}
+
+void UpdateCommanderOrders(AvHAIPlayer* pBot)
+{
+	OrderListType ActiveOrders = pBot->Player->GetActiveOrders();
+
+	for (auto it = ActiveOrders.begin(); it != ActiveOrders.end(); it++)
+	{
+		if (it->GetOrderActive() && it->GetReceiver() && ENTINDEX(pBot->Edict) == it->GetReceiver())
+		{
+			Vector OrderLocation = g_vecZero;
+			it->GetLocation(OrderLocation);
+
+			switch (it->GetOrderType())
+			{
+				case ORDERTYPEL_MOVE:
+					AITASK_SetMoveTask(pBot, &pBot->CommanderTask, OrderLocation, true);
+					break;
+				case ORDERTYPET_BUILD:
+					AITASK_SetBuildTask(pBot, &pBot->CommanderTask, INDEXENT(it->GetTargetIndex()), true);
+					break;
+				default:
+					break;
+			}
+		}
+	}
 }

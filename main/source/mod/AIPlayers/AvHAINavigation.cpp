@@ -4596,8 +4596,9 @@ void MarineUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
 		}
 	}
 
-	if (MoveStyle == pBot->BotNavInfo.MoveStyle) { return; }
+	if (MoveStyle == pBot->BotNavInfo.PreviousMoveStyle) { return; }
 
+	pBot->BotNavInfo.PreviousMoveStyle = MoveStyle;
 	pBot->BotNavInfo.bNavProfileChanged = true;
 	pBot->BotNavInfo.MoveStyle = MoveStyle;
 
@@ -4618,7 +4619,9 @@ void MarineUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
 
 void SkulkUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
 {
-	if (MoveStyle == pBot->BotNavInfo.MoveStyle) { return; }
+	if (MoveStyle == pBot->BotNavInfo.PreviousMoveStyle) { return; }
+
+	pBot->BotNavInfo.PreviousMoveStyle = MoveStyle;
 
 	pBot->BotNavInfo.bNavProfileChanged = true;
 	pBot->BotNavInfo.MoveStyle = MoveStyle;
@@ -4643,7 +4646,9 @@ void SkulkUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
 
 void GorgeUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
 {
-	if (MoveStyle == pBot->BotNavInfo.MoveStyle) { return; }
+	if (MoveStyle == pBot->BotNavInfo.PreviousMoveStyle) { return; }
+
+	pBot->BotNavInfo.PreviousMoveStyle = MoveStyle;
 
 	pBot->BotNavInfo.bNavProfileChanged = true;
 	pBot->BotNavInfo.MoveStyle = MoveStyle;
@@ -4667,7 +4672,9 @@ void GorgeUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
 
 void LerkUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
 {
-	if (MoveStyle == pBot->BotNavInfo.MoveStyle) { return; }
+	if (MoveStyle == pBot->BotNavInfo.PreviousMoveStyle) { return; }
+
+	pBot->BotNavInfo.PreviousMoveStyle = MoveStyle;
 
 	pBot->BotNavInfo.bNavProfileChanged = true;
 	pBot->BotNavInfo.MoveStyle = MoveStyle;
@@ -4693,7 +4700,9 @@ void LerkUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
 
 void FadeUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
 {
-	if (MoveStyle == pBot->BotNavInfo.MoveStyle) { return; }
+	if (MoveStyle == pBot->BotNavInfo.PreviousMoveStyle) { return; }
+
+	pBot->BotNavInfo.PreviousMoveStyle = MoveStyle;
 
 	pBot->BotNavInfo.bNavProfileChanged = true;
 	pBot->BotNavInfo.MoveStyle = MoveStyle;
@@ -4773,7 +4782,7 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 		}
 	}
 
-	UpdateBotMoveProfile(pBot, MoveStyle);
+	pBot->BotNavInfo.MoveStyle = MoveStyle;
 	UTIL_UpdateBotMovementStatus(pBot);	
 	
 	bool bIsFlyingProfile = pBot->BotNavInfo.NavProfile.bFlyingProfile;
@@ -4786,14 +4795,16 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 
 		Vector MoveTaskDestination = g_vecZero;
 		Vector MoveTaskOrigin = g_vecZero;
+		Vector MoveSecondaryOrigin = g_vecZero;
 
 		if (bHasMovementTask)
 		{
 			MoveTaskDestination = BotNavInfo->MovementTask.TaskLocation;
 			MoveTaskOrigin = (!FNullEnt(BotNavInfo->MovementTask.TaskTarget)) ? BotNavInfo->MovementTask.TaskTarget->v.origin : g_vecZero;
+			MoveSecondaryOrigin = (!FNullEnt(BotNavInfo->MovementTask.TaskSecondaryTarget)) ? BotNavInfo->MovementTask.TaskSecondaryTarget->v.origin : g_vecZero;
 		}
 
-		bool bUltimateDestinationChanged = !vEquals(Destination, BotNavInfo->TargetDestination, GetPlayerRadius(pBot->Player)) && !vEquals(Destination, MoveTaskDestination) && !vEquals(Destination, MoveTaskOrigin);
+		bool bUltimateDestinationChanged = !vEquals(Destination, BotNavInfo->TargetDestination, GetPlayerRadius(pBot->Player)) && !vEquals(Destination, MoveTaskDestination) && !vEquals(Destination, MoveTaskOrigin) && !vEquals(Destination, MoveSecondaryOrigin);
 
 		bool bHasReachedDestination = BotIsAtLocation(pBot, BotNavInfo->TargetDestination);
 
@@ -4803,7 +4814,7 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 			if (bIsFlyingProfile || AbortCurrentMove(pBot, Destination))
 			{
 				// Don't clear the path if we're in the middle of a movement task
-				if (!vEquals(Destination, MoveTaskDestination) && !vEquals(Destination, MoveTaskOrigin))
+				if (!vEquals(Destination, MoveTaskDestination) && !vEquals(Destination, MoveTaskOrigin) && !vEquals(Destination, MoveSecondaryOrigin))
 				{
 					ClearBotPath(pBot);
 				}
@@ -4812,7 +4823,7 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 		}
 		else
 		{
-			if (bHasMovementTask && !vEquals(Destination, MoveTaskDestination) && !vEquals(Destination, MoveTaskOrigin))
+			if (bHasMovementTask && !vEquals(Destination, MoveTaskDestination) && !vEquals(Destination, MoveTaskOrigin) && !vEquals(Destination, MoveSecondaryOrigin))
 			{
 				if (AITASK_IsTaskStillValid(pBot, &BotNavInfo->MovementTask))
 				{

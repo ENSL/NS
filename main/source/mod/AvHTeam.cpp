@@ -2331,7 +2331,7 @@ void AvHTeam::UpdateOrders()
 		const float kExpireTime = 1.0f;
 		if(!theOrderIter->GetOrderActive() && (theOrderIter->GetTimeOrderCompleted() != -1) && (gpGlobals->time > (theOrderIter->GetTimeOrderCompleted() + kExpireTime)))
 		{
-			this->mOrderList.erase(theOrderIter);
+			theOrderIter = this->mOrderList.erase(theOrderIter);
 		}
 		else
 		{

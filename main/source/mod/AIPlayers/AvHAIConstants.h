@@ -80,22 +80,6 @@ typedef enum
 	HIVE_TECH_MOVEMENT = 3
 } HiveTechStatus;
 
-// Data structure to hold information about each hive in the map
-typedef struct _HIVE_DEFINITION_T
-{
-	AvHHive* HiveEntity = nullptr;
-	Vector Location = g_vecZero; // Origin of the hive
-	Vector FloorLocation = g_vecZero; // Some hives are suspended in the air, this is the floor location directly beneath it
-	HiveStatusType Status = HIVE_STATUS_UNBUILT; // Can be unbuilt, in progress, or fully built
-	AvHMessageID TechStatus = MESSAGE_NULL; // What tech (if any) is assigned to this hive right now
-	bool bIsUnderAttack = false; // Is the hive currently under attack? Becomes false if not taken damage for more than 10 seconds
-	int HiveResNodeIndex = -1; // Which resource node (indexes into ResourceNodes array) belongs to this hive?
-	unsigned int ObstacleRefs[8]; // When in progress or built, will place an obstacle so bots don't try to walk through it
-	float NextFloorLocationCheck = 0.0f; // When should the closest navigable point to the hive be calculated? Used to delay the check after a hive is built
-	AvHTeamNumber OwningTeam = TEAM_IND;
-
-} AvHAIHiveDefinition;
-
 typedef enum _AI_REACHABILITY_STATUS
 {
 	AI_REACHABILITY_NONE = 0,
@@ -104,18 +88,6 @@ typedef enum _AI_REACHABILITY_STATUS
 	AI_REACHABILITY_ONOS = 1u << 2,
 	AI_REACHABILITY_WELDER = 1u << 3,
 } AvHAIReachabilityStatus;
-
-// Data structure used to track resource nodes in the map
-typedef struct _RESOURCE_NODE
-{
-	AvHFuncResource* ResourceEntity = nullptr;							// The func_resource edict reference
-	Vector Location = g_vecZero;										// origin of the func_resource edict (not the tower itself)
-	bool bIsOccupied = false;											// True if there is any resource tower on it
-	AvHTeamNumber OwningTeam = TEAM_IND;								// The team that has currently capped this node (TEAM_IND if none)
-	edict_t* ActiveTowerEntity = nullptr;								// Reference to the resource tower edict (if capped)
-	bool bIsBaseNode = false;											// Is this a node in the marine base or active alien hive?
-	unsigned int ReachabilityFlags = AI_REACHABILITY_NONE;	// Is this reachable by the bots? Checks for marine reachability only
-} AvHAIResourceNode;
 
 typedef enum
 {
@@ -192,6 +164,34 @@ typedef enum _STRUCTUREPURPOSE
 	STRUCTURE_PURPOSE_FORTIFY
 
 } StructurePurpose;
+
+// Data structure used to track resource nodes in the map
+typedef struct _RESOURCE_NODE
+{
+	AvHFuncResource* ResourceEntity = nullptr;							// The func_resource edict reference
+	Vector Location = g_vecZero;										// origin of the func_resource edict (not the tower itself)
+	bool bIsOccupied = false;											// True if there is any resource tower on it
+	AvHTeamNumber OwningTeam = TEAM_IND;								// The team that has currently capped this node (TEAM_IND if none)
+	edict_t* ActiveTowerEntity = nullptr;								// Reference to the resource tower edict (if capped)
+	bool bIsBaseNode = false;											// Is this a node in the marine base or active alien hive?
+	unsigned int ReachabilityFlags = AI_REACHABILITY_NONE;	// Is this reachable by the bots? Checks for marine reachability only
+} AvHAIResourceNode;
+
+// Data structure to hold information about each hive in the map
+typedef struct _HIVE_DEFINITION_T
+{
+	AvHHive* HiveEntity = nullptr;					// Hive entity reference
+	Vector Location = g_vecZero;					// Origin of the hive
+	Vector FloorLocation = g_vecZero;				// Some hives are suspended in the air, this is the floor location directly beneath it
+	HiveStatusType Status = HIVE_STATUS_UNBUILT;	// Can be unbuilt, in progress, or fully built
+	AvHMessageID TechStatus = MESSAGE_NULL;			// What tech (if any) is assigned to this hive right now
+	bool bIsUnderAttack = false;					// Is the hive currently under attack? Becomes false if not taken damage for more than 10 seconds
+	AvHAIResourceNode* HiveResNodeRef = nullptr;	// Which resource node (indexes into ResourceNodes array) belongs to this hive?
+	unsigned int ObstacleRefs[8];					// When in progress or built, will place an obstacle so bots don't try to walk through it
+	float NextFloorLocationCheck = 0.0f;			// When should the closest navigable point to the hive be calculated? Used to delay the check after a hive is built
+	AvHTeamNumber OwningTeam = TEAM_IND;			// Which team owns this hive currently (TEAM_IND if empty)
+
+} AvHAIHiveDefinition;
 
 // A nav profile combines a nav mesh reference (indexed into NavMeshes) and filters to determine how a bot should find paths
 typedef struct _NAV_PROFILE
@@ -446,6 +446,7 @@ typedef struct _NAV_STATUS
 
 	bool bShouldWalk = false; // Should the bot walk at this point?
 
+	BotMoveStyle PreviousMoveStyle = MOVESTYLE_NORMAL; // Previous desired move style (e.g. normal, ambush, hide). Will trigger new path calculations if this changes
 	BotMoveStyle MoveStyle = MOVESTYLE_NORMAL; // Current desired move style (e.g. normal, ambush, hide). Will trigger new path calculations if this changes
 	float LastPathCalcTime = 0.0f; // When the bot last calculated a path, to limit how frequently it can recalculate
 

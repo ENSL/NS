@@ -25,11 +25,8 @@
 #include <unordered_map>
 
 
-AvHAIResourceNode ResourceNodes[64];
-int NumTotalResNodes;
-
-AvHAIHiveDefinition Hives[3];
-int NumTotalHives;
+vector<AvHAIResourceNode> ResourceNodes;
+vector<AvHAIHiveDefinition> Hives;
 
 float CommanderViewZHeight;
 
@@ -368,47 +365,52 @@ Vector AITAC_GetFloorLocationForHive(const AvHAIHiveDefinition* Hive)
 
 void AITAC_RefreshHiveData()
 {
-	if (NumTotalHives == 0)
+	if (Hives.size() == 0)
 	{
 		FOR_ALL_ENTITIES(kesTeamHive, AvHHive*)
 
-			Hives[NumTotalHives].HiveEntity = theEntity;
-			Hives[NumTotalHives].Location = theEntity->pev->origin;
-			Hives[NumTotalHives].HiveResNodeIndex = AITAC_FindNearestResNodeIndexToLocation(theEntity->pev->origin);
-			Hives[NumTotalHives].FloorLocation = UTIL_GetFloorUnderEntity(theEntity->edict()); // Some hives are suspended in the air, this is the floor location directly beneath it
+			AvHAIHiveDefinition NewHive;
+			NewHive.HiveEntity = theEntity;
+			NewHive.Location = theEntity->pev->origin;
+			NewHive.HiveResNodeRef = AITAC_GetNearestResourceNodeToLocation(theEntity->pev->origin);
+			NewHive.FloorLocation = UTIL_GetFloorUnderEntity(theEntity->edict()); // Some hives are suspended in the air, this is the floor location directly beneath it
 
-			NumTotalHives++;
+			Hives.push_back(NewHive);
 
 		END_FOR_ALL_ENTITIES(kesTeamHive)
 
 	}
 
-	for (int i = 0; i < NumTotalHives; i++)
+	int NextRefresh = 0;
+
+	for (auto it = Hives.begin(); it != Hives.end(); it++)
 	{
-		AvHHive* theEntity = Hives[i].HiveEntity;
+		AvHHive* theEntity = it->HiveEntity;
 
-		Hives[i].TechStatus = theEntity->GetTechnology();
-		Hives[i].bIsUnderAttack = GetGameRules()->GetIsEntityUnderAttack(theEntity->entindex());
-		Hives[i].OwningTeam = theEntity->GetTeamNumber();
-		Hives[i].Status = (theEntity->GetIsActive() ? HIVE_STATUS_BUILT : (theEntity->GetIsSpawning() ? HIVE_STATUS_BUILDING : HIVE_STATUS_UNBUILT));
+		it->TechStatus = theEntity->GetTechnology();
+		it->bIsUnderAttack = GetGameRules()->GetIsEntityUnderAttack(theEntity->entindex());
+		it->OwningTeam = theEntity->GetTeamNumber();
+		it->Status = (theEntity->GetIsActive() ? HIVE_STATUS_BUILT : (theEntity->GetIsSpawning() ? HIVE_STATUS_BUILDING : HIVE_STATUS_UNBUILT));
 
-		if (Hives[i].Status != HIVE_STATUS_UNBUILT && Hives[i].ObstacleRefs[REGULAR_NAV_MESH] == 0)
+		if (it->Status != HIVE_STATUS_UNBUILT && it->ObstacleRefs[REGULAR_NAV_MESH] == 0)
 		{
-			UTIL_AddTemporaryObstacles(UTIL_GetCentreOfEntity(Hives[i].HiveEntity->edict()) - Vector(0.0f, 0.0f, 25.0f), 125.0f, 300.0f, DT_AREA_NULL, Hives[i].ObstacleRefs);
-			Hives[i].NextFloorLocationCheck = gpGlobals->time + 1.0f;
+			UTIL_AddTemporaryObstacles(UTIL_GetCentreOfEntity(it->HiveEntity->edict()) - Vector(0.0f, 0.0f, 25.0f), 125.0f, 300.0f, DT_AREA_NULL, it->ObstacleRefs);
+			it->NextFloorLocationCheck = gpGlobals->time + 1.0f;
 		}
-		else if (Hives[i].Status == HIVE_STATUS_UNBUILT && Hives[i].ObstacleRefs[REGULAR_NAV_MESH] != 0)
+		else if (it->Status == HIVE_STATUS_UNBUILT && it->ObstacleRefs[REGULAR_NAV_MESH] != 0)
 		{
-			UTIL_RemoveTemporaryObstacles(Hives[i].ObstacleRefs);
-			Hives[i].NextFloorLocationCheck = gpGlobals->time + 1.0f;
+			UTIL_RemoveTemporaryObstacles(it->ObstacleRefs);
+			it->NextFloorLocationCheck = gpGlobals->time + 1.0f;
 		}
 
-		if (Hives[i].NextFloorLocationCheck > 0.0f && gpGlobals->time >= Hives[i].NextFloorLocationCheck)
+		if (it->NextFloorLocationCheck > 0.0f && gpGlobals->time >= it->NextFloorLocationCheck)
 		{
-			Hives[i].FloorLocation = AITAC_GetFloorLocationForHive(&Hives[i]);
+			it->FloorLocation = AITAC_GetFloorLocationForHive(&(*it));
 
-			Hives[i].NextFloorLocationCheck = gpGlobals->time + (5.0f + (0.1f * i));
+			it->NextFloorLocationCheck = gpGlobals->time + (5.0f + (0.1f * NextRefresh));
 		}
+
+		NextRefresh++;
 	}
 
 }
@@ -499,79 +501,95 @@ Vector AITAC_GetCommChairLocation(AvHTeamNumber Team)
 
 void AITAC_RefreshResourceNodes()
 {
-	if (NumTotalResNodes == 0)
+	if (ResourceNodes.size() == 0)
 	{
 		FOR_ALL_ENTITIES(kesFuncResource, AvHFuncResource*)
 
-			ResourceNodes[NumTotalResNodes].ResourceEntity = theEntity;
-			ResourceNodes[NumTotalResNodes].Location = theEntity->pev->origin;
-			ResourceNodes[NumTotalResNodes].ReachabilityFlags = AI_REACHABILITY_NONE;
+			AvHAIResourceNode NewResNode;
+			NewResNode.ResourceEntity = theEntity;
+			NewResNode.Location = theEntity->pev->origin;
+			NewResNode.ReachabilityFlags = AI_REACHABILITY_NONE;
 
-			bool bIsReachableMarine = UTIL_PointIsReachable(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResourceNodes[NumTotalResNodes].Location, max_player_use_reach);
-			bool bIsReachableSkulk = UTIL_PointIsReachable(BaseNavProfiles[SKULK_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResourceNodes[NumTotalResNodes].Location, max_player_use_reach);
-			bool bIsReachableOnos = UTIL_PointIsReachable(BaseNavProfiles[ONOS_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResourceNodes[NumTotalResNodes].Location, max_player_use_reach);
+			bool bIsReachableMarine = UTIL_PointIsReachable(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), NewResNode.Location, max_player_use_reach);
+			bool bIsReachableSkulk = UTIL_PointIsReachable(BaseNavProfiles[SKULK_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), NewResNode.Location, max_player_use_reach);
+			bool bIsReachableOnos = UTIL_PointIsReachable(BaseNavProfiles[ONOS_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), NewResNode.Location, max_player_use_reach);
 
 			if (bIsReachableMarine)
 			{
-				ResourceNodes[NumTotalResNodes].ReachabilityFlags |= AI_REACHABILITY_MARINE;
+				NewResNode.ReachabilityFlags |= AI_REACHABILITY_MARINE;
+				NewResNode.ReachabilityFlags |= AI_REACHABILITY_WELDER;
+			}
+			else
+			{
+				nav_profile WelderProfile;
+				memcpy(&WelderProfile, &BaseNavProfiles[MARINE_BASE_NAV_PROFILE], sizeof(nav_profile));
+
+				WelderProfile.Filters.removeExcludeFlags(SAMPLE_POLYFLAGS_WELD);
+
+				bool bIsReachableWelder = UTIL_PointIsReachable(WelderProfile, AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), NewResNode.Location, max_player_use_reach);
+
+				if (bIsReachableWelder)
+				{
+					NewResNode.ReachabilityFlags |= AI_REACHABILITY_WELDER;
+				}
 			}
 
 			if (bIsReachableSkulk)
 			{
-				ResourceNodes[NumTotalResNodes].ReachabilityFlags |= AI_REACHABILITY_SKULK;
+				NewResNode.ReachabilityFlags |= AI_REACHABILITY_SKULK;
 			}
 
 			if (bIsReachableOnos)
 			{
-				ResourceNodes[NumTotalResNodes].ReachabilityFlags |= AI_REACHABILITY_ONOS;
+				NewResNode.ReachabilityFlags |= AI_REACHABILITY_ONOS;
 			}
 
-			NumTotalResNodes++;
+			ResourceNodes.push_back(NewResNode);
 
 		END_FOR_ALL_ENTITIES(kesFuncResource)
 	}
 
-	for (int i = 0; i < NumTotalResNodes; i++)
+	for (auto it = ResourceNodes.begin(); it != ResourceNodes.end(); it++)
 	{
-		AvHFuncResource* ResourceEntity = ResourceNodes[i].ResourceEntity;
+		AvHFuncResource* ResourceEntity = it->ResourceEntity;
 
-		ResourceNodes[i].bIsOccupied = ResourceEntity->GetIsOccupied();
+		it->bIsOccupied = ResourceEntity->GetIsOccupied();
 		
-		if (ResourceNodes[i].bIsOccupied)
+		if (it->bIsOccupied)
 		{
 			DeployableSearchFilter TowerFilter;
 			TowerFilter.DeployableTypes = (STRUCTURE_MARINE_RESTOWER | STRUCTURE_ALIEN_RESTOWER);
 
-			AvHAIBuildableStructure* OccupyingTower = AITAC_FindClosestDeployableToLocation(ResourceNodes[i].Location, &TowerFilter);
+			AvHAIBuildableStructure* OccupyingTower = AITAC_FindClosestDeployableToLocation(it->Location, &TowerFilter);
 
 			if (OccupyingTower)
 			{
-				ResourceNodes[i].ActiveTowerEntity = OccupyingTower->edict;
-				ResourceNodes[i].OwningTeam = OccupyingTower->EntityRef->GetTeamNumber();
+				it->ActiveTowerEntity = OccupyingTower->edict;
+				it->OwningTeam = OccupyingTower->EntityRef->GetTeamNumber();
 			}
 		}
 		else
 		{
-			ResourceNodes[i].ActiveTowerEntity = nullptr;
-			ResourceNodes[i].OwningTeam = TEAM_IND;
+			it->ActiveTowerEntity = nullptr;
+			it->OwningTeam = TEAM_IND;
 		}
 	}
 }
 
-AvHAIResourceNode* AITAC_GetRandomResourceNode()
+AvHAIResourceNode* AITAC_GetRandomResourceNode(const unsigned int ReachabilityFlags)
 {
 	AvHAIResourceNode* Result = nullptr;
 	float MaxScore = 0.0f;
 
-	for (int i = 0; i < NumTotalResNodes; i++)
+	for (auto it = ResourceNodes.begin(); it != ResourceNodes.end(); it++)
 	{
-		if (!(ResourceNodes[i].ReachabilityFlags & AI_REACHABILITY_MARINE)) { continue; }
+		if (ReachabilityFlags != AI_REACHABILITY_NONE && !(it->ReachabilityFlags & ReachabilityFlags)) { continue; }
 
 		float ThisScore = frandrange(0.0f, 1.0f);
 
 		if (!Result || ThisScore > MaxScore)
 		{
-			Result = &ResourceNodes[i];
+			Result = &(*it);
 			MaxScore = ThisScore;
 		}
 	}
@@ -1054,6 +1072,8 @@ void AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 		BuildingMap[EntIndex].StructureStatusFlags |= STRUCTURE_STATUS_UNDERATTACK;
 	}
 
+	BuildingMap[EntIndex].LastSeen = StructureRefreshFrame;
+
 }
 
 void AITAC_OnStructureCreated(AvHAIBuildableStructure* NewStructure)
@@ -1102,8 +1122,7 @@ void AITAC_LinkDeployedItemToAction(AvHAIPlayer* CommanderBot, const AvHAIDroppe
 
 void AITAC_ClearMapAIData()
 {
-	memset(ResourceNodes, 0, sizeof(ResourceNodes));
-	NumTotalResNodes = 0;
+	ResourceNodes.clear();
 
 	AITAC_ClearHiveInfo();
 
@@ -1123,38 +1142,19 @@ void AITAC_ClearMapAIData()
 
 void AITAC_ClearHiveInfo()
 {
-	memset(Hives, 0, sizeof(Hives));
-	NumTotalHives = 0;
-}
-
-int AITAC_FindNearestResNodeIndexToLocation(const Vector& Location)
-{
-	int Result = -1;
-	float MinDist = 0.0f;
-
-	for (int i = 0; i < NumTotalResNodes; i++)
+	for (auto it = Hives.begin(); it != Hives.end(); it++)
 	{
-		if (ResourceNodes[i].ResourceEntity)
+		if (it->ObstacleRefs[REGULAR_NAV_MESH] != 0)
 		{
-			float ThisDist = vDist3DSq(Location, ResourceNodes[i].ResourceEntity->pev->origin);
-
-			if (Result < 0 || ThisDist < MinDist)
-			{
-				Result = i;
-				MinDist = ThisDist;
-			}
+			UTIL_RemoveTemporaryObstacles(it->ObstacleRefs);
 		}
 	}
-
-	return Result;
+	
+	Hives.clear();
 }
 
-bool AITAC_AlienHiveNeedsReinforcing(int HiveIndex)
+bool AITAC_AlienHiveNeedsReinforcing(const AvHAIHiveDefinition* Hive)
 {
-	if (HiveIndex < 0 || HiveIndex >= NumTotalHives) { return false; }
-
-	const AvHAIHiveDefinition* Hive = AITAC_GetHiveAtIndex(HiveIndex);
-
 	if (!Hive) { return false; }
 
 	DeployableSearchFilter SearchFilter;
@@ -1196,7 +1196,7 @@ bool AITAC_AlienHiveNeedsReinforcing(int HiveIndex)
 
 const AvHAIHiveDefinition* AITAC_GetHiveAtIndex(int Index)
 {
-	if (Index > -1 && Index < NumTotalHives)
+	if (Index > -1 && Index < Hives.size())
 	{
 		return &Hives[Index];
 	}
@@ -1457,11 +1457,11 @@ bool UTIL_StructureIsResearching(edict_t* Structure, const AvHMessageID Research
 
 AvHAIHiveDefinition* AITAC_GetHiveFromEdict(const edict_t* Edict)
 {
-	for (int i = 0; i < NumTotalHives; i++)
+	for (auto it = Hives.begin(); it != Hives.end(); it++)
 	{
-		if (Hives[i].HiveEntity->edict() == Edict)
+		if (it->HiveEntity->edict() == Edict)
 		{
-			return &Hives[i];
+			return &(*it);
 		}
 	}
 
@@ -1473,13 +1473,13 @@ const AvHAIHiveDefinition* AITAC_GetHiveNearestLocation(const Vector SearchLocat
 	AvHAIHiveDefinition* Result = nullptr;
 	float MinDist = 0.0f;
 
-	for (int i = 0; i < NumTotalHives; i++)
+	for (auto it = Hives.begin(); it != Hives.end(); it++)
 	{
-		float ThisDist = vDist3DSq(SearchLocation, Hives[i].Location);
+		float ThisDist = vDist3DSq(SearchLocation, it->Location);
 
 		if (!Result || ThisDist < MinDist)
 		{
-			Result = &Hives[i];
+			Result = &(*it);
 			MinDist = ThisDist;
 		}
 	}
@@ -1489,31 +1489,26 @@ const AvHAIHiveDefinition* AITAC_GetHiveNearestLocation(const Vector SearchLocat
 
 AvHAIResourceNode* AITAC_GetNearestResourceNodeToLocation(const Vector Location)
 {
-	int ResultIndex = -1;
+	AvHAIResourceNode* Result = nullptr;
 	float CurrMinDist = 0;
 
-	for (int i = 0; i < NumTotalResNodes; i++)
+	for (auto it = ResourceNodes.begin(); it != ResourceNodes.end(); it++)
 	{
-		float DistSq = vDist2DSq(ResourceNodes[i].Location, Location);
+		float DistSq = vDist2DSq(it->Location, Location);
 
-		if (ResultIndex < 0 || DistSq < CurrMinDist)
+		if (!Result || DistSq < CurrMinDist)
 		{
-			ResultIndex = i;
+			Result = &(*it);
 			CurrMinDist = DistSq;
 		}
 	}
 
-	if (ResultIndex > -1)
-	{
-		return &ResourceNodes[ResultIndex];
-	}
-
-	return nullptr;
+	return Result;
 }
 
 AvHAIResourceNode* AITAC_FindNearestResourceNodeToLocation(const Vector Location, const DeployableSearchFilter* Filter)
 {
-	int ResultIndex = -1;
+	AvHAIResourceNode* Result = nullptr;
 
 	float MinDistSq = sqrf(Filter->MinSearchRadius);
 	float MaxDistSq = sqrf(Filter->MaxSearchRadius);
@@ -1523,25 +1518,20 @@ AvHAIResourceNode* AITAC_FindNearestResourceNodeToLocation(const Vector Location
 
 	float CurrMinDist = 0;
 
-	for (int i = 0; i < NumTotalResNodes; i++)
+	for (auto it = ResourceNodes.begin(); it != ResourceNodes.end(); it++)
 	{
-		if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE && !(ResourceNodes[i].ReachabilityFlags & Filter->ReachabilityFlags)) { continue; }
-		if (ResourceNodes[i].OwningTeam != Filter->Team) { continue; }
+		if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE && !(it->ReachabilityFlags & Filter->ReachabilityFlags)) { continue; }
+		if (it->OwningTeam != Filter->Team) { continue; }
 		
-		float DistSq = (Filter->bConsiderPhaseDistance) ? sqrf(AITAC_GetPhaseDistanceBetweenPoints(ResourceNodes[i].Location, Location)) : vDist2DSq(ResourceNodes[i].Location, Location);
+		float DistSq = (Filter->bConsiderPhaseDistance) ? sqrf(AITAC_GetPhaseDistanceBetweenPoints(it->Location, Location)) : vDist2DSq(it->Location, Location);
 
-		if ((!bUseMinDist || DistSq >= MinDistSq) && (!bUseMaxDist || DistSq <= MaxDistSq) && (ResultIndex < 0 || DistSq < CurrMinDist))
+		if ((!bUseMinDist || DistSq >= MinDistSq) && (!bUseMaxDist || DistSq <= MaxDistSq) && (!Result || DistSq < CurrMinDist))
 		{
-			ResultIndex = i;
+			Result = &(*it);
 		}
 	}
 
-	if (ResultIndex > -1)
-	{
-		return &ResourceNodes[ResultIndex];
-	}
-
-	return nullptr;
+	return Result;
 
 }
 
@@ -1633,12 +1623,12 @@ AvHAIHiveDefinition* AITAC_GetTeamHiveWithTech(const AvHTeamNumber Team, const A
 	if (!TeamRef || TeamRef->GetTeamType() != AVH_CLASS_TYPE_ALIEN) { return nullptr; }
 
 
-	for (int i = 0; i < NumTotalHives; i++)
+	for (auto it = Hives.begin(); it != Hives.end(); it++)
 	{
 		// Only return active hives with the tech
-		if (Hives[i].OwningTeam == Team && Hives[i].Status == HIVE_STATUS_BUILT && Hives[i].TechStatus == Tech)
+		if (it->OwningTeam == Team && it->Status == HIVE_STATUS_BUILT && it->TechStatus == Tech)
 		{
-			return &Hives[i];
+			return &(*it);
 		}
 	}
 
@@ -1653,10 +1643,10 @@ bool AITAC_TeamHiveWithTechExists(const AvHTeamNumber Team, const AvHMessageID T
 	if (!TeamRef || TeamRef->GetTeamType() != AVH_CLASS_TYPE_ALIEN) { return false; }
 
 
-	for (int i = 0; i < NumTotalHives; i++)
+	for (auto it = Hives.begin(); it != Hives.end(); it++)
 	{
 		// Only return active hives with the tech
-		if (Hives[i].OwningTeam == Team && Hives[i].Status == HIVE_STATUS_BUILT && Hives[i].TechStatus == Tech)
+		if (it->OwningTeam == Team && it->Status == HIVE_STATUS_BUILT && it->TechStatus == Tech)
 		{
 			return true;
 		}
@@ -1845,16 +1835,9 @@ int UTIL_GetCostOfStructureType(AvHAIDeployableStructureType StructureType)
 	return 0;
 }
 
-AvHAIResourceNode* AITAC_GetResourceNodeAtIndex(const int Index)
-{
-	if (Index < 0 || Index >= NumTotalResNodes) { return nullptr; }
-
-	return &ResourceNodes[Index];
-}
-
 int AITAC_GetNumHives()
 {
-	return NumTotalHives;
+	return Hives.size();
 }
 
 AvHMessageID UTIL_StructureTypeToImpulseCommand(const AvHAIDeployableStructureType StructureType)

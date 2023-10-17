@@ -295,6 +295,7 @@ public:
 	int				GetExperienceLevel() const;
 
 	AvHServerPlayerData* GetServerPlayerData();
+	const OrderListType& GetActiveOrders() { return mClientOrders; }
 
 	virtual bool	GetHasItem(const char *szName);
 	virtual void	GiveNamedItem(const char *szName, bool inSendMessage = false);
