@@ -50,6 +50,7 @@ Vector TeamBStartingLocation = ZERO_VECTOR;
 extern nav_mesh NavMeshes[MAX_NAV_MESHES]; // Array of nav meshes. Currently only 3 are used (building, onos, and regular)
 extern nav_profile BaseNavProfiles[MAX_NAV_PROFILES]; // Array of nav profiles
 
+bool bNavMeshModified = false;
 
 bool AITAC_DeployableExistsAtLocation(const Vector& Location, const DeployableSearchFilter* Filter)
 {
@@ -175,7 +176,7 @@ AvHAIDroppedItem* AITAC_GetDroppedItemRefFromEdict(edict_t* ItemEdict)
 	return &MarineDroppedItemMap[EntIndex];
 }
 
-AvHAIDroppedItem* AITAC_FindClosestItemToLocation(const Vector& Location, const AvHAIDeployableItemType ItemType, float MinRadius, float MaxRadius, bool bConsiderPhaseDistance)
+AvHAIDroppedItem* AITAC_FindClosestItemToLocation(const Vector& Location, const AvHAIDeployableItemType ItemType, const unsigned int ReachabilityFlags, float MinRadius, float MaxRadius, bool bConsiderPhaseDistance)
 {
 	AvHAIDroppedItem* Result = NULL;
 	float CurrMinDist = 0.0f;
@@ -188,7 +189,7 @@ AvHAIDroppedItem* AITAC_FindClosestItemToLocation(const Vector& Location, const 
 
 	for (auto& it : MarineDroppedItemMap)
 	{
-		if (!it.second.bIsReachableMarine) { continue; }
+		if (ReachabilityFlags != AI_REACHABILITY_NONE && !(it.second.ReachabilityFlags & ReachabilityFlags)) { continue; }
 		if (it.second.ItemType != ItemType) { continue; }
 
 		float DistSq = (bConsiderPhaseDistance) ? sqrf(AITAC_GetPhaseDistanceBetweenPoints(it.second.Location, Location)) : vDist2DSq(it.second.Location, Location);
@@ -499,6 +500,88 @@ Vector AITAC_GetCommChairLocation(AvHTeamNumber Team)
 	return ZERO_VECTOR;
 }
 
+void AITAC_RefreshReachabilityForItem(AvHAIDroppedItem* Item)
+{
+	Item->ReachabilityFlags = AI_REACHABILITY_NONE;
+
+	if (Item->ItemType == DEPLOYABLE_ITEM_SCAN)
+	{
+		Item->ReachabilityFlags = AI_REACHABILITY_ALL;
+		return;
+	}
+	else
+	{
+		bool bOnNavMesh = UTIL_PointIsOnNavmesh(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], Item->edict->v.origin, Vector(max_player_use_reach, max_player_use_reach, max_player_use_reach));
+
+		if (!bOnNavMesh)
+		{
+			Item->ReachabilityFlags = AI_REACHABILITY_NONE;
+			return;
+		}
+
+		bool bIsReachableMarine = UTIL_PointIsReachable(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), Item->edict->v.origin, max_player_use_reach);
+
+		if (bIsReachableMarine)
+		{
+			Item->ReachabilityFlags |= AI_REACHABILITY_MARINE;
+			Item->ReachabilityFlags |= AI_REACHABILITY_WELDER;
+		}
+		else
+		{
+			nav_profile WelderProfile;
+			memcpy(&WelderProfile, &BaseNavProfiles[MARINE_BASE_NAV_PROFILE], sizeof(nav_profile));
+
+			WelderProfile.Filters.removeExcludeFlags(SAMPLE_POLYFLAGS_WELD);
+
+			bool bIsReachableWelder = UTIL_PointIsReachable(WelderProfile, AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), Item->edict->v.origin, max_player_use_reach);
+
+			if (bIsReachableWelder)
+			{
+				Item->ReachabilityFlags |= AI_REACHABILITY_WELDER;
+			}
+		}
+	}
+}
+
+void AITAC_RefreshReachabilityForResNode(AvHAIResourceNode* ResNode)
+{
+	ResNode->bReachabilityMarkedDirty = false;
+
+	bool bIsReachableMarine = UTIL_PointIsReachable(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResNode->Location, max_player_use_reach);
+	bool bIsReachableSkulk = UTIL_PointIsReachable(BaseNavProfiles[SKULK_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResNode->Location, max_player_use_reach);
+	bool bIsReachableOnos = UTIL_PointIsReachable(BaseNavProfiles[ONOS_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResNode->Location, max_player_use_reach);
+
+	if (bIsReachableMarine)
+	{
+		ResNode->ReachabilityFlags |= AI_REACHABILITY_MARINE;
+		ResNode->ReachabilityFlags |= AI_REACHABILITY_WELDER;
+	}
+	else
+	{
+		nav_profile WelderProfile;
+		memcpy(&WelderProfile, &BaseNavProfiles[MARINE_BASE_NAV_PROFILE], sizeof(nav_profile));
+
+		WelderProfile.Filters.removeExcludeFlags(SAMPLE_POLYFLAGS_WELD);
+
+		bool bIsReachableWelder = UTIL_PointIsReachable(WelderProfile, AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResNode->Location, max_player_use_reach);
+
+		if (bIsReachableWelder)
+		{
+			ResNode->ReachabilityFlags |= AI_REACHABILITY_WELDER;
+		}
+	}
+
+	if (bIsReachableSkulk)
+	{
+		ResNode->ReachabilityFlags |= AI_REACHABILITY_SKULK;
+	}
+
+	if (bIsReachableOnos)
+	{
+		ResNode->ReachabilityFlags |= AI_REACHABILITY_ONOS;
+	}
+}
+
 void AITAC_RefreshResourceNodes()
 {
 	if (ResourceNodes.size() == 0)
@@ -509,40 +592,7 @@ void AITAC_RefreshResourceNodes()
 			NewResNode.ResourceEntity = theEntity;
 			NewResNode.Location = theEntity->pev->origin;
 			NewResNode.ReachabilityFlags = AI_REACHABILITY_NONE;
-
-			bool bIsReachableMarine = UTIL_PointIsReachable(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), NewResNode.Location, max_player_use_reach);
-			bool bIsReachableSkulk = UTIL_PointIsReachable(BaseNavProfiles[SKULK_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), NewResNode.Location, max_player_use_reach);
-			bool bIsReachableOnos = UTIL_PointIsReachable(BaseNavProfiles[ONOS_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), NewResNode.Location, max_player_use_reach);
-
-			if (bIsReachableMarine)
-			{
-				NewResNode.ReachabilityFlags |= AI_REACHABILITY_MARINE;
-				NewResNode.ReachabilityFlags |= AI_REACHABILITY_WELDER;
-			}
-			else
-			{
-				nav_profile WelderProfile;
-				memcpy(&WelderProfile, &BaseNavProfiles[MARINE_BASE_NAV_PROFILE], sizeof(nav_profile));
-
-				WelderProfile.Filters.removeExcludeFlags(SAMPLE_POLYFLAGS_WELD);
-
-				bool bIsReachableWelder = UTIL_PointIsReachable(WelderProfile, AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), NewResNode.Location, max_player_use_reach);
-
-				if (bIsReachableWelder)
-				{
-					NewResNode.ReachabilityFlags |= AI_REACHABILITY_WELDER;
-				}
-			}
-
-			if (bIsReachableSkulk)
-			{
-				NewResNode.ReachabilityFlags |= AI_REACHABILITY_SKULK;
-			}
-
-			if (bIsReachableOnos)
-			{
-				NewResNode.ReachabilityFlags |= AI_REACHABILITY_ONOS;
-			}
+			NewResNode.bReachabilityMarkedDirty = true;	
 
 			ResourceNodes.push_back(NewResNode);
 
@@ -572,6 +622,11 @@ void AITAC_RefreshResourceNodes()
 		{
 			it->ActiveTowerEntity = nullptr;
 			it->OwningTeam = TEAM_IND;
+		}
+
+		if (it->bReachabilityMarkedDirty)
+		{
+			AITAC_RefreshReachabilityForResNode(&(*it));
 		}
 	}
 }
@@ -616,6 +671,35 @@ void AITAC_UpdateMapAIData()
 	UTIL_UpdateWeldableObstacles();
 
 	AITAC_RefreshHiveData();
+
+	if (bNavMeshModified)
+	{
+		AITAC_OnNavMeshModified();
+		bNavMeshModified = false;
+	}
+}
+
+void AITAC_OnNavMeshModified()
+{
+	for (auto it = TeamAStructureMap.begin(); it != TeamAStructureMap.end(); it++)
+	{
+		it->second.bReachabilityMarkedDirty = true;
+	}
+
+	for (auto it = TeamBStructureMap.begin(); it != TeamBStructureMap.end(); it++)
+	{
+		it->second.bReachabilityMarkedDirty = true;
+	}
+
+	for (auto it = MarineDroppedItemMap.begin(); it != MarineDroppedItemMap.end(); it++)
+	{
+		it->second.bReachabilityMarkedDirty = true;
+	}
+
+	for (auto it = ResourceNodes.begin(); it != ResourceNodes.end(); it++)
+	{
+		it->bReachabilityMarkedDirty = true;
+	}
 }
 
 void AITAC_RefreshBuildableStructures()
@@ -740,6 +824,8 @@ void AITAC_RefreshBuildableStructures()
 		AITAC_UpdateBuildableStructure(currStructure);
 	}
 
+	int NumReachabilitiesCalculated = 0;
+
 	for (auto it = TeamAStructureMap.begin(); it != TeamAStructureMap.end();)
 	{
 		if (it->second.LastSeen < StructureRefreshFrame)
@@ -749,6 +835,11 @@ void AITAC_RefreshBuildableStructures()
 		}
 		else
 		{
+			if (NumReachabilitiesCalculated < 3 && it->second.bReachabilityMarkedDirty)
+			{
+				AITAC_RefreshReachabilityForStructure(&it->second);
+				NumReachabilitiesCalculated++;
+			}
 			it++;
 		}
 	}
@@ -762,6 +853,11 @@ void AITAC_RefreshBuildableStructures()
 		}
 		else
 		{
+			if (NumReachabilitiesCalculated < 3 && it->second.bReachabilityMarkedDirty)
+			{
+				AITAC_RefreshReachabilityForStructure(&it->second);
+				NumReachabilitiesCalculated++;
+			}
 			it++;
 		}
 	}
@@ -846,6 +942,8 @@ void AITAC_RefreshMarineItems()
 		AITAC_UpdateMarineItem(currItem, DEPLOYABLE_ITEM_SCAN);
 	}
 
+	int NumReachabilitiesCalculated = 0;
+
 	for (auto it = MarineDroppedItemMap.begin(); it != MarineDroppedItemMap.end();)
 	{
 		if (it->second.LastSeen < ItemRefreshFrame)
@@ -854,6 +952,11 @@ void AITAC_RefreshMarineItems()
 		}
 		else
 		{
+			if (NumReachabilitiesCalculated < 3 && it->second.bReachabilityMarkedDirty)
+			{
+				AITAC_RefreshReachabilityForItem(&it->second);
+				NumReachabilitiesCalculated++;
+			}
 			it++;
 		}
 	}
@@ -864,8 +967,6 @@ void AITAC_RefreshMarineItems()
 
 void AITAC_UpdateMarineItem(CBaseEntity* Item, AvHAIDeployableItemType ItemType)
 {
-
-
 	if (!Item) { return; }
 
 	edict_t* ItemEdict = Item->edict();
@@ -884,31 +985,14 @@ void AITAC_UpdateMarineItem(CBaseEntity* Item, AvHAIDeployableItemType ItemType)
 	if (EntIndex < 0) { return; }
 
 	MarineDroppedItemMap[EntIndex].edict = ItemEdict;
+	MarineDroppedItemMap[EntIndex].ItemType = ItemType;
 
 	if (MarineDroppedItemMap[EntIndex].LastSeen == 0 || !vEquals(ItemEdict->v.origin, MarineDroppedItemMap[EntIndex].Location, 5.0f))
 	{
-		if (ItemType == DEPLOYABLE_ITEM_SCAN)
-		{
-			MarineDroppedItemMap[EntIndex].bOnNavMesh = true;
-			MarineDroppedItemMap[EntIndex].bIsReachableMarine = true;
-		}
-		else
-		{
-			MarineDroppedItemMap[EntIndex].bOnNavMesh = UTIL_PointIsOnNavmesh(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], ItemEdict->v.origin, Vector(max_player_use_reach, max_player_use_reach, max_player_use_reach));
-
-			if (MarineDroppedItemMap[EntIndex].bOnNavMesh)
-			{
-				MarineDroppedItemMap[EntIndex].bIsReachableMarine = UTIL_PointIsReachable(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ItemEdict->v.origin, max_player_use_reach);
-			}
-			else
-			{
-				MarineDroppedItemMap[EntIndex].bIsReachableMarine = false;
-			}
-		}
+		AITAC_RefreshReachabilityForItem(&MarineDroppedItemMap[EntIndex]);
 	}
 
 	MarineDroppedItemMap[EntIndex].Location = ItemEdict->v.origin;
-	MarineDroppedItemMap[EntIndex].ItemType = ItemType;
 
 	if (MarineDroppedItemMap[EntIndex].LastSeen == 0)
 	{
@@ -935,6 +1019,54 @@ void AITAC_OnItemDropped(const AvHAIDroppedItem* NewItem)
 	if (TeamBCommander)
 	{
 		AITAC_LinkDeployedItemToAction(TeamBCommander, NewItem);
+	}
+}
+
+void AITAC_RefreshReachabilityForStructure(AvHAIBuildableStructure* Structure)
+{
+	Structure->bReachabilityMarkedDirty = false;
+
+	bool bIsOnNavMesh = UTIL_PointIsOnNavmesh(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], UTIL_GetEntityGroundLocation(Structure->edict), Vector(max_player_use_reach, max_player_use_reach, max_player_use_reach));
+
+	if (!bIsOnNavMesh)
+	{
+		Structure->ReachabilityFlags = AI_REACHABILITY_NONE;
+		return;
+	}
+
+	bool bIsReachableMarine = UTIL_PointIsReachable(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(Structure->edict), max_player_use_reach);
+	bool bIsReachableSkulk = UTIL_PointIsReachable(BaseNavProfiles[SKULK_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(Structure->edict), max_player_use_reach);
+	bool bIsReachableOnos = UTIL_PointIsReachable(BaseNavProfiles[ONOS_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(Structure->edict), max_player_use_reach);
+
+	// Check if basic marines can reach. If they can then no need to separately check welder marines as they automatically can. If not, separately check for welders.
+	if (bIsReachableMarine)
+	{
+		Structure->ReachabilityFlags |= AI_REACHABILITY_MARINE;
+		Structure->ReachabilityFlags |= AI_REACHABILITY_WELDER;
+	}
+	else
+	{
+		nav_profile WelderProfile;
+		memcpy(&WelderProfile, &BaseNavProfiles[MARINE_BASE_NAV_PROFILE], sizeof(nav_profile));
+
+		WelderProfile.Filters.removeExcludeFlags(SAMPLE_POLYFLAGS_WELD);
+
+		bool bIsReachableWelder = UTIL_PointIsReachable(WelderProfile, AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(Structure->edict), max_player_use_reach);
+
+		if (bIsReachableWelder)
+		{
+			Structure->ReachabilityFlags |= AI_REACHABILITY_WELDER;
+		}
+	}
+
+	if (bIsReachableSkulk)
+	{
+		Structure->ReachabilityFlags |= AI_REACHABILITY_SKULK;
+	}
+
+	if (bIsReachableOnos)
+	{
+		Structure->ReachabilityFlags |= AI_REACHABILITY_ONOS;
 	}
 }
 
@@ -986,52 +1118,7 @@ void AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 
 	if (vIsZero(BuildingMap[EntIndex].Location) || !vEquals(BaseBuildable->pev->origin, BuildingMap[EntIndex].Location, 5.0f))
 	{
-		bool bIsOnNavMesh = UTIL_PointIsOnNavmesh(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], UTIL_GetEntityGroundLocation(BuildingEdict), Vector(max_player_use_reach, max_player_use_reach, max_player_use_reach));
-		
-		if (bIsOnNavMesh)
-		{
-			bool bIsReachableMarine = UTIL_PointIsReachable(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(BuildingEdict), max_player_use_reach);
-			bool bIsReachableSkulk = UTIL_PointIsReachable(BaseNavProfiles[SKULK_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(BuildingEdict), max_player_use_reach);
-			bool bIsReachableOnos = UTIL_PointIsReachable(BaseNavProfiles[ONOS_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(BuildingEdict), max_player_use_reach);
-
-			// Check if basic marines can reach. If they can then no need to separately check welder marines as they automatically can. If not, separately check for welders.
-			if (bIsReachableMarine)
-			{
-				BuildingMap[EntIndex].ReachabilityFlags |= AI_REACHABILITY_MARINE;
-				BuildingMap[EntIndex].ReachabilityFlags |= AI_REACHABILITY_WELDER;
-			}
-			else
-			{
-				nav_profile WelderProfile;
-				memcpy(&WelderProfile, &BaseNavProfiles[MARINE_BASE_NAV_PROFILE], sizeof(nav_profile));
-
-				WelderProfile.Filters.removeExcludeFlags(SAMPLE_POLYFLAGS_WELD);
-
-				bool bIsReachableWelder = UTIL_PointIsReachable(WelderProfile, AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(BuildingEdict), max_player_use_reach);
-
-				if (bIsReachableWelder)
-				{
-					BuildingMap[EntIndex].ReachabilityFlags |= AI_REACHABILITY_WELDER;
-				}
-			}
-
-			if (bIsReachableSkulk)
-			{
-				BuildingMap[EntIndex].ReachabilityFlags |= AI_REACHABILITY_SKULK;
-			}
-
-			if (bIsReachableOnos)
-			{
-				BuildingMap[EntIndex].ReachabilityFlags |= AI_REACHABILITY_ONOS;
-			}
-
-			
-
-		}
-		else
-		{
-			BuildingMap[EntIndex].ReachabilityFlags = AI_REACHABILITY_NONE;
-		}
+		AITAC_RefreshReachabilityForStructure(&BuildingMap[EntIndex]);
 
 		BuildingMap[EntIndex].Location = BaseBuildable->pev->origin;
 	}
@@ -1389,7 +1476,7 @@ bool UTIL_IsDroppedItemStillReachable(AvHAIPlayer* pBot, const edict_t* Item)
 
 	if (Index < 0) { return false; }
 
-	return MarineDroppedItemMap[Index].bIsReachableMarine;
+	return (MarineDroppedItemMap[Index].ReachabilityFlags & pBot->BotNavInfo.NavProfile.ReachabilityFlag);
 }
 
 AvHAIWeapon UTIL_GetWeaponTypeFromEdict(const edict_t* ItemEdict)

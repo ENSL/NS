@@ -30,6 +30,9 @@ void						AITAC_RefreshResourceNodes();
 void						AITAC_UpdateMapAIData();
 void						AITAC_RefreshBuildableStructures();
 void						AITAC_UpdateBuildableStructure(CBaseEntity* Structure);
+void						AITAC_RefreshReachabilityForStructure(AvHAIBuildableStructure* Structure);
+void						AITAC_RefreshReachabilityForResNode(AvHAIResourceNode* ResNode);
+void						AITAC_RefreshReachabilityForItem(AvHAIDroppedItem* Item);
 void						AITAC_OnStructureCreated(AvHAIBuildableStructure* NewStructure);
 void						AITAC_LinkDeployedItemToAction(AvHAIPlayer* CommanderBot, const AvHAIDroppedItem* NewItem);
 void						AITAC_LinkAlienStructureToTask(AvHAIPlayer* pBot, AvHAIBuildableStructure* NewStructure);
@@ -46,13 +49,15 @@ Vector						AITAC_GetTeamStartingLocation(AvHTeamNumber Team);
 
 AvHAIResourceNode*			AITAC_GetRandomResourceNode(const unsigned int ReachabilityFlags);
 
-AvHAIDroppedItem*			AITAC_FindClosestItemToLocation(const Vector& Location, const AvHAIDeployableItemType ItemType, float MinRadius, float MaxRadius, bool bConsiderPhaseDistance);
+AvHAIDroppedItem*			AITAC_FindClosestItemToLocation(const Vector& Location, const AvHAIDeployableItemType ItemType, const unsigned int ReachabilityFlags, float MinRadius, float MaxRadius, bool bConsiderPhaseDistance);
 
 AvHAIDroppedItem*			AITAC_GetDroppedItemRefFromEdict(edict_t* ItemEdict);
 
 Vector AITAC_GetFloorLocationForHive(const AvHAIHiveDefinition* Hive);
 
 int AITAC_GetNumHives();
+
+void AITAC_OnNavMeshModified();
 
 AvHMessageID UTIL_StructureTypeToImpulseCommand(const AvHAIDeployableStructureType StructureType);
 

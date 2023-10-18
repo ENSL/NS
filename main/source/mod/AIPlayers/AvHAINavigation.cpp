@@ -37,6 +37,8 @@ vector<nav_weldable> NavWeldableObstacles;
 nav_mesh NavMeshes[MAX_NAV_MESHES]; // Array of nav meshes. Currently only 3 are used (building, onos, and regular)
 nav_profile BaseNavProfiles[MAX_NAV_PROFILES]; // Array of nav profiles
 
+extern bool bNavMeshModified;
+
 struct NavMeshSetHeader
 {
 	int magic;
@@ -421,6 +423,11 @@ unsigned int UTIL_AddTemporaryObstacle(const Vector Location, float Radius, floa
 			NavMeshes[i].tileCache->addObstacle(Pos, Radius, Height, area, &ObsRef);
 
 			ObstacleNum = (unsigned int)ObsRef;
+
+			if (area == DT_TILECACHE_NULL_AREA || area == DT_TILECACHE_WELD_AREA)
+			{
+				bNavMeshModified = true;
+			}
 		}
 	}
 
@@ -443,6 +450,11 @@ void UTIL_AddTemporaryObstacles(const Vector Location, float Radius, float Heigh
 			NavMeshes[i].tileCache->addObstacle(Pos, Radius, Height, area, &ObsRef);
 
 			ObstacleRefArray[i] = (unsigned int)ObsRef;
+
+			if (area == DT_TILECACHE_NULL_AREA || area == DT_TILECACHE_WELD_AREA)
+			{
+				bNavMeshModified = true;
+			}
 		}
 	}
 }
@@ -463,6 +475,11 @@ unsigned int UTIL_AddTemporaryBoxObstacle(const Vector bMin, const Vector bMax, 
 
 			ObstacleNum = (unsigned int)ObsRef;
 
+			if (area == DT_TILECACHE_NULL_AREA || area == DT_TILECACHE_WELD_AREA)
+			{
+				bNavMeshModified = true;
+			}
+
 		}
 	}
 
@@ -477,6 +494,13 @@ void UTIL_RemoveTemporaryObstacle(unsigned int ObstacleRef)
 	{
 		if (NavMeshes[i].tileCache)
 		{
+			const dtTileCacheObstacle* ObstacleToRemove = NavMeshes[i].tileCache->getObstacleByRef((dtObstacleRef)ObstacleRef);
+
+			if (ObstacleToRemove && (ObstacleToRemove->cylinder.area == DT_TILECACHE_NULL_AREA || ObstacleToRemove->cylinder.area == DT_TILECACHE_WELD_AREA))
+			{
+				bNavMeshModified = true;
+			}
+
 			NavMeshes[i].tileCache->removeObstacle((dtObstacleRef)ObstacleRef);
 		}
 	}
@@ -484,11 +508,19 @@ void UTIL_RemoveTemporaryObstacle(unsigned int ObstacleRef)
 
 void UTIL_RemoveTemporaryObstacles(unsigned int* ObstacleRefs)
 {
+
 	for (int i = 0; i < MAX_NAV_MESHES; i++)
 	{
 		if (NavMeshes[i].tileCache)
 		{
-			NavMeshes[i].tileCache->removeObstacle(ObstacleRefs[i]);
+			const dtTileCacheObstacle* ObstacleToRemove = NavMeshes[i].tileCache->getObstacleByRef((dtObstacleRef)ObstacleRefs[i]);
+
+			if (ObstacleToRemove && (ObstacleToRemove->cylinder.area == DT_TILECACHE_NULL_AREA || ObstacleToRemove->cylinder.area == DT_TILECACHE_WELD_AREA))
+			{
+				bNavMeshModified = true;
+			}
+
+			NavMeshes[i].tileCache->removeObstacle((dtObstacleRef)ObstacleRefs[i]);
 
 		}
 
@@ -4572,7 +4604,7 @@ void MarineUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
 
 	if (!bHasWelder)
 	{
-		AvHAIDroppedItem* NearbyWelder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, 0.0f, UTIL_MetresToGoldSrcUnits(10.0f), true);
+		AvHAIDroppedItem* NearbyWelder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, pBot->BotNavInfo.NavProfile.ReachabilityFlag, 0.0f, UTIL_MetresToGoldSrcUnits(10.0f), true);
 
 		bHasWelder = (NearbyWelder != nullptr);
 	}
@@ -5259,7 +5291,7 @@ void BotFollowPath(AvHAIPlayer* pBot)
 		{
 			AITASK_ClearBotTask(pBot, &pBot->BotNavInfo.MovementTask);
 
-			AvHAIDroppedItem* NearestWelder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, 0.0f, 0.0f, true);
+			AvHAIDroppedItem* NearestWelder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, pBot->BotNavInfo.NavProfile.ReachabilityFlag, 0.0f, 0.0f, true);
 
 			if (NearestWelder)
 			{

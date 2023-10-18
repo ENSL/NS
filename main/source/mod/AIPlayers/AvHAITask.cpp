@@ -373,7 +373,7 @@ bool AITASK_IsWeldTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	{
 		if (FNullEnt(Task->TaskSecondaryTarget))
 		{
-			AvHAIDroppedItem* NearestWelder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, 0.0f, 0.0f, true);
+			AvHAIDroppedItem* NearestWelder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, pBot->BotNavInfo.NavProfile.ReachabilityFlag, 0.0f, 0.0f, true);
 
 			if (NearestWelder)
 			{
@@ -2198,7 +2198,7 @@ void BotProgressWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		}
 		else
 		{
-			AvHAIDroppedItem* Welder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, 0.0f, 0.0f, true);
+			AvHAIDroppedItem* Welder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, pBot->BotNavInfo.NavProfile.ReachabilityFlag, 0.0f, 0.0f, true);
 
 			if (Welder)
 			{
@@ -2640,7 +2640,7 @@ char* AITASK_TaskTypeToChar(const BotTaskType TaskType)
 
 void AITASK_SetPickupTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Target, const bool bIsUrgent)
 {
-	if (FNullEnt(Target) || (Target->v.effects & EF_NODRAW))
+	if (FNullEnt(Target) || (Target->v.effects & EF_NODRAW) || !UTIL_IsDroppedItemStillReachable(pBot, Target))
 	{
 		AITASK_ClearBotTask(pBot, Task);
 		return;
@@ -2654,7 +2654,7 @@ void AITASK_SetPickupTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Tar
 
 	AvHAIDroppedItem* ItemToPickup = AITAC_GetDroppedItemRefFromEdict(Target);
 
-	if (!ItemToPickup || FNullEnt(ItemToPickup->edict) || !ItemToPickup->bIsReachableMarine)
+	if (!ItemToPickup)
 	{
 		AITASK_ClearBotTask(pBot, Task);
 		return;
@@ -2707,7 +2707,7 @@ void AITASK_SetWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Targe
 
 	if (!PlayerHasWeapon(pBot->Player, WEAPON_MARINE_WELDER))
 	{
-		AvHAIDroppedItem* NearestWelder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, 0.0f, 0.0f, true);
+		AvHAIDroppedItem* NearestWelder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, pBot->BotNavInfo.NavProfile.ReachabilityFlag, 0.0f, 0.0f, true);
 
 		if (!NearestWelder)
 		{
