@@ -87,6 +87,8 @@ typedef enum _AI_REACHABILITY_STATUS
 	AI_REACHABILITY_SKULK = 1u << 1,
 	AI_REACHABILITY_ONOS = 1u << 2,
 	AI_REACHABILITY_WELDER = 1u << 3,
+
+	AI_REACHABILITY_ALL = 0xFFFF
 } AvHAIReachabilityStatus;
 
 typedef enum
@@ -175,6 +177,7 @@ typedef struct _RESOURCE_NODE
 	edict_t* ActiveTowerEntity = nullptr;								// Reference to the resource tower edict (if capped)
 	bool bIsBaseNode = false;											// Is this a node in the marine base or active alien hive?
 	unsigned int ReachabilityFlags = AI_REACHABILITY_NONE;	// Is this reachable by the bots? Checks for marine reachability only
+	bool bReachabilityMarkedDirty = false;					// Reachability needs to be recalculated
 } AvHAIResourceNode;
 
 // Data structure to hold information about each hive in the map
@@ -251,6 +254,7 @@ typedef struct _AVH_AI_BUILDABLE_STRUCTURE
 	Vector LastSuccessfulCommanderLocation = g_vecZero; // Tracks the last commander view location where it successfully placed or selected the building
 	Vector LastSuccessfulCommanderAngle = g_vecZero; // Tracks the last commander input angle ("click" location) used to successfully place or select building
 	StructurePurpose Purpose = STRUCTURE_PURPOSE_NONE;
+	bool bReachabilityMarkedDirty = false; // If true, reachability flags will be recalculated for this structure
 
 } AvHAIBuildableStructure;
 
@@ -260,8 +264,8 @@ typedef struct _DROPPED_MARINE_ITEM
 	edict_t* edict = nullptr; // Reference to the item edict
 	Vector Location = g_vecZero; // Origin of the entity
 	AvHAIDeployableItemType ItemType = DEPLOYABLE_ITEM_NONE; // Is it a weapon, health pack, ammo pack etc?
-	bool bOnNavMesh = false; // Is it on the nav mesh? Important to prevent bots trying to grab stuff that's inaccessible
-	bool bIsReachableMarine = false; // Is the item reachable by marines? Checks from the comm chair location
+	unsigned int ReachabilityFlags = AI_REACHABILITY_NONE;
+	bool bReachabilityMarkedDirty = false; // Reachability needs to be recalculated
 	int LastSeen = 0; // Which refresh cycle was this last seen on? Used to determine if the item has been removed from play
 } AvHAIDroppedItem;
 
