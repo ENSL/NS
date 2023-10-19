@@ -63,13 +63,21 @@ bool AITAC_DeployableExistsAtLocation(const Vector& Location, const DeployableSe
 	bool bUseMinDist = MinDistSq > 0.1f;
 	bool bUseMaxDist = MaxDistSq > 0.1f;
 
-	if (Filter->Team == TeamA || Filter->Team == TEAM_IND)
+	if (Filter->DeployableTeam == TeamA || Filter->DeployableTeam == TEAM_IND)
 	{
 		for (auto& it : TeamAStructureMap)
 		{
-			if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE && !(it.second.ReachabilityFlags & Filter->ReachabilityFlags)) { continue; }
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+
+			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
+
+			if (Filter->ReachabilityTeam != TEAM_IND)
+			{
+				StructureReachabilityFlags = (Filter->ReachabilityTeam == TeamA) ? it.second.TeamAReachabilityFlags : it.second.TeamBReachabilityFlags;
+			}
+
+			if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE && !(StructureReachabilityFlags & Filter->ReachabilityFlags)) { continue; }
 
 			if (it.second.StructureType & Filter->DeployableTypes)
 			{
@@ -83,13 +91,21 @@ bool AITAC_DeployableExistsAtLocation(const Vector& Location, const DeployableSe
 		}
 	}
 
-	if (Filter->Team == TeamB || Filter->Team == TEAM_IND)
+	if (Filter->DeployableTeam == TeamB || Filter->DeployableTeam == TEAM_IND)
 	{
 		for (auto& it : TeamBStructureMap)
 		{
-			if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE && !(it.second.ReachabilityFlags & Filter->ReachabilityFlags)) { continue; }
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+
+			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
+
+			if (Filter->ReachabilityTeam != TEAM_IND)
+			{
+				StructureReachabilityFlags = (Filter->ReachabilityTeam == TeamA) ? it.second.TeamAReachabilityFlags : it.second.TeamBReachabilityFlags;
+			}
+
+			if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE && !(StructureReachabilityFlags & Filter->ReachabilityFlags)) { continue; }
 
 			if (it.second.StructureType & Filter->DeployableTypes)
 			{
@@ -120,13 +136,21 @@ AvHAIBuildableStructure* AITAC_FindClosestDeployableToLocation(const Vector& Loc
 	bool bUseMinDist = MinDistSq > 0.1f;
 	bool bUseMaxDist = MaxDistSq > 0.1f;
 
-	if (Filter->Team == TeamA || Filter->Team == TEAM_IND)
+	if (Filter->DeployableTeam == TeamA || Filter->DeployableTeam == TEAM_IND)
 	{
 		for (auto& it : TeamAStructureMap)
 		{
-			if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE && !(it.second.ReachabilityFlags & Filter->ReachabilityFlags)) { continue; }
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+
+			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
+
+			if (Filter->ReachabilityTeam != TEAM_IND)
+			{
+				StructureReachabilityFlags = (Filter->ReachabilityTeam == TeamA) ? it.second.TeamAReachabilityFlags : it.second.TeamBReachabilityFlags;
+			}
+
+			if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE && !(StructureReachabilityFlags & Filter->ReachabilityFlags)) { continue; }
 
 			if (it.second.StructureType & Filter->DeployableTypes)
 			{
@@ -141,13 +165,21 @@ AvHAIBuildableStructure* AITAC_FindClosestDeployableToLocation(const Vector& Loc
 		}
 	}
 
-	if (Filter->Team == TeamB || Filter->Team == TEAM_IND)
+	if (Filter->DeployableTeam == TeamB || Filter->DeployableTeam == TEAM_IND)
 	{
 		for (auto& it : TeamBStructureMap)
 		{
-			if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE && !(it.second.ReachabilityFlags & Filter->ReachabilityFlags)) { continue; }
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+
+			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
+
+			if (Filter->ReachabilityTeam != TEAM_IND)
+			{
+				StructureReachabilityFlags = (Filter->ReachabilityTeam == TeamA) ? it.second.TeamAReachabilityFlags : it.second.TeamBReachabilityFlags;
+			}
+
+			if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE && !(StructureReachabilityFlags & Filter->ReachabilityFlags)) { continue; }
 
 			if (it.second.StructureType & Filter->DeployableTypes)
 			{
@@ -176,7 +208,7 @@ AvHAIDroppedItem* AITAC_GetDroppedItemRefFromEdict(edict_t* ItemEdict)
 	return &MarineDroppedItemMap[EntIndex];
 }
 
-AvHAIDroppedItem* AITAC_FindClosestItemToLocation(const Vector& Location, const AvHAIDeployableItemType ItemType, const unsigned int ReachabilityFlags, float MinRadius, float MaxRadius, bool bConsiderPhaseDistance)
+AvHAIDroppedItem* AITAC_FindClosestItemToLocation(const Vector& Location, const AvHAIDeployableItemType ItemType, AvHTeamNumber SearchingTeam, const unsigned int ReachabilityFlags, float MinRadius, float MaxRadius, bool bConsiderPhaseDistance)
 {
 	AvHAIDroppedItem* Result = NULL;
 	float CurrMinDist = 0.0f;
@@ -189,7 +221,15 @@ AvHAIDroppedItem* AITAC_FindClosestItemToLocation(const Vector& Location, const 
 
 	for (auto& it : MarineDroppedItemMap)
 	{
-		if (ReachabilityFlags != AI_REACHABILITY_NONE && !(it.second.ReachabilityFlags & ReachabilityFlags)) { continue; }
+		unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
+
+		if (SearchingTeam != TEAM_IND)
+		{
+			StructureReachabilityFlags = (SearchingTeam == GetGameRules()->GetTeamANumber()) ? it.second.TeamAReachabilityFlags : it.second.TeamBReachabilityFlags;
+		}
+
+		if (ReachabilityFlags != AI_REACHABILITY_NONE && !(StructureReachabilityFlags & ReachabilityFlags)) { continue; }
+
 		if (it.second.ItemType != ItemType) { continue; }
 
 		float DistSq = (bConsiderPhaseDistance) ? sqrf(AITAC_GetPhaseDistanceBetweenPoints(it.second.Location, Location)) : vDist2DSq(it.second.Location, Location);
@@ -234,13 +274,21 @@ AvHAIBuildableStructure* AITAC_GetNearestDeployableDirectlyReachable(AvHAIPlayer
 	bool bUseMinDist = MinDistSq > 0.1f;
 	bool bUseMaxDist = MaxDistSq > 0.1f;
 
-	if (Filter->Team == TeamA || Filter->Team == TEAM_IND)
+	if (Filter->DeployableTeam == TeamA || Filter->DeployableTeam == TEAM_IND)
 	{
 		for (auto& it : TeamAStructureMap)
 		{
-			if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE && !(it.second.ReachabilityFlags & Filter->ReachabilityFlags)) { continue; }
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+
+			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
+
+			if (Filter->ReachabilityTeam != TEAM_IND)
+			{
+				StructureReachabilityFlags = (Filter->ReachabilityTeam == TeamA) ? it.second.TeamAReachabilityFlags : it.second.TeamBReachabilityFlags;
+			}
+
+			if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE && !(StructureReachabilityFlags & Filter->ReachabilityFlags)) { continue; }
 
 			if (it.second.StructureType & Filter->DeployableTypes)
 			{
@@ -257,13 +305,21 @@ AvHAIBuildableStructure* AITAC_GetNearestDeployableDirectlyReachable(AvHAIPlayer
 		}
 	}
 
-	if (Filter->Team == TeamB || Filter->Team == TEAM_IND)
+	if (Filter->DeployableTeam == TeamB || Filter->DeployableTeam == TEAM_IND)
 	{
 		for (auto& it : TeamBStructureMap)
 		{
-			if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE && !(it.second.ReachabilityFlags & Filter->ReachabilityFlags)) { continue; }
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+
+			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
+
+			if (Filter->ReachabilityTeam != TEAM_IND)
+			{
+				StructureReachabilityFlags = (Filter->ReachabilityTeam == TeamA) ? it.second.TeamAReachabilityFlags : it.second.TeamBReachabilityFlags;
+			}
+
+			if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE && !(StructureReachabilityFlags & Filter->ReachabilityFlags)) { continue; }
 
 			if (it.second.StructureType & Filter->DeployableTypes)
 			{
@@ -296,13 +352,21 @@ int AITAC_GetNumDeployablesNearLocation(const Vector& Location, const Deployable
 
 	int Result = 0;
 
-	if (Filter->Team == TeamA || Filter->Team == TEAM_IND)
+	if (Filter->DeployableTeam == TeamA || Filter->DeployableTeam == TEAM_IND)
 	{
 		for (auto& it : TeamAStructureMap)
 		{
-			if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE && !(it.second.ReachabilityFlags & Filter->ReachabilityFlags)) { continue; }
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+
+			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
+
+			if (Filter->ReachabilityTeam != TEAM_IND)
+			{
+				StructureReachabilityFlags = (Filter->ReachabilityTeam == TeamA) ? it.second.TeamAReachabilityFlags : it.second.TeamBReachabilityFlags;
+			}
+
+			if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE && !(StructureReachabilityFlags & Filter->ReachabilityFlags)) { continue; }
 
 			if (it.second.StructureType & Filter->DeployableTypes)
 			{
@@ -316,13 +380,21 @@ int AITAC_GetNumDeployablesNearLocation(const Vector& Location, const Deployable
 		}
 	}
 
-	if (Filter->Team == TeamB || Filter->Team == TEAM_IND)
+	if (Filter->DeployableTeam == TeamB || Filter->DeployableTeam == TEAM_IND)
 	{
 		for (auto& it : TeamBStructureMap)
 		{
-			if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE && !(it.second.ReachabilityFlags & Filter->ReachabilityFlags)) { continue; }
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+
+			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
+
+			if (Filter->ReachabilityTeam != TEAM_IND)
+			{
+				StructureReachabilityFlags = (Filter->ReachabilityTeam == TeamA) ? it.second.TeamAReachabilityFlags : it.second.TeamBReachabilityFlags;
+			}
+
+			if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE && !(StructureReachabilityFlags & Filter->ReachabilityFlags)) { continue; }
 
 			if (it.second.StructureType & Filter->DeployableTypes)
 			{
@@ -441,6 +513,10 @@ Vector AITAC_GetTeamStartingLocation(AvHTeamNumber Team)
 				{
 					TeamAStartingLocation = AITAC_GetFloorLocationForHive(Hive);
 				}
+				else
+				{
+					TeamBStartingLocation = ZERO_VECTOR;
+				}
 			}
 		}
 
@@ -460,10 +536,11 @@ Vector AITAC_GetTeamStartingLocation(AvHTeamNumber Team)
 
 				if (Hive)
 				{
-					if (Hive)
-					{
-						TeamBStartingLocation = AITAC_GetFloorLocationForHive(Hive);
-					}
+					TeamBStartingLocation = AITAC_GetFloorLocationForHive(Hive);
+				}
+				else
+				{
+					TeamBStartingLocation = ZERO_VECTOR;
 				}
 			}
 		}
@@ -486,7 +563,8 @@ Vector AITAC_GetCommChairLocation(AvHTeamNumber Team)
 
 	DeployableSearchFilter ChairFilter;
 	ChairFilter.DeployableTypes = STRUCTURE_MARINE_COMMCHAIR;
-	ChairFilter.Team = Team;
+	ChairFilter.DeployableTeam = Team;
+	ChairFilter.ReachabilityTeam = TEAM_IND;
 	ChairFilter.bConsiderPhaseDistance = false;
 	ChairFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
 
@@ -502,29 +580,33 @@ Vector AITAC_GetCommChairLocation(AvHTeamNumber Team)
 
 void AITAC_RefreshReachabilityForItem(AvHAIDroppedItem* Item)
 {
-	Item->ReachabilityFlags = AI_REACHABILITY_NONE;
-
 	if (Item->ItemType == DEPLOYABLE_ITEM_SCAN)
 	{
-		Item->ReachabilityFlags = AI_REACHABILITY_ALL;
+		Item->TeamAReachabilityFlags = AI_REACHABILITY_ALL;
+		Item->TeamBReachabilityFlags = AI_REACHABILITY_ALL;
 		return;
 	}
-	else
+
+	Item->TeamAReachabilityFlags = AI_REACHABILITY_NONE;
+	Item->TeamBReachabilityFlags = AI_REACHABILITY_NONE;
+
+	bool bOnNavMesh = UTIL_PointIsOnNavmesh(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], Item->edict->v.origin, Vector(max_player_use_reach, max_player_use_reach, max_player_use_reach));
+
+	if (!bOnNavMesh)
 	{
-		bool bOnNavMesh = UTIL_PointIsOnNavmesh(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], Item->edict->v.origin, Vector(max_player_use_reach, max_player_use_reach, max_player_use_reach));
+		Item->TeamAReachabilityFlags = AI_REACHABILITY_NONE;
+		Item->TeamBReachabilityFlags = AI_REACHABILITY_NONE;
+		return;
+	}
 
-		if (!bOnNavMesh)
-		{
-			Item->ReachabilityFlags = AI_REACHABILITY_NONE;
-			return;
-		}
-
+	if (GetGameRules()->GetTeamA()->GetTeamType() == AVH_CLASS_TYPE_MARINE)
+	{
 		bool bIsReachableMarine = UTIL_PointIsReachable(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), Item->edict->v.origin, max_player_use_reach);
 
 		if (bIsReachableMarine)
 		{
-			Item->ReachabilityFlags |= AI_REACHABILITY_MARINE;
-			Item->ReachabilityFlags |= AI_REACHABILITY_WELDER;
+			Item->TeamAReachabilityFlags |= AI_REACHABILITY_MARINE;
+			Item->TeamAReachabilityFlags |= AI_REACHABILITY_WELDER;
 		}
 		else
 		{
@@ -537,7 +619,32 @@ void AITAC_RefreshReachabilityForItem(AvHAIDroppedItem* Item)
 
 			if (bIsReachableWelder)
 			{
-				Item->ReachabilityFlags |= AI_REACHABILITY_WELDER;
+				Item->TeamAReachabilityFlags |= AI_REACHABILITY_WELDER;
+			}
+		}
+	}
+
+	if (GetGameRules()->GetTeamB()->GetTeamType() == AVH_CLASS_TYPE_MARINE)
+	{
+		bool bIsReachableMarine = UTIL_PointIsReachable(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamBNumber()), Item->edict->v.origin, max_player_use_reach);
+
+		if (bIsReachableMarine)
+		{
+			Item->TeamBReachabilityFlags |= AI_REACHABILITY_MARINE;
+			Item->TeamBReachabilityFlags |= AI_REACHABILITY_WELDER;
+		}
+		else
+		{
+			nav_profile WelderProfile;
+			memcpy(&WelderProfile, &BaseNavProfiles[MARINE_BASE_NAV_PROFILE], sizeof(nav_profile));
+
+			WelderProfile.Filters.removeExcludeFlags(SAMPLE_POLYFLAGS_WELD);
+
+			bool bIsReachableWelder = UTIL_PointIsReachable(WelderProfile, AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamBNumber()), Item->edict->v.origin, max_player_use_reach);
+
+			if (bIsReachableWelder)
+			{
+				Item->TeamBReachabilityFlags |= AI_REACHABILITY_WELDER;
 			}
 		}
 	}
@@ -547,39 +654,110 @@ void AITAC_RefreshReachabilityForResNode(AvHAIResourceNode* ResNode)
 {
 	ResNode->bReachabilityMarkedDirty = false;
 
-	bool bIsReachableMarine = UTIL_PointIsReachable(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResNode->Location, max_player_use_reach);
-	bool bIsReachableSkulk = UTIL_PointIsReachable(BaseNavProfiles[SKULK_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResNode->Location, max_player_use_reach);
-	bool bIsReachableOnos = UTIL_PointIsReachable(BaseNavProfiles[ONOS_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResNode->Location, max_player_use_reach);
+	ResNode->TeamAReachabilityFlags = AI_REACHABILITY_NONE;
+	ResNode->TeamBReachabilityFlags = AI_REACHABILITY_NONE;
 
-	if (bIsReachableMarine)
+	bool bOnNavMesh = UTIL_PointIsOnNavmesh(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], ResNode->Location, Vector(max_player_use_reach, max_player_use_reach, max_player_use_reach));
+
+	if (!bOnNavMesh)
 	{
-		ResNode->ReachabilityFlags |= AI_REACHABILITY_MARINE;
-		ResNode->ReachabilityFlags |= AI_REACHABILITY_WELDER;
+		ResNode->TeamAReachabilityFlags = AI_REACHABILITY_NONE;
+		ResNode->TeamBReachabilityFlags = AI_REACHABILITY_NONE;
+		return;
+	}
+
+	if (GetGameRules()->GetTeamA()->GetTeamType() == AVH_CLASS_TYPE_MARINE)
+	{
+		bool bIsReachableMarine = UTIL_PointIsReachable(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResNode->Location, max_player_use_reach);
+
+		if (bIsReachableMarine)
+		{
+			ResNode->TeamAReachabilityFlags |= AI_REACHABILITY_MARINE;
+			ResNode->TeamAReachabilityFlags |= AI_REACHABILITY_WELDER;
+		}
+		else
+		{
+			nav_profile WelderProfile;
+			memcpy(&WelderProfile, &BaseNavProfiles[MARINE_BASE_NAV_PROFILE], sizeof(nav_profile));
+
+			WelderProfile.Filters.removeExcludeFlags(SAMPLE_POLYFLAGS_WELD);
+
+			bool bIsReachableWelder = UTIL_PointIsReachable(WelderProfile, AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResNode->Location, max_player_use_reach);
+
+			if (bIsReachableWelder)
+			{
+				ResNode->TeamAReachabilityFlags |= AI_REACHABILITY_WELDER;
+			}
+		}
 	}
 	else
 	{
-		nav_profile WelderProfile;
-		memcpy(&WelderProfile, &BaseNavProfiles[MARINE_BASE_NAV_PROFILE], sizeof(nav_profile));
+		bool bIsReachableSkulk = UTIL_PointIsReachable(BaseNavProfiles[SKULK_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResNode->Location, max_player_use_reach);
+		bool bIsReachableGorge = UTIL_PointIsReachable(BaseNavProfiles[GORGE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResNode->Location, max_player_use_reach);
+		bool bIsReachableOnos = UTIL_PointIsReachable(BaseNavProfiles[ONOS_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResNode->Location, max_player_use_reach);
 
-		WelderProfile.Filters.removeExcludeFlags(SAMPLE_POLYFLAGS_WELD);
-
-		bool bIsReachableWelder = UTIL_PointIsReachable(WelderProfile, AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResNode->Location, max_player_use_reach);
-
-		if (bIsReachableWelder)
+		if (bIsReachableSkulk)
 		{
-			ResNode->ReachabilityFlags |= AI_REACHABILITY_WELDER;
+			ResNode->TeamAReachabilityFlags |= AI_REACHABILITY_SKULK;
+		}
+
+		if (bIsReachableGorge)
+		{
+			ResNode->TeamAReachabilityFlags |= AI_REACHABILITY_GORGE;
+		}
+
+		if (bIsReachableOnos)
+		{
+			ResNode->TeamAReachabilityFlags |= AI_REACHABILITY_ONOS;
 		}
 	}
 
-	if (bIsReachableSkulk)
+	if (GetGameRules()->GetTeamB()->GetTeamType() == AVH_CLASS_TYPE_MARINE)
 	{
-		ResNode->ReachabilityFlags |= AI_REACHABILITY_SKULK;
+		bool bIsReachableMarine = UTIL_PointIsReachable(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamBNumber()), ResNode->Location, max_player_use_reach);
+
+		if (bIsReachableMarine)
+		{
+			ResNode->TeamBReachabilityFlags |= AI_REACHABILITY_MARINE;
+			ResNode->TeamBReachabilityFlags |= AI_REACHABILITY_WELDER;
+		}
+		else
+		{
+			nav_profile WelderProfile;
+			memcpy(&WelderProfile, &BaseNavProfiles[MARINE_BASE_NAV_PROFILE], sizeof(nav_profile));
+
+			WelderProfile.Filters.removeExcludeFlags(SAMPLE_POLYFLAGS_WELD);
+
+			bool bIsReachableWelder = UTIL_PointIsReachable(WelderProfile, AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), ResNode->Location, max_player_use_reach);
+
+			if (bIsReachableWelder)
+			{
+				ResNode->TeamBReachabilityFlags |= AI_REACHABILITY_WELDER;
+			}
+		}
+	}
+	else
+	{
+		bool bIsReachableSkulk = UTIL_PointIsReachable(BaseNavProfiles[SKULK_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamBNumber()), ResNode->Location, max_player_use_reach);
+		bool bIsReachableGorge = UTIL_PointIsReachable(BaseNavProfiles[GORGE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamBNumber()), ResNode->Location, max_player_use_reach);
+		bool bIsReachableOnos = UTIL_PointIsReachable(BaseNavProfiles[ONOS_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamBNumber()), ResNode->Location, max_player_use_reach);
+
+		if (bIsReachableSkulk)
+		{
+			ResNode->TeamBReachabilityFlags |= AI_REACHABILITY_SKULK;
+		}
+
+		if (bIsReachableGorge)
+		{
+			ResNode->TeamBReachabilityFlags |= AI_REACHABILITY_GORGE;
+		}
+
+		if (bIsReachableOnos)
+		{
+			ResNode->TeamBReachabilityFlags |= AI_REACHABILITY_ONOS;
+		}
 	}
 
-	if (bIsReachableOnos)
-	{
-		ResNode->ReachabilityFlags |= AI_REACHABILITY_ONOS;
-	}
 }
 
 void AITAC_RefreshResourceNodes()
@@ -591,7 +769,8 @@ void AITAC_RefreshResourceNodes()
 			AvHAIResourceNode NewResNode;
 			NewResNode.ResourceEntity = theEntity;
 			NewResNode.Location = theEntity->pev->origin;
-			NewResNode.ReachabilityFlags = AI_REACHABILITY_NONE;
+			NewResNode.TeamAReachabilityFlags = AI_REACHABILITY_NONE;
+			NewResNode.TeamBReachabilityFlags = AI_REACHABILITY_NONE;
 			NewResNode.bReachabilityMarkedDirty = true;	
 
 			ResourceNodes.push_back(NewResNode);
@@ -631,14 +810,24 @@ void AITAC_RefreshResourceNodes()
 	}
 }
 
-AvHAIResourceNode* AITAC_GetRandomResourceNode(const unsigned int ReachabilityFlags)
+AvHAIResourceNode* AITAC_GetRandomResourceNode(AvHTeamNumber SearchingTeam, const unsigned int ReachabilityFlags)
 {
 	AvHAIResourceNode* Result = nullptr;
 	float MaxScore = 0.0f;
 
 	for (auto it = ResourceNodes.begin(); it != ResourceNodes.end(); it++)
 	{
-		if (ReachabilityFlags != AI_REACHABILITY_NONE && !(it->ReachabilityFlags & ReachabilityFlags)) { continue; }
+		if (ReachabilityFlags != AI_REACHABILITY_NONE)
+		{
+			unsigned int StructureReachabilityFlags = (it->TeamAReachabilityFlags | it->TeamBReachabilityFlags);
+
+			if (SearchingTeam != TEAM_IND)
+			{
+				StructureReachabilityFlags = (SearchingTeam == GetGameRules()->GetTeamANumber()) ? it->TeamAReachabilityFlags : it->TeamBReachabilityFlags;
+			}
+
+			if (!(StructureReachabilityFlags & ReachabilityFlags)) { continue; }
+		} 
 
 		float ThisScore = frandrange(0.0f, 1.0f);
 
@@ -1030,43 +1219,103 @@ void AITAC_RefreshReachabilityForStructure(AvHAIBuildableStructure* Structure)
 
 	if (!bIsOnNavMesh)
 	{
-		Structure->ReachabilityFlags = AI_REACHABILITY_NONE;
+		Structure->TeamAReachabilityFlags = AI_REACHABILITY_NONE;
+		Structure->TeamBReachabilityFlags = AI_REACHABILITY_NONE;
 		return;
 	}
 
-	bool bIsReachableMarine = UTIL_PointIsReachable(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(Structure->edict), max_player_use_reach);
-	bool bIsReachableSkulk = UTIL_PointIsReachable(BaseNavProfiles[SKULK_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(Structure->edict), max_player_use_reach);
-	bool bIsReachableOnos = UTIL_PointIsReachable(BaseNavProfiles[ONOS_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(Structure->edict), max_player_use_reach);
-
-	// Check if basic marines can reach. If they can then no need to separately check welder marines as they automatically can. If not, separately check for welders.
-	if (bIsReachableMarine)
+	if (GetGameRules()->GetTeamA()->GetTeamType() == AVH_CLASS_TYPE_MARINE)
 	{
-		Structure->ReachabilityFlags |= AI_REACHABILITY_MARINE;
-		Structure->ReachabilityFlags |= AI_REACHABILITY_WELDER;
+		bool bIsReachableMarine = UTIL_PointIsReachable(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(Structure->edict), max_player_use_reach);
+
+		// Check if basic marines can reach. If they can then no need to separately check welder marines as they automatically can. If not, separately check for welders.
+		if (bIsReachableMarine)
+		{
+			Structure->TeamAReachabilityFlags |= AI_REACHABILITY_MARINE;
+			Structure->TeamAReachabilityFlags |= AI_REACHABILITY_WELDER;
+		}
+		else
+		{
+			nav_profile WelderProfile;
+			memcpy(&WelderProfile, &BaseNavProfiles[MARINE_BASE_NAV_PROFILE], sizeof(nav_profile));
+
+			WelderProfile.Filters.removeExcludeFlags(SAMPLE_POLYFLAGS_WELD);
+
+			bool bIsReachableWelder = UTIL_PointIsReachable(WelderProfile, AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(Structure->edict), max_player_use_reach);
+
+			if (bIsReachableWelder)
+			{
+				Structure->TeamAReachabilityFlags |= AI_REACHABILITY_WELDER;
+			}
+		}
 	}
 	else
 	{
-		nav_profile WelderProfile;
-		memcpy(&WelderProfile, &BaseNavProfiles[MARINE_BASE_NAV_PROFILE], sizeof(nav_profile));
+		bool bIsReachableSkulk = UTIL_PointIsReachable(BaseNavProfiles[SKULK_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(Structure->edict), max_player_use_reach);
+		bool bIsReachableGorge = UTIL_PointIsReachable(BaseNavProfiles[GORGE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(Structure->edict), max_player_use_reach);
+		bool bIsReachableOnos = UTIL_PointIsReachable(BaseNavProfiles[ONOS_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(Structure->edict), max_player_use_reach);
 
-		WelderProfile.Filters.removeExcludeFlags(SAMPLE_POLYFLAGS_WELD);
-
-		bool bIsReachableWelder = UTIL_PointIsReachable(WelderProfile, AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(Structure->edict), max_player_use_reach);
-
-		if (bIsReachableWelder)
+		if (bIsReachableSkulk)
 		{
-			Structure->ReachabilityFlags |= AI_REACHABILITY_WELDER;
+			Structure->TeamAReachabilityFlags |= AI_REACHABILITY_SKULK;
+		}
+
+		if (bIsReachableGorge)
+		{
+			Structure->TeamAReachabilityFlags |= AI_REACHABILITY_GORGE;
+		}
+
+		if (bIsReachableOnos)
+		{
+			Structure->TeamAReachabilityFlags |= AI_REACHABILITY_ONOS;
 		}
 	}
 
-	if (bIsReachableSkulk)
+	if (GetGameRules()->GetTeamB()->GetTeamType() == AVH_CLASS_TYPE_MARINE)
 	{
-		Structure->ReachabilityFlags |= AI_REACHABILITY_SKULK;
-	}
+		bool bIsReachableMarine = UTIL_PointIsReachable(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamBNumber()), UTIL_GetEntityGroundLocation(Structure->edict), max_player_use_reach);
 
-	if (bIsReachableOnos)
+		// Check if basic marines can reach. If they can then no need to separately check welder marines as they automatically can. If not, separately check for welders.
+		if (bIsReachableMarine)
+		{
+			Structure->TeamBReachabilityFlags |= AI_REACHABILITY_MARINE;
+			Structure->TeamBReachabilityFlags |= AI_REACHABILITY_WELDER;
+		}
+		else
+		{
+			nav_profile WelderProfile;
+			memcpy(&WelderProfile, &BaseNavProfiles[MARINE_BASE_NAV_PROFILE], sizeof(nav_profile));
+
+			WelderProfile.Filters.removeExcludeFlags(SAMPLE_POLYFLAGS_WELD);
+
+			bool bIsReachableWelder = UTIL_PointIsReachable(WelderProfile, AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber()), UTIL_GetEntityGroundLocation(Structure->edict), max_player_use_reach);
+
+			if (bIsReachableWelder)
+			{
+				Structure->TeamBReachabilityFlags |= AI_REACHABILITY_WELDER;
+			}
+		}
+	}
+	else
 	{
-		Structure->ReachabilityFlags |= AI_REACHABILITY_ONOS;
+		bool bIsReachableSkulk = UTIL_PointIsReachable(BaseNavProfiles[SKULK_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamBNumber()), UTIL_GetEntityGroundLocation(Structure->edict), max_player_use_reach);
+		bool bIsReachableGorge = UTIL_PointIsReachable(BaseNavProfiles[GORGE_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamBNumber()), UTIL_GetEntityGroundLocation(Structure->edict), max_player_use_reach);
+		bool bIsReachableOnos = UTIL_PointIsReachable(BaseNavProfiles[ONOS_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamBNumber()), UTIL_GetEntityGroundLocation(Structure->edict), max_player_use_reach);
+
+		if (bIsReachableSkulk)
+		{
+			Structure->TeamBReachabilityFlags |= AI_REACHABILITY_SKULK;
+		}
+
+		if (bIsReachableGorge)
+		{
+			Structure->TeamBReachabilityFlags |= AI_REACHABILITY_GORGE;
+		}
+
+		if (bIsReachableOnos)
+		{
+			Structure->TeamBReachabilityFlags |= AI_REACHABILITY_ONOS;
+		}
 	}
 }
 
@@ -1248,7 +1497,8 @@ bool AITAC_AlienHiveNeedsReinforcing(const AvHAIHiveDefinition* Hive)
 	SearchFilter.DeployableTypes = STRUCTURE_ALIEN_OFFENCECHAMBER;
 	SearchFilter.IncludeStatusFlags = 0;
 	SearchFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(10.0f);
-	SearchFilter.Team = Hive->OwningTeam;
+	SearchFilter.DeployableTeam = Hive->OwningTeam;
+	SearchFilter.ReachabilityTeam = TEAM_IND;
 
 	int NumOffenceChambers = AITAC_GetNumDeployablesNearLocation(Hive->FloorLocation, &SearchFilter);
 
@@ -1467,7 +1717,9 @@ bool UTIL_IsBuildableStructureStillReachable(AvHAIPlayer* pBot, const edict_t* S
 
 	if (!StructureRef) { return false; }
 
-	return (StructureRef->ReachabilityFlags & pBot->BotNavInfo.NavProfile.ReachabilityFlag) != 0;
+	unsigned int TeamReachability = (pBot->Edict->v.team == GetGameRules()->GetTeamANumber()) ? StructureRef->TeamAReachabilityFlags : StructureRef->TeamBReachabilityFlags;
+
+	return (TeamReachability & pBot->BotNavInfo.NavProfile.ReachabilityFlag);
 }
 
 bool UTIL_IsDroppedItemStillReachable(AvHAIPlayer* pBot, const edict_t* Item)
@@ -1476,7 +1728,9 @@ bool UTIL_IsDroppedItemStillReachable(AvHAIPlayer* pBot, const edict_t* Item)
 
 	if (Index < 0) { return false; }
 
-	return (MarineDroppedItemMap[Index].ReachabilityFlags & pBot->BotNavInfo.NavProfile.ReachabilityFlag);
+	unsigned int TeamReachability = (pBot->Edict->v.team == GetGameRules()->GetTeamANumber()) ? MarineDroppedItemMap[Index].TeamAReachabilityFlags : MarineDroppedItemMap[Index].TeamBReachabilityFlags;
+
+	return (TeamReachability & pBot->BotNavInfo.NavProfile.ReachabilityFlag);
 }
 
 AvHAIWeapon UTIL_GetWeaponTypeFromEdict(const edict_t* ItemEdict)
@@ -1607,8 +1861,20 @@ AvHAIResourceNode* AITAC_FindNearestResourceNodeToLocation(const Vector Location
 
 	for (auto it = ResourceNodes.begin(); it != ResourceNodes.end(); it++)
 	{
-		if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE && !(it->ReachabilityFlags & Filter->ReachabilityFlags)) { continue; }
-		if (it->OwningTeam != Filter->Team) { continue; }
+		if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE)
+		{
+			unsigned int CheckReachabilityFlags = (it->TeamAReachabilityFlags | it->TeamBReachabilityFlags);
+
+			if (Filter->ReachabilityTeam != TEAM_IND)
+			{
+				CheckReachabilityFlags = (Filter->ReachabilityTeam == GetGameRules()->GetTeamANumber()) ? it->TeamAReachabilityFlags : it->TeamBReachabilityFlags;
+			}
+
+			if (!(CheckReachabilityFlags & Filter->ReachabilityFlags)) { continue; }
+		}
+
+		
+		if (it->OwningTeam != Filter->DeployableTeam) { continue; }
 		
 		float DistSq = (Filter->bConsiderPhaseDistance) ? sqrf(AITAC_GetPhaseDistanceBetweenPoints(it->Location, Location)) : vDist2DSq(it->Location, Location);
 
@@ -1791,7 +2057,9 @@ Vector UTIL_GetNextMinePosition(edict_t* StructureToMine)
 
 	for (auto& it : BuildingMap)
 	{
-		if (it.second.StructureType != STRUCTURE_MARINE_DEPLOYEDMINE || !(it.second.ReachabilityFlags & AI_REACHABILITY_MARINE)) { continue; }
+		unsigned int TeamReachabilityFlag = (StructureTeam == TeamANumber) ? it.second.TeamAReachabilityFlags : it.second.TeamBReachabilityFlags;
+
+		if (it.second.StructureType != STRUCTURE_MARINE_DEPLOYEDMINE || !(TeamReachabilityFlag & AI_REACHABILITY_MARINE)) { continue; }
 
 		if (vDist2DSq(StructureToMine->v.origin, it.second.Location) > sqrf(UTIL_MetresToGoldSrcUnits(2.0f))) { continue; }
 
@@ -2077,7 +2345,8 @@ edict_t* AITAC_GetCommChair(AvHTeamNumber Team)
 	DeployableSearchFilter ChairFilter;
 	ChairFilter.DeployableTypes = STRUCTURE_MARINE_COMMCHAIR;
 	ChairFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
-	ChairFilter.Team = Team;
+	ChairFilter.DeployableTeam = Team;
+	ChairFilter.ReachabilityTeam = TEAM_IND;
 
 	AvHAIBuildableStructure* ChairStructure = AITAC_FindClosestDeployableToLocation(ZERO_VECTOR, &ChairFilter);
 
@@ -2086,7 +2355,7 @@ edict_t* AITAC_GetCommChair(AvHTeamNumber Team)
 		return ChairStructure->edict;
 	}
 
-	ChairFilter.Team = TEAM_IND;
+	ChairFilter.DeployableTeam = TEAM_IND;
 
 	ChairStructure = AITAC_FindClosestDeployableToLocation(AITAC_GetTeamStartingLocation(Team), &ChairFilter);
 

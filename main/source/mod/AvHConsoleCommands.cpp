@@ -112,6 +112,7 @@
 #include "AIPlayers/AvHAINavigation.h"
 #include "AIPlayers/AvHAIPlayerManager.h"
 #include "AIPlayers/AvHAITask.h"
+#include "AIPlayers/AvHAITactical.h"
 
 extern AvHParticleTemplateListServer	gParticleTemplateList;
 extern CVoiceGameMgr					g_VoiceGameMgr;
@@ -1450,6 +1451,18 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 				AITASK_SetMoveTask(thisBot, &thisBot->PrimaryBotTask, theAvHPlayer->pev->origin, true);
 			}
 		}
+
+		theSuccess = true;
+	}
+	else if (FStrEq(pcmd, "aiteamstarts"))
+	{
+		Vector TeamOneLoc = AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber());
+
+		UTIL_DrawLine(INDEXENT(1), INDEXENT(1)->v.origin, TeamOneLoc, 10.0f, 0, 0, 255);
+
+		Vector TeamTwoLoc = AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamBNumber());
+
+		UTIL_DrawLine(INDEXENT(1), INDEXENT(1)->v.origin, TeamTwoLoc, 10.0f, 0, 128, 0);
 
 		theSuccess = true;
 	}

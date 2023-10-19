@@ -1504,7 +1504,7 @@ void TestNavThink(AvHAIPlayer* pBot)
 	}
 	else
 	{
-		AvHAIResourceNode* RandomNode = AITAC_GetRandomResourceNode(pBot->BotNavInfo.NavProfile.ReachabilityFlag);
+		AvHAIResourceNode* RandomNode = AITAC_GetRandomResourceNode((AvHTeamNumber)pBot->Edict->v.team, pBot->BotNavInfo.NavProfile.ReachabilityFlag);
 
 		if (!RandomNode) { return; }
 

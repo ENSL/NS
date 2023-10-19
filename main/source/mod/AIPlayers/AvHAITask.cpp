@@ -84,8 +84,9 @@ void AITASK_OnCompleteCommanderTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	{
 		DeployableSearchFilter EnemyResTowerFilter;
 		EnemyResTowerFilter.DeployableTypes = SEARCH_ANY_RES_TOWER;
-		EnemyResTowerFilter.Team = (AIMGR_GetEnemyTeam(pBot->Player->GetTeam()));
-		EnemyResTowerFilter.ReachabilityFlags = AI_REACHABILITY_MARINE;
+		EnemyResTowerFilter.DeployableTeam = (AIMGR_GetEnemyTeam(pBot->Player->GetTeam()));
+		EnemyResTowerFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+		EnemyResTowerFilter.ReachabilityTeam = (AvHTeamNumber)pBot->Edict->v.team;
 		EnemyResTowerFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
 
 		AvHAIBuildableStructure* NearbyAlienTower = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &EnemyResTowerFilter);
@@ -373,7 +374,7 @@ bool AITASK_IsWeldTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	{
 		if (FNullEnt(Task->TaskSecondaryTarget))
 		{
-			AvHAIDroppedItem* NearestWelder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, pBot->BotNavInfo.NavProfile.ReachabilityFlag, 0.0f, 0.0f, true);
+			AvHAIDroppedItem* NearestWelder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, pBot->Player->GetTeam(), pBot->BotNavInfo.NavProfile.ReachabilityFlag, 0.0f, 0.0f, true);
 
 			if (NearestWelder)
 			{
@@ -523,7 +524,7 @@ bool AITASK_IsMineStructureTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Ta
 	MineFilter.DeployableTypes = STRUCTURE_MARINE_DEPLOYEDMINE;
 	MineFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(2.0f);
 	MineFilter.bConsiderPhaseDistance = false;
-	MineFilter.Team = pBot->Player->GetTeam();
+	MineFilter.DeployableTeam = pBot->Player->GetTeam();
 
 	if (AITAC_GetNumDeployablesNearLocation(Task->TaskTarget->v.origin, &MineFilter) >= 4) { return false; }
 
@@ -668,7 +669,7 @@ bool AITASK_IsAlienBuildTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	DeployableSearchFilter StructureFilter;
 	StructureFilter.DeployableTypes = Task->StructureType;
 	StructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
-	StructureFilter.Team = pBot->Player->GetTeam();
+	StructureFilter.DeployableTeam = pBot->Player->GetTeam();
 
 	// Don't build more if we've already got quite a few in the immediate vicinity. Helps prevent structure spam
 	if (AITAC_GetNumDeployablesNearLocation(Task->TaskLocation, &StructureFilter) >= 3)
@@ -817,7 +818,7 @@ bool AITASK_IsReinforceStructureTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTas
 	DeployableSearchFilter StructureFilter;
 	StructureFilter.DeployableTypes = STRUCTURE_ALIEN_OFFENCECHAMBER;
 	StructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
-	StructureFilter.Team = pBot->Player->GetTeam();
+	StructureFilter.DeployableTeam = pBot->Player->GetTeam();
 
 	// At least 2 offence chambers
 	int NumOffenceChambers = AITAC_GetNumDeployablesNearLocation(Task->TaskTarget->v.origin, &StructureFilter);
@@ -1176,7 +1177,7 @@ void BotProgressReinforceStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	DeployableSearchFilter StructureFilter;
 	StructureFilter.DeployableTypes = ChamberTypeOne;
-	StructureFilter.Team = pBot->Player->GetTeam();
+	StructureFilter.DeployableTeam = pBot->Player->GetTeam();
 
 	int NumHiveTechOne = AITAC_GetNumDeployablesNearLocation(ZERO_VECTOR, &StructureFilter);
 	StructureFilter.DeployableTypes = ChamberTypeTwo;
@@ -2198,7 +2199,7 @@ void BotProgressWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		}
 		else
 		{
-			AvHAIDroppedItem* Welder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, pBot->BotNavInfo.NavProfile.ReachabilityFlag, 0.0f, 0.0f, true);
+			AvHAIDroppedItem* Welder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, pBot->Player->GetTeam(), pBot->BotNavInfo.NavProfile.ReachabilityFlag, 0.0f, 0.0f, true);
 
 			if (Welder)
 			{
@@ -2707,7 +2708,7 @@ void AITASK_SetWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Targe
 
 	if (!PlayerHasWeapon(pBot->Player, WEAPON_MARINE_WELDER))
 	{
-		AvHAIDroppedItem* NearestWelder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, pBot->BotNavInfo.NavProfile.ReachabilityFlag, 0.0f, 0.0f, true);
+		AvHAIDroppedItem* NearestWelder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, pBot->Player->GetTeam(), pBot->BotNavInfo.NavProfile.ReachabilityFlag, 0.0f, 0.0f, true);
 
 		if (!NearestWelder)
 		{

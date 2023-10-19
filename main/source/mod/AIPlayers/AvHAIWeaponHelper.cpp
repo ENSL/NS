@@ -638,7 +638,9 @@ AvHAIWeapon BotAlienChooseBestWeaponForStructure(AvHAIPlayer* pBot, edict_t* tar
 			DeployableSearchFilter SearchFilter;
 			SearchFilter.DeployableTypes = StructureSearchType;
 			SearchFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
-			SearchFilter.Team = EnemyTeam;
+			SearchFilter.DeployableTeam = EnemyTeam;
+			SearchFilter.ReachabilityTeam = TEAM_IND;
+			SearchFilter.ReachabilityFlags = AI_REACHABILITY_NONE;
 
 			NumEnemyTargetsInArea += AITAC_GetNumDeployablesNearLocation(target->v.origin, &SearchFilter);
 		}
@@ -736,7 +738,7 @@ AvHAIWeapon SkulkGetBestWeaponForCombatTarget(AvHAIPlayer* pBot, edict_t* Target
 			DeployableSearchFilter SearchFilter;
 			SearchFilter.DeployableTypes = StructureSearchType;
 			SearchFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
-			SearchFilter.Team = EnemyTeam;
+			SearchFilter.DeployableTeam = EnemyTeam;
 
 			NumEnemyTargetsInArea += AITAC_GetNumDeployablesNearLocation(Target->v.origin, &SearchFilter);
 		}
