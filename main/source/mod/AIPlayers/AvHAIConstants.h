@@ -85,8 +85,9 @@ typedef enum _AI_REACHABILITY_STATUS
 	AI_REACHABILITY_NONE = 0,
 	AI_REACHABILITY_MARINE = 1u << 0,
 	AI_REACHABILITY_SKULK = 1u << 1,
-	AI_REACHABILITY_ONOS = 1u << 2,
-	AI_REACHABILITY_WELDER = 1u << 3,
+	AI_REACHABILITY_GORGE = 1u << 2,
+	AI_REACHABILITY_ONOS = 1u << 3,
+	AI_REACHABILITY_WELDER = 1u << 4,
 
 	AI_REACHABILITY_ALL = 0xFFFF
 } AvHAIReachabilityStatus;
@@ -170,14 +171,15 @@ typedef enum _STRUCTUREPURPOSE
 // Data structure used to track resource nodes in the map
 typedef struct _RESOURCE_NODE
 {
-	AvHFuncResource* ResourceEntity = nullptr;							// The func_resource edict reference
-	Vector Location = g_vecZero;										// origin of the func_resource edict (not the tower itself)
-	bool bIsOccupied = false;											// True if there is any resource tower on it
-	AvHTeamNumber OwningTeam = TEAM_IND;								// The team that has currently capped this node (TEAM_IND if none)
-	edict_t* ActiveTowerEntity = nullptr;								// Reference to the resource tower edict (if capped)
-	bool bIsBaseNode = false;											// Is this a node in the marine base or active alien hive?
-	unsigned int ReachabilityFlags = AI_REACHABILITY_NONE;	// Is this reachable by the bots? Checks for marine reachability only
-	bool bReachabilityMarkedDirty = false;					// Reachability needs to be recalculated
+	AvHFuncResource* ResourceEntity = nullptr;						// The func_resource edict reference
+	Vector Location = g_vecZero;									// origin of the func_resource edict (not the tower itself)
+	bool bIsOccupied = false;										// True if there is any resource tower on it
+	AvHTeamNumber OwningTeam = TEAM_IND;							// The team that has currently capped this node (TEAM_IND if none)
+	edict_t* ActiveTowerEntity = nullptr;							// Reference to the resource tower edict (if capped)
+	bool bIsBaseNode = false;										// Is this a node in the marine base or active alien hive?
+	unsigned int TeamAReachabilityFlags = AI_REACHABILITY_NONE;		// Is this reachable by the bots? Checks for marine reachability only
+	unsigned int TeamBReachabilityFlags = AI_REACHABILITY_NONE;		// Is this reachable by the bots? Checks for marine reachability only
+	bool bReachabilityMarkedDirty = false;							// Reachability needs to be recalculated
 } AvHAIResourceNode;
 
 // Data structure to hold information about each hive in the map
@@ -214,7 +216,8 @@ typedef struct _DEPLOYABLE_SEARCH_FILTER
 	float MinSearchRadius = 0.0f;
 	float MaxSearchRadius = 0.0f;
 	bool bConsiderPhaseDistance = false;
-	AvHTeamNumber Team = TEAM_IND;
+	AvHTeamNumber DeployableTeam = TEAM_IND;
+	AvHTeamNumber ReachabilityTeam = TEAM_IND;
 } DeployableSearchFilter;
 
 // Pending message a bot wants to say. Allows for a delay in sending a message to simulate typing, or prevent too many messages on the same frame
@@ -248,7 +251,8 @@ typedef struct _AVH_AI_BUILDABLE_STRUCTURE
 	float lastDamagedTime = 0.0f; // When it was last damaged by something. Used by bots to determine if still needs defending
 	AvHAIDeployableStructureType StructureType = STRUCTURE_NONE; // Type of structure it is (e.g. hive, comm chair, infantry portal, defence chamber etc.)
 	unsigned int StructureStatusFlags = STRUCTURE_STATUS_NONE;
-	unsigned int ReachabilityFlags = AI_REACHABILITY_NONE;
+	unsigned int TeamAReachabilityFlags = AI_REACHABILITY_NONE;
+	unsigned int TeamBReachabilityFlags = AI_REACHABILITY_NONE;
 	int LastSeen = 0; // Which refresh cycle was this last seen on? Used to determine if the building has been removed from play
 	unsigned int ObstacleRefs[8]; // References to this structure's obstacles across each nav mesh
 	Vector LastSuccessfulCommanderLocation = g_vecZero; // Tracks the last commander view location where it successfully placed or selected the building
@@ -264,7 +268,8 @@ typedef struct _DROPPED_MARINE_ITEM
 	edict_t* edict = nullptr; // Reference to the item edict
 	Vector Location = g_vecZero; // Origin of the entity
 	AvHAIDeployableItemType ItemType = DEPLOYABLE_ITEM_NONE; // Is it a weapon, health pack, ammo pack etc?
-	unsigned int ReachabilityFlags = AI_REACHABILITY_NONE;
+	unsigned int TeamAReachabilityFlags = AI_REACHABILITY_NONE;
+	unsigned int TeamBReachabilityFlags = AI_REACHABILITY_NONE;
 	bool bReachabilityMarkedDirty = false; // Reachability needs to be recalculated
 	int LastSeen = 0; // Which refresh cycle was this last seen on? Used to determine if the item has been removed from play
 } AvHAIDroppedItem;

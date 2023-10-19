@@ -84,6 +84,7 @@ typedef struct _DOOR_TRIGGER
 	edict_t* Edict = nullptr;
 	DoorActivationType TriggerType = DOOR_NONE;
 	bool bIsActivated = false;
+	CBaseEntity* TriggerChangeTargetRef = nullptr;
 } DoorTrigger;
 
 // Door reference. Not used, but is a future feature to allow bots to track if a door is open or not, and how to open it etc.

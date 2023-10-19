@@ -4604,7 +4604,7 @@ void MarineUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
 
 	if (!bHasWelder)
 	{
-		AvHAIDroppedItem* NearbyWelder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, pBot->BotNavInfo.NavProfile.ReachabilityFlag, 0.0f, UTIL_MetresToGoldSrcUnits(10.0f), true);
+		AvHAIDroppedItem* NearbyWelder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, pBot->Player->GetTeam(), pBot->BotNavInfo.NavProfile.ReachabilityFlag, 0.0f, UTIL_MetresToGoldSrcUnits(10.0f), true);
 
 		bHasWelder = (NearbyWelder != nullptr);
 	}
@@ -5291,15 +5291,13 @@ void BotFollowPath(AvHAIPlayer* pBot)
 		{
 			AITASK_ClearBotTask(pBot, &pBot->BotNavInfo.MovementTask);
 
-			AvHAIDroppedItem* NearestWelder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, pBot->BotNavInfo.NavProfile.ReachabilityFlag, 0.0f, 0.0f, true);
+			AvHAIDroppedItem* NearestWelder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, pBot->Player->GetTeam(), pBot->BotNavInfo.NavProfile.ReachabilityFlag, 0.0f, 0.0f, true);
 
 			if (NearestWelder)
 			{
 				AITASK_SetPickupTask(pBot, &pBot->BotNavInfo.MovementTask, NearestWelder->edict, true);
 				return;
 			}
-
-
 		}
 	}
 
