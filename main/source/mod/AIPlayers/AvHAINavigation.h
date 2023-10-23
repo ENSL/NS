@@ -236,6 +236,8 @@ void BlockedMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoi
 void FallMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint);
 // Called by NewMove, determines the movement direction and inputs required to climb a ladder to reach endpoint
 void LadderMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint, float RequiredClimbHeight, unsigned char NextArea);
+// Called by NewMove, determines the movement direction and inputs required to climb a ladder to reach endpoint as skulk, which requires different movement
+void SkulkLadderMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint, float RequiredClimbHeight, unsigned char NextArea);
 // Called by NewMove, determines the movement direction and inputs required to climb a wall to reach endpoint
 void WallClimbMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint, float RequiredClimbHeight);
 void BlinkClimbMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint, float RequiredClimbHeight);
@@ -269,6 +271,8 @@ bool IsBotStuck(AvHAIPlayer* pBot, const Vector MoveDestination);
 // Called every bot frame (default is 60fps). Ensures the tile cache is updated after obstacles are placed
 void UTIL_UpdateTileCache();
 
+void AIDEBUG_DrawOffMeshConnections(float DrawTime);
+
 Vector UTIL_GetNearestPointOnNavWall(AvHAIPlayer* pBot, const float MaxRadius);
 Vector UTIL_GetNearestPointOnNavWall(const nav_profile& NavProfile, const Vector Location, const float MaxRadius);
 
@@ -288,6 +292,11 @@ unsigned int UTIL_AddTemporaryBoxObstacle(Vector bMin, Vector bMax, int area);
 void UTIL_RemoveTemporaryObstacle(unsigned int ObstacleRef);
 
 void UTIL_RemoveTemporaryObstacles(unsigned int* ObstacleRefs);
+
+int UTIL_AddOffMeshConnection(Vector StartLoc, Vector EndLoc, unsigned char area, unsigned char flags, bool bBiDirectional);
+void UTIL_RemoveOffMeshConnection(int ConnectionIndex);
+void UTIL_OnOffMeshConnectionModified(Vector StartLoc, Vector EndLoc);
+
 
 /*
 	Safely aborts the current movement the bot is performing. Returns true if the bot has successfully aborted, and is ready to calculate a new path.
