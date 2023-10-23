@@ -584,7 +584,7 @@ dtStatus dtTileCache::update(const float /*dt*/, dtNavMesh* navmesh,
 	{
 		// Build mesh
 		const dtCompressedTileRef ref = m_update[0];
-		status = buildNavMeshTile(ref, navmesh);
+		status = buildNavMeshTile(ref, navmesh, true);
 		m_nupdate--;
 		if (m_nupdate > 0)
 			memmove(m_update, m_update+1, m_nupdate*sizeof(dtCompressedTileRef));
@@ -628,6 +628,56 @@ dtStatus dtTileCache::update(const float /*dt*/, dtNavMesh* navmesh,
 			}
 		}
 	}
+
+	if (navmesh->GetNumPendingOffMeshConnections() > 0)
+	{
+
+		for (int i = 0; i < navmesh->GetNumPendingOffMeshConnections(); i++)
+		{
+			int NumTiles = 0;
+
+			float* connspos = &navmesh->GetPendingConnection(i)->pos[0];
+			float* connepos = &navmesh->GetPendingConnection(i)->pos[3];
+
+			float ext[3] = { 10.0f, 10.0f, 10.0f };
+
+			float searchsposMin[3];
+			float searchsposMax[3];
+
+			float searcheposMin[3];
+			float searcheposMax[3];
+
+			dtVsub(searchsposMin, connspos, ext);
+			dtVadd(searchsposMax, connspos, ext);
+
+			dtVsub(searcheposMin, connepos, ext);
+			dtVadd(searcheposMax, connepos, ext);
+
+			dtCompressedTileRef AffectedTiles[DT_MAX_TOUCHED_TILES];
+
+
+			queryTiles(searcheposMin, searcheposMax, AffectedTiles, &NumTiles, DT_MAX_TOUCHED_TILES);
+
+			for (int i = 0; i < NumTiles; i++)
+			{
+				const dtCompressedTile* Tile = getTileByRef(AffectedTiles[i]);
+
+				buildNavMeshTilesAt(Tile->header->tx, Tile->header->ty, navmesh, false);
+			}
+
+			queryTiles(searchsposMin, searchsposMax, AffectedTiles, &NumTiles, DT_MAX_TOUCHED_TILES);
+
+			for (int i = 0; i < NumTiles; i++)
+			{
+				const dtCompressedTile* Tile = getTileByRef(AffectedTiles[i]);
+
+				buildNavMeshTilesAt(Tile->header->tx, Tile->header->ty, navmesh, false);
+			}
+
+		}
+
+		navmesh->ClearPendingOffMeshConnections();
+	}
 	
 	if (upToDate)
 		*upToDate = m_nupdate == 0 && m_nreqs == 0;
@@ -636,7 +686,7 @@ dtStatus dtTileCache::update(const float /*dt*/, dtNavMesh* navmesh,
 }
 
 
-dtStatus dtTileCache::buildNavMeshTilesAt(const int tx, const int ty, dtNavMesh* navmesh)
+dtStatus dtTileCache::buildNavMeshTilesAt(const int tx, const int ty, dtNavMesh* navmesh, bool bMarkOffMeshDirty)
 {
 	const int MAX_TILES = 32;
 	dtCompressedTileRef tiles[MAX_TILES];
@@ -644,7 +694,7 @@ dtStatus dtTileCache::buildNavMeshTilesAt(const int tx, const int ty, dtNavMesh*
 	
 	for (int i = 0; i < ntiles; ++i)
 	{
-		dtStatus status = buildNavMeshTile(tiles[i], navmesh);
+		dtStatus status = buildNavMeshTile(tiles[i], navmesh, bMarkOffMeshDirty);
 		if (dtStatusFailed(status))
 			return status;
 	}
@@ -652,7 +702,7 @@ dtStatus dtTileCache::buildNavMeshTilesAt(const int tx, const int ty, dtNavMesh*
 	return DT_SUCCESS;
 }
 
-dtStatus dtTileCache::buildNavMeshTile(const dtCompressedTileRef ref, dtNavMesh* navmesh)
+dtStatus dtTileCache::buildNavMeshTile(const dtCompressedTileRef ref, dtNavMesh* navmesh, bool bMarkOffMeshDirty)
 {	
 	dtAssert(m_talloc);
 	dtAssert(m_tcomp);
@@ -768,7 +818,7 @@ dtStatus dtTileCache::buildNavMeshTile(const dtCompressedTileRef ref, dtNavMesh*
 	if (navData)
 	{
 		// Let the navmesh own the data.
-		status = navmesh->addTile(navData,navDataSize,DT_TILE_FREE_DATA,0,0);
+		status = navmesh->addTile(navData,navDataSize,DT_TILE_FREE_DATA,0,0, bMarkOffMeshDirty);
 		if (dtStatusFailed(status))
 		{
 			dtFree(navData);

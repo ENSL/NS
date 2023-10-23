@@ -265,6 +265,7 @@ struct dtMeshHeader
 	int detailTriCount;			///< The number of triangles in the detail mesh.
 	int bvNodeCount;			///< The number of bounding volume nodes. (Zero if bounding volumes are disabled.)
 	int offMeshConCount;		///< The number of off-mesh connections.
+	int receivingOffMeshConCount;
 	int offMeshBase;			///< The index of the first polygon which is an off-mesh connection.
 	float walkableHeight;		///< The height of the agents using the tile.
 	float walkableRadius;		///< The radius of the agents using the tile.
@@ -301,6 +302,7 @@ struct dtMeshTile
 	dtBVNode* bvTree;
 
 	dtOffMeshConnection* offMeshCons;		///< The tile off-mesh connections. [Size: dtMeshHeader::offMeshConCount]
+	dtOffMeshConnection* receivingOffMeshCons;		///< The tile off-mesh connections. [Size: dtMeshHeader::offMeshConCount]
 		
 	unsigned char* data;					///< The tile data. (Not directly accessed under normal situations.)
 	int dataSize;							///< Size of the tile data.
@@ -367,7 +369,7 @@ public:
 	///  @param[in]		lastRef		The desired reference for the tile. (When reloading a tile.) [opt] [Default: 0]
 	///  @param[out]	result		The tile reference. (If the tile was succesfully added.) [opt]
 	/// @return The status flags for the operation.
-	dtStatus addTile(unsigned char* data, int dataSize, int flags, dtTileRef lastRef, dtTileRef* result);
+	dtStatus addTile(unsigned char* data, int dataSize, int flags, dtTileRef lastRef, dtTileRef* result, bool bMarkOffMeshDirty);
 	
 	/// Removes the specified tile from the navigation mesh.
 	///  @param[in]		ref			The reference of the tile to remove.
@@ -465,6 +467,10 @@ public:
 	///  @param[in]	ref		The polygon reference of the off-mesh connection.
 	/// @return The specified off-mesh connection, or null if the polygon reference is not valid.
 	const dtOffMeshConnection* getOffMeshConnectionByRef(dtPolyRef ref) const;
+
+	int GetNumPendingOffMeshConnections() { return m_NumPendingConnections; }
+	void ClearPendingOffMeshConnections() { m_NumPendingConnections = 0; }
+	dtOffMeshConnection* GetPendingConnection(int index) { return m_PendingOffMeshs[index]; }
 	
 	/// @}
 
@@ -514,6 +520,8 @@ public:
 	///  @param[in]	maxDataSize		The size of the state within the data buffer.
 	/// @return The status flags for the operation.
 	dtStatus restoreTileState(dtMeshTile* tile, const unsigned char* data, const int maxDataSize);
+
+	void GlobalOffMeshLinks(dtMeshTile* target);
 	
 	/// @}
 
@@ -662,6 +670,9 @@ private:
 	int m_maxTiles;						///< Max number of tiles.
 	int m_tileLutSize;					///< Tile hash lookup size (must be pot).
 	int m_tileLutMask;					///< Tile hash lookup mask.
+
+	dtOffMeshConnection* m_PendingOffMeshs[1024];
+	int m_NumPendingConnections = 0;
 
 	dtMeshTile** m_posLookup;			///< Tile hash lookup.
 	dtMeshTile* m_nextFree;				///< Freelist of tiles.

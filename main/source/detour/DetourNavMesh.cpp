@@ -284,7 +284,7 @@ dtStatus dtNavMesh::init(unsigned char* data, const int dataSize, const int flag
 	if (dtStatusFailed(status))
 		return status;
 	
-	return addTile(data, dataSize, flags, 0, 0);
+	return addTile(data, dataSize, flags, 0, 0, false);
 }
 
 /// @par
@@ -979,7 +979,7 @@ int dtNavMesh::queryPolygonsInTile(const dtMeshTile* tile, const float* qmin, co
 ///
 /// @see dtCreateNavMeshData, #removeTile
 dtStatus dtNavMesh::addTile(unsigned char* data, int dataSize, int flags,
-							dtTileRef lastRef, dtTileRef* result)
+							dtTileRef lastRef, dtTileRef* result, bool bMarkOffMeshDirty)
 {
 	// Make sure the data is in right format.
 	dtMeshHeader* header = (dtMeshHeader*)data;
@@ -1057,7 +1057,8 @@ dtStatus dtNavMesh::addTile(unsigned char* data, int dataSize, int flags,
 	const int detailTrisSize = dtAlign4(sizeof(unsigned char)*4*header->detailTriCount);
 	const int bvtreeSize = dtAlign4(sizeof(dtBVNode)*header->bvNodeCount);
 	const int offMeshLinksSize = dtAlign4(sizeof(dtOffMeshConnection)*header->offMeshConCount);
-	
+	const int receivingOffMeshLinksSize = dtAlign4(sizeof(dtOffMeshConnection) * header->receivingOffMeshConCount);
+
 	unsigned char* d = data + headerSize;
 	tile->verts = dtGetThenAdvanceBufferPointer<float>(d, vertsSize);
 	tile->polys = dtGetThenAdvanceBufferPointer<dtPoly>(d, polysSize);
@@ -1067,6 +1068,8 @@ dtStatus dtNavMesh::addTile(unsigned char* data, int dataSize, int flags,
 	tile->detailTris = dtGetThenAdvanceBufferPointer<unsigned char>(d, detailTrisSize);
 	tile->bvTree = dtGetThenAdvanceBufferPointer<dtBVNode>(d, bvtreeSize);
 	tile->offMeshCons = dtGetThenAdvanceBufferPointer<dtOffMeshConnection>(d, offMeshLinksSize);
+	tile->receivingOffMeshCons = dtGetThenAdvanceBufferPointer<dtOffMeshConnection>(d, receivingOffMeshLinksSize);
+
 
 	// If there are no items in the bvtree, reset the tree pointer.
 	if (!bvtreeSize)
@@ -1088,7 +1091,6 @@ dtStatus dtNavMesh::addTile(unsigned char* data, int dataSize, int flags,
 
 	// Base off-mesh connections to their starting polygons and connect connections inside the tile.
 	baseOffMeshLinks(tile);
-	connectExtOffMeshLinks(tile, tile, -1);
 
 	// Create connections with neighbour tiles.
 	static const int MAX_NEIS = 32;
@@ -1104,8 +1106,6 @@ dtStatus dtNavMesh::addTile(unsigned char* data, int dataSize, int flags,
 	
 		connectExtLinks(tile, neis[j], -1);
 		connectExtLinks(neis[j], tile, -1);
-		connectExtOffMeshLinks(tile, neis[j], -1);
-		connectExtOffMeshLinks(neis[j], tile, -1);
 	}
 	
 	// Connect with neighbour tiles.
@@ -1116,16 +1116,115 @@ dtStatus dtNavMesh::addTile(unsigned char* data, int dataSize, int flags,
 		{
 			connectExtLinks(tile, neis[j], i);
 			connectExtLinks(neis[j], tile, dtOppositeTile(i));
-			connectExtOffMeshLinks(tile, neis[j], i);
-			connectExtOffMeshLinks(neis[j], tile, dtOppositeTile(i));
 		}
+	}
 
+	GlobalOffMeshLinks(tile);
+
+	if (bMarkOffMeshDirty)
+	{
+		for (int i = 0; i < tile->header->receivingOffMeshConCount; i++)
+		{
+			dtOffMeshConnection* targetCon = &tile->receivingOffMeshCons[i];
+
+			m_PendingOffMeshs[m_NumPendingConnections++] = targetCon;
+		}
 	}
 	
 	if (result)
 		*result = getTileRef(tile);
 	
 	return DT_SUCCESS;
+}
+
+void dtNavMesh::GlobalOffMeshLinks(dtMeshTile* target)
+{
+	if (!target)
+		return;
+
+	for (int i = 0; i < target->header->offMeshConCount; ++i)
+	{
+		dtOffMeshConnection* targetCon = &target->offMeshCons[i];
+
+		dtPoly* targetPoly = &target->polys[targetCon->poly];
+		// Skip off-mesh connections which start location could not be connected at all.
+		if (targetPoly->firstLink == DT_NULL_LINK)
+			continue;
+
+		const float ext[3] = { targetCon->rad, target->header->walkableClimb, targetCon->rad };
+
+
+		float bmin[3], bmax[3];
+		dtVsub(bmin, &targetCon->pos[3], ext);
+		dtVadd(bmax, &targetCon->pos[3], ext);
+
+		// Find tiles the query touches.
+		int minx, miny, maxx, maxy;
+		this->calcTileLoc(bmin, &minx, &miny);
+		this->calcTileLoc(bmax, &maxx, &maxy);
+
+		static const int MAX_NEIS = 32;
+		dtMeshTile* neis[MAX_NEIS];
+
+		for (int y = miny; y <= maxy; ++y)
+		{
+			for (int x = minx; x <= maxx; ++x)
+			{
+				const int nneis = this->getTilesAt(x, y, neis, MAX_NEIS);
+				for (int j = 0; j < nneis; ++j)
+				{
+					auto tile = neis[j];
+
+
+					// Find polygon to connect to.
+					const float* p = &targetCon->pos[3];
+					float nearestPt[3];
+					dtPolyRef ref = findNearestPolyInTile(tile, p, ext, nearestPt);
+					if (!ref)
+						continue;
+					// findNearestPoly may return too optimistic results, further check to make sure. 
+					if (dtSqr(nearestPt[0] - p[0]) + dtSqr(nearestPt[2] - p[2]) > dtSqr(targetCon->rad))
+						continue;
+					// Make sure the location is on current mesh.
+					float* v = &target->verts[targetPoly->verts[1] * 3];
+					dtVcopy(v, nearestPt);
+
+					// Link off-mesh connection to target poly.
+					unsigned int idx = allocLink(target);
+					if (idx != DT_NULL_LINK)
+					{
+						dtLink* link = &target->links[idx];
+						link->ref = ref;
+						link->edge = (unsigned char)1;
+						link->side = (unsigned char)0xff;
+						link->bmin = link->bmax = 0;
+						// Add to linked list.
+						link->next = targetPoly->firstLink;
+						targetPoly->firstLink = idx;
+					}
+
+					// Link target poly to off-mesh connection.
+					if (targetCon->flags & DT_OFFMESH_CON_BIDIR)
+					{
+						unsigned int tidx = allocLink(tile);
+						if (tidx != DT_NULL_LINK)
+						{
+							const unsigned short landPolyIdx = (unsigned short)decodePolyIdPoly(ref);
+							dtPoly* landPoly = &tile->polys[landPolyIdx];
+							dtLink* link = &tile->links[tidx];
+							link->ref = getPolyRefBase(target) | (dtPolyRef)(targetCon->poly);
+							link->edge = (unsigned char)0xff;
+							link->side = (unsigned char)(0xff);
+							link->bmin = link->bmax = 0;
+							// Add to linked list.
+							link->next = landPoly->firstLink;
+							landPoly->firstLink = tidx;
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 const dtMeshTile* dtNavMesh::getTileAt(const int x, const int y, const int layer) const

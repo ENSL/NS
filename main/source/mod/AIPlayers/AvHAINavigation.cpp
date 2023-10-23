@@ -236,6 +236,62 @@ struct MeshProcess : public dtTileCacheMeshProcess
 		}
 	}
 
+	void GetOffMeshConnectionPoints(int Index, Vector& OutStartLoc, Vector& OutEndLoc)
+	{
+		OutStartLoc = ZERO_VECTOR;
+		OutEndLoc = ZERO_VECTOR;
+
+		if (Index > -1 && Index < MAX_OFFMESH_CONNS)
+		{
+			float* src = &OffMeshVerts[Index * 3 * 2];
+
+			OutStartLoc.x = src[0];
+			OutStartLoc.y = -src[2];
+			OutStartLoc.z = src[1];
+
+			OutEndLoc.x = src[3];
+			OutEndLoc.y = -src[5];
+			OutEndLoc.z = src[4];
+		}
+	}
+
+	void DrawAllConnections(float DrawTime)
+	{
+		Vector StartLine = ZERO_VECTOR;
+		Vector EndLine = ZERO_VECTOR;
+
+		for (int i = 0; i < NumOffMeshConns; i++)
+		{
+			Vector StartLine = Vector(OffMeshVerts[i * 6], -OffMeshVerts[(i * 6) + 2], OffMeshVerts[(i * 6) + 1]);
+			Vector EndLine = Vector(OffMeshVerts[(i * 6) + 3], -OffMeshVerts[(i * 6) + 5], OffMeshVerts[(i * 6) + 4]);
+
+			switch (OffMeshFlags[i])
+			{
+			case SAMPLE_POLYFLAGS_WALK:
+				UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 255, 255, 255);
+				break;
+			case SAMPLE_POLYFLAGS_JUMP:
+				UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 255, 255, 0);
+				break;
+			case SAMPLE_POLYFLAGS_WALLCLIMB:
+				UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 0, 255, 0);
+				break;
+			case SAMPLE_POLYFLAGS_FALL:
+				UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 255, 0, 0);
+				break;
+			case SAMPLE_POLYFLAGS_LADDER:
+				UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 0, 0, 255);
+				break;
+			case SAMPLE_POLYFLAGS_PHASEGATE:
+				UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 255, 128, 128);
+				break;
+			default:
+				UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 0, 255, 255);
+				break;
+			}
+		}
+	}
+
 	virtual void process(struct dtNavMeshCreateParams* params,
 		unsigned char* polyAreas, unsigned short* polyFlags)
 	{
@@ -299,6 +355,19 @@ struct MeshProcess : public dtTileCacheMeshProcess
 
 	}
 };
+
+void AIDEBUG_DrawOffMeshConnections(float DrawTime)
+{
+	if (NavMeshes[0].tileCache)
+	{
+		MeshProcess* m_tmproc = (MeshProcess*)NavMeshes[0].tileCache->getMeshProcess();
+
+		if (m_tmproc)
+		{
+			m_tmproc->DrawAllConnections(DrawTime);
+		}
+	}
+}
 
 void UTIL_UpdateTileCache()
 {
@@ -799,7 +868,7 @@ bool LoadNavMesh(const char* mapname)
 		}
 
 		if (tile)
-			NavMeshes[REGULAR_NAV_MESH].tileCache->buildNavMeshTile(tile, NavMeshes[REGULAR_NAV_MESH].navMesh);
+			NavMeshes[REGULAR_NAV_MESH].tileCache->buildNavMeshTile(tile, NavMeshes[REGULAR_NAV_MESH].navMesh, false);
 	}
 
 	for (int i = 0; i < header.numOnosTiles; ++i)
@@ -838,7 +907,7 @@ bool LoadNavMesh(const char* mapname)
 		}
 
 		if (tile)
-			NavMeshes[ONOS_NAV_MESH].tileCache->buildNavMeshTile(tile, NavMeshes[ONOS_NAV_MESH].navMesh);
+			NavMeshes[ONOS_NAV_MESH].tileCache->buildNavMeshTile(tile, NavMeshes[ONOS_NAV_MESH].navMesh, false);
 	}
 
 	for (int i = 0; i < header.numBuildingTiles; ++i)
@@ -877,7 +946,7 @@ bool LoadNavMesh(const char* mapname)
 		}
 
 		if (tile)
-			NavMeshes[BUILDING_NAV_MESH].tileCache->buildNavMeshTile(tile, NavMeshes[BUILDING_NAV_MESH].navMesh);
+			NavMeshes[BUILDING_NAV_MESH].tileCache->buildNavMeshTile(tile, NavMeshes[BUILDING_NAV_MESH].navMesh, false);
 	}
 
 	fclose(savedFile);
@@ -949,7 +1018,6 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_DUCKJUMP);
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
-	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_LADDER);
 
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].bFlyingProfile = false;
@@ -2882,8 +2950,17 @@ void NewMove(AvHAIPlayer* pBot)
 	}
 	break;
 	case SAMPLE_POLYFLAGS_LADDER:
-		LadderMove(pBot, MoveFrom, MoveTo, pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].requiredZ, NextArea);
-		break;
+	{
+		if (IsPlayerSkulk(pBot->Edict))
+		{
+			SkulkLadderMove(pBot, MoveFrom, MoveTo, pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].requiredZ, NextArea);
+		}
+		else
+		{
+			LadderMove(pBot, MoveFrom, MoveTo, pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].requiredZ, NextArea);
+		}
+	}		
+	break;
 	case SAMPLE_POLYFLAGS_PHASEGATE:
 		PhaseGateMove(pBot, MoveFrom, MoveTo);
 		break;
@@ -3080,8 +3157,6 @@ void LadderMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoin
 {
 	edict_t* pEdict = pBot->Edict;
 	AvHPlayer* AIPlayer = pBot->Player;
-
-	
 
 	const Vector vForward = UTIL_GetVectorNormal2D(EndPoint - StartPoint);
 
@@ -3344,6 +3419,131 @@ void LadderMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoin
 		nearestLadderPoint.z = pEdict->v.origin.z;
 		pBot->desiredMovementDir = UTIL_GetVectorNormal2D(nearestLadderPoint - pEdict->v.origin);
 	}
+}
+
+void SkulkLadderMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint, float RequiredClimbHeight, unsigned char NextArea)
+{
+	edict_t* pEdict = pBot->Edict;
+	AvHPlayer* AIPlayer = pBot->Player;
+
+	const Vector vForward = UTIL_GetVectorNormal2D(EndPoint - StartPoint);
+
+	bool bIsGoingUpLadder = (EndPoint.z > StartPoint.z);
+
+	Vector LadderNormal = UTIL_GetNearestLadderNormal(pBot->Edict);
+		
+	const Vector LadderRightNormal = UTIL_GetVectorNormal(UTIL_GetCrossProduct(LadderNormal, UP_VECTOR));
+
+	Vector ClimbRightNormal = LadderRightNormal;
+
+	if (bIsGoingUpLadder)
+	{
+		pBot->Button &= ~IN_DUCK;
+
+		ClimbRightNormal = -LadderRightNormal;
+
+		Vector HullTraceTo = EndPoint;
+		HullTraceTo.z = pBot->CollisionHullBottomLocation.z;
+
+		// We have reached our desired climb height and want to get off the ladder
+		if ((pBot->Edict->v.origin.z >= RequiredClimbHeight) && UTIL_QuickHullTrace(pEdict, pEdict->v.origin, Vector(EndPoint.x, EndPoint.y, pEdict->v.origin.z), head_hull))
+		{
+			// Move directly towards the desired get-off point, looking slightly up still
+			pBot->desiredMovementDir = vForward;
+
+			Vector LookLocation = EndPoint;
+			LookLocation.z = pBot->CurrentEyePosition.z + 64.0f;
+
+			BotMoveLookAt(pBot, LookLocation);
+
+			// If the get-off point is opposite the ladder, then jump to get to it
+			if (UTIL_GetDotProduct(pBot->CurrentLadderNormal, vForward) > 0.75f)
+			{
+				BotJump(pBot);
+			}
+
+			return;
+		}
+		else
+		{
+			// This is for cases where the ladder physically doesn't reach the desired get-off point and the bot kind of has to "jump" up off the ladder.
+			if (pBot->CollisionHullTopLocation.z >= UTIL_GetNearestLadderTopPoint(pEdict).z)
+			{
+				pBot->desiredMovementDir = vForward;
+				// We look up really far to get maximum launch
+				BotMoveLookAt(pBot, EndPoint + Vector(0.0f, 0.0f, 100.0f));
+				return;
+			}
+
+			// Still climbing the ladder. Look up, and move left/right on the ladder to avoid any blockages
+
+			Vector StartLeftTrace = pBot->CollisionHullTopLocation - (ClimbRightNormal * GetPlayerRadius(pBot->Player));
+			Vector StartRightTrace = pBot->CollisionHullTopLocation + (ClimbRightNormal * GetPlayerRadius(pBot->Player));
+
+			bool bBlockedLeft = !UTIL_QuickTrace(pEdict, StartLeftTrace, StartLeftTrace + Vector(0.0f, 0.0f, 32.0f));
+			bool bBlockedRight = !UTIL_QuickTrace(pEdict, StartRightTrace, StartRightTrace + Vector(0.0f, 0.0f, 32.0f));
+
+			// Look up at the top of the ladder
+
+			// If we are blocked going up the ladder, face the ladder and slide left/right to avoid blockage
+			if (bBlockedLeft && !bBlockedRight)
+			{
+				Vector LookLocation = pBot->Edict->v.origin - (pBot->CurrentLadderNormal * 50.0f);
+				LookLocation.z = RequiredClimbHeight + 100.0f;
+				BotMoveLookAt(pBot, LookLocation);
+
+				pBot->desiredMovementDir = ClimbRightNormal;
+				return;
+			}
+
+			if (bBlockedRight && !bBlockedLeft)
+			{
+				Vector LookLocation = pBot->Edict->v.origin - (pBot->CurrentLadderNormal * 50.0f);
+				LookLocation.z = RequiredClimbHeight + 100.0f;
+				BotMoveLookAt(pBot, LookLocation);
+
+				pBot->desiredMovementDir = -ClimbRightNormal;
+				return;
+			}
+
+			Vector LookLocation = UTIL_GetNearestLadderTopPoint(pBot->Edict);
+
+			LookLocation.z = RequiredClimbHeight + 100.0f;
+			BotMoveLookAt(pBot, LookLocation);
+
+			pBot->desiredMovementDir = -UTIL_GetNearestLadderNormal(pBot->Edict);
+		}
+
+
+	}
+	else
+	{
+
+		// We're going down the ladder
+
+		Vector StartLeftTrace = pBot->CollisionHullBottomLocation - (LadderRightNormal * (GetPlayerRadius(pBot->Player) + 2.0f));
+		Vector StartRightTrace = pBot->CollisionHullBottomLocation + (LadderRightNormal * (GetPlayerRadius(pBot->Player) + 2.0f));
+
+		bool bBlockedLeft = !UTIL_QuickTrace(pEdict, StartLeftTrace, StartLeftTrace - Vector(0.0f, 0.0f, 32.0f));
+		bool bBlockedRight = !UTIL_QuickTrace(pEdict, StartRightTrace, StartRightTrace - Vector(0.0f, 0.0f, 32.0f));
+
+		if (bBlockedLeft)
+		{
+			pBot->desiredMovementDir = LadderRightNormal;
+			return;
+		}
+
+		if (bBlockedRight)
+		{
+			pBot->desiredMovementDir = -LadderRightNormal;
+			return;
+		}
+
+		pBot->desiredMovementDir = pBot->CurrentLadderNormal;
+
+		BotMoveLookAt(pBot, EndPoint);
+	}
+
 }
 
 void PhaseGateMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
@@ -4465,27 +4665,41 @@ bool AbortCurrentMove(AvHAIPlayer* pBot, const Vector NewDestination)
 	{
 		if (bReverseCourse)
 		{
-			LadderMove(pBot, MoveTo, MoveFrom, pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].requiredZ, (unsigned char)SAMPLE_POLYAREA_CROUCH);
-
-			// We're going DOWN the ladder
-			if (MoveTo.z > MoveFrom.z)
+			if (IsPlayerSkulk(pBot->Edict))
 			{
-				if (pBot->Edict->v.origin.z - MoveFrom.z < 150.0f)
+				SkulkLadderMove(pBot, MoveTo, MoveFrom, pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].requiredZ, (unsigned char)SAMPLE_POLYAREA_CROUCH);
+			}
+			else
+			{
+				LadderMove(pBot, MoveTo, MoveFrom, pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].requiredZ, (unsigned char)SAMPLE_POLYAREA_CROUCH);
+
+				// We're going DOWN the ladder
+				if (MoveTo.z > MoveFrom.z)
 				{
-					BotJump(pBot);
+					if (pBot->Edict->v.origin.z - MoveFrom.z < 150.0f)
+					{
+						BotJump(pBot);
+					}
 				}
 			}
 		}
 		else
 		{
-			LadderMove(pBot, MoveFrom, MoveTo, pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].requiredZ, (unsigned char)SAMPLE_POLYAREA_CROUCH);
-
-			// We're going DOWN the ladder
-			if (MoveFrom.z > MoveTo.z)
+			if (IsPlayerSkulk(pBot->Edict))
 			{
-				if (pBot->Edict->v.origin.z - MoveTo.z < 150.0f)
+				SkulkLadderMove(pBot, MoveFrom, MoveTo, pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].requiredZ, (unsigned char)SAMPLE_POLYAREA_CROUCH);
+			}
+			else
+			{
+				LadderMove(pBot, MoveFrom, MoveTo, pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].requiredZ, (unsigned char)SAMPLE_POLYAREA_CROUCH);
+
+				// We're going DOWN the ladder
+				if (MoveFrom.z > MoveTo.z)
 				{
-					BotJump(pBot);
+					if (pBot->Edict->v.origin.z - MoveFrom.z < 150.0f)
+					{
+						BotJump(pBot);
+					}
 				}
 			}
 		}
@@ -6959,4 +7173,130 @@ unsigned char UTIL_GetNextBotCurrentPathArea(AvHAIPlayer* pBot)
 	if (pBot->BotNavInfo.PathSize == 0 || pBot->BotNavInfo.CurrentPathPoint >= pBot->BotNavInfo.PathSize - 1) { return SAMPLE_POLYAREA_GROUND; }
 
 	return pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint + 1].area;
+}
+
+int UTIL_AddOffMeshConnection(Vector StartLoc, Vector EndLoc, unsigned char area, unsigned char flags, bool bBiDirectional)
+{
+	if (NavMeshes[REGULAR_NAV_MESH].tileCache)
+	{
+		MeshProcess* m_tmproc = (MeshProcess*)NavMeshes[REGULAR_NAV_MESH].tileCache->getMeshProcess();
+
+		if (m_tmproc)
+		{
+			return m_tmproc->AddOffMeshConnectionDef(StartLoc, EndLoc, area, flags, bBiDirectional);
+			UTIL_OnOffMeshConnectionModified(StartLoc, EndLoc);
+		}
+	}
+}
+
+void UTIL_RemoveOffMeshConnection(int ConnectionIndex)
+{
+	Vector StartLoc, EndLoc;
+
+	if (NavMeshes[REGULAR_NAV_MESH].tileCache)
+	{
+		MeshProcess* m_tmproc = (MeshProcess*)NavMeshes[REGULAR_NAV_MESH].tileCache->getMeshProcess();
+
+		if (m_tmproc)
+		{
+			m_tmproc->GetOffMeshConnectionPoints(ConnectionIndex, StartLoc, EndLoc);
+			m_tmproc->RemoveOffMeshConnectionDef(ConnectionIndex);
+		}
+	}
+
+	UTIL_OnOffMeshConnectionModified(StartLoc, EndLoc);
+}
+
+void UTIL_OnOffMeshConnectionModified(Vector StartLoc, Vector EndLoc)
+{
+	float ext[3] = { 10.0f, 10.0f, 10.0f };
+
+	float spos[3] = { StartLoc.x, StartLoc.z, -StartLoc.y };
+	float epos[3] = { EndLoc.x, EndLoc.z, -EndLoc.y };
+
+	float searchsposMin[3];
+	float searchsposMax[3];
+
+	float searcheposMin[3];
+	float searcheposMax[3];
+
+	dtVsub(searchsposMin, spos, ext);
+	dtVadd(searchsposMax, spos, ext);
+
+	dtVsub(searcheposMin, epos, ext);
+	dtVadd(searcheposMax, epos, ext);
+
+	int NumTiles = 0;
+	dtCompressedTileRef AffectedTiles[DT_MAX_TOUCHED_TILES];
+
+	if (NavMeshes[REGULAR_NAV_MESH].tileCache && NavMeshes[REGULAR_NAV_MESH].navMesh)
+	{
+		NumTiles = 0;
+
+		NavMeshes[REGULAR_NAV_MESH].tileCache->queryTiles(searcheposMin, searcheposMax, AffectedTiles, &NumTiles, DT_MAX_TOUCHED_TILES);
+
+		for (int i = 0; i < NumTiles; i++)
+		{
+			const dtCompressedTile* Tile = NavMeshes[REGULAR_NAV_MESH].tileCache->getTileByRef(AffectedTiles[i]);
+
+			NavMeshes[REGULAR_NAV_MESH].tileCache->buildNavMeshTilesAt(Tile->header->tx, Tile->header->ty, NavMeshes[REGULAR_NAV_MESH].navMesh, false);
+		}
+
+		NavMeshes[REGULAR_NAV_MESH].tileCache->queryTiles(searchsposMin, searchsposMax, AffectedTiles, &NumTiles, DT_MAX_TOUCHED_TILES);
+
+		for (int i = 0; i < NumTiles; i++)
+		{
+			const dtCompressedTile* Tile = NavMeshes[REGULAR_NAV_MESH].tileCache->getTileByRef(AffectedTiles[i]);
+
+			NavMeshes[REGULAR_NAV_MESH].tileCache->buildNavMeshTilesAt(Tile->header->tx, Tile->header->ty, NavMeshes[REGULAR_NAV_MESH].navMesh, false);
+		}
+
+
+	}
+
+	if (NavMeshes[ONOS_NAV_MESH].tileCache && NavMeshes[ONOS_NAV_MESH].navMesh)
+	{
+		NumTiles = 0;
+
+		NavMeshes[ONOS_NAV_MESH].tileCache->queryTiles(searcheposMin, searcheposMax, AffectedTiles, &NumTiles, DT_MAX_TOUCHED_TILES);
+
+		for (int i = 0; i < NumTiles; i++)
+		{
+			const dtCompressedTile* Tile = NavMeshes[ONOS_NAV_MESH].tileCache->getTileByRef(AffectedTiles[i]);
+
+			NavMeshes[ONOS_NAV_MESH].tileCache->buildNavMeshTilesAt(Tile->header->tx, Tile->header->ty, NavMeshes[ONOS_NAV_MESH].navMesh, false);
+		}
+
+		NavMeshes[ONOS_NAV_MESH].tileCache->queryTiles(searchsposMin, searchsposMax, AffectedTiles, &NumTiles, DT_MAX_TOUCHED_TILES);
+
+		for (int i = 0; i < NumTiles; i++)
+		{
+			const dtCompressedTile* Tile = NavMeshes[ONOS_NAV_MESH].tileCache->getTileByRef(AffectedTiles[i]);
+
+			NavMeshes[ONOS_NAV_MESH].tileCache->buildNavMeshTilesAt(Tile->header->tx, Tile->header->ty, NavMeshes[ONOS_NAV_MESH].navMesh, false);
+		}
+	}
+
+	if (NavMeshes[BUILDING_NAV_MESH].tileCache && NavMeshes[BUILDING_NAV_MESH].navMesh)
+	{
+		NumTiles = 0;
+
+		NavMeshes[BUILDING_NAV_MESH].tileCache->queryTiles(searcheposMin, searcheposMax, AffectedTiles, &NumTiles, DT_MAX_TOUCHED_TILES);
+
+		for (int i = 0; i < NumTiles; i++)
+		{
+			const dtCompressedTile* Tile = NavMeshes[BUILDING_NAV_MESH].tileCache->getTileByRef(AffectedTiles[i]);
+
+			NavMeshes[BUILDING_NAV_MESH].tileCache->buildNavMeshTilesAt(Tile->header->tx, Tile->header->ty, NavMeshes[BUILDING_NAV_MESH].navMesh, false);
+		}
+
+		NavMeshes[BUILDING_NAV_MESH].tileCache->queryTiles(searchsposMin, searchsposMax, AffectedTiles, &NumTiles, DT_MAX_TOUCHED_TILES);
+
+		for (int i = 0; i < NumTiles; i++)
+		{
+			const dtCompressedTile* Tile = NavMeshes[BUILDING_NAV_MESH].tileCache->getTileByRef(AffectedTiles[i]);
+
+			NavMeshes[BUILDING_NAV_MESH].tileCache->buildNavMeshTilesAt(Tile->header->tx, Tile->header->ty, NavMeshes[BUILDING_NAV_MESH].navMesh, false);
+		}
+	}
 }

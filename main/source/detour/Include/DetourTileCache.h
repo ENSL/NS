@@ -166,9 +166,9 @@ public:
 	///  							otherwise another call will continue processing obstacle requests and tile rebuilds.
 	dtStatus update(const float dt, class dtNavMesh* navmesh, bool* upToDate = 0);
 	
-	dtStatus buildNavMeshTilesAt(const int tx, const int ty, class dtNavMesh* navmesh);
+	dtStatus buildNavMeshTilesAt(const int tx, const int ty, class dtNavMesh* navmesh, bool bMarkOffMeshDirty);
 	
-	dtStatus buildNavMeshTile(const dtCompressedTileRef ref, class dtNavMesh* navmesh);
+	dtStatus buildNavMeshTile(const dtCompressedTileRef ref, class dtNavMesh* navmesh, bool bMarkOffMeshDirty);
 	
 	void calcTightTileBounds(const struct dtTileCacheLayerHeader* header, float* bmin, float* bmax) const;
 	

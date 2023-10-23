@@ -27,12 +27,13 @@ static const int DT_TILECACHE_VERSION = 1;
 
 static const unsigned char DT_TILECACHE_NULL_AREA = 0;
 static const unsigned char DT_TILECACHE_CROUCH_AREA = 1;
-static const unsigned char DT_TILECACHE_BLOCKED_AREA = 3;
-static const unsigned char DT_TILECACHE_CLIMBABLE_AREA = 4;
-static const unsigned char DT_TILECACHE_LADDER_AREA = 5;
-static const unsigned char DT_TILECACHE_MSTRUCTURE_AREA = 12;
-static const unsigned char DT_TILECACHE_ASTRUCTURE_AREA = 13;
-static const unsigned char DT_TILECACHE_WELD_AREA = 15;
+static const unsigned char DT_TILECACHE_BLOCKED_AREA = 2;
+static const unsigned char DT_TILECACHE_WALLCLIMB_AREA = 3;
+static const unsigned char DT_TILECACHE_LADDER_AREA = 4;
+static const unsigned char DT_TILECACHE_TEAM1STRUCTURE_AREA = 5;
+static const unsigned char DT_TILECACHE_TEAM2STRUCTURE_AREA = 6;
+static const unsigned char DT_TILECACHE_WELD_AREA = 7;
+static const unsigned char DT_TILECACHE_DOOR_AREA = 8;
 static const unsigned char DT_TILECACHE_WALKABLE_AREA = 63;
 static const unsigned short DT_TILECACHE_NULL_IDX = 0xffff;
 

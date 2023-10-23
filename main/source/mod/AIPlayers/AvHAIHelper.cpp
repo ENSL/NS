@@ -272,6 +272,9 @@ void AIDEBUG_DrawBotPath(AvHAIPlayer* pBot)
 			case SAMPLE_POLYFLAGS_BLOCKED:
 				UTIL_DrawLine(INDEXENT(1), FromLoc, ToLoc, 128, 128, 128);
 				break;
+			case SAMPLE_POLYFLAGS_PHASEGATE:
+				UTIL_DrawLine(INDEXENT(1), FromLoc, ToLoc, 255, 128, 128);
+				break;
 			default:
 				UTIL_DrawLine(INDEXENT(1), FromLoc, ToLoc);
 				break;
