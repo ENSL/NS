@@ -13,6 +13,7 @@ static const float commander_action_cooldown = 1.0f;
 static const float min_request_spam_time = 5.0f;
 
 constexpr auto MAX_AI_PATH_SIZE = 512; // Maximum number of points allowed in a path (this should be enough for any sized map)
+static const int MAX_NAV_MESHES = 8; // Max number of nav meshes allowed. Currently 3 are used (one for building placement, one for the onos, and a regular one for everyone else)
 
 // NS weapon types. Each number refers to the GoldSrc weapon index
 typedef enum
@@ -168,6 +169,15 @@ typedef enum _STRUCTUREPURPOSE
 
 } StructurePurpose;
 
+typedef struct _OFF_MESH_CONN
+{
+	int MeshConnectionIndex = -1;
+	unsigned short ConnectionFlags = 0;
+	Vector FromLocation = g_vecZero;
+	Vector ToLocation = g_vecZero;
+	edict_t* TargetObject = nullptr;
+} AvHAIOffMeshConnection;
+
 // Data structure used to track resource nodes in the map
 typedef struct _RESOURCE_NODE
 {
@@ -192,7 +202,7 @@ typedef struct _HIVE_DEFINITION_T
 	AvHMessageID TechStatus = MESSAGE_NULL;			// What tech (if any) is assigned to this hive right now
 	bool bIsUnderAttack = false;					// Is the hive currently under attack? Becomes false if not taken damage for more than 10 seconds
 	AvHAIResourceNode* HiveResNodeRef = nullptr;	// Which resource node (indexes into ResourceNodes array) belongs to this hive?
-	unsigned int ObstacleRefs[8];					// When in progress or built, will place an obstacle so bots don't try to walk through it
+	unsigned int ObstacleRefs[MAX_NAV_MESHES];		// When in progress or built, will place an obstacle so bots don't try to walk through it
 	float NextFloorLocationCheck = 0.0f;			// When should the closest navigable point to the hive be calculated? Used to delay the check after a hive is built
 	AvHTeamNumber OwningTeam = TEAM_IND;			// Which team owns this hive currently (TEAM_IND if empty)
 
@@ -254,7 +264,8 @@ typedef struct _AVH_AI_BUILDABLE_STRUCTURE
 	unsigned int TeamAReachabilityFlags = AI_REACHABILITY_NONE;
 	unsigned int TeamBReachabilityFlags = AI_REACHABILITY_NONE;
 	int LastSeen = 0; // Which refresh cycle was this last seen on? Used to determine if the building has been removed from play
-	unsigned int ObstacleRefs[8]; // References to this structure's obstacles across each nav mesh
+	unsigned int ObstacleRefs[MAX_NAV_MESHES]; // References to this structure's obstacles across each nav mesh
+	vector<AvHAIOffMeshConnection> OffMeshConnections; // References to any off-mesh connections this structure is associated with
 	Vector LastSuccessfulCommanderLocation = g_vecZero; // Tracks the last commander view location where it successfully placed or selected the building
 	Vector LastSuccessfulCommanderAngle = g_vecZero; // Tracks the last commander input angle ("click" location) used to successfully place or select building
 	StructurePurpose Purpose = STRUCTURE_PURPOSE_NONE;

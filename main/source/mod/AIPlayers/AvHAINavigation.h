@@ -56,11 +56,12 @@ enum SamplePolyFlags
 	SAMPLE_POLYFLAGS_JUMP			= 1 << 5,	// Requires a regular jump to traverse
 	SAMPLE_POLYFLAGS_DUCKJUMP		= 1 << 6,	// Requires a duck-jump to traverse
 	SAMPLE_POLYFLAGS_NOONOS			= 1 << 7,	// This movement is not allowed by onos
-	SAMPLE_POLYFLAGS_PHASEGATE		= 1 << 8,	// Requires using a phase gate to traverse
-	SAMPLE_POLYFLAGS_TEAM1STRUCTURE = 1 << 9,	// A team 1 structure is in the way that cannot be jumped over. Impassable to team 1 players
-	SAMPLE_POLYFLAGS_TEAM2STRUCTURE = 1 << 10,	// A team 2 structure is in the way that cannot be jumped over. Impassable to team 2 players
-	SAMPLE_POLYFLAGS_WELD			= 1 << 11,	// Requires a welder to get through here
-	SAMPLE_POLYFLAGS_DOOR			= 1 << 12,	// Requires a welder to get through here
+	SAMPLE_POLYFLAGS_TEAM1PHASEGATE	= 1 << 8,	// Requires using a phase gate to traverse (team 1 only)
+	SAMPLE_POLYFLAGS_TEAM2PHASEGATE = 1 << 9,	// Requires using a phase gate to traverse (team 2 only)
+	SAMPLE_POLYFLAGS_TEAM1STRUCTURE = 1 << 10,	// A team 1 structure is in the way that cannot be jumped over. Impassable to team 1 players (assume cannot teamkill own structures)
+	SAMPLE_POLYFLAGS_TEAM2STRUCTURE = 1 << 11,	// A team 2 structure is in the way that cannot be jumped over. Impassable to team 2 players (assume cannot teamkill own structures)
+	SAMPLE_POLYFLAGS_WELD			= 1 << 12,	// Requires a welder to get through here
+	SAMPLE_POLYFLAGS_DOOR			= 1 << 13,	// Requires a welder to get through here
 
 	SAMPLE_POLYFLAGS_DISABLED		= 1 << 15,	// Disabled, not usable by anyone
 	SAMPLE_POLYFLAGS_ALL			= 0xffff	// All abilities.
@@ -92,7 +93,7 @@ typedef struct _NAV_DOOR
 {
 	CBaseToggle* DoorEntity = nullptr;
 	edict_t* DoorEdict = nullptr; // Reference to the func_door
-	unsigned int ObstacleRefs[32][8]; // Dynamic obstacle ref. Used to add/remove the obstacle as the door is opened/closed
+	unsigned int ObstacleRefs[32][MAX_NAV_MESHES]; // Dynamic obstacle ref. Used to add/remove the obstacle as the door is opened/closed
 	int NumObstacles = 0;
 	vector<DoorTrigger> TriggerEnts; // Reference to the trigger edicts (e.g. func_trigger, func_button etc.)
 	DoorActivationType ActivationType = DOOR_NONE; // How the door should be opened
@@ -103,7 +104,7 @@ typedef struct _NAV_DOOR
 typedef struct _NAV_WELDABLE
 {
 	edict_t* WeldableEdict = nullptr;
-	unsigned int ObstacleRefs[32][8];
+	unsigned int ObstacleRefs[32][MAX_NAV_MESHES];
 	int NumObstacles = 0;
 } nav_weldable;
 
@@ -133,7 +134,6 @@ static const int TILECACHESET_VERSION = 1;
 static const float pExtents[3] = { 400.0f, 50.0f, 400.0f }; // Default extents (in GoldSrc units) to find the nearest spot on the nav mesh
 static const float pReachableExtents[3] = { max_ai_use_reach, max_ai_use_reach, max_ai_use_reach }; // Extents (in GoldSrc units) to determine if something is on the nav mesh
 
-static const int MAX_NAV_MESHES = 8; // Max number of nav meshes allowed. Currently 3 are used (one for building placement, one for the onos, and a regular one for everyone else)
 static const int MAX_NAV_PROFILES = 16; // Max number of possible nav profiles. Currently 9 are used (see top of this header file)
 
 static const int REGULAR_NAV_MESH = 0;
@@ -293,8 +293,8 @@ void UTIL_RemoveTemporaryObstacle(unsigned int ObstacleRef);
 
 void UTIL_RemoveTemporaryObstacles(unsigned int* ObstacleRefs);
 
-int UTIL_AddOffMeshConnection(Vector StartLoc, Vector EndLoc, unsigned char area, unsigned char flags, bool bBiDirectional);
-void UTIL_RemoveOffMeshConnection(int ConnectionIndex);
+void UTIL_AddOffMeshConnection(Vector StartLoc, Vector EndLoc, unsigned char area, unsigned short flags, bool bBiDirectional, AvHAIOffMeshConnection* NewConnectionDef);
+void UTIL_RemoveOffMeshConnections(AvHAIOffMeshConnection* NewConnectionDef);
 void UTIL_OnOffMeshConnectionModified(Vector StartLoc, Vector EndLoc);
 
 
@@ -331,9 +331,6 @@ void MoveDirectlyTo(AvHAIPlayer* pBot, const Vector Destination);
 
 // Check if there are any players in our way and try to move around them. If we can't, then back up to let them through
 void HandlePlayerAvoidance(AvHAIPlayer* pBot, const Vector MoveDestination);
-
-// Special path finding that takes the presence of phase gates into account 
-dtStatus FindPhaseGatePathToPoint(const nav_profile& NavProfile, Vector FromLocation, Vector ToLocation, bot_path_node* path, int* pathSize, float MaxAcceptableDistance);
 
 // Special path finding that takes the presence of phase gates into account 
 dtStatus FindFlightPathToPoint(const nav_profile& NavProfile, Vector FromLocation, Vector ToLocation, bot_path_node* path, int* pathSize, float MaxAcceptableDistance);

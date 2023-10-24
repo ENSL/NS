@@ -21,6 +21,7 @@ static const float structure_inventory_refresh_rate = 0.2f;
 static const float item_inventory_refresh_rate = 0.1f;
 
 bool						AITAC_DeployableExistsAtLocation(const Vector& Location, const DeployableSearchFilter* Filter);
+std::vector<AvHAIBuildableStructure*> AITAC_FindAllDeployables(const Vector& Location, const DeployableSearchFilter* Filter);
 AvHAIBuildableStructure*	AITAC_FindClosestDeployableToLocation(const Vector& Location, const DeployableSearchFilter* Filter);
 AvHAIBuildableStructure*	AITAC_GetDeployableRefFromEdict(const edict_t* Structure);
 AvHAIBuildableStructure*	AITAC_GetNearestDeployableDirectlyReachable(AvHAIPlayer* pBot, const Vector Location, const DeployableSearchFilter* Filter);
@@ -34,6 +35,9 @@ void						AITAC_RefreshReachabilityForStructure(AvHAIBuildableStructure* Structu
 void						AITAC_RefreshReachabilityForResNode(AvHAIResourceNode* ResNode);
 void						AITAC_RefreshReachabilityForItem(AvHAIDroppedItem* Item);
 void						AITAC_OnStructureCreated(AvHAIBuildableStructure* NewStructure);
+void						AITAC_OnStructureCompleted(AvHAIBuildableStructure* NewStructure);
+void						AITAC_OnStructureBeginRecycling(AvHAIBuildableStructure* RecyclingStructure);
+void						AITAC_OnStructureDestroyed(AvHAIBuildableStructure* DestroyedStructure);
 void						AITAC_LinkDeployedItemToAction(AvHAIPlayer* CommanderBot, const AvHAIDroppedItem* NewItem);
 void						AITAC_LinkAlienStructureToTask(AvHAIPlayer* pBot, AvHAIBuildableStructure* NewStructure);
 

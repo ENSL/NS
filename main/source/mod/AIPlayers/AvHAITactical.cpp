@@ -52,6 +52,86 @@ extern nav_profile BaseNavProfiles[MAX_NAV_PROFILES]; // Array of nav profiles
 
 bool bNavMeshModified = false;
 
+std::vector<AvHAIBuildableStructure*> AITAC_FindAllDeployables(const Vector& Location, const DeployableSearchFilter* Filter)
+{
+	std::vector<AvHAIBuildableStructure*> Result;
+
+	AvHTeamNumber TeamA = GetGameRules()->GetTeamANumber();
+	AvHTeamNumber TeamB = GetGameRules()->GetTeamBNumber();
+	
+	float CurrMinDist = 0.0f;
+
+	float MinDistSq = sqrf(Filter->MinSearchRadius);
+	float MaxDistSq = sqrf(Filter->MaxSearchRadius);
+
+	bool bUseMinDist = MinDistSq > 0.1f;
+	bool bUseMaxDist = MaxDistSq > 0.1f;
+
+	if (Filter->DeployableTeam == TeamA || Filter->DeployableTeam == TEAM_IND)
+	{
+		for (auto& it : TeamAStructureMap)
+		{
+			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
+			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+
+			if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE)
+			{
+				unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
+
+				if (Filter->ReachabilityTeam != TEAM_IND)
+				{
+					StructureReachabilityFlags = (Filter->ReachabilityTeam == TeamA) ? it.second.TeamAReachabilityFlags : it.second.TeamBReachabilityFlags;
+				}
+
+				if (!(StructureReachabilityFlags & Filter->ReachabilityFlags)) { continue; }
+			}
+
+			if (it.second.StructureType & Filter->DeployableTypes)
+			{
+				float DistSq = (Filter->bConsiderPhaseDistance) ? sqrf(AITAC_GetPhaseDistanceBetweenPoints(it.second.Location, Location)) : vDist2DSq(it.second.Location, Location);
+
+				if ((!bUseMinDist || DistSq >= MinDistSq) && (!bUseMaxDist || DistSq <= MaxDistSq))
+				{
+					Result.push_back(&it.second);
+				}
+			}
+		}
+	}
+
+	if (Filter->DeployableTeam == TeamB || Filter->DeployableTeam == TEAM_IND)
+	{
+		for (auto& it : TeamBStructureMap)
+		{
+			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
+			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+
+			if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE)
+			{
+				unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
+
+				if (Filter->ReachabilityTeam != TEAM_IND)
+				{
+					StructureReachabilityFlags = (Filter->ReachabilityTeam == TeamA) ? it.second.TeamAReachabilityFlags : it.second.TeamBReachabilityFlags;
+				}
+
+				if (!(StructureReachabilityFlags & Filter->ReachabilityFlags)) { continue; }
+			}
+
+			if (it.second.StructureType & Filter->DeployableTypes)
+			{
+				float DistSq = (Filter->bConsiderPhaseDistance) ? sqrf(AITAC_GetPhaseDistanceBetweenPoints(it.second.Location, Location)) : vDist2DSq(it.second.Location, Location);
+
+				if ((!bUseMinDist || DistSq >= MinDistSq) && (!bUseMaxDist || DistSq <= MaxDistSq))
+				{
+					Result.push_back(&it.second);
+				}
+			}
+		}
+	}
+
+	return Result;
+}
+
 bool AITAC_DeployableExistsAtLocation(const Vector& Location, const DeployableSearchFilter* Filter)
 {
 	AvHTeamNumber TeamA = GetGameRules()->GetTeamANumber();
@@ -1019,6 +1099,7 @@ void AITAC_RefreshBuildableStructures()
 	{
 		if (it->second.LastSeen < StructureRefreshFrame)
 		{
+			AITAC_OnStructureDestroyed(&it->second);
 			UTIL_RemoveTemporaryObstacles(it->second.ObstacleRefs);
 			it = TeamAStructureMap.erase(it);
 		}
@@ -1037,6 +1118,7 @@ void AITAC_RefreshBuildableStructures()
 	{
 		if (it->second.LastSeen < StructureRefreshFrame)
 		{
+			AITAC_OnStructureDestroyed(&it->second);
 			UTIL_RemoveTemporaryObstacles(it->second.ObstacleRefs);
 			it = TeamBStructureMap.erase(it);
 		}
@@ -1347,6 +1429,10 @@ void AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 		BuildingMap[EntIndex].edict = BuildingEdict;
 		BuildingMap[EntIndex].StructureType = StructureType;
 
+		BuildingMap[EntIndex].OffMeshConnections.clear();
+
+		memset(&BuildingMap[EntIndex].ObstacleRefs, 0, sizeof(BuildingMap[EntIndex].ObstacleRefs));
+
 		bool bShouldCollide = UTIL_ShouldStructureCollide(StructureType);
 
 		if (bShouldCollide)
@@ -1372,26 +1458,33 @@ void AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 		BuildingMap[EntIndex].Location = BaseBuildable->pev->origin;
 	}
 
-	BuildingMap[EntIndex].StructureStatusFlags = STRUCTURE_STATUS_NONE;
+	unsigned int NewFlags = STRUCTURE_STATUS_NONE;
 
 	if (BaseBuildable->GetIsBuilt())
 	{
-		BuildingMap[EntIndex].StructureStatusFlags |= STRUCTURE_STATUS_COMPLETED;
+		if (!(BuildingMap[EntIndex].StructureStatusFlags & STRUCTURE_STATUS_COMPLETED)) {
+			AITAC_OnStructureCompleted(&BuildingMap[EntIndex]);
+		}
+		NewFlags |= STRUCTURE_STATUS_COMPLETED;
 	}
 
 	if (UTIL_IsStructureElectrified(BuildingEdict))
 	{
-		BuildingMap[EntIndex].StructureStatusFlags |= STRUCTURE_STATUS_ELECTRIFIED;
+		NewFlags |= STRUCTURE_STATUS_ELECTRIFIED;
 	}
 
 	if (BuildingEdict->v.iuser4 & MASK_PARASITED)
 	{
-		BuildingMap[EntIndex].StructureStatusFlags |= STRUCTURE_STATUS_PARASITED;
+		NewFlags |= STRUCTURE_STATUS_PARASITED;
 	}
 
 	if (BaseBuildable->GetIsRecycling())
 	{
-		BuildingMap[EntIndex].StructureStatusFlags |= STRUCTURE_STATUS_RECYCLING;
+		if (!(BuildingMap[EntIndex].StructureStatusFlags & STRUCTURE_STATUS_RECYCLING))
+		{
+			AITAC_OnStructureBeginRecycling(&BuildingMap[EntIndex]);
+		}
+		NewFlags |= STRUCTURE_STATUS_RECYCLING;
 	}
 
 	float NewHealthPercent = (BuildingEdict->v.health / BuildingEdict->v.max_health);
@@ -1405,9 +1498,10 @@ void AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 
 	if (gpGlobals->time - BuildingMap[EntIndex].lastDamagedTime < 10.0f)
 	{
-		BuildingMap[EntIndex].StructureStatusFlags |= STRUCTURE_STATUS_UNDERATTACK;
+		NewFlags |= STRUCTURE_STATUS_UNDERATTACK;
 	}
 
+	BuildingMap[EntIndex].StructureStatusFlags = NewFlags;
 	BuildingMap[EntIndex].LastSeen = StructureRefreshFrame;
 
 }
@@ -1444,6 +1538,105 @@ void AITAC_OnStructureCreated(AvHAIBuildableStructure* NewStructure)
 
 	}
 
+}
+
+void AITAC_OnStructureCompleted(AvHAIBuildableStructure* NewStructure)
+{
+	if (NewStructure->StructureType == STRUCTURE_MARINE_PHASEGATE)
+	{
+		DeployableSearchFilter Filter;
+		Filter.DeployableTypes = STRUCTURE_MARINE_PHASEGATE;
+		Filter.DeployableTeam = (AvHTeamNumber)NewStructure->edict->v.team;
+		Filter.ReachabilityFlags = AI_REACHABILITY_NONE;
+		Filter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+
+		// Get all other completed phase gates for this team and add bidirectional connections to them
+		std::vector<AvHAIBuildableStructure*> OtherPhaseGates = AITAC_FindAllDeployables(NewStructure->Location, &Filter);
+
+		SamplePolyFlags NewFlag = ((AvHTeamNumber)NewStructure->edict->v.team == GetGameRules()->GetTeamANumber()) ? SAMPLE_POLYFLAGS_TEAM1PHASEGATE : SAMPLE_POLYFLAGS_TEAM2PHASEGATE;
+
+		for (auto pg = OtherPhaseGates.begin(); pg != OtherPhaseGates.end(); pg++)
+		{
+			// Don't add off-mesh connections to ourselves!
+			if ((*pg) == NewStructure) { continue; }
+
+			AvHAIBuildableStructure* OtherPhaseGate = (*pg);
+
+			AvHAIOffMeshConnection NewConnection;
+			NewConnection.FromLocation = NewStructure->Location;
+			NewConnection.ToLocation = OtherPhaseGate->Location;
+			NewConnection.ConnectionFlags = NewFlag;
+			NewConnection.TargetObject = OtherPhaseGate->edict;
+			NewConnection.MeshConnectionIndex = -1;
+
+			UTIL_AddOffMeshConnection(NewStructure->Location, OtherPhaseGate->Location, SAMPLE_POLYAREA_GROUND, NewFlag, true, &NewConnection);
+
+			NewStructure->OffMeshConnections.push_back(NewConnection);
+
+		}
+	}
+}
+
+void AITAC_RemovePhaseGateConnections(AvHAIBuildableStructure* SourceGate, AvHAIBuildableStructure* TargetGate)
+{
+	if (!SourceGate || !TargetGate) { return; }
+
+	for (auto it = SourceGate->OffMeshConnections.begin(); it != SourceGate->OffMeshConnections.end();) 
+	{
+		if (it->TargetObject == TargetGate->edict)
+		{
+			UTIL_RemoveOffMeshConnections(&(*it));
+			it = SourceGate->OffMeshConnections.erase(it);
+		}
+		else
+		{
+			it++;
+		}
+	}
+}
+
+void AITAC_OnStructureBeginRecycling(AvHAIBuildableStructure* RecyclingStructure)
+{
+	// For phase gates, treat them like they've been destroyed
+	if (RecyclingStructure->StructureType == STRUCTURE_MARINE_PHASEGATE)
+	{
+		AITAC_OnStructureDestroyed(RecyclingStructure);
+	}
+}
+
+void AITAC_OnStructureDestroyed(AvHAIBuildableStructure* DestroyedStructure)
+{
+	if (DestroyedStructure->StructureType == STRUCTURE_MARINE_PHASEGATE)
+	{
+		// Eliminate all connections from this phase gate
+		for (auto it = DestroyedStructure->OffMeshConnections.begin(); it != DestroyedStructure->OffMeshConnections.begin();)
+		{
+			UTIL_RemoveOffMeshConnections(&(*it));
+
+			it = DestroyedStructure->OffMeshConnections.erase(it);
+		}
+
+		DestroyedStructure->OffMeshConnections.clear();
+
+		DeployableSearchFilter Filter;
+		Filter.DeployableTypes = STRUCTURE_MARINE_PHASEGATE;
+		Filter.DeployableTeam = (AvHTeamNumber)DestroyedStructure->edict->v.team;
+		Filter.ReachabilityFlags = AI_REACHABILITY_NONE;
+		Filter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+
+		// Get all other completed phase gates for this team and remove any connections going to this structure
+		std::vector<AvHAIBuildableStructure*> OtherPhaseGates = AITAC_FindAllDeployables(DestroyedStructure->Location, &Filter);
+		
+		for (auto it = OtherPhaseGates.begin(); it != OtherPhaseGates.end(); it++)
+		{
+			// Don't check for off-mesh connections from ourselves!
+			if ((*it) == DestroyedStructure) { continue; }
+
+			AvHAIBuildableStructure* OtherPhaseGate = (*it);
+
+			AITAC_RemovePhaseGateConnections(OtherPhaseGate, DestroyedStructure);
+		}
+	}
 }
 
 void AITAC_LinkAlienStructureToTask(AvHAIPlayer* pBot, AvHAIBuildableStructure* NewStructure)
