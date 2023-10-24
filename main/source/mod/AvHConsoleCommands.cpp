@@ -1414,6 +1414,12 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
             theSuccess = true;
         }
     }
+	else if (FStrEq(pcmd, "drawoffmesh"))
+	{
+		AIDEBUG_DrawOffMeshConnections(10.0f);
+
+		theSuccess = true;
+	}
 	else if (FStrEq(pcmd, "tracedoor"))
 	{
 		Vector TraceStart = GetPlayerEyePosition(theAvHPlayer->edict()); // origin + pev->view_ofs

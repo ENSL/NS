@@ -29,6 +29,9 @@ float AIStartedTime = 0.0f; // Used to give 5-second grace period before adding 
 
 extern int m_spriteTexture;
 
+Vector DebugVector1 = ZERO_VECTOR;
+Vector DebugVector2 = ZERO_VECTOR;
+
 string BotNames[MAX_PLAYERS] = { "MrRobot",
 									"Wall-E",
 									"BeepBoop",

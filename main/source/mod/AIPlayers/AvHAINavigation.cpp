@@ -17,6 +17,7 @@
 
 #include "../AvHWeldable.h"
 #include "../AvHServerUtil.h"
+#include "../AvHGamerules.h"
 
 #include "../../dlls/triggers.h"
 
@@ -104,13 +105,13 @@ struct NavMeshTileHeader
 
 struct OffMeshConnectionDef
 {
-	bool bIsActive = false;
+	unsigned int UserID = 0;
 	float spos[3] = { 0.0f, 0.0f, 0.0f };
 	float epos[3] = { 0.0f, 0.0f, 0.0f };
 	bool bBiDir = false;
 	float Rad = 0.0f;
-	char Area = 0;
-	short Flag = 0;
+	unsigned char Area = 0;
+	unsigned short Flag = 0;
 };
 
 struct FastLZCompressor : public dtTileCacheCompressor
@@ -192,7 +193,13 @@ struct MeshProcess : public dtTileCacheMeshProcess
 	unsigned short OffMeshFlags[MAX_OFFMESH_CONNS];
 	unsigned int OffMeshIDs[MAX_OFFMESH_CONNS];
 
+	bool bNavDataDirty = false;
+
 	OffMeshConnectionDef ConnectionDefinitions[MAX_OFFMESH_CONNS];
+
+	vector<OffMeshConnectionDef> OffMeshConnections;
+
+	unsigned int NextUserID = 0;
 
 	inline MeshProcess()
 	{}
@@ -202,57 +209,113 @@ struct MeshProcess : public dtTileCacheMeshProcess
 
 	}
 
-	int AddOffMeshConnectionDef(Vector Start, Vector End, unsigned char area, unsigned short flag, bool bBiDirectional)
+	void AddOffMeshConnectionDef(Vector Start, Vector End, unsigned char area, unsigned short flag, bool bBiDirectional, AvHAIOffMeshConnection* ConnectionRef)
 	{
-		float spos[3] = { Start.x, Start.z, -Start.y };
-		float epos[3] = { End.x, End.z, -End.y };
+		OffMeshConnectionDef NewDefinition;
+		NewDefinition.Area = area;
+		NewDefinition.bBiDir = bBiDirectional;
+		NewDefinition.spos[0] = Start.x;
+		NewDefinition.spos[1] = Start.z;
+		NewDefinition.spos[2] = -Start.y;
+		NewDefinition.epos[0] = End.x;
+		NewDefinition.epos[1] = End.z;
+		NewDefinition.epos[2] = -End.y;
+		NewDefinition.Flag = flag;
+		NewDefinition.Rad = 18.0f;
+		NewDefinition.UserID = NextUserID;
 
-		if (NumOffMeshConns >= MAX_OFFMESH_CONNS) return -1;
-		float* v = &OffMeshVerts[NumOffMeshConns * 3 * 2];
-		OffMeshRads[NumOffMeshConns] = 18.0f;
-		OffMeshDirs[NumOffMeshConns] = bBiDirectional;
-		OffMeshAreas[NumOffMeshConns] = area;
-		OffMeshFlags[NumOffMeshConns] = flag;
-		OffMeshIDs[NumOffMeshConns] = 1000 + NumOffMeshConns;
-		dtVcopy(&v[0], spos);
-		dtVcopy(&v[3], epos);
-		NumOffMeshConns++;
-		return NumOffMeshConns - 1;
-	}
-
-	void RemoveOffMeshConnectionDef(int Index)
-	{
-		if (Index > -1 && Index < MAX_OFFMESH_CONNS)
+		if (ConnectionRef)
 		{
-			NumOffMeshConns--;
-			float* src = &OffMeshVerts[NumOffMeshConns * 3 * 2];
-			float* dst = &OffMeshVerts[Index * 3 * 2];
-			dtVcopy(&dst[0], &src[0]);
-			dtVcopy(&dst[3], &src[3]);
-			OffMeshRads[Index] = OffMeshRads[NumOffMeshConns];
-			OffMeshDirs[Index] = OffMeshDirs[NumOffMeshConns];
-			OffMeshAreas[Index] = OffMeshAreas[NumOffMeshConns];
-			OffMeshFlags[Index] = OffMeshFlags[NumOffMeshConns];
+			ConnectionRef->MeshConnectionIndex = NextUserID;
 		}
+
+		NextUserID++;
+
+		OffMeshConnections.push_back(NewDefinition);
+
+		bNavDataDirty = true;
+	};
+
+	void RemoveOffMeshConnectionDef(int UserID)
+	{
+		for (auto it = OffMeshConnections.begin(); it != OffMeshConnections.end();)
+		{
+			if (it->UserID == UserID)
+			{
+				it = OffMeshConnections.erase(it);
+			}
+			else
+			{
+				it++;
+			}
+		}
+
+		bNavDataDirty = true;
 	}
 
-	void GetOffMeshConnectionPoints(int Index, Vector& OutStartLoc, Vector& OutEndLoc)
+	void UpdateOffMeshData()
+	{
+		int CurrIndex = 0;
+		int VertIndex = 0;
+
+		for (auto it = OffMeshConnections.begin(); it != OffMeshConnections.end(); it++)
+		{
+			OffMeshVerts[VertIndex++] = it->spos[0];
+			OffMeshVerts[VertIndex++] = it->spos[1];
+			OffMeshVerts[VertIndex++] = it->spos[2];
+			OffMeshVerts[VertIndex++] = it->epos[0];
+			OffMeshVerts[VertIndex++] = it->epos[1];
+			OffMeshVerts[VertIndex++] = it->epos[2];
+
+			OffMeshRads[CurrIndex] = it->Rad;
+			OffMeshDirs[CurrIndex] = it->bBiDir;
+			OffMeshAreas[CurrIndex] = it->Area;
+			OffMeshFlags[CurrIndex] = it->Flag;
+			OffMeshIDs[CurrIndex] = it->UserID;
+
+			CurrIndex++;
+		}
+
+		NumOffMeshConns = OffMeshConnections.size();
+
+		bNavDataDirty = false;
+	}
+
+	void PopulateOffMeshConnectionVector()
+	{
+		OffMeshConnections.clear();
+
+		for (int i = 0; i < NumOffMeshConns; i++)
+		{
+			float* v = &OffMeshVerts[i*3*2];
+			Vector StartPos = Vector(v[0], -v[2], v[1]);
+			Vector EndPos = Vector(v[3], -v[5], v[4]);
+			AddOffMeshConnectionDef(StartPos, EndPos, OffMeshAreas[i], OffMeshFlags[i], OffMeshDirs[i], nullptr);
+		}
+
+		bNavDataDirty = false;
+	}
+
+	void GetOffMeshConnectionPoints(int UserID, Vector& OutStartLoc, Vector& OutEndLoc)
 	{
 		OutStartLoc = ZERO_VECTOR;
 		OutEndLoc = ZERO_VECTOR;
 
-		if (Index > -1 && Index < MAX_OFFMESH_CONNS)
+		for (auto it = OffMeshConnections.begin(); it != OffMeshConnections.end(); it++)
 		{
-			float* src = &OffMeshVerts[Index * 3 * 2];
+			if (it->UserID == UserID)
+			{
+				OutStartLoc.x = it->spos[0];
+				OutStartLoc.y = -it->spos[2];
+				OutStartLoc.z = it->spos[1];
 
-			OutStartLoc.x = src[0];
-			OutStartLoc.y = -src[2];
-			OutStartLoc.z = src[1];
+				OutEndLoc.x = it->epos[0];
+				OutEndLoc.y = -it->epos[2];
+				OutEndLoc.z = it->epos[1];
 
-			OutEndLoc.x = src[3];
-			OutEndLoc.y = -src[5];
-			OutEndLoc.z = src[4];
-		}
+				return;
+			}
+		}			
 	}
 
 	void DrawAllConnections(float DrawTime)
@@ -260,12 +323,12 @@ struct MeshProcess : public dtTileCacheMeshProcess
 		Vector StartLine = ZERO_VECTOR;
 		Vector EndLine = ZERO_VECTOR;
 
-		for (int i = 0; i < NumOffMeshConns; i++)
+		for (auto it = OffMeshConnections.begin(); it != OffMeshConnections.end(); it++)
 		{
-			Vector StartLine = Vector(OffMeshVerts[i * 6], -OffMeshVerts[(i * 6) + 2], OffMeshVerts[(i * 6) + 1]);
-			Vector EndLine = Vector(OffMeshVerts[(i * 6) + 3], -OffMeshVerts[(i * 6) + 5], OffMeshVerts[(i * 6) + 4]);
+			Vector StartLine = Vector(it->spos[0], -it->spos[2], it->spos[1]);
+			Vector EndLine = Vector(it->epos[0], -it->epos[2], it->epos[1]);
 
-			switch (OffMeshFlags[i])
+			switch (it->Flag)
 			{
 			case SAMPLE_POLYFLAGS_WALK:
 				UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 255, 255, 255);
@@ -282,7 +345,8 @@ struct MeshProcess : public dtTileCacheMeshProcess
 			case SAMPLE_POLYFLAGS_LADDER:
 				UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 0, 0, 255);
 				break;
-			case SAMPLE_POLYFLAGS_PHASEGATE:
+			case SAMPLE_POLYFLAGS_TEAM1PHASEGATE:
+			case SAMPLE_POLYFLAGS_TEAM2PHASEGATE:
 				UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 255, 128, 128);
 				break;
 			default:
@@ -343,6 +407,11 @@ struct MeshProcess : public dtTileCacheMeshProcess
 				polyAreas[i] = SAMPLE_POLYAREA_OBSTRUCTION;
 				polyFlags[i] = SAMPLE_POLYFLAGS_DOOR;
 			}
+		}
+
+		if (bNavDataDirty)
+		{
+			UpdateOffMeshData();
 		}
 
 		params->offMeshConAreas = OffMeshAreas;
@@ -800,6 +869,8 @@ bool LoadNavMesh(const char* mapname)
 	fseek(savedFile, header.OffMeshConVertsOffset, SEEK_SET);
 	ReadResult = fread(m_tmproc->OffMeshVerts, header.OffMeshConVertsLength, 1, savedFile);
 
+	m_tmproc->PopulateOffMeshConnectionVector();
+
 	// TODO: Need to pass all off mesh connection verts, areas, flags etc as arrays to m_tmproc. Needs to be exported from recast as such
 
 	status = NavMeshes[REGULAR_NAV_MESH].tileCache->init(&header.regularCacheParams, m_talloc, m_tcomp, m_tmproc);
@@ -1015,7 +1086,8 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 1.0f);
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALLDAMAGE, 1.0f);
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_WALLCLIMB, 1.0f);
-	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE);
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM2PHASEGATE);
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_DUCKJUMP);
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
 
@@ -1030,7 +1102,8 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
-	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE);
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM2PHASEGATE);
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_DUCKJUMP);
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
 
@@ -1045,7 +1118,8 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_WALLCLIMB, 1.0f);
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
-	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE);
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM2PHASEGATE);
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
 
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
@@ -1059,7 +1133,8 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_WALLCLIMB, 1.0f);
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
-	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE);
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM2PHASEGATE);
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
 
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].NavMeshIndex = ONOS_NAV_MESH;
@@ -1073,7 +1148,8 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
-	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_PHASEGATE);
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE);
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM2PHASEGATE);
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_NOONOS);
 
@@ -1316,85 +1392,6 @@ Vector UTIL_GetRandomPointOnNavmeshInDonutIgnoreReachability(const nav_profile& 
 static float frand()
 {
 	return (float)rand() / (float)RAND_MAX;
-}
-
-dtStatus FindPhaseGatePathToPoint(const nav_profile& NavProfile, Vector FromLocation, Vector ToLocation, bot_path_node* path, int* pathSize, float MaxAcceptableDistance)
-{
-	*pathSize = 0;
-
-	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfile);
-	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfile);
-	const dtQueryFilter* m_navFilter = &NavProfile.Filters;
-
-	if (!m_navQuery || vIsZero(FromLocation) || vIsZero(ToLocation))
-	{
-		return DT_FAILURE;
-	}
-
-	bot_path_node PathToPhaseStart[MAX_AI_PATH_SIZE];
-	memset(PathToPhaseStart, 0, sizeof(PathToPhaseStart));
-	int PhaseStartPathSize = 0;
-
-	bot_path_node PathToFinalDestination[MAX_AI_PATH_SIZE];
-	memset(PathToFinalDestination, 0, sizeof(PathToFinalDestination));
-	int PhaseEndPathSize = 0;
-
-	DeployableSearchFilter PhaseGateSearch;
-	PhaseGateSearch.DeployableTypes = STRUCTURE_MARINE_PHASEGATE;
-	PhaseGateSearch.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
-	PhaseGateSearch.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
-	PhaseGateSearch.ReachabilityFlags = AI_REACHABILITY_MARINE;
-
-	AvHAIBuildableStructure* StartPhaseGate = AITAC_FindClosestDeployableToLocation(FromLocation, &PhaseGateSearch);
-	AvHAIBuildableStructure* EndPhaseGate = AITAC_FindClosestDeployableToLocation(ToLocation, &PhaseGateSearch);
-
-	if (!StartPhaseGate || !EndPhaseGate || (StartPhaseGate == EndPhaseGate)) { return DT_FAILURE; }
-
-	float TotalDist = vDist2DSq(FromLocation, StartPhaseGate->edict->v.origin) + vDist2DSq(EndPhaseGate->edict->v.origin, ToLocation);
-
-	if (TotalDist > vDist2DSq(FromLocation, ToLocation)) { return DT_FAILURE; }
-
-	dtStatus RouteToFirstPhaseGate = FindPathClosestToPoint(NavProfile, FromLocation, StartPhaseGate->edict->v.origin, PathToPhaseStart, &PhaseStartPathSize, max_ai_use_reach);
-
-	if (dtStatusFailed(RouteToFirstPhaseGate))
-	{
-		return DT_FAILURE;
-	}
-
-	dtStatus RouteToFinalPoint = FindPathClosestToPoint(NavProfile, EndPhaseGate->edict->v.origin, ToLocation, PathToFinalDestination, &PhaseEndPathSize, MaxAcceptableDistance);
-
-	if (dtStatusFailed(RouteToFinalPoint))
-	{
-		return DT_FAILURE;
-	}
-
-	// Now we join together the path to the starting phase gate and the path from the phase destination to the end, and add the phase itself in the middle
-
-	int CurrPathIndex = 0;
-
-	for (int i = 0; i < PhaseStartPathSize; i++)
-	{
-		memcpy(&path[CurrPathIndex++], &PathToPhaseStart[i], sizeof(bot_path_node));
-	}
-
-	// Add a node to inform the bot they have to use the phase gate
-	path[CurrPathIndex].Location = EndPhaseGate->edict->v.origin + Vector(0.0f, 0.0f, 10.0f);
-	path[CurrPathIndex].area = SAMPLE_POLYAREA_GROUND;
-	path[CurrPathIndex].flag = SAMPLE_POLYFLAGS_PHASEGATE;
-	path[CurrPathIndex].poly = UTIL_GetNearestPolyRefForEntity(EndPhaseGate->edict);
-	path[CurrPathIndex].requiredZ = EndPhaseGate->edict->v.origin.z;
-
-	CurrPathIndex++;
-
-	// Append the path from the destination phase to the end
-	for (int i = 1; i < PhaseEndPathSize; i++)
-	{
-		memcpy(&path[CurrPathIndex++], &PathToFinalDestination[i], sizeof(bot_path_node));
-	}
-
-	*pathSize = CurrPathIndex;
-
-	return DT_SUCCESS;
 }
 
 // Special path finding that takes flight movement into account
@@ -1836,22 +1833,6 @@ dtStatus FindPathClosestToPoint(AvHAIPlayer* pBot, const BotMoveStyle MoveStyle,
 		return DT_FAILURE;
 	}
 
-	DeployableSearchFilter PGFilter;
-	PGFilter.DeployableTypes = STRUCTURE_MARINE_PHASEGATE;
-	PGFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
-	PGFilter.bConsiderPhaseDistance = false;
-
-	if (IsPlayerMarine(pBot->Edict) && AITAC_GetNumDeployablesNearLocation(ZERO_VECTOR, &PGFilter) > 1)
-	{
-		dtStatus PhaseStatus = FindPhaseGatePathToPoint(pBot->BotNavInfo.NavProfile, pBot->Edict->v.origin, ToLocation, path, pathSize, MaxAcceptableDistance);
-
-		if (dtStatusSucceed(PhaseStatus))
-		{
-			pBot->BotNavInfo.CurrentPathPoint = 1;
-			return DT_SUCCESS;
-		}
-	}
-
 	float pStartPos[3] = { FromLocation.x, FromLocation.z, -FromLocation.y };
 	float pEndPos[3] = { ToLocation.x, ToLocation.z, -ToLocation.y };
 
@@ -2085,11 +2066,11 @@ bool HasBotReachedPathPoint(const AvHAIPlayer* pBot)
 
 	SamplePolyFlags CurrentNavFlag = (SamplePolyFlags)pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].flag;
 	Vector CurrentMoveDest = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].Location;
-	Vector PrevMoveDest = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint - 1].Location;
+	Vector PrevMoveDest = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].FromLocation;
 
 	bool bIsAtFinalPathPoint = (pBot->BotNavInfo.CurrentPathPoint == (pBot->BotNavInfo.PathSize - 1));
 
-	Vector ClosestPointToPath = vClosestPointOnLine2D(pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint - 1].Location, pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].Location, pEdict->v.origin);
+	Vector ClosestPointToPath = vClosestPointOnLine2D(PrevMoveDest, CurrentMoveDest, pEdict->v.origin);
 
 	bool bDestIsDirectlyReachable = UTIL_PointIsDirectlyReachable(CurrentPos, CurrentMoveDest);
 	bool bAtOrPastDestination = vEquals2D(ClosestPointToPath, CurrentMoveDest, 1.0f) && bDestIsDirectlyReachable;
@@ -2145,6 +2126,9 @@ bool HasBotReachedPathPoint(const AvHAIPlayer* pBot)
 		{
 			return (fabs(pBot->CollisionHullBottomLocation.z - CurrentMoveDest.z) < 50.0f);
 		}
+	case SAMPLE_POLYFLAGS_TEAM1PHASEGATE:
+	case SAMPLE_POLYFLAGS_TEAM2PHASEGATE:
+		return (vDist2DSq(pBot->CurrentFloorPosition, CurrentMoveDest) < sqrf(32.0f));
 	default:
 		return (bAtOrPastDestination && UTIL_QuickTrace(pEdict, pEdict->v.origin, CurrentMoveDest));
 	}
@@ -2961,7 +2945,8 @@ void NewMove(AvHAIPlayer* pBot)
 		}
 	}		
 	break;
-	case SAMPLE_POLYFLAGS_PHASEGATE:
+	case SAMPLE_POLYFLAGS_TEAM1PHASEGATE:
+	case SAMPLE_POLYFLAGS_TEAM2PHASEGATE:
 		PhaseGateMove(pBot, MoveFrom, MoveTo);
 		break;
 	default:
@@ -3583,7 +3568,7 @@ bool IsBotOffPath(const AvHAIPlayer* pBot)
 	
 
 	// If we're trying to use a phase gate, then we're fine as long as there is a phase gate within reach at the start and end teleport points
-	if (pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].flag == SAMPLE_POLYFLAGS_PHASEGATE)
+	if (pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].flag == SAMPLE_POLYFLAGS_TEAM1PHASEGATE || pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].flag == SAMPLE_POLYFLAGS_TEAM2PHASEGATE)
 	{
 		DeployableSearchFilter PGFilter;
 		PGFilter.DeployableTypes = STRUCTURE_MARINE_PHASEGATE;
@@ -4705,7 +4690,7 @@ bool AbortCurrentMove(AvHAIPlayer* pBot, const Vector NewDestination)
 		}
 	}
 
-	if (flag == SAMPLE_POLYFLAGS_PHASEGATE)
+	if (flag == SAMPLE_POLYFLAGS_TEAM1PHASEGATE || flag == SAMPLE_POLYFLAGS_TEAM2PHASEGATE)
 	{
 		return true;
 	}
@@ -4840,6 +4825,17 @@ void MarineUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
 			NavProfile->Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
 			NavProfile->ReachabilityFlag = AI_REACHABILITY_MARINE;
 		}
+	}
+
+	SamplePolyFlags ExcludePhaseGateFlag = (pBot->Player->GetTeam() == GetGameRules()->GetTeamANumber()) ? SAMPLE_POLYFLAGS_TEAM2PHASEGATE : SAMPLE_POLYFLAGS_TEAM1PHASEGATE;
+	SamplePolyFlags IncludePhaseGateFlag = (ExcludePhaseGateFlag & SAMPLE_POLYFLAGS_TEAM1PHASEGATE) ? SAMPLE_POLYFLAGS_TEAM2PHASEGATE : SAMPLE_POLYFLAGS_TEAM1PHASEGATE;
+
+	if (!(NavProfile->Filters.getExcludeFlags() & ExcludePhaseGateFlag))
+	{
+		pBot->BotNavInfo.bNavProfileChanged = true;
+
+		NavProfile->Filters.removeExcludeFlags(IncludePhaseGateFlag);
+		NavProfile->Filters.addExcludeFlags(ExcludePhaseGateFlag);
 	}
 
 	if (MoveStyle == pBot->BotNavInfo.PreviousMoveStyle) { return; }
@@ -5517,7 +5513,7 @@ void BotFollowPath(AvHAIPlayer* pBot)
 
 	Vector TargetMoveLocation = BotNavInfo->CurrentPath[BotNavInfo->CurrentPathPoint].Location;
 
-	bool bIsUsingPhaseGate = (BotNavInfo->CurrentPath[BotNavInfo->CurrentPathPoint].flag == SAMPLE_POLYFLAGS_PHASEGATE);
+	bool bIsUsingPhaseGate = (BotNavInfo->CurrentPath[BotNavInfo->CurrentPathPoint].flag == SAMPLE_POLYFLAGS_TEAM1PHASEGATE || BotNavInfo->CurrentPath[BotNavInfo->CurrentPathPoint].flag == SAMPLE_POLYFLAGS_TEAM2PHASEGATE);
 
 	bool bIsJumping = (BotNavInfo->CurrentPath[BotNavInfo->CurrentPathPoint].flag == SAMPLE_POLYFLAGS_JUMP);
 
@@ -7175,34 +7171,60 @@ unsigned char UTIL_GetNextBotCurrentPathArea(AvHAIPlayer* pBot)
 	return pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint + 1].area;
 }
 
-int UTIL_AddOffMeshConnection(Vector StartLoc, Vector EndLoc, unsigned char area, unsigned char flags, bool bBiDirectional)
+void UTIL_AddOffMeshConnection(Vector StartLoc, Vector EndLoc, unsigned char area, unsigned short flags, bool bBiDirectional, AvHAIOffMeshConnection* NewConnectionDef)
 {
+	Vector ConnStart, ConnEnd;
+
+	TraceResult hit;
+	UTIL_TraceLine(StartLoc + Vector(0.0f, 0.0f, 5.0f), StartLoc - Vector(0.0f, 0.0f, 100.0f), ignore_monsters, ignore_glass, nullptr, &hit);
+
+	ConnStart = (hit.flFraction < 1.0f) ? hit.vecEndPos : StartLoc;
+
+	UTIL_TraceLine(EndLoc + Vector(0.0f, 0.0f, 5.0f), EndLoc - Vector(0.0f, 0.0f, 100.0f), ignore_monsters, ignore_glass, nullptr, &hit);
+
+	ConnEnd = (hit.flFraction < 1.0f) ? hit.vecEndPos : EndLoc;
+
+	bool bMeshModified = false;
+
 	if (NavMeshes[REGULAR_NAV_MESH].tileCache)
 	{
+		NewConnectionDef->MeshConnectionIndex = -1;
 		MeshProcess* m_tmproc = (MeshProcess*)NavMeshes[REGULAR_NAV_MESH].tileCache->getMeshProcess();
 
 		if (m_tmproc)
 		{
-			return m_tmproc->AddOffMeshConnectionDef(StartLoc, EndLoc, area, flags, bBiDirectional);
-			UTIL_OnOffMeshConnectionModified(StartLoc, EndLoc);
+			m_tmproc->AddOffMeshConnectionDef(ConnStart, ConnEnd, area, flags, bBiDirectional, NewConnectionDef);
+			if (NewConnectionDef->MeshConnectionIndex > -1) { bMeshModified = true; }
 		}
 	}
+
+	if (bMeshModified)
+	{
+		UTIL_OnOffMeshConnectionModified(ConnStart, ConnEnd);
+	}
+
 }
 
-void UTIL_RemoveOffMeshConnection(int ConnectionIndex)
+void UTIL_RemoveOffMeshConnections(AvHAIOffMeshConnection* NewConnectionDef)
 {
-	Vector StartLoc, EndLoc;
+	if (NewConnectionDef->MeshConnectionIndex < 0) { return; }
 
+	Vector StartLoc, EndLoc;
+	
 	if (NavMeshes[REGULAR_NAV_MESH].tileCache)
 	{
 		MeshProcess* m_tmproc = (MeshProcess*)NavMeshes[REGULAR_NAV_MESH].tileCache->getMeshProcess();
 
 		if (m_tmproc)
 		{
-			m_tmproc->GetOffMeshConnectionPoints(ConnectionIndex, StartLoc, EndLoc);
-			m_tmproc->RemoveOffMeshConnectionDef(ConnectionIndex);
+			m_tmproc->GetOffMeshConnectionPoints(NewConnectionDef->MeshConnectionIndex, StartLoc, EndLoc);
+			m_tmproc->RemoveOffMeshConnectionDef(NewConnectionDef->MeshConnectionIndex);
+			NewConnectionDef->MeshConnectionIndex = -1;
 		}
+
 	}
+
+	NewConnectionDef->MeshConnectionIndex = -1;
 
 	UTIL_OnOffMeshConnectionModified(StartLoc, EndLoc);
 }
