@@ -1420,7 +1420,19 @@ void StartNewBotFrame(AvHAIPlayer* pBot)
 
 	ClearBotInputs(pBot);
 	pBot->CurrentEyePosition = GetPlayerEyePosition(pEdict);
+
 	pBot->CurrentFloorPosition = UTIL_GetEntityGroundLocation(pEdict);
+
+	if (vDist3DSq(pBot->BotNavInfo.LastNavMeshCheckPosition, pBot->CurrentFloorPosition) > sqrf(16.0f))
+	{
+		if (UTIL_PointIsReachable(pBot->BotNavInfo.NavProfile, AITAC_GetTeamStartingLocation(pBot->Player->GetTeam()), pBot->CurrentFloorPosition, 16.0f))
+		{
+			pBot->BotNavInfo.LastNavMeshPosition = pBot->CurrentFloorPosition;
+		}
+
+		pBot->BotNavInfo.LastNavMeshCheckPosition = pBot->CurrentFloorPosition;
+	}
+
 	pBot->LookTargetLocation = ZERO_VECTOR;
 	pBot->MoveLookLocation = ZERO_VECTOR;
 	pBot->LookTarget = nullptr;
@@ -1464,6 +1476,8 @@ void StartNewBotFrame(AvHAIPlayer* pBot)
 	{
 		UpdateCommanderOrders(pBot);
 	}
+
+	UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, pBot->BotNavInfo.LastNavMeshPosition);
 
 }
 

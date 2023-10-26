@@ -2542,11 +2542,13 @@ void AITASK_GenerateGuardWatchPoints(AvHAIPlayer* pBot, const Vector& GuardLocat
 
 bool BotWithBuildTaskExists(AvHTeamNumber Team, AvHAIDeployableStructureType StructureType)
 {
-	for (int i = 0; i < MAX_PLAYERS; i++)
-	{
-		AvHAIPlayer* Bot = AIMGR_GetAIPlayerAtIndex(i);
+	vector<AvHAIPlayer*> AIPlayers = AIMGR_GetAIPlayersOnTeam(Team);
 
-		if (!Bot || FNullEnt(Bot->Edict) || Bot->Player->GetTeam() != Team || !IsPlayerActiveInGame(Bot->Edict)) { continue; }
+	for (auto it = AIPlayers.begin(); it != AIPlayers.end(); it++)
+	{
+		AvHAIPlayer* Bot = (*it);
+
+		if (!IsPlayerActiveInGame(Bot->Edict)) { continue; }
 
 		if ((Bot->PrimaryBotTask.TaskType == TASK_BUILD && Bot->PrimaryBotTask.StructureType == StructureType) || (Bot->SecondaryBotTask.TaskType == TASK_BUILD && Bot->SecondaryBotTask.StructureType == StructureType))
 		{
@@ -2559,11 +2561,13 @@ bool BotWithBuildTaskExists(AvHTeamNumber Team, AvHAIDeployableStructureType Str
 
 AvHAIPlayer* GetFirstBotWithBuildTask(AvHTeamNumber Team, AvHAIDeployableStructureType StructureType, edict_t* IgnorePlayer)
 {
-	for (int i = 0; i < MAX_PLAYERS; i++)
-	{
-		AvHAIPlayer* Bot = AIMGR_GetAIPlayerAtIndex(i);
+	vector<AvHAIPlayer*> AIPlayers = AIMGR_GetAIPlayersOnTeam(Team);
 
-		if (!Bot || FNullEnt(Bot->Edict) || Bot->Player->GetTeam() != Team || !IsPlayerActiveInGame(Bot->Edict)) { continue; }
+	for (auto it = AIPlayers.begin(); it != AIPlayers.end(); it++)
+	{
+		AvHAIPlayer* Bot = (*it);
+
+		if (!IsPlayerActiveInGame(Bot->Edict)) { continue; }
 
 		bool bPrimaryIsBuildTask = (Bot->PrimaryBotTask.TaskType == TASK_BUILD || Bot->PrimaryBotTask.TaskType == TASK_REINFORCE_STRUCTURE);
 		bool bSecondaryIsBuildTask = (Bot->SecondaryBotTask.TaskType == TASK_BUILD || Bot->SecondaryBotTask.TaskType == TASK_REINFORCE_STRUCTURE);
@@ -2572,6 +2576,7 @@ AvHAIPlayer* GetFirstBotWithBuildTask(AvHTeamNumber Team, AvHAIDeployableStructu
 		{
 			return Bot;
 		}
+
 	}
 
 	return nullptr;
@@ -2579,11 +2584,13 @@ AvHAIPlayer* GetFirstBotWithBuildTask(AvHTeamNumber Team, AvHAIDeployableStructu
 
 AvHAIPlayer* GetFirstBotWithReinforceTask(AvHTeamNumber Team, edict_t* ReinforceStructure, edict_t* IgnorePlayer)
 {
-	for (int i = 0; i < MAX_PLAYERS; i++)
-	{
-		AvHAIPlayer* Bot = AIMGR_GetAIPlayerAtIndex(i);
+	vector<AvHAIPlayer*> AIPlayers = AIMGR_GetAIPlayersOnTeam(Team);
 
-		if (!Bot || FNullEnt(Bot->Edict) || Bot->Player->GetTeam() != Team || !IsPlayerActiveInGame(Bot->Edict)) { continue; }
+	for (auto it = AIPlayers.begin(); it != AIPlayers.end(); it++)
+	{
+		AvHAIPlayer* Bot = (*it);
+
+		if (!IsPlayerActiveInGame(Bot->Edict)) { continue; }
 
 		if ((Bot->PrimaryBotTask.TaskType == TASK_REINFORCE_STRUCTURE && Bot->PrimaryBotTask.TaskTarget == ReinforceStructure) || (Bot->SecondaryBotTask.TaskType == TASK_REINFORCE_STRUCTURE && Bot->SecondaryBotTask.TaskTarget == ReinforceStructure))
 		{
@@ -2808,7 +2815,7 @@ void AITASK_SetMoveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, const Vector L
 		Task->TaskType = TASK_MOVE;
 		Task->TaskLocation = MoveLocation;
 		Task->bTaskIsUrgent = bIsUrgent;
-		Task->TaskLength = 60.0f; // Set a maximum time to reach destination. Helps avoid bots getting permanently stuck
+		Task->TaskLength = 120.0f; // Set a maximum time to reach destination. Helps avoid bots getting permanently stuck
 	}
 }
 

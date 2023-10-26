@@ -13,7 +13,7 @@
 double last_think_time = 0.0;
 float BotDeltaTime = 0.01666667f;
 
-AvHAIPlayer ActiveAIPlayers[MAX_PLAYERS];
+vector<AvHAIPlayer> ActiveAIPlayers;
 
 extern cvar_t avh_botautomode;
 extern cvar_t avh_botsenabled;
@@ -69,6 +69,19 @@ string BotNames[MAX_PLAYERS] = { "MrRobot",
 
 void AIMGR_UpdateAIPlayerCounts()
 {
+	for (auto BotIt = ActiveAIPlayers.begin(); BotIt != ActiveAIPlayers.end();)
+	{
+		// If bot has been kicked from the server then remove from active AI player list
+		if (FNullEnt(BotIt->Edict) || BotIt->Edict->free || !BotIt->Player)
+		{
+			BotIt = ActiveAIPlayers.erase(BotIt);
+		}
+		else
+		{
+			BotIt++;
+		}
+	}
+
 	// Don't add or remove bots too quickly, otherwise it can cause lag or even overflows
 	if (gpGlobals->time - LastAIPlayerCountUpdate < 0.2f) { return; }
 
@@ -94,11 +107,6 @@ void AIMGR_UpdateAIPlayerCounts()
 		return;
 	}
 
-	if (avh_botautomode.value == 0) // Manual mode: do nothing, server can manually add/remove as they want
-	{
-		return;
-	}
-
 	if (avh_botautomode.value == 1) // Balance only: bots will only be added and removed to ensure teams remain balanced
 	{
 		AIMGR_UpdateTeamBalance();
@@ -110,6 +118,9 @@ void AIMGR_UpdateAIPlayerCounts()
 		AIMGR_UpdateFillTeams();
 		return;
 	}
+
+	// Assume manual mode: do nothing, host can manually add/remove as they wish via sv_addaiplayer
+	return;
 }
 
 void AIMGR_UpdateTeamBalance()
@@ -255,14 +266,14 @@ void AIMGR_RemoveAIPlayerFromTeam(int Team)
 	// resources tied up in them or are commanding, which could cause big disruption to the team they're leaving
 
 	int MinValue = 0; // Track the least valuable bot on the desired team.
-	int IndexToKick = -1; // Current bot to be kicked
+	vector<AvHAIPlayer>::iterator ItemToRemove = ActiveAIPlayers.end(); // Current bot to be kicked
 
-	for (int i = 0; i < MAX_PLAYERS; i++)
+	for (auto it = ActiveAIPlayers.begin(); it != ActiveAIPlayers.end(); it++)
 	{
 		// Don't kick if the slot is empty, or the bot in that slot isn't on the right team
-		if (!ActiveAIPlayers[i].Player || ActiveAIPlayers[i].Player->GetTeam() != DesiredTeam) { continue; }
+		if (it->Player->GetTeam() != DesiredTeam) { continue; }
 
-		AvHPlayer* theAIPlayer = ActiveAIPlayers[i].Player;
+		AvHPlayer* theAIPlayer = it->Player;
 
 		float BotValue = theAIPlayer->GetResources();
 
@@ -305,18 +316,19 @@ void AIMGR_RemoveAIPlayerFromTeam(int Team)
 				break;
 		}
 
-		if (IndexToKick < 0 || BotValue < MinValue)
+		if (ItemToRemove == ActiveAIPlayers.end() || BotValue < MinValue)
 		{
-			IndexToKick = i;
+			ItemToRemove = it;
 			MinValue = BotValue;
 		}
 	}
 
-	if (IndexToKick > -1)
+	
+	if (ItemToRemove != ActiveAIPlayers.end())
 	{
-		ActiveAIPlayers[IndexToKick].Player->Kick();
+		ItemToRemove->Player->Kick();
 
-		memset(&ActiveAIPlayers[IndexToKick], 0, sizeof(AvHAIPlayer));
+		ActiveAIPlayers.erase(ItemToRemove);
 	}
 
 }
@@ -332,22 +344,6 @@ void AIMGR_AddAIPlayerToTeam(int Team)
 		return;
 	}
 
-
-	for (int i = 0; i < gpGlobals->maxClients; i++)
-	{
-		if (!ActiveAIPlayers[i].Player)
-		{
-			NewBotIndex = i;
-			break;
-		}
-	}
-
-	if (NewBotIndex < 0)
-	{
-		ALERT(at_console, "Bot limit reached, cannot add more\n");
-		return;
-	}
-
 	if (!NavmeshLoaded())
 	{
 		CONFIG_ParseConfigFile();
@@ -360,10 +356,28 @@ void AIMGR_AddAIPlayerToTeam(int Team)
 		}
 	}
 
+	if (ActiveAIPlayers.size() >= gpGlobals->maxClients)
+	{
+		ALERT(at_console, "Bot limit reached, cannot add more\n");
+		return;
+	}
+
 	if (AIMGR_GetNumAIPlayers() == 0)
 	{
 		// Initialise the name index to a random number so we don't always get the same bot names
 		BotNameIndex = RANDOM_LONG(0, 31);
+	}
+
+	// Retrieve the current bot name and then cycle the index so the names are always unique
+	// Slap a [BOT] tag too so players know they're not human
+	string NewName = CONFIG_GetBotPrefix() + BotNames[BotNameIndex];
+
+	BotEnt = (*g_engfuncs.pfnCreateFakeClient)(NewName.c_str());
+
+	if (FNullEnt(BotEnt))
+	{
+		ALERT(at_console, "Failed to create AI player: server is full\n");
+		return;
 	}
 
 	AvHTeamNumber DesiredTeam = TEAM_IND;
@@ -376,23 +390,11 @@ void AIMGR_AddAIPlayerToTeam(int Team)
 		DesiredTeam = (Team == 1) ? teamA : teamB;
 	}
 
-	// Retrieve the current bot name and then cycle the index so the names are always unique
-	// Slap a [BOT] tag too so players know they're not human
-	string NewName = CONFIG_GetBotPrefix() + BotNames[BotNameIndex];
-
-	BotEnt = (*g_engfuncs.pfnCreateFakeClient)(NewName.c_str());
-
 	BotNameIndex++;
 
 	if (BotNameIndex > 31)
 	{
 		BotNameIndex = 0;
-	}
-
-	if (!BotEnt)
-	{
-		ALERT(at_console, "Failed to create AI player: server is full\n");
-		return;
 	}
 
 	char ptr[128];  // allocate space for message from ClientConnect
@@ -431,6 +433,17 @@ void AIMGR_AddAIPlayerToTeam(int Team)
 
 	if (theNewAIPlayer)
 	{
+		AvHAIPlayer NewAIPlayer;
+		NewAIPlayer.Player = theNewAIPlayer;
+		NewAIPlayer.Edict = BotEnt;
+		NewAIPlayer.Team = theNewAIPlayer->GetTeam();
+
+		const bot_skill BotSkillSettings = CONFIG_GetGlobalBotSkillLevel();
+
+		memcpy(&NewAIPlayer.BotSkillSettings, &BotSkillSettings, sizeof(bot_skill));
+
+		ActiveAIPlayers.push_back(NewAIPlayer);
+
 		if (DesiredTeam != TEAM_IND)
 		{
 			ALERT(at_console, "Adding AI Player to team: %d\n", (int)Team);
@@ -441,16 +454,6 @@ void AIMGR_AddAIPlayerToTeam(int Team)
 			ALERT(at_console, "Auto-assigning AI Player to team\n");
 			GetGameRules()->AutoAssignPlayer(theNewAIPlayer);
 		}
-
-		ActiveAIPlayers[NewBotIndex].Player = theNewAIPlayer;
-		ActiveAIPlayers[NewBotIndex].Edict = BotEnt;
-		ActiveAIPlayers[NewBotIndex].Team = theNewAIPlayer->GetTeam();
-
-		AvHAIPlayer* NewBotRef = &ActiveAIPlayers[NewBotIndex];
-
-		const bot_skill BotSkillSettings = CONFIG_GetGlobalBotSkillLevel();
-
-		memcpy(&NewBotRef->BotSkillSettings, &BotSkillSettings, sizeof(bot_skill));
 	}
 	else
 	{
@@ -497,11 +500,16 @@ void AIMGR_UpdateAIPlayers()
 	float FrameDelta = CurrTime - PrevTime;
 	float ThinkDelta = CurrTime - LastThinkTime;
 		
-	for (int bot_index = 0; bot_index < gpGlobals->maxClients; bot_index++)
+	for (auto BotIt = ActiveAIPlayers.begin(); BotIt != ActiveAIPlayers.end();)
 	{
-		if (!ActiveAIPlayers[bot_index].Player) { continue; } // Slot isn't filled
+		// If bot has been kicked from the server then remove from active AI player list
+		if (FNullEnt(BotIt->Edict) || BotIt->Edict->free || !BotIt->Player)
+		{
+			BotIt = ActiveAIPlayers.erase(BotIt);
+			continue;
+		}
 
-		AvHAIPlayer* bot = &ActiveAIPlayers[bot_index];
+		AvHAIPlayer* bot = &(*BotIt);
 
 		BotUpdateViewRotation(bot, FrameDelta);
 
@@ -548,7 +556,9 @@ void AIMGR_UpdateAIPlayers()
 				bot->SideMove, bot->UpMove, bot->Button, bot->Impulse, adjustedmsec);
 
 			LastThinkTime = gpGlobals->time;
-		}		
+		}
+
+		BotIt++;
 	}
 
 	PrevTime = CurrTime;
@@ -562,26 +572,16 @@ float AIMGR_GetBotDeltaTime()
 
 int AIMGR_GetNumAIPlayers()
 {
-	int Result = 0;
-
-	for (int i = 0; i < MAX_PLAYERS; i++)
-	{
-		if (ActiveAIPlayers[i].Player != nullptr)
-		{
-			Result++;
-		}
-	}
-
-	return Result;
+	return ActiveAIPlayers.size();
 }
 
 int AIMGR_GetNumAIPlayersOnTeam(AvHTeamNumber Team)
 {
 	int Result = 0;
 
-	for (int i = 0; i < MAX_PLAYERS; i++)
+	for (auto it = ActiveAIPlayers.begin(); it != ActiveAIPlayers.end(); it++)
 	{
-		if (ActiveAIPlayers[i].Player != nullptr && ActiveAIPlayers[i].Team == Team)
+		if (it->Player->GetTeam() == Team)
 		{
 			Result++;
 		}
@@ -592,9 +592,9 @@ int AIMGR_GetNumAIPlayersOnTeam(AvHTeamNumber Team)
 
 int AIMGR_AIPlayerExistsOnTeam(AvHTeamNumber Team)
 {
-	for (int i = 0; i < MAX_PLAYERS; i++)
+	for (auto it = ActiveAIPlayers.begin(); it != ActiveAIPlayers.end(); it++)
 	{
-		if (ActiveAIPlayers[i].Player != nullptr && ActiveAIPlayers[i].Team == Team)
+		if (it->Player->GetTeam() == Team)
 		{
 			return true;
 		}
@@ -605,13 +605,16 @@ int AIMGR_AIPlayerExistsOnTeam(AvHTeamNumber Team)
 
 void AIMGR_RemoveBotsInReadyRoom()
 {
-	for (int i = 0; i < MAX_PLAYERS; i++)
+	for (auto it = ActiveAIPlayers.begin(); it != ActiveAIPlayers.end();)
 	{
-		if (ActiveAIPlayers[i].Player != nullptr && ActiveAIPlayers[i].Player->GetInReadyRoom())
+		if (it->Player->GetInReadyRoom())
 		{
-			ActiveAIPlayers[i].Player->Kick();
-
-			memset(&ActiveAIPlayers[i], 0, sizeof(AvHAIPlayer));
+			it->Player->Kick();
+			it = ActiveAIPlayers.erase(it);
+		}
+		else
+		{
+			it++;
 		}
 	}
 }
@@ -638,7 +641,18 @@ void AIMGR_ResetRound()
 
 void AIMGR_ClearBotData()
 {
-	memset(&ActiveAIPlayers, 0, sizeof(ActiveAIPlayers));
+	// We shouldn't have any bots in the server when this is called, but this ensures no bots end up "orphans" and no longer tracked by the system
+	for (auto it = ActiveAIPlayers.begin(); it != ActiveAIPlayers.end();)
+	{
+		if (!FNullEnt(it->Edict) && it->Player)
+		{
+			it->Player->Kick();
+		}
+
+		it = ActiveAIPlayers.erase(it);
+	}
+
+	ActiveAIPlayers.clear();
 }
 
 void AIMGR_NewMap()
@@ -671,11 +685,11 @@ AvHAIPlayer* AIMGR_GetAICommander(AvHTeamNumber Team)
 
 	if (!ActiveCommander) { return nullptr; }
 
-	for (int i = 0; i < MAX_PLAYERS; i++)
+	for (auto it = ActiveAIPlayers.begin(); it != ActiveAIPlayers.end(); it++)
 	{
-		if (ActiveAIPlayers[i].Player == ActiveCommander)
+		if (it->Player == ActiveCommander)
 		{
-			return &ActiveAIPlayers[i];
+			return &(*it);
 		}
 	}
 
@@ -684,33 +698,34 @@ AvHAIPlayer* AIMGR_GetAICommander(AvHTeamNumber Team)
 
 AvHAIPlayer* AIMGR_FindPlayerOnTeamWaitingBuildLink(const AvHTeamNumber Team, const AvHAIDeployableStructureType NewStructure, const Vector BuildLocation)
 {
-	for (int i = 0; i < MAX_PLAYERS; i++)
+	vector<AvHAIPlayer*> TeamPlayers = AIMGR_GetAIPlayersOnTeam(Team);
+
+	for (auto it = TeamPlayers.begin(); it != TeamPlayers.end(); it++)
 	{
-		if (ActiveAIPlayers[i].Player != nullptr && ActiveAIPlayers[i].Player->GetTeam() == Team)
+		AvHAIPlayer* AIPlayer = (*it);
+
+		if (AIPlayer->PrimaryBotTask.bIsWaitingForBuildLink && AIPlayer->PrimaryBotTask.StructureType == NewStructure)
 		{
-			if (ActiveAIPlayers[i].PrimaryBotTask.bIsWaitingForBuildLink && ActiveAIPlayers[i].PrimaryBotTask.StructureType == NewStructure)
+			if (vDist2DSq(BuildLocation, AIPlayer->PrimaryBotTask.TaskLocation) < sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
 			{
-				if (vDist2DSq(BuildLocation, ActiveAIPlayers[i].PrimaryBotTask.TaskLocation) < sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
-				{
-					return &ActiveAIPlayers[i];
-				}
-				
+				return AIPlayer;
 			}
 
-			if (ActiveAIPlayers[i].SecondaryBotTask.bIsWaitingForBuildLink && ActiveAIPlayers[i].SecondaryBotTask.StructureType == NewStructure)
-			{
-				if (vDist2DSq(BuildLocation, ActiveAIPlayers[i].SecondaryBotTask.TaskLocation) < sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
-				{
-					return &ActiveAIPlayers[i];
-				}
-			}
+		}
 
-			if (ActiveAIPlayers[i].WantsAndNeedsTask.bIsWaitingForBuildLink && ActiveAIPlayers[i].WantsAndNeedsTask.StructureType == NewStructure)
+		if (AIPlayer->SecondaryBotTask.bIsWaitingForBuildLink && AIPlayer->SecondaryBotTask.StructureType == NewStructure)
+		{
+			if (vDist2DSq(BuildLocation, AIPlayer->SecondaryBotTask.TaskLocation) < sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
 			{
-				if (vDist2DSq(BuildLocation, ActiveAIPlayers[i].WantsAndNeedsTask.TaskLocation) < sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
-				{
-					return &ActiveAIPlayers[i];
-				}
+				return AIPlayer;
+			}
+		}
+
+		if (AIPlayer->WantsAndNeedsTask.bIsWaitingForBuildLink && AIPlayer->WantsAndNeedsTask.StructureType == NewStructure)
+		{
+			if (vDist2DSq(BuildLocation, AIPlayer->WantsAndNeedsTask.TaskLocation) < sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
+			{
+				return AIPlayer;
 			}
 		}
 	}
@@ -726,11 +741,39 @@ AvHTeamNumber AIMGR_GetEnemyTeam(const AvHTeamNumber FriendlyTeam)
 	return (FriendlyTeam == TeamANumber) ? TeamBNumber : TeamANumber;
 }
 
-AvHAIPlayer* AIMGR_GetAIPlayerAtIndex(const int Index)
+vector<AvHAIPlayer*> AIMGR_GetAllAIPlayers()
 {
-	if (Index < 0 || Index >= MAX_PLAYERS) { return nullptr; }
+	vector<AvHAIPlayer*> Result;
 
-	return &ActiveAIPlayers[Index];
+	Result.clear();
+
+	for (auto BotIt = ActiveAIPlayers.begin(); BotIt != ActiveAIPlayers.end(); BotIt++)
+	{
+		if (FNullEnt(BotIt->Edict)) { continue; }
+
+		Result.push_back(&(*BotIt));
+	}
+
+	return Result;
+}
+
+vector<AvHAIPlayer*> AIMGR_GetAIPlayersOnTeam(AvHTeamNumber Team)
+{
+	vector<AvHAIPlayer*> Result;
+
+	Result.clear();
+
+	for (auto BotIt = ActiveAIPlayers.begin(); BotIt != ActiveAIPlayers.end(); BotIt++)
+	{
+		if (FNullEnt(BotIt->Edict)) { continue; }
+
+		if (BotIt->Player->GetTeam() == Team)
+		{
+			Result.push_back(&(*BotIt));
+		}
+	}
+
+	return Result;
 }
 
 void AIMGR_UpdateAIMapData()
