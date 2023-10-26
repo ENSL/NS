@@ -49,7 +49,8 @@ AvHAIPlayer* AIMGR_FindPlayerOnTeamWaitingBuildLink(const AvHTeamNumber Team, co
 
 AvHTeamNumber AIMGR_GetEnemyTeam(const AvHTeamNumber FriendlyTeam);
 
-AvHAIPlayer* AIMGR_GetAIPlayerAtIndex(const int Index);
+vector<AvHAIPlayer*> AIMGR_GetAllAIPlayers();
+vector<AvHAIPlayer*> AIMGR_GetAIPlayersOnTeam(AvHTeamNumber Team);
 
 void AIMGR_ClearBotData();
 

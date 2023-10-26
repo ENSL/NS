@@ -438,9 +438,8 @@ typedef struct _NAV_STATUS
 	Vector ActualMoveDestination = g_vecZero; // Actual destination on nav mesh
 	Vector PathDestination = g_vecZero; // Where the path is currently headed to
 
+	Vector LastNavMeshCheckPosition = g_vecZero;
 	Vector LastNavMeshPosition = g_vecZero; // Tracks the last place the bot was on the nav mesh. Useful if accidentally straying off it
-
-	Vector LastPathFollowPosition = g_vecZero; // Tracks the last point where the bot was happily following a path
 
 	int PathSize = 0; // How many path nodes the bot's current path has
 	int CurrentPathPoint = 0; // Which point in the path the bot is on
