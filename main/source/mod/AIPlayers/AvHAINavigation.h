@@ -55,13 +55,14 @@ enum SamplePolyFlags
 	SAMPLE_POLYFLAGS_LADDER			= 1 << 4,	// Requires climbing a ladder to traverse
 	SAMPLE_POLYFLAGS_JUMP			= 1 << 5,	// Requires a regular jump to traverse
 	SAMPLE_POLYFLAGS_DUCKJUMP		= 1 << 6,	// Requires a duck-jump to traverse
-	SAMPLE_POLYFLAGS_NOONOS			= 1 << 7,	// This movement is not allowed by onos
-	SAMPLE_POLYFLAGS_TEAM1PHASEGATE	= 1 << 8,	// Requires using a phase gate to traverse (team 1 only)
-	SAMPLE_POLYFLAGS_TEAM2PHASEGATE = 1 << 9,	// Requires using a phase gate to traverse (team 2 only)
-	SAMPLE_POLYFLAGS_TEAM1STRUCTURE = 1 << 10,	// A team 1 structure is in the way that cannot be jumped over. Impassable to team 1 players (assume cannot teamkill own structures)
-	SAMPLE_POLYFLAGS_TEAM2STRUCTURE = 1 << 11,	// A team 2 structure is in the way that cannot be jumped over. Impassable to team 2 players (assume cannot teamkill own structures)
-	SAMPLE_POLYFLAGS_WELD			= 1 << 12,	// Requires a welder to get through here
-	SAMPLE_POLYFLAGS_DOOR			= 1 << 13,	// Requires a welder to get through here
+	SAMPLE_POLYFLAGS_FLY			= 1 << 7,	// Requires lerk or jetpack to traverse
+	SAMPLE_POLYFLAGS_NOONOS			= 1 << 8,	// This movement is not allowed by onos
+	SAMPLE_POLYFLAGS_TEAM1PHASEGATE	= 1 << 9,	// Requires using a phase gate to traverse (team 1 only)
+	SAMPLE_POLYFLAGS_TEAM2PHASEGATE = 1 << 10,	// Requires using a phase gate to traverse (team 2 only)
+	SAMPLE_POLYFLAGS_TEAM1STRUCTURE = 1 << 11,	// A team 1 structure is in the way that cannot be jumped over. Impassable to team 1 players (assume cannot teamkill own structures)
+	SAMPLE_POLYFLAGS_TEAM2STRUCTURE = 1 << 12,	// A team 2 structure is in the way that cannot be jumped over. Impassable to team 2 players (assume cannot teamkill own structures)
+	SAMPLE_POLYFLAGS_WELD			= 1 << 13,	// Requires a welder to get through here
+	SAMPLE_POLYFLAGS_DOOR			= 1 << 14,	// Requires a welder to get through here
 
 	SAMPLE_POLYFLAGS_DISABLED		= 1 << 15,	// Disabled, not usable by anyone
 	SAMPLE_POLYFLAGS_ALL			= 0xffff	// All abilities.
@@ -320,8 +321,9 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 // Used by the MoveTo command, handles the bot's movement and inputs to follow a path it has calculated for itself
 void BotFollowPath(AvHAIPlayer* pBot);
 void BotFollowFlightPath(AvHAIPlayer* pBot);
+void BotFollowSwimPath(AvHAIPlayer* pBot);
 
-int GetNextDirectFlightPath(AvHAIPlayer* pBot);
+void SkipAheadInFlightPath(AvHAIPlayer* pBot);
 
 // If the bot has been unable to move more than 32 units in the last MaxStuckTime seconds (must be trying to move somewhere) then returns true
 bool IsBotPermaStuck(AvHAIPlayer* pBot);
@@ -332,14 +334,16 @@ void MoveDirectlyTo(AvHAIPlayer* pBot, const Vector Destination);
 // Check if there are any players in our way and try to move around them. If we can't, then back up to let them through
 void HandlePlayerAvoidance(AvHAIPlayer* pBot, const Vector MoveDestination);
 
+Vector AdjustPointForPathfinding(const Vector Point);
+
 // Special path finding that takes the presence of phase gates into account 
-dtStatus FindFlightPathToPoint(const nav_profile& NavProfile, Vector FromLocation, Vector ToLocation, bot_path_node* path, int* pathSize, float MaxAcceptableDistance);
+dtStatus FindFlightPathToPoint(const nav_profile& NavProfile, Vector FromLocation, Vector ToLocation, vector<bot_path_node>& path, float MaxAcceptableDistance);
 
 Vector UTIL_FindHighestSuccessfulTracePoint(const Vector TraceFrom, const Vector TargetPoint, const Vector NextPoint, const float IterationStep, const float MinIdealHeight, const float MaxHeight);
 
 // Similar to FindPathToPoint, but you can specify a max acceptable distance for partial results. Will return a failure if it can't reach at least MaxAcceptableDistance away from the ToLocation
-dtStatus FindPathClosestToPoint(AvHAIPlayer* pBot, const BotMoveStyle MoveStyle, const Vector FromLocation, const Vector ToLocation, bot_path_node* path, int* pathSize, float MaxAcceptableDistance);
-dtStatus FindPathClosestToPoint(const nav_profile& NavProfile, const Vector FromLocation, const Vector ToLocation, bot_path_node* path, int* pathSize, float MaxAcceptableDistance);
+dtStatus FindPathClosestToPoint(AvHAIPlayer* pBot, const BotMoveStyle MoveStyle, const Vector FromLocation, const Vector ToLocation, vector<bot_path_node>& path, float MaxAcceptableDistance);
+dtStatus FindPathClosestToPoint(const nav_profile& NavProfile, const Vector FromLocation, const Vector ToLocation, vector<bot_path_node>& path, float MaxAcceptableDistance);
 
 // If the bot is stuck and off the path or nav mesh, this will try to find a point it can directly move towards to get it back on track
 Vector FindClosestPointBackOnPath(AvHAIPlayer* pBot);
@@ -403,8 +407,8 @@ bool UTIL_PointIsReachable(const nav_profile& NavProfile, const Vector FromLocat
 // If the bot has a path, it will work out how far along the path it can see and return the furthest point. Used so that the bot looks ahead along the path rather than just at its next path point
 Vector UTIL_GetFurthestVisiblePointOnPath(const AvHAIPlayer* pBot);
 // For the given viewer location and path, will return the furthest point along the path the viewer could see
-Vector UTIL_GetFurthestVisiblePointOnPath(const Vector ViewerLocation, const bot_path_node* path, const int pathSize, bool bPrecise);
-
+Vector UTIL_GetFurthestVisiblePointOnPath(const Vector ViewerLocation, vector<bot_path_node>& path, bool bPrecise);
+Vector UTIL_GetFurthestVisiblePointOnLineWithHull(const Vector ViewerLocation, const Vector LineStart, const Vector LineEnd, int HullNumber);
 
 // Returns the nearest nav mesh poly reference for the edict's current world position
 dtPolyRef UTIL_GetNearestPolyRefForEntity(const edict_t* Edict);
@@ -435,6 +439,8 @@ void ClearBotStuckMovement(AvHAIPlayer* pBot);
 void UTIL_ClearDoorData();
 void UTIL_ClearWeldablesData();
 
+const nav_profile GetBaseNavProfile(const int index);
+
 // Based on the direction the bot wants to move and it's current facing angle, sets the forward and side move, and the directional buttons to make the bot actually move
 void BotMovementInputs(AvHAIPlayer* pBot);
 
@@ -459,10 +465,9 @@ nav_door* UTIL_GetNavDoorByEdict(const edict_t* DoorEdict);
 
 Vector UTIL_AdjustPointAwayFromNavWall(const Vector Location, const float MaxDistanceFromWall);
 
-unsigned char UTIL_GetBotCurrentPathArea(AvHAIPlayer* pBot);
-unsigned char UTIL_GetNextBotCurrentPathArea(AvHAIPlayer* pBot);
-
 void UTIL_PopulateBaseNavProfiles();
+
+void UTIL_RefreshOffMeshConnections();
 
 #endif // BOT_NAVIGATION_H
 

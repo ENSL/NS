@@ -432,7 +432,8 @@ typedef struct _AVH_AI_PLAYER_TASK
 // Contains the bot's current navigation info, such as current path
 typedef struct _NAV_STATUS
 {
-	bot_path_node CurrentPath[MAX_AI_PATH_SIZE]; // Bot's path nodes
+	vector<bot_path_node> CurrentPath; // Bot's path nodes
+	vector<bot_path_node>::iterator CurrentPathPoint;
 
 	Vector TargetDestination = g_vecZero; // Desired destination
 	Vector ActualMoveDestination = g_vecZero; // Actual destination on nav mesh
@@ -441,8 +442,6 @@ typedef struct _NAV_STATUS
 	Vector LastNavMeshCheckPosition = g_vecZero;
 	Vector LastNavMeshPosition = g_vecZero; // Tracks the last place the bot was on the nav mesh. Useful if accidentally straying off it
 
-	int PathSize = 0; // How many path nodes the bot's current path has
-	int CurrentPathPoint = 0; // Which point in the path the bot is on
 	int CurrentMoveType = MOVETYPE_NONE; // Tracks the edict's current movement type
 
 	unsigned int CurrentPoly = 0; // Which nav mesh poly the bot is currently on

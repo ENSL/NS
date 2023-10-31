@@ -12,6 +12,7 @@ bool UTIL_QuickHullTrace(const edict_t* pEdict, const Vector& start, const Vecto
 bool UTIL_QuickHullTrace(const edict_t* pEdict, const Vector& start, const Vector& end, int hullNum);
 edict_t* UTIL_TraceEntity(const edict_t* pEdict, const Vector& start, const Vector& end);
 Vector UTIL_GetTraceHitLocation(const Vector Start, const Vector End);
+Vector UTIL_GetHullTraceHitLocation(const Vector Start, const Vector End, int HullNum);
 
 Vector UTIL_GetGroundLocation(const Vector CheckLocation);
 Vector UTIL_GetEntityGroundLocation(const edict_t* pEntity);
@@ -30,7 +31,8 @@ bool GetNearestMapLocationAtPoint(vec3_t SearchLocation, string& outLocation);
 
 AvHAIDeployableStructureType GetDeployableObjectTypeFromEdict(const edict_t* StructureEdict);
 
-void AIDEBUG_DrawBotPath(AvHAIPlayer* pBot);
+void AIDEBUG_DrawBotPath(AvHAIPlayer* pBot, float DrawTime = 0.0f);
+void AIDEBUG_DrawPath(vector<bot_path_node>& path, float DrawTime = 0.0f);
 
 // Draws a white line between start and end for the given player (pEntity) for 0.1s
 void UTIL_DrawLine(edict_t* pEntity, Vector start, Vector end);

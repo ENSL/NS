@@ -2486,8 +2486,8 @@ void AITASK_GenerateGuardWatchPoints(AvHAIPlayer* pBot, const Vector& GuardLocat
 
 	const nav_profile NavProfile = (bEnemyIsAlien) ? BaseNavProfiles[SKULK_BASE_NAV_PROFILE] : BaseNavProfiles[MARINE_BASE_NAV_PROFILE];
 
-	bot_path_node path[MAX_AI_PATH_SIZE];
-	int pathSize = 0;
+	vector<bot_path_node> path;
+	path.clear();
 
 	
 	for (int i = 0; i < AITAC_GetNumHives(); i++)
@@ -2498,41 +2498,41 @@ void AITASK_GenerateGuardWatchPoints(AvHAIPlayer* pBot, const Vector& GuardLocat
 
 		if (UTIL_QuickTrace(pEdict, GuardLocation + Vector(0.0f, 0.0f, 10.0f), Hive->Location) || vDist2DSq(GuardLocation, Hive->Location) < sqrf(UTIL_MetresToGoldSrcUnits(10.0f))) { continue; }
 
-		dtStatus SearchResult = FindPathClosestToPoint(NavProfile, Hive->FloorLocation, GuardLocation, path, &pathSize, 500.0f);
+		dtStatus SearchResult = FindPathClosestToPoint(NavProfile, Hive->FloorLocation, GuardLocation, path, 500.0f);
 
 		if (dtStatusSucceed(SearchResult))
 		{
-			Vector FinalApproachDir = UTIL_GetVectorNormal2D(path[pathSize - 1].Location - path[pathSize - 2].Location);
+			Vector FinalApproachDir = UTIL_GetVectorNormal2D(path.back().Location - prev(prev(path.end()))->Location);
 			Vector ProspectiveNewGuardLoc = GuardLocation - (FinalApproachDir * 300.0f);
 
-			ProspectiveNewGuardLoc.z = path[pathSize - 2].Location.z;
+			ProspectiveNewGuardLoc.z = prev(prev(path.end()))->Location.z;
 
 			pBot->GuardInfo.GuardPoints[pBot->GuardInfo.NumGuardPoints++] = ProspectiveNewGuardLoc;
 		}
 	}
 	
-	dtStatus SearchResult = FindPathClosestToPoint(NavProfile, AITAC_GetTeamStartingLocation(EnemyTeam), GuardLocation, path, &pathSize, 500.0f);
+	dtStatus SearchResult = FindPathClosestToPoint(NavProfile, AITAC_GetTeamStartingLocation(EnemyTeam), GuardLocation, path, 500.0f);
 
 	if (dtStatusSucceed(SearchResult))
 	{
-		Vector FinalApproachDir = UTIL_GetVectorNormal2D(path[pathSize - 1].Location - path[pathSize - 2].Location);
+		Vector FinalApproachDir = UTIL_GetVectorNormal2D(path.back().Location - prev(prev(path.end()))->Location);
 		Vector ProspectiveNewGuardLoc = GuardLocation - (FinalApproachDir * 300.0f);
 
-		ProspectiveNewGuardLoc.z = path[pathSize - 2].Location.z;
+		ProspectiveNewGuardLoc.z = prev(prev(path.end()))->Location.z;
 
 		pBot->GuardInfo.GuardPoints[pBot->GuardInfo.NumGuardPoints++] = ProspectiveNewGuardLoc;
 	}
 
 	if (vDist2DSq(GuardLocation, AITAC_GetTeamStartingLocation(pBot->Player->GetTeam())) > sqrf(UTIL_MetresToGoldSrcUnits(15.0f)))
 	{
-		dtStatus SearchResult = FindPathClosestToPoint(NavProfile, AITAC_GetTeamStartingLocation(pBot->Player->GetTeam()), GuardLocation, path, &pathSize, 500.0f);
+		dtStatus SearchResult = FindPathClosestToPoint(NavProfile, AITAC_GetTeamStartingLocation(pBot->Player->GetTeam()), GuardLocation, path, 500.0f);
 
 		if (dtStatusSucceed(SearchResult))
 		{
-			Vector FinalApproachDir = UTIL_GetVectorNormal2D(path[pathSize - 1].Location - path[pathSize - 2].Location);
+			Vector FinalApproachDir = UTIL_GetVectorNormal2D(path.back().Location - prev(prev(path.end()))->Location);
 			Vector ProspectiveNewGuardLoc = GuardLocation - (FinalApproachDir * 300.0f);
 
-			ProspectiveNewGuardLoc.z = path[pathSize - 2].Location.z;
+			ProspectiveNewGuardLoc.z = prev(prev(path.end()))->Location.z;
 
 			pBot->GuardInfo.GuardPoints[pBot->GuardInfo.NumGuardPoints++] = ProspectiveNewGuardLoc;
 		}
