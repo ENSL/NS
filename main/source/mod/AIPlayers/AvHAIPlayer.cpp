@@ -1477,8 +1477,6 @@ void StartNewBotFrame(AvHAIPlayer* pBot)
 		UpdateCommanderOrders(pBot);
 	}
 
-	UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, pBot->BotNavInfo.LastNavMeshPosition);
-
 }
 
 void DroneThink(AvHAIPlayer* pBot)

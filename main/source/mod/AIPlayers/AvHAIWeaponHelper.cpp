@@ -428,14 +428,14 @@ Vector UTIL_GetGrenadeThrowTarget(edict_t* Player, const Vector TargetLocation, 
 		return NewSpot;
 	}
 
-	bot_path_node CheckPath[MAX_AI_PATH_SIZE];
-	int PathSize = 0;
+	vector<bot_path_node> CheckPath;
+	CheckPath.clear();
 
-	dtStatus Status = FindPathClosestToPoint(BaseNavProfiles[ALL_NAV_PROFILE], Player->v.origin, TargetLocation, CheckPath, &PathSize, ExplosionRadius);
+	dtStatus Status = FindPathClosestToPoint(BaseNavProfiles[ALL_NAV_PROFILE], Player->v.origin, TargetLocation, CheckPath, ExplosionRadius);
 
 	if (dtStatusSucceed(Status))
 	{
-		Vector FurthestPointVisible = UTIL_GetFurthestVisiblePointOnPath(GetPlayerEyePosition(Player), CheckPath, PathSize, bPrecise);
+		Vector FurthestPointVisible = UTIL_GetFurthestVisiblePointOnPath(GetPlayerEyePosition(Player), CheckPath, bPrecise);
 
 		if (vDist3DSq(FurthestPointVisible, TargetLocation) <= sqrf(ExplosionRadius))
 		{

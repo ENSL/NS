@@ -2512,19 +2512,19 @@ bool AITAC_GetNumPlayersOnTeamWithLOS(AvHTeamNumber Team, const Vector& Location
 
 bool AITAC_ShouldBotBeCautious(AvHAIPlayer* pBot)
 {
-	if (pBot->BotNavInfo.PathSize == 0) { return false; }
+	if (pBot->BotNavInfo.CurrentPath.size() == 0 || pBot->BotNavInfo.CurrentPathPoint == pBot->BotNavInfo.CurrentPath.end()) { return false; }
 
-	if (UTIL_GetBotCurrentPathArea(pBot) != SAMPLE_POLYAREA_GROUND) { return false; }
+	if (pBot->BotNavInfo.CurrentPathPoint->area != SAMPLE_POLYAREA_GROUND) { return false; }
 
 	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(pBot->Player->GetTeam());
 
 	if (AITAC_AnyPlayerOnTeamHasLOSToLocation(EnemyTeam, pBot->Edict->v.origin, UTIL_MetresToGoldSrcUnits(50.0f), nullptr)) { return false; }
 
-	int NumEnemiesAtDestination = AITAC_GetNumPlayersOnTeamWithLOS(EnemyTeam, pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].Location, UTIL_MetresToGoldSrcUnits(50.0f), pBot->Edict);
+	int NumEnemiesAtDestination = AITAC_GetNumPlayersOnTeamWithLOS(EnemyTeam, pBot->BotNavInfo.CurrentPathPoint->Location, UTIL_MetresToGoldSrcUnits(50.0f), pBot->Edict);
 
 	if (NumEnemiesAtDestination > 1)
 	{
-		return (vDist2DSq(pBot->Edict->v.origin, pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint].Location) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)));
+		return (vDist2DSq(pBot->Edict->v.origin, pBot->BotNavInfo.CurrentPathPoint->Location) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)));
 	}
 
 	return false;
