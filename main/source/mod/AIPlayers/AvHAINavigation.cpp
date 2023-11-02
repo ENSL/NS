@@ -2333,6 +2333,10 @@ void CheckAndHandleDoorObstruction(AvHAIPlayer* pBot)
 			{
 				AITASK_SetWeldTask(pBot, &pBot->BotNavInfo.MovementTask, Trigger->Edict, true);
 			}
+			else if (Trigger->TriggerType == DOOR_BREAK)
+			{
+				AITASK_SetAttackTask(pBot, &pBot->BotNavInfo.MovementTask, Trigger->Edict, true);
+			}
 
 			return;
 		}
@@ -3227,7 +3231,6 @@ void LadderMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoin
 		pBot->Button |= IN_DUCK;
 	}
 
-
 	if (pBot->Player->IsOnLadder())
 	{
 		// We're on the ladder and actively climbing
@@ -3430,6 +3433,11 @@ void LadderMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoin
 	// If we're going down the ladder and are approaching it, just keep moving towards it
 	if (pBot->BotNavInfo.IsOnGround && !bIsGoingUpLadder)
 	{
+		if (vDist2DSq(pEdict->v.origin, StartPoint) < sqrf(32.0f))
+		{
+			pBot->BotNavInfo.bShouldWalk = true;
+		}
+
 		Vector ApproachDir = UTIL_GetVectorNormal2D(EndPoint - pBot->Edict->v.origin);
 
 		float Dot = UTIL_GetDotProduct2D(ApproachDir, vForward);
@@ -5351,6 +5359,14 @@ void SkipAheadInFlightPath(AvHAIPlayer* pBot)
 	// Early exit if we don't have a path, or we're already on the last path point
 	if (BotNavInfo->CurrentPath.size() == 0 || BotNavInfo->CurrentPathPoint == prev(BotNavInfo->CurrentPath.end())) { return; }
 
+
+
+	if (UTIL_QuickHullTrace(pBot->Edict, pBot->Edict->v.origin, prev(BotNavInfo->CurrentPath.end())->Location, head_hull))
+	{
+		pBot->BotNavInfo.CurrentPathPoint = prev(BotNavInfo->CurrentPath.end());
+		return;
+	}
+
 	// If we are currently in a low area or approaching one, don't try to skip ahead in case it screws us up
 	if (BotNavInfo->CurrentPathPoint->area == SAMPLE_POLYAREA_CROUCH || (next(BotNavInfo->CurrentPathPoint) != BotNavInfo->CurrentPath.end() && next(BotNavInfo->CurrentPathPoint)->area == SAMPLE_POLYAREA_CROUCH)) { return; }
 
@@ -5414,11 +5430,7 @@ void BotFollowFlightPath(AvHAIPlayer* pBot)
 
 	ClosestPointToPath = vClosestPointOnLine(MoveFrom, CurrentMoveDest, pEdict->v.origin);
 	
-	Vector MoveDir = UTIL_GetVectorNormal(CurrentMoveDest - pEdict->v.origin);
-
-	Vector ObstacleCheck = pEdict->v.origin + (MoveDir * 32.0f);
-
-	pEdict->v.origin = ClosestPointToPath;
+	Vector MoveDir = UTIL_GetVectorNormal(CurrentMoveDest - MoveFrom);
 
 	if (IsBotStuck(pBot, CurrentMoveDest))
 	{
@@ -5429,13 +5441,28 @@ void BotFollowFlightPath(AvHAIPlayer* pBot)
 		}
 	}
 
-	float Velocity = vSize2DSq(pEdict->v.velocity);
+	float CurrentSpeed = vSize3D(pEdict->v.velocity);
+
+	if (vDist2DSq(pEdict->v.origin, MoveFrom) > sqrf(100.0f) && vDist2DSq(pEdict->v.origin, CurrentMoveDest) > sqrf(100.0f))
+	{
+
+		Vector NewVelocity = MoveDir;
+
+		if (vDist3DSq(pEdict->v.origin, ClosestPointToPath) > sqrf(16.0f))
+		{
+			NewVelocity = UTIL_GetVectorNormal((ClosestPointToPath + (MoveDir * 100.0f)) - pEdict->v.origin);
+		}
+
+		NewVelocity = NewVelocity * CurrentSpeed;
+		pEdict->v.velocity = NewVelocity;
+
+	}
 
 	bool bMustHugGround = (CurrentMoveArea == SAMPLE_POLYAREA_CROUCH || NextMoveArea == SAMPLE_POLYAREA_CROUCH);
 
 	if (!bMustHugGround || MoveFrom.z <= CurrentMoveDest.z)
 	{
-		if (Velocity < sqrf(500.f))
+		if (CurrentSpeed < sqrf(500.f))
 		{
 			if (!(pEdict->v.oldbuttons & IN_JUMP))
 			{
@@ -5520,7 +5547,8 @@ void BotFollowSwimPath(AvHAIPlayer* pBot)
 
 	float WaterDiff = WaterLevel - pEdict->v.origin.z;
 
-	if (WaterDiff > 0.0f)
+	// If we're below the waterline by a significant amount, then swim up to surface before we move on
+	if (WaterDiff > 5.0f)
 	{
 		Vector MoveDir = UTIL_GetVectorNormal2D(BotNavInfo->CurrentPathPoint->Location - pEdict->v.origin);
 		pBot->desiredMovementDir = MoveDir;
@@ -5537,7 +5565,15 @@ void BotFollowSwimPath(AvHAIPlayer* pBot)
 		return;
 	}
 
-	NewMove(pBot);
+	// We're at the surface, now tackle the path the usual way
+	if (pBot->BotNavInfo.NavProfile.bFlyingProfile)
+	{
+		BotFollowFlightPath(pBot);
+	}
+	else
+	{
+		BotFollowPath(pBot);
+	}
 
 }
 
@@ -6615,8 +6651,9 @@ void UTIL_PopulateTriggersForEntity(edict_t* Entity, vector<DoorTrigger>& Trigge
 	CBaseButton* ButtonRef = dynamic_cast<CBaseButton*>(EntityRef);
 	AvHWeldable* WeldableRef = dynamic_cast<AvHWeldable*>(EntityRef);
 	CBaseTrigger* TriggerRef = dynamic_cast<CBaseTrigger*>(EntityRef);
+	CBreakable* BreakableRef = dynamic_cast<CBreakable*>(EntityRef);
 
-	if (ButtonRef || WeldableRef || TriggerRef)
+	if (ButtonRef || WeldableRef || TriggerRef || BreakableRef)
 	{
 		CBaseToggle* ToggleRef = dynamic_cast<CBaseToggle*>(EntityRef);
 
@@ -6633,6 +6670,10 @@ void UTIL_PopulateTriggersForEntity(edict_t* Entity, vector<DoorTrigger>& Trigge
 		else if (WeldableRef)
 		{
 			NewTriggerType = DOOR_WELD;
+		}
+		else if (BreakableRef)
+		{
+			NewTriggerType = DOOR_BREAK;
 		}
 
 		DoorTrigger NewTrigger;
@@ -6680,11 +6721,11 @@ void UTIL_PopulateTriggersForEntity(edict_t* Entity, vector<DoorTrigger>& Trigge
 				if (FStrEq(STRING(EnvGlobalRef->m_globalstate), GlobalName))
 				{
 					UTIL_PopulateTriggersForEntity(EnvGlobalRef->edict(), TriggerList);
-				}				
+				}
 			}
 		}
 
-		return;		
+		return;
 	}
 
 	const char* EntityName = STRING(Entity->v.targetname);
@@ -6702,6 +6743,47 @@ void UTIL_PopulateTriggersForEntity(edict_t* Entity, vector<DoorTrigger>& Trigge
 			UTIL_PopulateTriggersForEntity(theEntity->edict(), TriggerList);
 		}
 	END_FOR_ALL_ENTITIES(kwsWeldableClassName)
+
+	FOR_ALL_ENTITIES("trigger_changetarget", CTriggerChangeTarget*)
+
+		const char* TargetName = STRING(theEntity->pev->targetname);
+		const char* NewTargetName = STRING(theEntity->GetNewTargetName());
+
+		if (FStrEq(STRING(theEntity->GetNewTargetName()), EntityName))
+		{
+			currTrigger = NULL;
+
+			while ((currTrigger = UTIL_FindEntityByString(currTrigger, "target", STRING(theEntity->pev->targetname))) != NULL)
+			{
+				UTIL_PopulateTriggersForEntity(currTrigger->edict(), TriggerList);
+			}
+
+			currTrigger = NULL;
+
+			while ((currTrigger = UTIL_FindEntityByString(currTrigger, "targetname", STRING(theEntity->pev->target))) != NULL)
+			{
+				UTIL_PopulateTriggersForEntity(currTrigger->edict(), TriggerList);
+			}
+
+			string NewString = TargetName;
+
+			CBaseEntity* CurrWeldable = NULL;
+
+			while ((CurrWeldable = UTIL_FindEntityByClassname(CurrWeldable, kwsWeldableClassName)) != NULL)
+			{
+				AvHWeldable* ThisWeldableRef = dynamic_cast<AvHWeldable*>(CurrWeldable);
+
+				if (ThisWeldableRef)
+				{
+					if (ThisWeldableRef->GetTargetOnFinish() == NewString)
+					{
+						UTIL_PopulateTriggersForEntity(ThisWeldableRef->edict(), TriggerList);
+					}
+				}
+			}
+		
+		}
+	END_FOR_ALL_ENTITIES("trigger_changetarget")
 
 
 	while (((currTrigger = UTIL_FindEntityByClassname(currTrigger, "multi_manager")) != NULL))
@@ -6745,130 +6827,6 @@ void UTIL_PopulateTriggersForEntity(edict_t* Entity, vector<DoorTrigger>& Trigge
 	}
 	
 }
-
-void UTIL_LinkTriggerToDoor(const edict_t* DoorEdict, nav_door* DoorRef)
-{
-
-	CBaseEntity* currTrigger = NULL;
-	const char* DoorTargetName = STRING(DoorEdict->v.targetname);
-	while ((currTrigger = UTIL_FindEntityByString(currTrigger, "target", DoorTargetName)) != NULL)
-	{
-		CBaseToggle* ToggleRef = dynamic_cast<CBaseToggle*>(currTrigger);
-		CBaseTrigger* TriggerRef = dynamic_cast<CBaseTrigger*>(currTrigger);
-		CBaseButton* ButtonRef = dynamic_cast<CBaseButton*>(currTrigger);		
-
-		DoorActivationType NewTriggerType = DOOR_NONE;
-
-		if (TriggerRef)
-		{
-			NewTriggerType = DOOR_TRIGGER;
-		}
-		else if (ButtonRef)
-		{
-			NewTriggerType = DOOR_BUTTON;
-		}
-
-		DoorTrigger NewTrigger;
-		NewTrigger.Entity = currTrigger;
-		NewTrigger.Edict = currTrigger->edict();
-		NewTrigger.ToggleEnt = ToggleRef;
-		NewTrigger.TriggerType = NewTriggerType;
-		NewTrigger.bIsActivated = !currTrigger->IsLockedByMaster();
-
-		DoorRef->TriggerEnts.push_back(NewTrigger);
-	}
-
-	const string DoorName = DoorTargetName;
-
-	currTrigger = NULL;
-
-	FOR_ALL_ENTITIES(kwsWeldableClassName, AvHWeldable*)
-		if (theEntity->GetTargetOnFinish() == DoorName)
-		{
-			DoorTrigger NewTrigger;
-			NewTrigger.Entity = theEntity;
-			NewTrigger.Edict = theEntity->edict();
-			NewTrigger.TriggerType = DOOR_WELD;
-			NewTrigger.bIsActivated = !theEntity->IsLockedByMaster();
-
-			DoorRef->TriggerEnts.push_back(NewTrigger);
-		}
-	END_FOR_ALL_ENTITIES(kwsWeldableClassName)
-
-	
-
-	// If a door is activated via a multi_manager entity, then we need to find whatever trigger/button targets that multi_manager and tie it to the door
-
-	while (((currTrigger = UTIL_FindEntityByClassname(currTrigger, "multi_manager")) != NULL))
-	{
-		CMultiManager* MMRef = dynamic_cast<CMultiManager*>(currTrigger);
-
-		bool bTargetsDoor = false;
-
-		if (MMRef)
-		{
-			for (int i = 0; i < MMRef->m_cTargets; i++)
-			{
-				if (FStrEq(STRING(DoorEdict->v.targetname), STRING(MMRef->m_iTargetName[i])))
-				{
-					bTargetsDoor = true;
-					break;
-				}
-			}
-		}
-
-		if (bTargetsDoor)
-		{
-			CBaseEntity* MMTrigger = NULL;
-
-			const char* MMNameChar = STRING(MMRef->pev->targetname);
-
-			while ((MMTrigger = UTIL_FindEntityByString(MMTrigger, "target", MMNameChar)) != NULL)
-			{
-				DoorActivationType NewTriggerType = DOOR_NONE;
-
-				CBaseToggle* ToggleRef = dynamic_cast<CBaseToggle*>(MMTrigger);
-				CBaseTrigger* TriggerRef = dynamic_cast<CBaseTrigger*>(MMTrigger);
-				CBaseButton* ButtonRef = dynamic_cast<CBaseButton*>(MMTrigger);
-
-				if (TriggerRef)
-				{
-					NewTriggerType = DOOR_TRIGGER;
-				}
-				else if (ButtonRef)
-				{
-					NewTriggerType = DOOR_BUTTON;
-				}
-
-				DoorTrigger NewTrigger;
-				NewTrigger.Entity = currTrigger;
-				NewTrigger.Edict = currTrigger->edict();
-				NewTrigger.ToggleEnt = ToggleRef;
-				NewTrigger.TriggerType = NewTriggerType;
-				NewTrigger.bIsActivated = currTrigger->IsLockedByMaster();
-
-				DoorRef->TriggerEnts.push_back(NewTrigger);
-			}
-
-			const string MMName = MMNameChar;
-
-			FOR_ALL_ENTITIES(kwsWeldableClassName, AvHWeldable*)
-				if (theEntity->GetTargetOnFinish() == MMName)
-				{
-					DoorTrigger NewTrigger;
-					NewTrigger.Entity = theEntity;
-					NewTrigger.Edict = theEntity->edict();
-					NewTrigger.TriggerType = DOOR_WELD;
-					NewTrigger.bIsActivated = !theEntity->IsLockedByMaster();
-
-					DoorRef->TriggerEnts.push_back(NewTrigger);
-				}
-			END_FOR_ALL_ENTITIES(kwsWeldableClassName)
-		}
-	}
-
-}
-
 
 void UTIL_PopulateWeldableObstacles()
 {
@@ -7120,8 +7078,33 @@ void UTIL_UpdateDoorTriggers(nav_door* Door)
 				continue;
 			}
 		}
-		
-		it->bIsActivated = (it->ToggleEnt) ? !it->ToggleEnt->IsLockedByMaster() : true;
+				
+		if (FStrEq(STRING(it->Edict->v.target), STRING(Door->DoorEdict->v.targetname)))
+		{
+			it->bIsActivated = (it->ToggleEnt) ? !it->ToggleEnt->IsLockedByMaster() : true;
+		}
+		else
+		{
+			// Weldables and breakables can't be "deactivated" so assume they are always actived
+			if (it->TriggerType == DOOR_WELD || it->TriggerType == DOOR_BREAK)
+			{
+				it->bIsActivated = true;
+			}
+			else
+			{
+				CBaseEntity* ActivationTarget = UTIL_FindEntityByString(NULL, "targetname", STRING(it->Edict->v.target));
+
+				if (!ActivationTarget)
+				{
+					it->bIsActivated = true;
+				}
+				else
+				{
+					const char* classname = STRING(ActivationTarget->pev->classname);
+					it->bIsActivated = (FStrEq(classname, "multi_manager") || FStrEq(classname, "trigger_changetarget") || FStrEq(classname, "multisource"));
+				}
+			}
+		}
 
 		if (it->bIsActivated)
 		{

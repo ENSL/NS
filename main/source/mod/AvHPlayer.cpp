@@ -9502,7 +9502,7 @@ void AvHPlayer::UpdateAlienUI()
 			currentMask |= 0x80;
 
 			int teamMask=0;
-			AvHEntityHierarchy& theEntHier=GetGameRules()->GetEntityHierarchy(this->GetTeam());
+			AvHEntityHierarchy& theEntHier=GetGameRules()->GetEntityHierarchy(this->GetTeam(true));
 			teamMask |= ( theEntHier.GetNumSensory() & 0x3 );
 			teamMask <<= 2;
 			teamMask |= ( theEntHier.GetNumDefense() & 0x3 );

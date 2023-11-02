@@ -59,6 +59,26 @@ private:
 	CMultiManager* Clone(void);
 };
 
+// this is a really bad idea.
+class CTriggerChangeTarget : public CBaseDelay
+{
+public:
+	void KeyValue(KeyValueData* pkvd);
+	void Spawn(void);
+	void Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
+
+	int GetNewTargetName() { return m_iszNewTarget; }
+
+	int ObjectCaps(void) { return CBaseDelay::ObjectCaps() & ~FCAP_ACROSS_TRANSITION; }
+	virtual int		Save(CSave& save);
+	virtual int		Restore(CRestore& restore);
+
+	static	TYPEDESCRIPTION m_SaveData[];
+
+private:
+	int		m_iszNewTarget;
+};
+
 
 class CLadder : public CBaseTrigger
 {

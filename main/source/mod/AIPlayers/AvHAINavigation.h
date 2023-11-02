@@ -76,7 +76,8 @@ enum DoorActivationType
 	DOOR_TRIGGER,// Door activated by touching a trigger_once or trigger_multiple
 	DOOR_BUTTON, // Door activated by pressing a button
 	DOOR_WELD,   // Door activated by welding something
-	DOOR_SHOOT   // Door activated by being shot
+	DOOR_SHOOT,  // Door activated by being shot
+	DOOR_BREAK	 // Door activated by breaking something
 };
 
 typedef struct _DOOR_TRIGGER
@@ -172,9 +173,6 @@ void GorgeUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle);
 void LerkUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle);
 void FadeUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle);
 void OnosUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle);
-
-// FUTURE FEATURE: Will eventually link a door to the trigger than opens it
-void UTIL_LinkTriggerToDoor(const edict_t* DoorEdict, nav_door* DoorRef);
 
 // Finds any random point on the navmesh that is relevant for the bot. Returns ZERO_VECTOR if none found
 Vector UTIL_GetRandomPointOnNavmesh(const AvHAIPlayer* pBot);

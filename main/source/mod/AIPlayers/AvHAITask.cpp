@@ -362,6 +362,8 @@ bool AITASK_IsMoveTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
 	if (!Task->TaskLocation) { return false; }
 
+	if (pBot->BotNavInfo.NavProfile.bFlyingProfile && vEquals(pBot->Edict->v.origin, Task->TaskLocation, 50.0f)) { return false; }
+
 	return (vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation) > sqrf(max_player_use_reach) || !UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, Task->TaskLocation));
 }
 
@@ -454,18 +456,18 @@ bool AITASK_IsWeaponPickupTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 
 bool AITASK_IsAttackTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
-	if (FNullEnt(Task->TaskTarget) || vIsZero(Task->TaskTarget->v.origin)) { return false; }
+	if (FNullEnt(Task->TaskTarget) || (vIsZero(Task->TaskTarget->v.origin) && vIsZero(Task->TaskLocation))) { return false; }
 
 	if ((Task->TaskTarget->v.effects & EF_NODRAW) || (Task->TaskTarget->v.deadflag != DEAD_NO)) { return false; }
 
-	if (!UTIL_IsBuildableStructureStillReachable(pBot, Task->TaskTarget)) { return false; }
+	if (IsEdictStructure(Task->TaskTarget) && !UTIL_IsBuildableStructureStillReachable(pBot, Task->TaskTarget)) { return false; }
 
 	if (IsPlayerSkulk(pBot->Edict))
 	{
 		if (UTIL_IsStructureElectrified(Task->TaskTarget)) { return false; }
 	}
 
-	if (IsPlayerGorge(pBot->Edict) && !PlayerHasWeapon(pBot->Player, WEAPON_GORGE_BILEBOMB)) { return false; }
+	if (IsPlayerGorge(pBot->Edict) && (Task->TaskTarget->v.health > 100 && !PlayerHasWeapon(pBot->Player, WEAPON_GORGE_BILEBOMB))) { return false; }
 
 	AvHAIDeployableStructureType StructureType = GetStructureTypeFromEdict(Task->TaskTarget);
 
@@ -1567,8 +1569,53 @@ void BotProgressAttackTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		return;
 	}
 
+	AvHAIWeapon Weapon = WEAPON_INVALID;
 
-	BotAttackTarget(pBot, Task->TaskTarget);
+	if (IsPlayerMarine(pBot->Edict))
+	{
+		Weapon = BotMarineChooseBestWeaponForStructure(pBot, Task->TaskTarget);
+	}
+	else
+	{
+		Weapon = BotAlienChooseBestWeaponForStructure(pBot, Task->TaskTarget);
+	}
+
+	BotAttackResult AttackResult = PerformAttackLOSCheck(pBot, Weapon, Task->TaskTarget);
+
+	if (AttackResult == ATTACK_SUCCESS)
+	{
+		// If we were ducking before then keep ducking
+		if (pBot->Edict->v.oldbuttons & IN_DUCK)
+		{
+			pBot->Button |= IN_DUCK;
+		}
+
+		BotShootTarget(pBot, Weapon, Task->TaskTarget);
+
+		return;
+	}
+
+	if (!vIsZero(Task->TaskLocation))
+	{
+		MoveTo(pBot, Task->TaskLocation, MOVESTYLE_NORMAL, max_player_use_reach);
+		return;
+	}
+
+	Vector AttackLocation = (IsEdictPlayer(Task->TaskTarget) || IsEdictStructure(Task->TaskTarget)) ? Task->TaskTarget->v.origin : UTIL_GetButtonFloorLocation(pBot->Edict->v.origin, Task->TaskTarget);
+
+	if (vIsZero(AttackLocation))
+	{
+		AttackLocation = Task->TaskTarget->v.origin;
+	}
+
+	float WeaponRange = GetMaxIdealWeaponRange(Weapon);
+
+	Vector NewTaskLocation = FindClosestNavigablePointToDestination(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, AttackLocation, WeaponRange);
+
+	Task->TaskLocation = (!vIsZero(NewTaskLocation)) ? NewTaskLocation : AttackLocation;
+
+	MoveTo(pBot, Task->TaskLocation, MOVESTYLE_NORMAL, max_player_use_reach);
+	
 	return;
 }
 
