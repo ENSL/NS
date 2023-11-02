@@ -641,17 +641,29 @@ void AIMGR_ResetRound()
 
 void AIMGR_ClearBotData()
 {
-	// We shouldn't have any bots in the server when this is called, but this ensures no bots end up "orphans" and no longer tracked by the system
-	for (auto it = ActiveAIPlayers.begin(); it != ActiveAIPlayers.end();)
+	// We have to be careful here, depending on how the nav data is being unloaded, there could be stale references in the ActiveAIPlayers list.
+	for (int i = 1; i <= gpGlobals->maxClients; i++)
 	{
-		if (!FNullEnt(it->Edict) && it->Player)
-		{
-			it->Player->Kick();
-		}
+		edict_t* PlayerEdict = INDEXENT(i);
 
-		it = ActiveAIPlayers.erase(it);
+		if (!FNullEnt(PlayerEdict) && !PlayerEdict->free && (PlayerEdict->v.flags & FL_FAKECLIENT))
+		{
+			for (auto it = ActiveAIPlayers.begin(); it != ActiveAIPlayers.end();)
+			{
+				if (it->Edict == PlayerEdict && it->Player)
+				{
+					it->Player->Kick();
+					it = ActiveAIPlayers.erase(it);
+				}
+				else
+				{
+					it++;
+				}
+			}
+		}
 	}
 
+	// We shouldn't have any bots in the server when this is called, but this ensures no bots end up "orphans" and no longer tracked by the system
 	ActiveAIPlayers.clear();
 }
 

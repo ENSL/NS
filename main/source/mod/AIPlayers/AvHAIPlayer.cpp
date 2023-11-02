@@ -513,7 +513,7 @@ void BotAttackTarget(AvHAIPlayer* pBot, edict_t* Target)
 			return;
 		}
 
-		Vector AttackPoint = Target->v.origin;
+		Vector AttackPoint = (IsEdictPlayer(Target) || IsEdictStructure(Target)) ? Target->v.origin : UTIL_GetButtonFloorLocation(pBot->Edict->v.origin, Target);
 
 		if (StructureType == STRUCTURE_ALIEN_HIVE)
 		{
@@ -540,6 +540,13 @@ void BotAttackTarget(AvHAIPlayer* pBot, edict_t* Target)
 
 	if (AttackResult == ATTACK_BLOCKED)
 	{
+		if (!(IsEdictPlayer(Target) && !IsEdictStructure(Target)))
+		{
+			Vector AttackPoint = UTIL_GetButtonFloorLocation(pBot->Edict->v.origin, Target);
+			MoveTo(pBot, AttackPoint, MOVESTYLE_NORMAL, WeaponRange);
+			return;
+		}
+
 		if (vIsZero(pBot->BotNavInfo.ActualMoveDestination) || UTIL_TraceEntity(pBot->Edict, pBot->BotNavInfo.ActualMoveDestination + Vector(0.0f, 0.0f, 32.0f), UTIL_GetCentreOfEntity(Target)) != Target)
 		{
 			Vector NewAttackLocation = ZERO_VECTOR;
@@ -1495,7 +1502,7 @@ void DroneThink(AvHAIPlayer* pBot)
 		BotProgressTask(pBot, &pBot->PrimaryBotTask);
 	}
 
-	AIDEBUG_DrawBotPath(pBot);
+	//AIDEBUG_DrawBotPath(pBot);
 }
 
 void TestNavThink(AvHAIPlayer* pBot)
