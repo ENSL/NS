@@ -112,6 +112,8 @@ struct OffMeshConnectionDef
 	float Rad = 0.0f;
 	unsigned char Area = 0;
 	unsigned short Flag = 0;
+	bool bPendingDelete = false;
+	bool bDirty = false;
 };
 
 struct FastLZCompressor : public dtTileCacheCompressor
@@ -223,6 +225,7 @@ struct MeshProcess : public dtTileCacheMeshProcess
 		NewDefinition.Flag = flag;
 		NewDefinition.Rad = 18.0f;
 		NewDefinition.UserID = NextUserID;
+		NewDefinition.bDirty = true;
 
 		if (ConnectionRef)
 		{
@@ -238,9 +241,23 @@ struct MeshProcess : public dtTileCacheMeshProcess
 
 	void RemoveOffMeshConnectionDef(int UserID)
 	{
-		for (auto it = OffMeshConnections.begin(); it != OffMeshConnections.end();)
+		for (auto it = OffMeshConnections.begin(); it != OffMeshConnections.end(); it++)
 		{
 			if (it->UserID == UserID)
+			{
+				it->bDirty = true;
+				it->bPendingDelete = true;
+			}
+		}
+
+		bNavDataDirty = true;
+	}
+
+	void PurgeDeletedConnections()
+	{
+		for (auto it = OffMeshConnections.begin(); it != OffMeshConnections.end();)
+		{
+			if (it->bPendingDelete)
 			{
 				it = OffMeshConnections.erase(it);
 			}
@@ -249,8 +266,6 @@ struct MeshProcess : public dtTileCacheMeshProcess
 				it++;
 			}
 		}
-
-		bNavDataDirty = true;
 	}
 
 	void UpdateOffMeshData()
@@ -260,23 +275,26 @@ struct MeshProcess : public dtTileCacheMeshProcess
 
 		for (auto it = OffMeshConnections.begin(); it != OffMeshConnections.end(); it++)
 		{
-			OffMeshVerts[VertIndex++] = it->spos[0];
-			OffMeshVerts[VertIndex++] = it->spos[1];
-			OffMeshVerts[VertIndex++] = it->spos[2];
-			OffMeshVerts[VertIndex++] = it->epos[0];
-			OffMeshVerts[VertIndex++] = it->epos[1];
-			OffMeshVerts[VertIndex++] = it->epos[2];
+			if (!it->bPendingDelete)
+			{
+				OffMeshVerts[VertIndex++] = it->spos[0];
+				OffMeshVerts[VertIndex++] = it->spos[1];
+				OffMeshVerts[VertIndex++] = it->spos[2];
+				OffMeshVerts[VertIndex++] = it->epos[0];
+				OffMeshVerts[VertIndex++] = it->epos[1];
+				OffMeshVerts[VertIndex++] = it->epos[2];
 
-			OffMeshRads[CurrIndex] = it->Rad;
-			OffMeshDirs[CurrIndex] = it->bBiDir;
-			OffMeshAreas[CurrIndex] = it->Area;
-			OffMeshFlags[CurrIndex] = it->Flag;
-			OffMeshIDs[CurrIndex] = it->UserID;
+				OffMeshRads[CurrIndex] = it->Rad;
+				OffMeshDirs[CurrIndex] = it->bBiDir;
+				OffMeshAreas[CurrIndex] = it->Area;
+				OffMeshFlags[CurrIndex] = it->Flag;
+				OffMeshIDs[CurrIndex] = it->UserID;
 
-			CurrIndex++;
+				CurrIndex++;
+			}
 		}
 
-		NumOffMeshConns = OffMeshConnections.size();
+		NumOffMeshConns = CurrIndex;
 
 		bNavDataDirty = false;
 	}
@@ -321,6 +339,29 @@ struct MeshProcess : public dtTileCacheMeshProcess
 	vector<OffMeshConnectionDef> GetOffMeshConnections()
 	{
 		return OffMeshConnections;
+	}
+
+	void MarkOffMeshConnectionsClean()
+	{
+		for (auto it = OffMeshConnections.begin(); it != OffMeshConnections.end(); it++)
+		{
+			it->bDirty = false;
+		}
+	}
+
+	vector<OffMeshConnectionDef*> GetDirtyOffMeshConnections()
+	{
+		vector<OffMeshConnectionDef*> Result;
+
+		for (auto it = OffMeshConnections.begin(); it != OffMeshConnections.end(); it++)
+		{
+			if (it->bDirty || it->bPendingDelete)
+			{
+				Result.push_back(&(*it));
+			}
+		}
+
+		return Result;
 	}
 
 	void DrawAllConnections(float DrawTime)
@@ -445,13 +486,48 @@ void AIDEBUG_DrawOffMeshConnections(float DrawTime)
 
 void UTIL_UpdateTileCache()
 {
+	bool bUpToDate = true;
+
 	for (int i = 0; i < MAX_NAV_MESHES; i++)
 	{
 		if (NavMeshes[i].tileCache)
 		{
-			NavMeshes[i].tileCache->update(0.0f, NavMeshes[i].navMesh);
+			NavMeshes[i].tileCache->update(0.0f, NavMeshes[i].navMesh, &bUpToDate);
 		}
 	}
+
+	if (bUpToDate)
+	{
+		if (NavMeshes[0].tileCache)
+		{
+			MeshProcess* m_tmproc = (MeshProcess*)NavMeshes[0].tileCache->getMeshProcess();
+
+			if (m_tmproc)
+			{
+				vector<OffMeshConnectionDef*> DirtyOffMeshConnections = m_tmproc->GetDirtyOffMeshConnections();
+
+				Vector StartPos, EndPos;
+
+				if (DirtyOffMeshConnections.size() > 0)
+				{
+					m_tmproc->bNavDataDirty = true;
+				}
+
+				for (auto it = DirtyOffMeshConnections.begin(); it != DirtyOffMeshConnections.end(); it++)
+				{
+					m_tmproc->GetOffMeshConnectionPoints((*it)->UserID, StartPos, EndPos);
+
+					UTIL_OnOffMeshConnectionModified(StartPos, EndPos);
+
+					(*it)->bDirty = false;
+				}
+
+				m_tmproc->PurgeDeletedConnections();
+			}
+		}
+	}
+
+	
 }
 
 Vector UTIL_AdjustPointAwayFromNavWall(const Vector Location, const float MaxDistanceFromWall)
@@ -1075,12 +1151,16 @@ void UTIL_RefreshOffMeshConnections()
 
 	for (auto it = Connections.begin(); it != Connections.end(); it++)
 	{
+		if (it->bPendingDelete) { continue; }
+
 		Vector StartLoc, EndLoc;
 
 		m_tmproc->GetOffMeshConnectionPoints(it->UserID, StartLoc, EndLoc);
 
 		UTIL_OnOffMeshConnectionModified(StartLoc, EndLoc);
 	}
+
+	m_tmproc->MarkOffMeshConnectionsClean();
 }
 
 void UTIL_PopulateBaseNavProfiles()
@@ -7280,8 +7360,6 @@ void UTIL_AddOffMeshConnection(Vector StartLoc, Vector EndLoc, unsigned char are
 
 	ConnEnd = (hit.flFraction < 1.0f) ? hit.vecEndPos : EndLoc;
 
-	bool bMeshModified = false;
-
 	if (NavMeshes[REGULAR_NAV_MESH].tileCache)
 	{
 		NewConnectionDef->MeshConnectionIndex = -1;
@@ -7290,15 +7368,8 @@ void UTIL_AddOffMeshConnection(Vector StartLoc, Vector EndLoc, unsigned char are
 		if (m_tmproc)
 		{
 			m_tmproc->AddOffMeshConnectionDef(ConnStart, ConnEnd, area, flags, bBiDirectional, NewConnectionDef);
-			if (NewConnectionDef->MeshConnectionIndex > -1) { bMeshModified = true; }
 		}
 	}
-
-	if (bMeshModified)
-	{
-		UTIL_OnOffMeshConnectionModified(ConnStart, ConnEnd);
-	}
-
 }
 
 void UTIL_RemoveOffMeshConnections(AvHAIOffMeshConnection* NewConnectionDef)
@@ -7313,21 +7384,18 @@ void UTIL_RemoveOffMeshConnections(AvHAIOffMeshConnection* NewConnectionDef)
 
 		if (m_tmproc)
 		{
-			m_tmproc->GetOffMeshConnectionPoints(NewConnectionDef->MeshConnectionIndex, StartLoc, EndLoc);
 			m_tmproc->RemoveOffMeshConnectionDef(NewConnectionDef->MeshConnectionIndex);
-			NewConnectionDef->MeshConnectionIndex = -1;
 		}
 
 	}
 
 	NewConnectionDef->MeshConnectionIndex = -1;
 
-	UTIL_OnOffMeshConnectionModified(StartLoc, EndLoc);
 }
 
 void UTIL_OnOffMeshConnectionModified(Vector StartLoc, Vector EndLoc)
 {
-	float ext[3] = { 10.0f, 10.0f, 10.0f };
+	float ext[3] = { 50.0f, 50.0f, 50.0f };
 
 	float spos[3] = { StartLoc.x, StartLoc.z, -StartLoc.y };
 	float epos[3] = { EndLoc.x, EndLoc.z, -EndLoc.y };
@@ -7368,8 +7436,6 @@ void UTIL_OnOffMeshConnectionModified(Vector StartLoc, Vector EndLoc)
 
 			NavMeshes[REGULAR_NAV_MESH].tileCache->buildNavMeshTilesAt(Tile->header->tx, Tile->header->ty, NavMeshes[REGULAR_NAV_MESH].navMesh, false);
 		}
-
-
 	}
 
 	if (NavMeshes[ONOS_NAV_MESH].tileCache && NavMeshes[ONOS_NAV_MESH].navMesh)
@@ -7393,6 +7459,7 @@ void UTIL_OnOffMeshConnectionModified(Vector StartLoc, Vector EndLoc)
 
 			NavMeshes[ONOS_NAV_MESH].tileCache->buildNavMeshTilesAt(Tile->header->tx, Tile->header->ty, NavMeshes[ONOS_NAV_MESH].navMesh, false);
 		}
+
 	}
 
 	if (NavMeshes[BUILDING_NAV_MESH].tileCache && NavMeshes[BUILDING_NAV_MESH].navMesh)
@@ -7417,6 +7484,8 @@ void UTIL_OnOffMeshConnectionModified(Vector StartLoc, Vector EndLoc)
 			NavMeshes[BUILDING_NAV_MESH].tileCache->buildNavMeshTilesAt(Tile->header->tx, Tile->header->ty, NavMeshes[BUILDING_NAV_MESH].navMesh, false);
 		}
 	}
+
+	bNavMeshModified = true;
 }
 
 const nav_profile GetBaseNavProfile(const int index)
