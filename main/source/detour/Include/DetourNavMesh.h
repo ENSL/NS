@@ -149,6 +149,14 @@ enum dtPolyTypes
 	DT_POLYTYPE_OFFMESH_CONNECTION = 1,
 };
 
+enum OffMeshState
+{
+	DT_OFFMESH_EMPTY,
+	DT_OFFMESH_NEW,
+	DT_OFFMESH_DIRTY,
+	DT_OFFMESH_CLEAN,
+	DT_OFFMESH_REMOVING,
+};
 
 /// Defines a polygon within a dtMeshTile object.
 /// @ingroup detour
@@ -183,6 +191,8 @@ struct dtPoly
 	/// Gets the user defined area id.
 	inline unsigned char getArea() const { return areaAndtype & 0x3f; }
 
+	inline unsigned short getFlags() const { return flags; }
+
 	/// Gets the polygon type. (See: #dtPolyTypes)
 	inline unsigned char getType() const { return areaAndtype >> 6; }
 };
@@ -207,6 +217,7 @@ struct dtLink
 	unsigned char side;				///< If a boundary link, defines on which side the link is.
 	unsigned char bmin;				///< If a boundary link, defines the minimum sub-edge area.
 	unsigned char bmax;				///< If a boundary link, defines the maximum sub-edge area.
+	int OffMeshID = -1;			///< If an off-mesh connection, this will be the UserID of the connection that made this link
 };
 
 /// Bounding volume node.
@@ -224,24 +235,45 @@ struct dtBVNode
 struct dtOffMeshConnection
 {
 	/// The endpoints of the connection. [(ax, ay, az, bx, by, bz)]
-	float pos[6];
+	float pos[6] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
 
 	/// The radius of the endpoints. [Limit: >= 0]
-	float rad;		
+	float rad = 0.0f;		
 
 	/// The polygon reference of the connection within the tile.
-	unsigned short poly;
+	unsigned short poly = 0;
 
 	/// Link flags. 
 	/// @note These are not the connection's user defined flags. Those are assigned via the 
 	/// connection's dtPoly definition. These are link flags used for internal purposes.
-	unsigned char flags;
+	unsigned short flags = 0;
+	unsigned char area = 0;
 
 	/// End point side.
-	unsigned char side;
+	unsigned char side = 0;
+
+	bool bBiDir = false;
 
 	/// The id of the offmesh connection. (User assigned when the navigation mesh is built.)
-	unsigned int userId;
+	unsigned int userId = 0;
+
+	int FromTileX = -1;
+	int FromTileY = -1;
+	int FromTileLayer = -1;
+
+	int ToTileX = -1;
+	int ToTileY = -1;
+	int ToTileLayer = -1;
+
+	bool bPendingDelete = false; // This off-mesh needs to be removed completely
+	bool bDirty = false; // This off-mesh connection has had its from or to tile rebuilt recently so the links need to be re-established
+	bool bBased = false; // This off-mesh connection has had its links based in the source tile
+
+	dtOffMeshConnection* next = nullptr;
+	OffMeshState state = DT_OFFMESH_EMPTY;
+
+	unsigned short salt;
+
 };
 
 /// Provides high level information related to a dtMeshTile object.
@@ -265,7 +297,7 @@ struct dtMeshHeader
 	int detailTriCount;			///< The number of triangles in the detail mesh.
 	int bvNodeCount;			///< The number of bounding volume nodes. (Zero if bounding volumes are disabled.)
 	int offMeshConCount;		///< The number of off-mesh connections.
-	int receivingOffMeshConCount;
+
 	int offMeshBase;			///< The index of the first polygon which is an off-mesh connection.
 	float walkableHeight;		///< The height of the agents using the tile.
 	float walkableRadius;		///< The radius of the agents using the tile.
@@ -301,9 +333,8 @@ struct dtMeshTile
 	/// (Will be null if bounding volumes are disabled.)
 	dtBVNode* bvTree;
 
-	dtOffMeshConnection* offMeshCons;		///< The tile off-mesh connections. [Size: dtMeshHeader::offMeshConCount]
-	dtOffMeshConnection* receivingOffMeshCons;		///< The tile off-mesh connections. [Size: dtMeshHeader::offMeshConCount]
-		
+	dtOffMeshConnection** offMeshCons;		///< The tile off-mesh connections. [Size: dtMeshHeader::offMeshConCount]
+	
 	unsigned char* data;					///< The tile data. (Not directly accessed under normal situations.)
 	int dataSize;							///< Size of the tile data.
 	int flags;								///< Tile flags. (See: #dtTileFlags)
@@ -369,7 +400,7 @@ public:
 	///  @param[in]		lastRef		The desired reference for the tile. (When reloading a tile.) [opt] [Default: 0]
 	///  @param[out]	result		The tile reference. (If the tile was succesfully added.) [opt]
 	/// @return The status flags for the operation.
-	dtStatus addTile(unsigned char* data, int dataSize, int flags, dtTileRef lastRef, dtTileRef* result, bool bMarkOffMeshDirty);
+	dtStatus addTile(unsigned char* data, int dataSize, int flags, dtTileRef lastRef, dtTileRef* result);
 	
 	/// Removes the specified tile from the navigation mesh.
 	///  @param[in]		ref			The reference of the tile to remove.
@@ -377,6 +408,13 @@ public:
 	///  @param[out]	dataSize	Size of the data associated with deleted tile.
 	/// @return The status flags for the operation.
 	dtStatus removeTile(dtTileRef ref, unsigned char** data, int* dataSize);
+
+	void GlobalOffMeshLinks(dtOffMeshConnection* con);
+
+	void baseOffMeshLinks(dtOffMeshConnection* Connection);
+
+	void LinkOffMeshConnectionToTiles(dtOffMeshConnection* con);
+	void unconnectOffMeshLink(dtOffMeshConnection* con);
 
 	/// @}
 
@@ -394,7 +432,9 @@ public:
 	///  @param[in]	y		The tile's y-location. (x, y, layer)
 	///  @param[in]	layer	The tile's layer. (x, y, layer)
 	/// @return The tile, or null if the tile does not exist.
-	const dtMeshTile* getTileAt(const int x, const int y, const int layer) const;
+	dtMeshTile* getTileAt(const int x, const int y, const int layer);
+
+	const dtMeshTile* getTileAtConst(const int x, const int y, const int layer) const;
 
 	/// Gets all tiles at the specified grid location. (All layers.)
 	///  @param[in]		x			The tile's x-location. (x, y)
@@ -467,10 +507,6 @@ public:
 	///  @param[in]	ref		The polygon reference of the off-mesh connection.
 	/// @return The specified off-mesh connection, or null if the polygon reference is not valid.
 	const dtOffMeshConnection* getOffMeshConnectionByRef(dtPolyRef ref) const;
-
-	int GetNumPendingOffMeshConnections() { return m_NumPendingConnections; }
-	void ClearPendingOffMeshConnections() { m_NumPendingConnections = 0; }
-	dtOffMeshConnection* GetPendingConnection(int index) { return m_PendingOffMeshs[index]; }
 	
 	/// @}
 
@@ -520,8 +556,6 @@ public:
 	///  @param[in]	maxDataSize		The size of the state within the data buffer.
 	/// @return The status flags for the operation.
 	dtStatus restoreTileState(dtMeshTile* tile, const unsigned char* data, const int maxDataSize);
-
-	void GlobalOffMeshLinks(dtMeshTile* target);
 	
 	/// @}
 
@@ -642,11 +676,12 @@ private:
 	/// Builds internal polygons links for a tile.
 	void baseOffMeshLinks(dtMeshTile* tile);
 
+	
+
 	/// Builds external polygon links for a tile.
 	void connectExtLinks(dtMeshTile* tile, dtMeshTile* target, int side);
 	/// Builds external polygon links for a tile.
 	void connectExtOffMeshLinks(dtMeshTile* tile, dtMeshTile* target, int side);
-	void connectDistantExtOffMeshLinks(dtMeshTile* tile, dtMeshTile* target, int side);
 	/// Removes external links at specified side.
 	void unconnectLinks(dtMeshTile* tile, dtMeshTile* target);
 	
@@ -670,10 +705,7 @@ private:
 	int m_maxTiles;						///< Max number of tiles.
 	int m_tileLutSize;					///< Tile hash lookup size (must be pot).
 	int m_tileLutMask;					///< Tile hash lookup mask.
-
-	dtOffMeshConnection* m_PendingOffMeshs[1024];
-	int m_NumPendingConnections = 0;
-
+		
 	dtMeshTile** m_posLookup;			///< Tile hash lookup.
 	dtMeshTile* m_nextFree;				///< Freelist of tiles.
 	dtMeshTile* m_tiles;				///< List of tiles.

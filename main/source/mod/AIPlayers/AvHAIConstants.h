@@ -171,7 +171,7 @@ typedef enum _STRUCTUREPURPOSE
 
 typedef struct _OFF_MESH_CONN
 {
-	int MeshConnectionIndex = -1;
+	unsigned int ConnectionRefs[2];
 	unsigned short ConnectionFlags = 0;
 	Vector FromLocation = g_vecZero;
 	Vector ToLocation = g_vecZero;

@@ -1567,7 +1567,7 @@ void AITAC_OnStructureCompleted(AvHAIBuildableStructure* NewStructure)
 			NewConnection.ToLocation = OtherPhaseGate->Location;
 			NewConnection.ConnectionFlags = NewFlag;
 			NewConnection.TargetObject = OtherPhaseGate->edict;
-			NewConnection.MeshConnectionIndex = -1;
+			memset(&NewConnection.ConnectionRefs[0], 0, sizeof(NewConnection.ConnectionRefs));
 
 			UTIL_AddOffMeshConnection(NewStructure->Location, OtherPhaseGate->Location, SAMPLE_POLYAREA_GROUND, NewFlag, true, &NewConnection);
 

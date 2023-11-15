@@ -1420,6 +1420,36 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 		theSuccess = true;
 	}
+	else if (FStrEq(pcmd, "refreshoffmesh"))
+	{
+		theSuccess = true;
+	}
+	else if (FStrEq(pcmd, "evolvelerk"))
+	{
+		vector<AvHAIPlayer*> AIPlayers = AIMGR_GetAllAIPlayers();
+
+		for (auto it = AIPlayers.begin(); it != AIPlayers.end(); it++)
+		{
+			AvHAIPlayer* thisBot = (*it);
+
+			AITASK_SetEvolveTask(thisBot, &thisBot->PrimaryBotTask, thisBot->Edict->v.origin, ALIEN_LIFEFORM_THREE, true);
+		}
+
+		theSuccess = true;
+	}
+	else if (FStrEq(pcmd, "evolvegorge"))
+	{
+		vector<AvHAIPlayer*> AIPlayers = AIMGR_GetAllAIPlayers();
+
+		for (auto it = AIPlayers.begin(); it != AIPlayers.end(); it++)
+		{
+			AvHAIPlayer* thisBot = (*it);
+
+			AITASK_SetEvolveTask(thisBot, &thisBot->PrimaryBotTask, thisBot->Edict->v.origin, ALIEN_LIFEFORM_TWO, true);
+		}
+
+		theSuccess = true;
+	}
 	else if (FStrEq(pcmd, "tracedoor"))
 	{
 		Vector TraceStart = GetPlayerEyePosition(theAvHPlayer->edict()); // origin + pev->view_ofs
@@ -1435,6 +1465,14 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 			if (Door)
 			{
+				for (auto it = Door->TriggerEnts.begin(); it != Door->TriggerEnts.end(); it++)
+				{
+					const char* ButtonTarget = STRING(it->Edict->v.target);
+					const char* DoorTargetName = STRING(Door->DoorEdict->v.targetname);
+
+					bool bThing = true;
+				}
+
 				DoorTrigger* Trigger = UTIL_GetNearestDoorTrigger(theAvHPlayer->pev->origin, Door, nullptr);
 
 				if (Trigger)
@@ -1448,11 +1486,11 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 	}
 	else if (FStrEq(pcmd, "cometome"))
 	{
-		for (int i = 0; i < AIMGR_GetNumAIPlayers(); i++)
-		{
-			AvHAIPlayer* thisBot = AIMGR_GetAIPlayerAtIndex(i);
+		vector<AvHAIPlayer*> AIPlayers = AIMGR_GetAllAIPlayers();
 
-			if (thisBot)
+		for (auto it = AIPlayers.begin(); it != AIPlayers.end(); it++)
+		{
+			AvHAIPlayer* thisBot = (*it);
 			{
 				AITASK_SetMoveTask(thisBot, &thisBot->PrimaryBotTask, theAvHPlayer->pev->origin, true);
 			}
@@ -1460,15 +1498,25 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 		theSuccess = true;
 	}
-	else if (FStrEq(pcmd, "aiteamstarts"))
+	else if (FStrEq(pcmd, "testpointadjust"))
 	{
-		Vector TeamOneLoc = AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber());
+		Vector NewLoc = AdjustPointForPathfinding(theAvHPlayer->pev->origin);
 
-		UTIL_DrawLine(INDEXENT(1), INDEXENT(1)->v.origin, TeamOneLoc, 10.0f, 0, 0, 255);
+		if (!vIsZero(NewLoc))
+		{
+			UTIL_DrawLine(INDEXENT(1), theAvHPlayer->pev->origin, NewLoc, 10.0f);
+		}
 
-		Vector TeamTwoLoc = AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamBNumber());
+		theSuccess = true;
+	}
+	else if (FStrEq(pcmd, "testflightpath"))
+	{
+		vector<bot_path_node> path;
+		path.clear();
 
-		UTIL_DrawLine(INDEXENT(1), INDEXENT(1)->v.origin, TeamTwoLoc, 10.0f, 0, 128, 0);
+		FindFlightPathToPoint(GetBaseNavProfile(ALL_NAV_PROFILE), AITAC_GetTeamStartingLocation(TEAM_ONE) + Vector(0.0f, 0.0f, 50.0f), theAvHPlayer->pev->origin, path, 100.0f);
+
+		AIDEBUG_DrawPath(path, 20.0f);
 
 		theSuccess = true;
 	}

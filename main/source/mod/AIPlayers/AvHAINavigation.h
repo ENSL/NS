@@ -292,9 +292,8 @@ void UTIL_RemoveTemporaryObstacle(unsigned int ObstacleRef);
 
 void UTIL_RemoveTemporaryObstacles(unsigned int* ObstacleRefs);
 
-void UTIL_AddOffMeshConnection(Vector StartLoc, Vector EndLoc, unsigned char area, unsigned short flags, bool bBiDirectional, AvHAIOffMeshConnection* NewConnectionDef);
-void UTIL_RemoveOffMeshConnections(AvHAIOffMeshConnection* NewConnectionDef);
-void UTIL_OnOffMeshConnectionModified(Vector StartLoc, Vector EndLoc);
+void UTIL_AddOffMeshConnection(Vector StartLoc, Vector EndLoc, unsigned char area, unsigned short flags, bool bBiDirectional, AvHAIOffMeshConnection* RemoveConnectionDef);
+void UTIL_RemoveOffMeshConnections(AvHAIOffMeshConnection* RemoveConnectionDef);
 
 
 /*
@@ -465,7 +464,7 @@ Vector UTIL_AdjustPointAwayFromNavWall(const Vector Location, const float MaxDis
 
 void UTIL_PopulateBaseNavProfiles();
 
-void UTIL_RefreshOffMeshConnections();
+void OnOffMeshConnectionAdded(dtOffMeshConnection* NewConnection);
 
 #endif // BOT_NAVIGATION_H
 
