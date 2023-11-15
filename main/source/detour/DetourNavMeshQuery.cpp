@@ -347,7 +347,7 @@ dtStatus dtNavMeshQuery::findRandomPointAroundCircleIgnoreReachability(dtPolyRef
 			int thisTileXIndex = StartTileX + tileX;
 			int thisTileYIndex = StartTileY + tileY;
 
-			const dtMeshTile* t = m_nav->getTileAt(thisTileXIndex, thisTileYIndex, layer);
+			const dtMeshTile* t = m_nav->getTileAtConst(thisTileXIndex, thisTileYIndex, layer);
 
 			if (!t || !t->header) continue;
 

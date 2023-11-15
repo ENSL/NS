@@ -20,6 +20,9 @@
 #define DETOURNAVMESHBUILDER_H
 
 #include "DetourAlloc.h"
+#include "DetourNavMesh.h"
+
+#include <vector>
 
 /// Represents the source data used to build an navigation mesh tile.
 /// @ingroup detour
@@ -101,6 +104,9 @@ struct dtNavMeshCreateParams
 	/// True if a bounding volume tree should be built for the tile.
 	/// @note The BVTree is not normally needed for layered navigation meshes.
 	bool buildBvTree;
+
+	dtOffMeshConnection* GlobalOffMeshConnections;
+	int NumOffMeshConnections;
 
 };
 

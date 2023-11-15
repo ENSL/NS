@@ -35,6 +35,7 @@ static const unsigned char DT_TILECACHE_TEAM2STRUCTURE_AREA = 6;
 static const unsigned char DT_TILECACHE_WELD_AREA = 7;
 static const unsigned char DT_TILECACHE_DOOR_AREA = 8;
 static const unsigned char DT_TILECACHE_WALKABLE_AREA = 63;
+
 static const unsigned short DT_TILECACHE_NULL_IDX = 0xffff;
 
 struct dtTileCacheLayerHeader

@@ -74,10 +74,12 @@ dtTileCache::dtTileCache() :
 	m_obstacles(0),
 	m_nextFreeObstacle(0),
 	m_nreqs(0),
+	m_nOffMeshReqs(0),
 	m_nupdate(0)
 {
 	memset(&m_params, 0, sizeof(m_params));
 	memset(m_reqs, 0, sizeof(ObstacleRequest) * MAX_REQUESTS);
+	memset(m_OffMeshReqs, 0, sizeof(OffMeshRequest) * MAX_REQUESTS);
 }
 	
 dtTileCache::~dtTileCache()
@@ -92,11 +94,14 @@ dtTileCache::~dtTileCache()
 	}
 	dtFree(m_obstacles);
 	m_obstacles = 0;
+	dtFree(m_offMeshConnections);
+	m_offMeshConnections = 0;
 	dtFree(m_posLookup);
 	m_posLookup = 0;
 	dtFree(m_tiles);
 	m_tiles = 0;
 	m_nreqs = 0;
+	m_nOffMeshReqs = 0;
 	m_nupdate = 0;
 }
 
@@ -137,6 +142,19 @@ dtStatus dtTileCache::init(const dtTileCacheParams* params,
 		m_obstacles[i].salt = 1;
 		m_obstacles[i].next = m_nextFreeObstacle;
 		m_nextFreeObstacle = &m_obstacles[i];
+	}
+
+	// Alloc space for off-mesh connections.
+	m_offMeshConnections = (dtOffMeshConnection*)dtAlloc(sizeof(dtOffMeshConnection) * m_params.maxOffMeshConnections, DT_ALLOC_PERM);
+	if (!m_offMeshConnections)
+		return DT_FAILURE | DT_OUT_OF_MEMORY;
+	memset(m_offMeshConnections, 0, sizeof(dtOffMeshConnection) * m_params.maxOffMeshConnections);
+	m_nextFreeOffMeshConnection = 0;
+	for (int i = m_params.maxOffMeshConnections - 1; i >= 0; --i)
+	{
+		m_offMeshConnections[i].salt = 1;
+		m_offMeshConnections[i].next = m_nextFreeOffMeshConnection;
+		m_nextFreeOffMeshConnection = &m_offMeshConnections[i];
 	}
 	
 	// Init tiles
@@ -225,6 +243,13 @@ dtObstacleRef dtTileCache::getObstacleRef(const dtTileCacheObstacle* ob) const
 	return encodeObstacleId(ob->salt, idx);
 }
 
+dtOffMeshConnectionRef dtTileCache::getOffMeshRef(const dtOffMeshConnection* con) const
+{
+	if (!con) return 0;
+	const unsigned int idx = (unsigned int)(con - m_offMeshConnections);
+	return encodeObstacleId(con->salt, idx);
+}
+
 const dtTileCacheObstacle* dtTileCache::getObstacleByRef(dtObstacleRef ref)
 {
 	if (!ref)
@@ -237,6 +262,20 @@ const dtTileCacheObstacle* dtTileCache::getObstacleByRef(dtObstacleRef ref)
 	if (ob->salt != salt)
 		return 0;
 	return ob;
+}
+
+dtOffMeshConnection* dtTileCache::getOffMeshConnectionByRef(dtOffMeshConnectionRef ref)
+{
+	if (!ref)
+		return 0;
+	unsigned int idx = decodeOffMeshIdCon(ref);
+	if ((int)idx >= m_params.maxOffMeshConnections)
+		return 0;
+	dtOffMeshConnection* con = &m_offMeshConnections[idx];
+	unsigned int salt = decodeOffMeshIdSalt(ref);
+	if (con->salt != salt)
+		return 0;
+	return con;
 }
 
 dtStatus dtTileCache::addTile(unsigned char* data, const int dataSize, unsigned char flags, dtCompressedTileRef* result)
@@ -350,6 +389,42 @@ dtStatus dtTileCache::removeTile(dtCompressedTileRef ref, unsigned char** data, 
 	return DT_SUCCESS;
 }
 
+dtStatus dtTileCache::addOffMeshConnection(const float* spos, const float* epos, const float radius, const unsigned char area, const unsigned short flags, const bool bBiDirectional, dtOffMeshConnectionRef* result)
+{
+	if (m_nOffMeshReqs >= MAX_REQUESTS)
+		return DT_FAILURE | DT_BUFFER_TOO_SMALL;
+
+	dtOffMeshConnection* con = 0;
+	if (m_nextFreeOffMeshConnection)
+	{
+		con = m_nextFreeOffMeshConnection;
+		m_nextFreeOffMeshConnection = con->next;
+		con->next = 0;
+	}
+	if (!con)
+		return DT_FAILURE | DT_OUT_OF_MEMORY;
+
+	unsigned short salt = con->salt;
+	memset(con, 0, sizeof(dtOffMeshConnection));
+	con->salt = salt;
+	con->state = DT_OFFMESH_NEW;
+	dtVcopy(&con->pos[0], spos);
+	dtVcopy(&con->pos[3], epos);
+	con->rad = radius;
+	con->area = area;
+	con->flags = flags;
+	con->bBiDir = bBiDirectional;
+
+	OffMeshRequest* req = &m_OffMeshReqs[m_nOffMeshReqs++];
+	memset(req, 0, sizeof(OffMeshRequest));
+	req->action = REQUEST_OFFMESH_ADD;
+	req->ref = getOffMeshRef(con);
+	
+	if (result)
+		*result = req->ref;
+
+	return DT_SUCCESS;
+}
 
 dtStatus dtTileCache::addObstacle(const float* pos, const float radius, const float height, const int area, dtObstacleRef* result)
 {
@@ -387,7 +462,7 @@ dtStatus dtTileCache::addObstacle(const float* pos, const float radius, const fl
 	return DT_SUCCESS;
 }
 
-dtStatus dtTileCache::addBoxObstacle(const float* bmin, const float* bmax, const int area, dtObstacleRef* result)
+dtStatus dtTileCache::addBoxObstacle(const float* bmin, const float* bmax, dtObstacleRef* result)
 {
 	if (m_nreqs >= MAX_REQUESTS)
 		return DT_FAILURE | DT_BUFFER_TOO_SMALL;
@@ -409,7 +484,6 @@ dtStatus dtTileCache::addBoxObstacle(const float* bmin, const float* bmax, const
 	ob->type = DT_OBSTACLE_BOX;
 	dtVcopy(ob->box.bmin, bmin);
 	dtVcopy(ob->box.bmax, bmax);
-	ob->box.area = area;
 	
 	ObstacleRequest* req = &m_reqs[m_nreqs++];
 	memset(req, 0, sizeof(ObstacleRequest));
@@ -422,7 +496,7 @@ dtStatus dtTileCache::addBoxObstacle(const float* bmin, const float* bmax, const
 	return DT_SUCCESS;
 }
 
-dtStatus dtTileCache::addBoxObstacle(const float* center, const float* halfExtents, const float yRadians, const int area, dtObstacleRef* result)
+dtStatus dtTileCache::addBoxObstacle(const float* center, const float* halfExtents, const float yRadians, dtObstacleRef* result)
 {
 	if (m_nreqs >= MAX_REQUESTS)
 		return DT_FAILURE | DT_BUFFER_TOO_SMALL;
@@ -449,7 +523,6 @@ dtStatus dtTileCache::addBoxObstacle(const float* center, const float* halfExten
 	float sinhalf = sinf(-0.5f*yRadians);
 	ob->orientedBox.rotAux[0] = coshalf*sinhalf;
 	ob->orientedBox.rotAux[1] = coshalf*coshalf - 0.5f;
-	ob->orientedBox.area = area;
 
 	ObstacleRequest* req = &m_reqs[m_nreqs++];
 	memset(req, 0, sizeof(ObstacleRequest));
@@ -474,6 +547,22 @@ dtStatus dtTileCache::removeObstacle(const dtObstacleRef ref)
 	req->action = REQUEST_REMOVE;
 	req->ref = ref;
 	
+	return DT_SUCCESS;
+}
+
+dtStatus dtTileCache::removeOffMeshConnection(const dtOffMeshConnectionRef ref)
+{
+	if (!ref)
+		return DT_SUCCESS;
+
+	if (m_nOffMeshReqs >= MAX_REQUESTS)
+		return DT_FAILURE | DT_BUFFER_TOO_SMALL;
+
+	OffMeshRequest* req = &m_OffMeshReqs[m_nOffMeshReqs++];
+	memset(req, 0, sizeof(OffMeshRequest));
+	req->action = REQUEST_OFFMESH_REMOVE;
+	req->ref = ref;
+
 	return DT_SUCCESS;
 }
 
@@ -519,7 +608,7 @@ dtStatus dtTileCache::queryTiles(const float* bmin, const float* bmax,
 }
 
 dtStatus dtTileCache::update(const float /*dt*/, dtNavMesh* navmesh,
-							 bool* upToDate)
+	bool* upToDate)
 {
 	if (m_nupdate == 0)
 	{
@@ -527,7 +616,7 @@ dtStatus dtTileCache::update(const float /*dt*/, dtNavMesh* navmesh,
 		for (int i = 0; i < m_nreqs; ++i)
 		{
 			ObstacleRequest* req = &m_reqs[i];
-			
+
 			unsigned int idx = decodeObstacleIdObstacle(req->ref);
 			if ((int)idx >= m_params.maxObstacles)
 				continue;
@@ -535,7 +624,7 @@ dtStatus dtTileCache::update(const float /*dt*/, dtNavMesh* navmesh,
 			unsigned int salt = decodeObstacleIdSalt(req->ref);
 			if (ob->salt != salt)
 				continue;
-			
+
 			if (req->action == REQUEST_ADD)
 			{
 				// Find touched tiles.
@@ -574,20 +663,104 @@ dtStatus dtTileCache::update(const float /*dt*/, dtNavMesh* navmesh,
 				}
 			}
 		}
-		
+
 		m_nreqs = 0;
+
+		for (int i = 0; i < m_nOffMeshReqs; ++i)
+		{
+			OffMeshRequest* req = &m_OffMeshReqs[i];
+
+			unsigned int idx = decodeOffMeshIdCon(req->ref);
+			if ((int)idx >= m_params.maxOffMeshConnections)
+				continue;
+			dtOffMeshConnection* con = &m_offMeshConnections[idx];
+			unsigned int salt = decodeOffMeshIdSalt(req->ref);
+			if (con->salt != salt)
+				continue;
+
+			if (req->action == REQUEST_OFFMESH_ADD)
+			{
+				con->state = DT_OFFMESH_DIRTY;
+
+				// Find touched tiles.
+				float bmin[3], bmax[3];
+				float ext[3] = { con->rad, 18.0f, con->rad };
+
+				dtVsub(bmin, &con->pos[0], ext);
+				dtVadd(bmax, &con->pos[0], ext);
+
+				int ntouched = 0;
+				dtCompressedTileRef touched[DT_MAX_TOUCHED_TILES];
+				dtCompressedTileRef StartTileRef = 0;
+				dtCompressedTileRef EndTileRef = 0;
+
+				queryTiles(bmin, bmax, touched, &ntouched, DT_MAX_TOUCHED_TILES);
+
+				if (ntouched > 0)
+				{
+					StartTileRef = touched[0];
+				}
+
+				dtVsub(bmin, &con->pos[3], ext);
+				dtVadd(bmax, &con->pos[3], ext);
+
+				queryTiles(bmin, bmax, touched, &ntouched, DT_MAX_TOUCHED_TILES);
+
+				if (ntouched > 0)
+				{
+					EndTileRef = touched[0];
+				}
+
+				if (!StartTileRef || !EndTileRef) { continue; }
+
+				const dtCompressedTile* StartTile = getTileByRef(StartTileRef);
+				const dtCompressedTile* EndTile = getTileByRef(EndTileRef);
+
+				con->FromTileX = StartTile->header->tx;
+				con->FromTileY = StartTile->header->ty;
+				con->FromTileLayer = StartTile->header->tlayer;
+
+				con->ToTileX = EndTile->header->tx;
+				con->ToTileY = EndTile->header->ty;
+				con->ToTileLayer = EndTile->header->tlayer;
+
+				if (m_nupdate < MAX_UPDATE)
+				{
+					if (!contains(m_update, m_nupdate, StartTileRef))
+						m_update[m_nupdate++] = StartTileRef;
+				}
+			}
+			else if (req->action == REQUEST_OFFMESH_REMOVE)
+			{
+				// Prepare to remove obstacle.
+				con->state = DT_OFFMESH_REMOVING;
+				// Add tiles to update list.
+
+				navmesh->unconnectOffMeshLink(con);
+
+				if (m_nupdate < MAX_UPDATE)
+				{
+					dtCompressedTile* Tile = getTileAt(con->FromTileX, con->FromTileY, con->FromTileLayer);
+					dtCompressedTileRef TileRef = getTileRef(Tile);
+
+					if (!contains(m_update, m_nupdate, TileRef))
+						m_update[m_nupdate++] = TileRef;
+				}
+			}
+		}
+
+		m_nOffMeshReqs = 0;
 	}
-	
+
 	dtStatus status = DT_SUCCESS;
 	// Process updates
 	if (m_nupdate)
 	{
-		// Build mesh
 		const dtCompressedTileRef ref = m_update[0];
-		status = buildNavMeshTile(ref, navmesh, true);
+		status = buildNavMeshTile(ref, navmesh);
 		m_nupdate--;
 		if (m_nupdate > 0)
-			memmove(m_update, m_update+1, m_nupdate*sizeof(dtCompressedTileRef));
+			memmove(m_update, m_update + 1, m_nupdate * sizeof(dtCompressedTileRef));
 
 		// Update obstacle states.
 		for (int i = 0; i < m_params.maxObstacles; ++i)
@@ -600,12 +773,12 @@ dtStatus dtTileCache::update(const float /*dt*/, dtNavMesh* navmesh,
 				{
 					if (ob->pending[j] == ref)
 					{
-						ob->pending[j] = ob->pending[(int)ob->npending-1];
+						ob->pending[j] = ob->pending[(int)ob->npending - 1];
 						ob->npending--;
 						break;
 					}
 				}
-				
+
 				// If all pending tiles processed, change state.
 				if (ob->npending == 0)
 				{
@@ -617,7 +790,7 @@ dtStatus dtTileCache::update(const float /*dt*/, dtNavMesh* navmesh,
 					{
 						ob->state = DT_OBSTACLE_EMPTY;
 						// Update salt, salt should never be zero.
-						ob->salt = (ob->salt+1) & ((1<<16)-1);
+						ob->salt = (ob->salt + 1) & ((1 << 16) - 1);
 						if (ob->salt == 0)
 							ob->salt++;
 						// Return obstacle to free list.
@@ -627,74 +800,49 @@ dtStatus dtTileCache::update(const float /*dt*/, dtNavMesh* navmesh,
 				}
 			}
 		}
+
 	}
 
-	if (navmesh->GetNumPendingOffMeshConnections() > 0)
+	if (m_nupdate == 0)
 	{
-
-		for (int i = 0; i < navmesh->GetNumPendingOffMeshConnections(); i++)
+		for (int i = 0; i < m_params.maxOffMeshConnections; ++i)
 		{
-			int NumTiles = 0;
+			dtOffMeshConnection* con = &m_offMeshConnections[i];
 
-			float* connspos = &navmesh->GetPendingConnection(i)->pos[0];
-			float* connepos = &navmesh->GetPendingConnection(i)->pos[3];
-
-			float ext[3] = { 10.0f, 10.0f, 10.0f };
-
-			float searchsposMin[3];
-			float searchsposMax[3];
-
-			float searcheposMin[3];
-			float searcheposMax[3];
-
-			dtVsub(searchsposMin, connspos, ext);
-			dtVadd(searchsposMax, connspos, ext);
-
-			dtVsub(searcheposMin, connepos, ext);
-			dtVadd(searcheposMax, connepos, ext);
-
-			dtCompressedTileRef AffectedTiles[DT_MAX_TOUCHED_TILES];
-
-
-			queryTiles(searcheposMin, searcheposMax, AffectedTiles, &NumTiles, DT_MAX_TOUCHED_TILES);
-
-			for (int i = 0; i < NumTiles; i++)
+			if (con->state == DT_OFFMESH_DIRTY)
 			{
-				const dtCompressedTile* Tile = getTileByRef(AffectedTiles[i]);
-
-				buildNavMeshTilesAt(Tile->header->tx, Tile->header->ty, navmesh, false);
+				navmesh->unconnectOffMeshLink(con);
+				navmesh->GlobalOffMeshLinks(con);
+				con->state = DT_OFFMESH_CLEAN;
 			}
 
-			queryTiles(searchsposMin, searchsposMax, AffectedTiles, &NumTiles, DT_MAX_TOUCHED_TILES);
-
-			for (int i = 0; i < NumTiles; i++)
+			if (con->state == DT_OFFMESH_REMOVING)
 			{
-				const dtCompressedTile* Tile = getTileByRef(AffectedTiles[i]);
-
-				buildNavMeshTilesAt(Tile->header->tx, Tile->header->ty, navmesh, false);
+				con->state = DT_OFFMESH_EMPTY;
+				con->salt = (con->salt + 1) & ((1 << 16) - 1);
+				if (con->salt == 0)
+					con->salt++;
+				con->next = m_nextFreeOffMeshConnection;
+				m_nextFreeOffMeshConnection = con;
 			}
-
 		}
-
-		navmesh->ClearPendingOffMeshConnections();
 	}
 	
 	if (upToDate)
-		*upToDate = m_nupdate == 0 && m_nreqs == 0;
+		*upToDate = m_nupdate == 0 && m_nreqs == 0 && m_nOffMeshReqs == 0;
 
 	return status;
 }
 
-
-dtStatus dtTileCache::buildNavMeshTilesAt(const int tx, const int ty, dtNavMesh* navmesh, bool bMarkOffMeshDirty)
+dtStatus dtTileCache::buildNavMeshTilesAt(const int tx, const int ty, dtNavMesh* navmesh)
 {
 	const int MAX_TILES = 32;
 	dtCompressedTileRef tiles[MAX_TILES];
 	const int ntiles = getTilesAt(tx,ty,tiles,MAX_TILES);
-	
+
 	for (int i = 0; i < ntiles; ++i)
 	{
-		dtStatus status = buildNavMeshTile(tiles[i], navmesh, bMarkOffMeshDirty);
+		dtStatus status = buildNavMeshTile(tiles[i], navmesh);
 		if (dtStatusFailed(status))
 			return status;
 	}
@@ -702,7 +850,7 @@ dtStatus dtTileCache::buildNavMeshTilesAt(const int tx, const int ty, dtNavMesh*
 	return DT_SUCCESS;
 }
 
-dtStatus dtTileCache::buildNavMeshTile(const dtCompressedTileRef ref, dtNavMesh* navmesh, bool bMarkOffMeshDirty)
+dtStatus dtTileCache::buildNavMeshTile(const dtCompressedTileRef ref, dtNavMesh* navmesh)
 {	
 	dtAssert(m_talloc);
 	dtAssert(m_tcomp);
@@ -720,7 +868,7 @@ dtStatus dtTileCache::buildNavMeshTile(const dtCompressedTileRef ref, dtNavMesh*
 	NavMeshTileBuildContext bc(m_talloc);
 	const int walkableClimbVx = (int)(m_params.walkableClimb / m_params.ch);
 	dtStatus status;
-	
+
 	// Decompress tile layer data. 
 	status = dtDecompressTileCacheLayer(m_talloc, m_tcomp, tile->data, tile->dataSize, &bc.layer);
 	if (dtStatusFailed(status))
@@ -805,6 +953,9 @@ dtStatus dtTileCache::buildNavMeshTile(const dtCompressedTileRef ref, dtNavMesh*
 	{
 		m_tmproc->process(&params, bc.lmesh->areas, bc.lmesh->flags);
 	}
+
+	params.GlobalOffMeshConnections = m_offMeshConnections;
+	params.NumOffMeshConnections = getOffMeshCount();
 	
 	unsigned char* navData = 0;
 	int navDataSize = 0;
@@ -817,8 +968,9 @@ dtStatus dtTileCache::buildNavMeshTile(const dtCompressedTileRef ref, dtNavMesh*
 	// Add new tile, or leave the location empty.
 	if (navData)
 	{
-		// Let the navmesh own the data.
-		status = navmesh->addTile(navData,navDataSize,DT_TILE_FREE_DATA,0,0, bMarkOffMeshDirty);
+		status = navmesh->addTile(navData,navDataSize,DT_TILE_FREE_DATA,0,0);
+
+
 		if (dtStatusFailed(status))
 		{
 			dtFree(navData);

@@ -72,23 +72,7 @@ struct TileCacheSetExportHeader
 
 	int NumOffMeshCons;
 
-	int OffMeshConVertsOffset;
-	int OffMeshConVertsLength;
-
-	int OffMeshConRadsOffset;
-	int OffMeshConRadsLength;
-
-	int OffMeshConDirsOffset;
-	int OffMeshConDirsLength;
-
-	int OffMeshConAreasOffset;
-	int OffMeshConAreasLength;
-
-	int OffMeshConFlagsOffset;
-	int OffMeshConFlagsLength;
-
-	int OffMeshConUserIDsOffset;
-	int OffMeshConUserIDsLength;
+	int OffMeshConsOffset;
 };
 
 struct TileCacheTileHeader
@@ -187,21 +171,6 @@ struct LinearAllocator : public dtTileCacheAlloc
 
 struct MeshProcess : public dtTileCacheMeshProcess
 {
-	int NumOffMeshConns = 0;
-	float OffMeshVerts[MAX_OFFMESH_CONNS * 6];
-	float OffMeshRads[MAX_OFFMESH_CONNS];
-	unsigned char OffMeshDirs[MAX_OFFMESH_CONNS];
-	unsigned char OffMeshAreas[MAX_OFFMESH_CONNS];
-	unsigned short OffMeshFlags[MAX_OFFMESH_CONNS];
-	unsigned int OffMeshIDs[MAX_OFFMESH_CONNS];
-
-	bool bNavDataDirty = false;
-
-	OffMeshConnectionDef ConnectionDefinitions[MAX_OFFMESH_CONNS];
-
-	vector<OffMeshConnectionDef> OffMeshConnections;
-
-	unsigned int NextUserID = 0;
 
 	inline MeshProcess()
 	{}
@@ -209,197 +178,6 @@ struct MeshProcess : public dtTileCacheMeshProcess
 	inline void init(OffMeshConnectionDef* OffMeshConnData, int NumConns)
 	{
 
-	}
-
-	void AddOffMeshConnectionDef(Vector Start, Vector End, unsigned char area, unsigned short flag, bool bBiDirectional, AvHAIOffMeshConnection* ConnectionRef)
-	{
-		OffMeshConnectionDef NewDefinition;
-		NewDefinition.Area = area;
-		NewDefinition.bBiDir = bBiDirectional;
-		NewDefinition.spos[0] = Start.x;
-		NewDefinition.spos[1] = Start.z;
-		NewDefinition.spos[2] = -Start.y;
-		NewDefinition.epos[0] = End.x;
-		NewDefinition.epos[1] = End.z;
-		NewDefinition.epos[2] = -End.y;
-		NewDefinition.Flag = flag;
-		NewDefinition.Rad = 18.0f;
-		NewDefinition.UserID = NextUserID;
-		NewDefinition.bDirty = true;
-
-		if (ConnectionRef)
-		{
-			ConnectionRef->MeshConnectionIndex = NextUserID;
-		}
-
-		NextUserID++;
-
-		OffMeshConnections.push_back(NewDefinition);
-
-		bNavDataDirty = true;
-	};
-
-	void RemoveOffMeshConnectionDef(int UserID)
-	{
-		for (auto it = OffMeshConnections.begin(); it != OffMeshConnections.end(); it++)
-		{
-			if (it->UserID == UserID)
-			{
-				it->bDirty = true;
-				it->bPendingDelete = true;
-			}
-		}
-
-		bNavDataDirty = true;
-	}
-
-	void PurgeDeletedConnections()
-	{
-		for (auto it = OffMeshConnections.begin(); it != OffMeshConnections.end();)
-		{
-			if (it->bPendingDelete)
-			{
-				it = OffMeshConnections.erase(it);
-			}
-			else
-			{
-				it++;
-			}
-		}
-	}
-
-	void UpdateOffMeshData()
-	{
-		int CurrIndex = 0;
-		int VertIndex = 0;
-
-		for (auto it = OffMeshConnections.begin(); it != OffMeshConnections.end(); it++)
-		{
-			if (!it->bPendingDelete)
-			{
-				OffMeshVerts[VertIndex++] = it->spos[0];
-				OffMeshVerts[VertIndex++] = it->spos[1];
-				OffMeshVerts[VertIndex++] = it->spos[2];
-				OffMeshVerts[VertIndex++] = it->epos[0];
-				OffMeshVerts[VertIndex++] = it->epos[1];
-				OffMeshVerts[VertIndex++] = it->epos[2];
-
-				OffMeshRads[CurrIndex] = it->Rad;
-				OffMeshDirs[CurrIndex] = it->bBiDir;
-				OffMeshAreas[CurrIndex] = it->Area;
-				OffMeshFlags[CurrIndex] = it->Flag;
-				OffMeshIDs[CurrIndex] = it->UserID;
-
-				CurrIndex++;
-			}
-		}
-
-		NumOffMeshConns = CurrIndex;
-
-		bNavDataDirty = false;
-	}
-
-	void PopulateOffMeshConnectionVector()
-	{
-		OffMeshConnections.clear();
-
-		for (int i = 0; i < NumOffMeshConns; i++)
-		{
-			float* v = &OffMeshVerts[i*3*2];
-			Vector StartPos = Vector(v[0], -v[2], v[1]);
-			Vector EndPos = Vector(v[3], -v[5], v[4]);
-			AddOffMeshConnectionDef(StartPos, EndPos, OffMeshAreas[i], OffMeshFlags[i], OffMeshDirs[i], nullptr);
-		}
-
-		bNavDataDirty = false;
-	}
-
-	void GetOffMeshConnectionPoints(int UserID, Vector& OutStartLoc, Vector& OutEndLoc)
-	{
-		OutStartLoc = ZERO_VECTOR;
-		OutEndLoc = ZERO_VECTOR;
-
-		for (auto it = OffMeshConnections.begin(); it != OffMeshConnections.end(); it++)
-		{
-			if (it->UserID == UserID)
-			{
-				OutStartLoc.x = it->spos[0];
-				OutStartLoc.y = -it->spos[2];
-				OutStartLoc.z = it->spos[1];
-
-				OutEndLoc.x = it->epos[0];
-				OutEndLoc.y = -it->epos[2];
-				OutEndLoc.z = it->epos[1];
-
-				return;
-			}
-		}			
-	}
-
-	vector<OffMeshConnectionDef> GetOffMeshConnections()
-	{
-		return OffMeshConnections;
-	}
-
-	void MarkOffMeshConnectionsClean()
-	{
-		for (auto it = OffMeshConnections.begin(); it != OffMeshConnections.end(); it++)
-		{
-			it->bDirty = false;
-		}
-	}
-
-	vector<OffMeshConnectionDef*> GetDirtyOffMeshConnections()
-	{
-		vector<OffMeshConnectionDef*> Result;
-
-		for (auto it = OffMeshConnections.begin(); it != OffMeshConnections.end(); it++)
-		{
-			if (it->bDirty || it->bPendingDelete)
-			{
-				Result.push_back(&(*it));
-			}
-		}
-
-		return Result;
-	}
-
-	void DrawAllConnections(float DrawTime)
-	{
-		Vector StartLine = ZERO_VECTOR;
-		Vector EndLine = ZERO_VECTOR;
-
-		for (auto it = OffMeshConnections.begin(); it != OffMeshConnections.end(); it++)
-		{
-			Vector StartLine = Vector(it->spos[0], -it->spos[2], it->spos[1]);
-			Vector EndLine = Vector(it->epos[0], -it->epos[2], it->epos[1]);
-
-			switch (it->Flag)
-			{
-			case SAMPLE_POLYFLAGS_WALK:
-				UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 255, 255, 255);
-				break;
-			case SAMPLE_POLYFLAGS_JUMP:
-				UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 255, 255, 0);
-				break;
-			case SAMPLE_POLYFLAGS_WALLCLIMB:
-				UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 0, 255, 0);
-				break;
-			case SAMPLE_POLYFLAGS_FALL:
-				UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 255, 0, 0);
-				break;
-			case SAMPLE_POLYFLAGS_LADDER:
-				UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 0, 0, 255);
-				break;
-			case SAMPLE_POLYFLAGS_TEAM1PHASEGATE:
-			case SAMPLE_POLYFLAGS_TEAM2PHASEGATE:
-				UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 255, 128, 128);
-				break;
-			default:
-				UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 0, 255, 255);
-				break;
-			}
-		}
 	}
 
 	virtual void process(struct dtNavMeshCreateParams* params,
@@ -455,32 +233,48 @@ struct MeshProcess : public dtTileCacheMeshProcess
 			}
 		}
 
-		if (bNavDataDirty)
-		{
-			UpdateOffMeshData();
-		}
-
-		params->offMeshConAreas = OffMeshAreas;
-		params->offMeshConCount = NumOffMeshConns;
-		params->offMeshConDir = OffMeshDirs;
-		params->offMeshConFlags = OffMeshFlags;
-		params->offMeshConRad = OffMeshRads;
-		params->offMeshConUserID = OffMeshIDs;
-		params->offMeshConVerts = OffMeshVerts;
-
 	}
 };
 
 void AIDEBUG_DrawOffMeshConnections(float DrawTime)
 {
-	if (NavMeshes[0].tileCache)
+	if (NavMeshes[REGULAR_NAV_MESH].tileCache)
 	{
-		MeshProcess* m_tmproc = (MeshProcess*)NavMeshes[0].tileCache->getMeshProcess();
-
-		if (m_tmproc)
+		for (int i = 0; i < NavMeshes[REGULAR_NAV_MESH].tileCache->getOffMeshCount(); i++)
 		{
-			m_tmproc->DrawAllConnections(DrawTime);
+			const dtOffMeshConnection* con = NavMeshes[REGULAR_NAV_MESH].tileCache->getOffMeshConnection(i);
+
+			if (con->state == DT_OFFMESH_EMPTY || con->state == DT_OFFMESH_REMOVING) { continue; }
+
+			Vector StartLine = Vector(con->pos[0], -con->pos[2], con->pos[1]);
+			Vector EndLine = Vector(con->pos[3], -con->pos[5], con->pos[4]);
+			switch (con->flags)
+			{
+				case SAMPLE_POLYFLAGS_WALK:
+					UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 255, 255, 255);
+					break;
+				case SAMPLE_POLYFLAGS_JUMP:
+					UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 255, 255, 0);
+					break;
+				case SAMPLE_POLYFLAGS_WALLCLIMB:
+					UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 0, 255, 0);
+					break;
+				case SAMPLE_POLYFLAGS_FALL:
+					UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 255, 0, 0);
+					break;
+				case SAMPLE_POLYFLAGS_LADDER:
+					UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 0, 0, 255);
+					break;
+				case SAMPLE_POLYFLAGS_TEAM1PHASEGATE:
+				case SAMPLE_POLYFLAGS_TEAM2PHASEGATE:
+					UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 255, 128, 128);
+					break;
+				default:
+					UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 0, 255, 255);
+					break;
+			}
 		}
+
 	}
 }
 
@@ -494,40 +288,7 @@ void UTIL_UpdateTileCache()
 		{
 			NavMeshes[i].tileCache->update(0.0f, NavMeshes[i].navMesh, &bUpToDate);
 		}
-	}
-
-	if (bUpToDate)
-	{
-		if (NavMeshes[0].tileCache)
-		{
-			MeshProcess* m_tmproc = (MeshProcess*)NavMeshes[0].tileCache->getMeshProcess();
-
-			if (m_tmproc)
-			{
-				vector<OffMeshConnectionDef*> DirtyOffMeshConnections = m_tmproc->GetDirtyOffMeshConnections();
-
-				Vector StartPos, EndPos;
-
-				if (DirtyOffMeshConnections.size() > 0)
-				{
-					m_tmproc->bNavDataDirty = true;
-				}
-
-				for (auto it = DirtyOffMeshConnections.begin(); it != DirtyOffMeshConnections.end(); it++)
-				{
-					m_tmproc->GetOffMeshConnectionPoints((*it)->UserID, StartPos, EndPos);
-
-					UTIL_OnOffMeshConnectionModified(StartPos, EndPos);
-
-					(*it)->bDirty = false;
-				}
-
-				m_tmproc->PurgeDeletedConnections();
-			}
-		}
-	}
-
-	
+	}	
 }
 
 Vector UTIL_AdjustPointAwayFromNavWall(const Vector Location, const float MaxDistanceFromWall)
@@ -923,34 +684,11 @@ bool LoadNavMesh(const char* mapname)
 		return false;
 	}
 
-
 	int CurrFilePos = ftell(savedFile);
 
 	LinearAllocator* m_talloc = new LinearAllocator(32000);
 	FastLZCompressor* m_tcomp = new FastLZCompressor;
 	MeshProcess* m_tmproc = new MeshProcess;
-
-	m_tmproc->NumOffMeshConns = header.NumOffMeshCons;
-
-	fseek(savedFile, header.OffMeshConAreasOffset, SEEK_SET);
-	size_t ReadResult = fread(m_tmproc->OffMeshAreas, header.OffMeshConAreasLength, 1, savedFile);
-
-	fseek(savedFile, header.OffMeshConDirsOffset, SEEK_SET);
-	ReadResult = fread(m_tmproc->OffMeshDirs, header.OffMeshConDirsLength, 1, savedFile);
-
-	fseek(savedFile, header.OffMeshConFlagsOffset, SEEK_SET);
-	ReadResult = fread(m_tmproc->OffMeshFlags, header.OffMeshConFlagsLength, 1, savedFile);
-
-	fseek(savedFile, header.OffMeshConRadsOffset, SEEK_SET);
-	ReadResult = fread(m_tmproc->OffMeshRads, header.OffMeshConRadsLength, 1, savedFile);
-
-	fseek(savedFile, header.OffMeshConUserIDsOffset, SEEK_SET);
-	ReadResult = fread(m_tmproc->OffMeshIDs, header.OffMeshConUserIDsLength, 1, savedFile);
-
-	fseek(savedFile, header.OffMeshConVertsOffset, SEEK_SET);
-	ReadResult = fread(m_tmproc->OffMeshVerts, header.OffMeshConVertsLength, 1, savedFile);
-
-	m_tmproc->PopulateOffMeshConnectionVector();
 
 	// TODO: Need to pass all off mesh connection verts, areas, flags etc as arrays to m_tmproc. Needs to be exported from recast as such
 
@@ -1020,7 +758,7 @@ bool LoadNavMesh(const char* mapname)
 		}
 
 		if (tile)
-			NavMeshes[REGULAR_NAV_MESH].tileCache->buildNavMeshTile(tile, NavMeshes[REGULAR_NAV_MESH].navMesh, false);
+			NavMeshes[REGULAR_NAV_MESH].tileCache->buildNavMeshTile(tile, NavMeshes[REGULAR_NAV_MESH].navMesh);
 	}
 
 	for (int i = 0; i < header.numOnosTiles; ++i)
@@ -1059,7 +797,7 @@ bool LoadNavMesh(const char* mapname)
 		}
 
 		if (tile)
-			NavMeshes[ONOS_NAV_MESH].tileCache->buildNavMeshTile(tile, NavMeshes[ONOS_NAV_MESH].navMesh, false);
+			NavMeshes[ONOS_NAV_MESH].tileCache->buildNavMeshTile(tile, NavMeshes[ONOS_NAV_MESH].navMesh);
 	}
 
 	for (int i = 0; i < header.numBuildingTiles; ++i)
@@ -1098,7 +836,21 @@ bool LoadNavMesh(const char* mapname)
 		}
 
 		if (tile)
-			NavMeshes[BUILDING_NAV_MESH].tileCache->buildNavMeshTile(tile, NavMeshes[BUILDING_NAV_MESH].navMesh, false);
+			NavMeshes[BUILDING_NAV_MESH].tileCache->buildNavMeshTile(tile, NavMeshes[BUILDING_NAV_MESH].navMesh);
+	}
+
+	fseek(savedFile, header.OffMeshConsOffset, SEEK_SET);
+
+	for (int i = 0; i < header.NumOffMeshCons; i++)
+	{
+		dtOffMeshConnection def;
+
+		fread(&def, sizeof(dtOffMeshConnection), 1, savedFile);
+
+		for (int ii = 0; ii < BUILDING_NAV_MESH; ii++)
+		{
+			NavMeshes[ii].tileCache->addOffMeshConnection(&def.pos[0], &def.pos[3], def.rad, def.area, def.flags, def.bBiDir, 0);
+		}
 	}
 
 	fclose(savedFile);
@@ -1136,31 +888,21 @@ bool LoadNavMesh(const char* mapname)
 		return false;
 	}
 
-	UTIL_RefreshOffMeshConnections();
-
 	return true;
 }
 
-void UTIL_RefreshOffMeshConnections()
+void OnOffMeshConnectionAdded(dtOffMeshConnection* NewConnection)
 {
-	MeshProcess* m_tmproc = (MeshProcess*)NavMeshes[0].tileCache->getMeshProcess();
-
-	if (!m_tmproc) { return; }
-
-	vector<OffMeshConnectionDef> Connections = m_tmproc->GetOffMeshConnections();
-
-	for (auto it = Connections.begin(); it != Connections.end(); it++)
+	for (int i = 0; i <= BUILDING_NAV_MESH; i++)
 	{
-		if (it->bPendingDelete) { continue; }
+		if (NavMeshes[i].navMesh && NavMeshes[i].tileCache)
+		{
+			NavMeshes[i].navMesh->LinkOffMeshConnectionToTiles(NewConnection);
 
-		Vector StartLoc, EndLoc;
-
-		m_tmproc->GetOffMeshConnectionPoints(it->UserID, StartLoc, EndLoc);
-
-		UTIL_OnOffMeshConnectionModified(StartLoc, EndLoc);
+			dtCompressedTile* ModifiedTile = NavMeshes[i].tileCache->getTileAt(NewConnection->FromTileX, NewConnection->FromTileY, NewConnection->FromTileLayer);
+			NavMeshes[i].tileCache->buildNavMeshTile(NavMeshes[i].tileCache->getTileRef(ModifiedTile), NavMeshes[i].navMesh);
+		}
 	}
-
-	m_tmproc->MarkOffMeshConnectionsClean();
 }
 
 void UTIL_PopulateBaseNavProfiles()
@@ -7347,7 +7089,7 @@ nav_door* UTIL_GetNavDoorByEdict(const edict_t* DoorEdict)
 	return nullptr;
 }
 
-void UTIL_AddOffMeshConnection(Vector StartLoc, Vector EndLoc, unsigned char area, unsigned short flags, bool bBiDirectional, AvHAIOffMeshConnection* NewConnectionDef)
+void UTIL_AddOffMeshConnection(Vector StartLoc, Vector EndLoc, unsigned char area, unsigned short flags, bool bBiDirectional, AvHAIOffMeshConnection* RemoveConnectionDef)
 {
 	Vector ConnStart, ConnEnd;
 
@@ -7360,132 +7102,29 @@ void UTIL_AddOffMeshConnection(Vector StartLoc, Vector EndLoc, unsigned char are
 
 	ConnEnd = (hit.flFraction < 1.0f) ? hit.vecEndPos : EndLoc;
 
-	if (NavMeshes[REGULAR_NAV_MESH].tileCache)
-	{
-		NewConnectionDef->MeshConnectionIndex = -1;
-		MeshProcess* m_tmproc = (MeshProcess*)NavMeshes[REGULAR_NAV_MESH].tileCache->getMeshProcess();
+	ConnStart = Vector(ConnStart.x, ConnStart.z, -ConnStart.y);
+	ConnEnd = Vector(ConnEnd.x, ConnEnd.z, -ConnEnd.y);
 
-		if (m_tmproc)
-		{
-			m_tmproc->AddOffMeshConnectionDef(ConnStart, ConnEnd, area, flags, bBiDirectional, NewConnectionDef);
-		}
+	for (int i = 0; i < BUILDING_NAV_MESH; i++)
+	{
+		dtOffMeshConnectionRef ref = 0;
+
+		NavMeshes[i].tileCache->addOffMeshConnection(ConnStart, ConnEnd, 18.0f, area, flags, bBiDirectional, &ref);
+
+		RemoveConnectionDef->ConnectionRefs[i] = (unsigned int)ref;
 	}
 }
 
-void UTIL_RemoveOffMeshConnections(AvHAIOffMeshConnection* NewConnectionDef)
+void UTIL_RemoveOffMeshConnections(AvHAIOffMeshConnection* RemoveConnectionDef)
 {
-	if (NewConnectionDef->MeshConnectionIndex < 0) { return; }
-
-	Vector StartLoc, EndLoc;
-	
-	if (NavMeshes[REGULAR_NAV_MESH].tileCache)
+	for (int i = 0; i < BUILDING_NAV_MESH; i++)
 	{
-		MeshProcess* m_tmproc = (MeshProcess*)NavMeshes[REGULAR_NAV_MESH].tileCache->getMeshProcess();
+		dtOffMeshConnectionRef ref = 0;
 
-		if (m_tmproc)
-		{
-			m_tmproc->RemoveOffMeshConnectionDef(NewConnectionDef->MeshConnectionIndex);
-		}
+		NavMeshes[i].tileCache->removeOffMeshConnection(RemoveConnectionDef->ConnectionRefs[i]);
 
+		RemoveConnectionDef->ConnectionRefs[i] = 0;
 	}
-
-	NewConnectionDef->MeshConnectionIndex = -1;
-
-}
-
-void UTIL_OnOffMeshConnectionModified(Vector StartLoc, Vector EndLoc)
-{
-	float ext[3] = { 50.0f, 50.0f, 50.0f };
-
-	float spos[3] = { StartLoc.x, StartLoc.z, -StartLoc.y };
-	float epos[3] = { EndLoc.x, EndLoc.z, -EndLoc.y };
-
-	float searchsposMin[3];
-	float searchsposMax[3];
-
-	float searcheposMin[3];
-	float searcheposMax[3];
-
-	dtVsub(searchsposMin, spos, ext);
-	dtVadd(searchsposMax, spos, ext);
-
-	dtVsub(searcheposMin, epos, ext);
-	dtVadd(searcheposMax, epos, ext);
-
-	int NumTiles = 0;
-	dtCompressedTileRef AffectedTiles[DT_MAX_TOUCHED_TILES];
-
-	if (NavMeshes[REGULAR_NAV_MESH].tileCache && NavMeshes[REGULAR_NAV_MESH].navMesh)
-	{
-		NumTiles = 0;
-
-		NavMeshes[REGULAR_NAV_MESH].tileCache->queryTiles(searcheposMin, searcheposMax, AffectedTiles, &NumTiles, DT_MAX_TOUCHED_TILES);
-
-		for (int i = 0; i < NumTiles; i++)
-		{
-			const dtCompressedTile* Tile = NavMeshes[REGULAR_NAV_MESH].tileCache->getTileByRef(AffectedTiles[i]);
-
-			NavMeshes[REGULAR_NAV_MESH].tileCache->buildNavMeshTilesAt(Tile->header->tx, Tile->header->ty, NavMeshes[REGULAR_NAV_MESH].navMesh, false);
-		}
-
-		NavMeshes[REGULAR_NAV_MESH].tileCache->queryTiles(searchsposMin, searchsposMax, AffectedTiles, &NumTiles, DT_MAX_TOUCHED_TILES);
-
-		for (int i = 0; i < NumTiles; i++)
-		{
-			const dtCompressedTile* Tile = NavMeshes[REGULAR_NAV_MESH].tileCache->getTileByRef(AffectedTiles[i]);
-
-			NavMeshes[REGULAR_NAV_MESH].tileCache->buildNavMeshTilesAt(Tile->header->tx, Tile->header->ty, NavMeshes[REGULAR_NAV_MESH].navMesh, false);
-		}
-	}
-
-	if (NavMeshes[ONOS_NAV_MESH].tileCache && NavMeshes[ONOS_NAV_MESH].navMesh)
-	{
-		NumTiles = 0;
-
-		NavMeshes[ONOS_NAV_MESH].tileCache->queryTiles(searcheposMin, searcheposMax, AffectedTiles, &NumTiles, DT_MAX_TOUCHED_TILES);
-
-		for (int i = 0; i < NumTiles; i++)
-		{
-			const dtCompressedTile* Tile = NavMeshes[ONOS_NAV_MESH].tileCache->getTileByRef(AffectedTiles[i]);
-
-			NavMeshes[ONOS_NAV_MESH].tileCache->buildNavMeshTilesAt(Tile->header->tx, Tile->header->ty, NavMeshes[ONOS_NAV_MESH].navMesh, false);
-		}
-
-		NavMeshes[ONOS_NAV_MESH].tileCache->queryTiles(searchsposMin, searchsposMax, AffectedTiles, &NumTiles, DT_MAX_TOUCHED_TILES);
-
-		for (int i = 0; i < NumTiles; i++)
-		{
-			const dtCompressedTile* Tile = NavMeshes[ONOS_NAV_MESH].tileCache->getTileByRef(AffectedTiles[i]);
-
-			NavMeshes[ONOS_NAV_MESH].tileCache->buildNavMeshTilesAt(Tile->header->tx, Tile->header->ty, NavMeshes[ONOS_NAV_MESH].navMesh, false);
-		}
-
-	}
-
-	if (NavMeshes[BUILDING_NAV_MESH].tileCache && NavMeshes[BUILDING_NAV_MESH].navMesh)
-	{
-		NumTiles = 0;
-
-		NavMeshes[BUILDING_NAV_MESH].tileCache->queryTiles(searcheposMin, searcheposMax, AffectedTiles, &NumTiles, DT_MAX_TOUCHED_TILES);
-
-		for (int i = 0; i < NumTiles; i++)
-		{
-			const dtCompressedTile* Tile = NavMeshes[BUILDING_NAV_MESH].tileCache->getTileByRef(AffectedTiles[i]);
-
-			NavMeshes[BUILDING_NAV_MESH].tileCache->buildNavMeshTilesAt(Tile->header->tx, Tile->header->ty, NavMeshes[BUILDING_NAV_MESH].navMesh, false);
-		}
-
-		NavMeshes[BUILDING_NAV_MESH].tileCache->queryTiles(searchsposMin, searchsposMax, AffectedTiles, &NumTiles, DT_MAX_TOUCHED_TILES);
-
-		for (int i = 0; i < NumTiles; i++)
-		{
-			const dtCompressedTile* Tile = NavMeshes[BUILDING_NAV_MESH].tileCache->getTileByRef(AffectedTiles[i]);
-
-			NavMeshes[BUILDING_NAV_MESH].tileCache->buildNavMeshTilesAt(Tile->header->tx, Tile->header->ty, NavMeshes[BUILDING_NAV_MESH].navMesh, false);
-		}
-	}
-
-	bNavMeshModified = true;
 }
 
 const nav_profile GetBaseNavProfile(const int index)
