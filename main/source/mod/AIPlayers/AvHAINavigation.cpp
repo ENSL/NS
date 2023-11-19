@@ -24,6 +24,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "../../dlls/plats.h"
+
 #include "DetourNavMesh.h"
 #include "DetourCommon.h"
 #include "DetourTileCache.h"
@@ -35,8 +37,8 @@
 vector<nav_door> NavDoors;
 vector<nav_weldable> NavWeldableObstacles;
 
-nav_mesh NavMeshes[MAX_NAV_MESHES]; // Array of nav meshes. Currently only 3 are used (building, onos, and regular)
-nav_profile BaseNavProfiles[MAX_NAV_PROFILES]; // Array of nav profiles
+nav_mesh NavMeshes[MAX_NAV_MESHES] = { }; // Array of nav meshes. Currently only 3 are used (building, onos, and regular)
+nav_profile BaseNavProfiles[MAX_NAV_PROFILES] = { }; // Array of nav profiles
 
 extern bool bNavMeshModified;
 
@@ -181,7 +183,7 @@ struct MeshProcess : public dtTileCacheMeshProcess
 	}
 
 	virtual void process(struct dtNavMeshCreateParams* params,
-		unsigned char* polyAreas, unsigned short* polyFlags)
+		unsigned char* polyAreas, unsigned int* polyFlags)
 	{
 		// Update poly flags from areas.
 		for (int i = 0; i < params->polyCount; ++i)
@@ -1401,8 +1403,8 @@ dtStatus FindFlightPathToPoint(const nav_profile &NavProfile, Vector FromLocatio
 	unsigned char CurrArea;
 	unsigned char ThisArea;
 
-	unsigned short CurrFlags;
-	unsigned short ThisFlags;
+	unsigned int CurrFlags;
+	unsigned int ThisFlags;
 
 	m_navMesh->getPolyArea(StraightPolyPath[0], &CurrArea);
 	m_navMesh->getPolyFlags(StraightPolyPath[0], &CurrFlags);
@@ -1636,10 +1638,10 @@ dtStatus FindPathClosestToPoint(const nav_profile& NavProfile, const Vector From
 
 	path.clear();
 
-	unsigned short CurrFlags;
+	unsigned int CurrFlags;
 	unsigned char CurrArea;
 	unsigned char ThisArea;
-	unsigned short ThisFlags;
+	unsigned int ThisFlags;
 
 	m_navMesh->getPolyFlags(StraightPolyPath[0], &CurrFlags);
 	m_navMesh->getPolyArea(StraightPolyPath[0], &CurrArea);
@@ -1807,7 +1809,7 @@ dtStatus FindPathClosestToPoint(AvHAIPlayer* pBot, const BotMoveStyle MoveStyle,
 
 	path.clear();
 
-	unsigned short CurrFlags;
+	unsigned int CurrFlags;
 	unsigned char CurrArea;
 
 	m_navMesh->getPolyFlags(StraightPolyPath[0], &CurrFlags);
@@ -3478,6 +3480,7 @@ bool IsBotOffPath(const AvHAIPlayer* pBot)
 		PGFilter.DeployableTypes = STRUCTURE_MARINE_PHASEGATE;
 		PGFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(2.0f);
 		PGFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+		PGFilter.DeployableTeam = (AvHTeamNumber)pBot->Edict->v.team;
 		
 
 		if (!AITAC_DeployableExistsAtLocation(pBot->Edict->v.origin, &PGFilter))
@@ -6464,9 +6467,221 @@ Vector UTIL_GetButtonFloorLocation(const Vector UserLocation, edict_t* ButtonEdi
 	return NewButtonAccessPoint;
 }
 
+bool UTIL_IsTriggerLinkedToDoor(CBaseEntity* TriggerEntity, CBaseEntity* Door)
+{
+	if (!TriggerEntity || !Door) { return false; }
+
+	if (TriggerEntity == Door) { return true; }
+
+	const char* DoorName = STRING(Door->pev->targetname);
+	const char* TriggerName = STRING(TriggerEntity->pev->targetname);
+	const char* TriggerTarget = STRING(TriggerEntity->pev->target);
+
+	if (FStrEq(STRING(TriggerEntity->pev->target), DoorName)) { return true; }
+
+	AvHWeldable* WeldableRef = dynamic_cast<AvHWeldable*>(TriggerEntity);
+	
+	if (WeldableRef)
+	{
+		string targetString = WeldableRef->GetTargetOnFinish();
+		const char* targetOnFinish = targetString.c_str();
+
+		CBaseEntity* TargetEntity = UTIL_FindEntityByTargetname(NULL, targetOnFinish);
+
+		if (TargetEntity && UTIL_IsTriggerLinkedToDoor(TargetEntity, Door)) { return true; }
+
+		return false;
+	}
+
+	CMultiManager* MMRef = dynamic_cast<CMultiManager*>(TriggerEntity);
+
+	if (MMRef)
+	{
+		for (int i = 0; i < MMRef->m_cTargets; i++)
+		{
+			CBaseEntity* MMTargetEntity = UTIL_FindEntityByTargetname(NULL, STRING(MMRef->m_iTargetName[i]));
+
+			if (MMTargetEntity == Door) { return true; }
+
+			if (MMTargetEntity && UTIL_IsTriggerLinkedToDoor(MMTargetEntity, Door)) { return true; }
+		}
+
+		return false;
+	}
+
+	CEnvGlobal* EnvGlobalRef = dynamic_cast<CEnvGlobal*>(TriggerEntity);
+
+	if (EnvGlobalRef && EnvGlobalRef->m_globalstate)
+	{
+		const char* EnvGlobalState = STRING(EnvGlobalRef->m_globalstate);
+
+		FOR_ALL_ENTITIES("multisource", CMultiSource*)
+			const char* SourceGlobalState = STRING(theEntity->m_globalstate);
+			if (FStrEq(EnvGlobalState, SourceGlobalState))
+			{
+				if (UTIL_IsTriggerLinkedToDoor(theEntity, Door)) { return true; }
+			}
+		END_FOR_ALL_ENTITIES("multisource")
+
+		return false;
+	}
+
+	CMultiSource* MSRef = dynamic_cast<CMultiSource*>(TriggerEntity);
+
+	if (MSRef && MSRef->m_globalstate)
+	{
+		const char* targetName = STRING(MSRef->pev->targetname);
+
+		FOR_ALL_ENTITIES("func_button", CBaseButton*)
+			if (theEntity->m_sMaster && FStrEq(STRING(theEntity->m_sMaster), targetName))
+			{
+				if (UTIL_IsTriggerLinkedToDoor(theEntity, Door)) { return true; }
+			}
+		END_FOR_ALL_ENTITIES("func_button")
+
+		FOR_ALL_ENTITIES("trigger_once", CBaseTrigger*)
+			if (theEntity->m_sMaster && FStrEq(STRING(theEntity->m_sMaster), targetName))
+			{
+				if (UTIL_IsTriggerLinkedToDoor(theEntity, Door)) { return true; }
+			}
+		END_FOR_ALL_ENTITIES("trigger_once")
+
+		FOR_ALL_ENTITIES("trigger_multiple", CBaseTrigger*)
+			if (theEntity->m_sMaster && FStrEq(STRING(theEntity->m_sMaster), targetName))
+			{
+				if (UTIL_IsTriggerLinkedToDoor(theEntity, Door)) { return true; }
+			}
+		END_FOR_ALL_ENTITIES("trigger_multiple")
+
+		return false;
+	}
+
+	CTriggerChangeTarget* TCTRef = dynamic_cast<CTriggerChangeTarget*>(TriggerEntity);
+
+	if (TCTRef)
+	{
+		return FStrEq(STRING(TCTRef->GetNewTargetName()), STRING(Door->pev->targetname));
+	}
+
+	CBaseDelay* ToggleRef = dynamic_cast<CBaseDelay*>(TriggerEntity);
+
+	if (ToggleRef && ToggleRef->pev->target)
+	{
+		CBaseEntity* TargetEntity = UTIL_FindEntityByTargetname(NULL, STRING(ToggleRef->pev->target));
+
+		if (TargetEntity && UTIL_IsTriggerLinkedToDoor(TargetEntity, Door)) { return true; }
+	}
+
+	return false;
+}
+
+void UTIL_PopulateTriggersForEntity2(edict_t* Entity, vector<DoorTrigger>& TriggerList)
+{
+	CBaseEntity* TriggerRef = NULL;
+	CBaseEntity* DoorRef = CBaseEntity::Instance(Entity);
+
+	if (!DoorRef) { return; }
+
+
+	while ((TriggerRef = UTIL_FindEntityByClassname(TriggerRef, "func_button")) != NULL)
+	{
+		if (UTIL_IsTriggerLinkedToDoor(TriggerRef, DoorRef))
+		{
+			DoorActivationType NewTriggerType = DOOR_BUTTON;
+
+			DoorTrigger NewTrigger;
+			NewTrigger.Entity = TriggerRef;
+			NewTrigger.Edict = TriggerRef->edict();
+			NewTrigger.ToggleEnt = dynamic_cast<CBaseToggle*>(TriggerRef);
+			NewTrigger.TriggerType = NewTriggerType;
+			NewTrigger.bIsActivated = (!NewTrigger.ToggleEnt || !NewTrigger.ToggleEnt->IsLockedByMaster());
+
+			TriggerList.push_back(NewTrigger);			
+		}
+	}
+
+	TriggerRef = NULL;
+
+	while ((TriggerRef = UTIL_FindEntityByClassname(TriggerRef, "avhweldable")) != NULL)
+	{
+		if (UTIL_IsTriggerLinkedToDoor(TriggerRef, DoorRef))
+		{
+			DoorActivationType NewTriggerType = DOOR_BUTTON;
+
+			DoorTrigger NewTrigger;
+			NewTrigger.Entity = TriggerRef;
+			NewTrigger.Edict = TriggerRef->edict();
+			NewTrigger.ToggleEnt = dynamic_cast<CBaseToggle*>(TriggerRef);
+			NewTrigger.TriggerType = NewTriggerType;
+			NewTrigger.bIsActivated = (!NewTrigger.ToggleEnt || !NewTrigger.ToggleEnt->IsLockedByMaster());
+
+			TriggerList.push_back(NewTrigger);
+		}
+	}
+
+	TriggerRef = NULL;
+
+	while ((TriggerRef = UTIL_FindEntityByClassname(TriggerRef, "func_breakable")) != NULL)
+	{
+		if (UTIL_IsTriggerLinkedToDoor(TriggerRef, DoorRef))
+		{
+			DoorActivationType NewTriggerType = DOOR_BUTTON;
+
+			DoorTrigger NewTrigger;
+			NewTrigger.Entity = TriggerRef;
+			NewTrigger.Edict = TriggerRef->edict();
+			NewTrigger.ToggleEnt = dynamic_cast<CBaseToggle*>(TriggerRef);
+			NewTrigger.TriggerType = NewTriggerType;
+			NewTrigger.bIsActivated = (!NewTrigger.ToggleEnt || !NewTrigger.ToggleEnt->IsLockedByMaster());
+
+			TriggerList.push_back(NewTrigger);
+		}
+	}
+
+	TriggerRef = NULL;
+
+	while ((TriggerRef = UTIL_FindEntityByClassname(TriggerRef, "trigger_once")) != NULL)
+	{
+		if (UTIL_IsTriggerLinkedToDoor(TriggerRef, DoorRef))
+		{
+			DoorActivationType NewTriggerType = DOOR_BUTTON;
+
+			DoorTrigger NewTrigger;
+			NewTrigger.Entity = TriggerRef;
+			NewTrigger.Edict = TriggerRef->edict();
+			NewTrigger.ToggleEnt = dynamic_cast<CBaseToggle*>(TriggerRef);
+			NewTrigger.TriggerType = NewTriggerType;
+			NewTrigger.bIsActivated = (!NewTrigger.ToggleEnt || !NewTrigger.ToggleEnt->IsLockedByMaster());
+
+			TriggerList.push_back(NewTrigger);
+		}
+	}
+
+	TriggerRef = NULL;
+
+	while ((TriggerRef = UTIL_FindEntityByClassname(TriggerRef, "trigger_multiple")) != NULL)
+	{
+		if (UTIL_IsTriggerLinkedToDoor(TriggerRef, DoorRef))
+		{
+			DoorActivationType NewTriggerType = DOOR_BUTTON;
+
+			DoorTrigger NewTrigger;
+			NewTrigger.Entity = TriggerRef;
+			NewTrigger.Edict = TriggerRef->edict();
+			NewTrigger.ToggleEnt = dynamic_cast<CBaseToggle*>(TriggerRef);
+			NewTrigger.TriggerType = NewTriggerType;
+			NewTrigger.bIsActivated = (!NewTrigger.ToggleEnt || !NewTrigger.ToggleEnt->IsLockedByMaster());
+
+			TriggerList.push_back(NewTrigger);
+		}
+	}
+}
+
 void UTIL_PopulateTriggersForEntity(edict_t* Entity, vector<DoorTrigger>& TriggerList)
 {
 	CBaseEntity* EntityRef = CBaseEntity::Instance(Entity);
+
+	const char* EntName = STRING(Entity->v.targetname);
 
 	if (!EntityRef) { return; }
 
@@ -6474,6 +6689,13 @@ void UTIL_PopulateTriggersForEntity(edict_t* Entity, vector<DoorTrigger>& Trigge
 	AvHWeldable* WeldableRef = dynamic_cast<AvHWeldable*>(EntityRef);
 	CBaseTrigger* TriggerRef = dynamic_cast<CBaseTrigger*>(EntityRef);
 	CBreakable* BreakableRef = dynamic_cast<CBreakable*>(EntityRef);
+
+	CBasePlatTrain* TrainRef = dynamic_cast<CBasePlatTrain*>(EntityRef);
+
+	if (TrainRef)
+	{
+		bool bBreak = true;
+	}
 
 	if (ButtonRef || WeldableRef || TriggerRef || BreakableRef)
 	{
@@ -6963,6 +7185,8 @@ void UTIL_ClearDoorData()
 			it->NumObstacles = 0;
 
 		}
+
+		it->StopPoints.clear();
 	}
 
 	NavDoors.clear();
@@ -6987,88 +7211,119 @@ void UTIL_ClearWeldablesData()
 	NavWeldableObstacles.clear();
 }
 
-// TODO: Need to add orientated box obstacle for door
+// TODO: This
+void UTIL_PopulateTrainStopPoints(nav_door* TrainDoor)
+{
+	CBasePlatTrain* TrainRef = dynamic_cast<CBasePlatTrain*>(TrainDoor->DoorEntity);
+
+	if (!TrainRef) { return; }
+
+	CBaseEntity* StartCorner = TrainRef->GetNextTarget();
+
+	if (!StartCorner)
+	{
+		// We aren't using path corners, so we're probably a func_plat
+		TrainDoor->StopPoints.push_back(TrainRef->m_vecPosition1);
+		TrainDoor->StopPoints.push_back(TrainRef->m_vecPosition2);
+		return;
+	}
+
+	if (StartCorner->pev->spawnflags & SF_TRAIN_WAIT_RETRIGGER)
+	{
+		TrainDoor->StopPoints.push_back(StartCorner->pev->origin);
+	}
+
+	// Populate all path corners at which this func_train stops. Bot will use this to determine when to board the train
+
+	CBaseEntity* CurrentCorner = StartCorner->GetNextTarget();
+
+	while (CurrentCorner != NULL && CurrentCorner != StartCorner)
+	{
+		// Check if the train stops at this path corner, and if so, add it to the stop points array
+		if (CurrentCorner->pev->spawnflags & SF_TRAIN_WAIT_RETRIGGER)
+		{
+			TrainDoor->StopPoints.push_back(CurrentCorner->pev->origin);
+		}
+
+		CurrentCorner = CurrentCorner->GetNextTarget();
+	}
+
+}
+
 void UTIL_PopulateDoors()
 {
 
 	UTIL_ClearDoorData();
 
+	vector<CBaseEntity*> DoorsToPopulate;
+	DoorsToPopulate.clear();
+
 	CBaseEntity* currDoor = NULL;
 	while ((currDoor = UTIL_FindEntityByClassname(currDoor, "func_door")) != NULL)
 	{
-		CBaseToggle* ToggleRef = dynamic_cast<CBaseToggle*>(currDoor);
-
-		if (!ToggleRef) { continue; }
-
-		nav_door NewDoor;
-		NewDoor.NumObstacles = 0;
-
-		NewDoor.DoorEntity = ToggleRef;
-		NewDoor.DoorEdict = currDoor->edict();
-		NewDoor.CurrentState = ToggleRef->m_toggle_state;
-
-		if (currDoor->pev->spawnflags & DOOR_USE_ONLY)
-		{
-			NewDoor.ActivationType = DOOR_USE;
-		}
-		else
-		{
-			NewDoor.TriggerEnts.clear();
-			UTIL_PopulateTriggersForEntity(currDoor->edict(), NewDoor.TriggerEnts);
-		}
-
-		NavDoors.push_back(NewDoor);
+		DoorsToPopulate.push_back(currDoor);
 	}
 
 	currDoor = NULL;
 	while ((currDoor = UTIL_FindEntityByClassname(currDoor, "func_seethroughdoor")) != NULL)
 	{
-		CBaseToggle* ToggleRef = dynamic_cast<CBaseToggle*>(currDoor);
-		if (!ToggleRef) { continue; }
-
-		nav_door NewDoor;
-		NewDoor.NumObstacles = 0;
-
-		NewDoor.DoorEntity = ToggleRef;
-		NewDoor.DoorEdict = currDoor->edict();
-		NewDoor.CurrentState = ToggleRef->m_toggle_state;
-
-		if (currDoor->pev->spawnflags & DOOR_USE_ONLY)
-		{
-			NewDoor.ActivationType = DOOR_USE;
-		}
-		else
-		{
-			NewDoor.TriggerEnts.clear();
-			UTIL_PopulateTriggersForEntity(currDoor->edict(), NewDoor.TriggerEnts);
-		}
-
-		NavDoors.push_back(NewDoor);
+		DoorsToPopulate.push_back(currDoor);
 	}
 
 	currDoor = NULL;
 	while ((currDoor = UTIL_FindEntityByClassname(currDoor, "func_door_rotating")) != NULL)
 	{
-		CBaseToggle* ToggleRef = dynamic_cast<CBaseToggle*>(currDoor);
+		DoorsToPopulate.push_back(currDoor);
+	}
+
+	currDoor = NULL;
+	while ((currDoor = UTIL_FindEntityByClassname(currDoor, "func_plat")) != NULL)
+	{
+		DoorsToPopulate.push_back(currDoor);
+	}
+
+	currDoor = NULL;
+	while ((currDoor = UTIL_FindEntityByClassname(currDoor, "func_train")) != NULL)
+	{
+		DoorsToPopulate.push_back(currDoor);
+	}
+
+	for (auto it = DoorsToPopulate.begin(); it != DoorsToPopulate.end(); it++)
+	{
+		CBaseEntity* DoorEnt = *it;
+
+		CBaseToggle* ToggleRef = dynamic_cast<CBaseToggle*>(DoorEnt);
 		if (!ToggleRef) { continue; }
 
 		nav_door NewDoor;
 		NewDoor.NumObstacles = 0;
 
 		NewDoor.DoorEntity = ToggleRef;
-		NewDoor.DoorEdict = currDoor->edict();
+		NewDoor.DoorEdict = DoorEnt->edict();
 		NewDoor.CurrentState = ToggleRef->m_toggle_state;
 
-		if (currDoor->pev->spawnflags & DOOR_USE_ONLY)
+		if (DoorEnt->pev->spawnflags & DOOR_USE_ONLY)
 		{
 			NewDoor.ActivationType = DOOR_USE;
 		}
 		else
 		{
 			NewDoor.TriggerEnts.clear();
-			UTIL_PopulateTriggersForEntity(currDoor->edict(), NewDoor.TriggerEnts);
-
+			UTIL_PopulateTriggersForEntity2(DoorEnt->edict(), NewDoor.TriggerEnts);
 		}
+
+		CBasePlatTrain* TrainRef = dynamic_cast<CBasePlatTrain*>(DoorEnt);
+
+		if (TrainRef)
+		{
+			UTIL_PopulateTrainStopPoints(&NewDoor);
+		}
+		else
+		{
+			NewDoor.StopPoints.push_back(ToggleRef->m_vecPosition1);
+			NewDoor.StopPoints.push_back(ToggleRef->m_vecPosition2);
+		}
+		
 
 		NavDoors.push_back(NewDoor);
 	}
@@ -7087,6 +7342,36 @@ nav_door* UTIL_GetNavDoorByEdict(const edict_t* DoorEdict)
 	}
 
 	return nullptr;
+}
+
+// TODO: Find the topmost point when open, and topmost point when closed, and see how closely they align to the top and bottom point parameters
+nav_door* UTIL_GetClosestLiftToPoints(const Vector TopPoint, const Vector BottomPoint)
+{
+	nav_door* Result = nullptr;
+
+	float minDist = 0.0f;
+
+	for (auto it = NavDoors.begin(); it != NavDoors.end(); it++)
+	{
+		float distTopPoint = FLT_MAX;
+		float distBottomPoint = FLT_MAX;
+
+		for (auto stop = it->StopPoints.begin(); stop != it->StopPoints.end(); stop++)
+		{
+			distTopPoint = fminf(distTopPoint, vDist3DSq(UTIL_GetClosestPointOnEntityToLocation(TopPoint, it->DoorEdict, *stop), TopPoint));
+			distBottomPoint = fminf(distBottomPoint, vDist3DSq(UTIL_GetClosestPointOnEntityToLocation(BottomPoint, it->DoorEdict, *stop), BottomPoint));
+		}
+
+		float thisDist = fminf(distTopPoint, distBottomPoint);
+
+		if (!Result || thisDist < minDist)
+		{
+			Result = &(*it);
+			minDist = thisDist;
+		}
+	}
+
+	return Result;
 }
 
 void UTIL_AddOffMeshConnection(Vector StartLoc, Vector EndLoc, unsigned char area, unsigned short flags, bool bBiDirectional, AvHAIOffMeshConnection* RemoveConnectionDef)
@@ -7113,21 +7398,56 @@ void UTIL_AddOffMeshConnection(Vector StartLoc, Vector EndLoc, unsigned char are
 
 		RemoveConnectionDef->ConnectionRefs[i] = (unsigned int)ref;
 	}
+
+	bNavMeshModified = true;
 }
 
 void UTIL_RemoveOffMeshConnections(AvHAIOffMeshConnection* RemoveConnectionDef)
 {
 	for (int i = 0; i < BUILDING_NAV_MESH; i++)
 	{
-		dtOffMeshConnectionRef ref = 0;
-
 		NavMeshes[i].tileCache->removeOffMeshConnection(RemoveConnectionDef->ConnectionRefs[i]);
 
 		RemoveConnectionDef->ConnectionRefs[i] = 0;
 	}
+
+	bNavMeshModified = true;
 }
 
 const nav_profile GetBaseNavProfile(const int index)
 {
 	return BaseNavProfiles[index];
+}
+
+const dtOffMeshConnection* DEBUG_FindNearestOffMeshConnectionToPoint(const Vector Point, unsigned int FilterFlags)
+{
+	const dtOffMeshConnection* Result = nullptr;
+
+	if (NavMeshes[REGULAR_NAV_MESH].tileCache)
+	{
+		float PointConverted[3] = { Point.x, Point.z, -Point.y };
+
+		float minDist = 0.0f;
+		
+
+		for (int i = 0; i < NavMeshes[REGULAR_NAV_MESH].tileCache->getOffMeshCount(); i++)
+		{
+			const dtOffMeshConnection* con = NavMeshes[REGULAR_NAV_MESH].tileCache->getOffMeshConnection(i);
+
+			if (!con || con->state == DT_OFFMESH_EMPTY || con->state == DT_OFFMESH_REMOVING || !(con->flags & FilterFlags)) { continue; }
+
+			float distSpos = dtVdistSqr(PointConverted, &con->pos[0]);
+			float distEpos = dtVdistSqr(PointConverted, &con->pos[3]);
+
+			float thisDist = dtMin(distSpos, distEpos);
+
+			if (!Result || thisDist < minDist)
+			{
+				Result = con;
+				minDist = thisDist;
+			}
+		}
+	}
+
+	return Result;
 }

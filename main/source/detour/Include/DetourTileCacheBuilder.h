@@ -80,7 +80,7 @@ struct dtTileCachePolyMesh
 	int npolys;				///< Number of polygons.
 	unsigned short* verts;	///< Vertices of the mesh, 3 elements per vertex.
 	unsigned short* polys;	///< Polygons of the mesh, nvp*2 elements per polygon.
-	unsigned short* flags;	///< Per polygon flags.
+	unsigned int* flags;	///< Per polygon flags.
 	unsigned char* areas;	///< Area ID of polygons.
 };
 

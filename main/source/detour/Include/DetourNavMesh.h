@@ -173,7 +173,7 @@ struct dtPoly
 	unsigned short neis[DT_VERTS_PER_POLYGON];
 
 	/// The user defined polygon flags.
-	unsigned short flags;
+	unsigned int flags;
 
 	/// The number of vertices in the polygon.
 	unsigned char vertCount;
@@ -191,7 +191,7 @@ struct dtPoly
 	/// Gets the user defined area id.
 	inline unsigned char getArea() const { return areaAndtype & 0x3f; }
 
-	inline unsigned short getFlags() const { return flags; }
+	inline unsigned int getFlags() const { return flags; }
 
 	/// Gets the polygon type. (See: #dtPolyTypes)
 	inline unsigned char getType() const { return areaAndtype >> 6; }
@@ -246,7 +246,7 @@ struct dtOffMeshConnection
 	/// Link flags. 
 	/// @note These are not the connection's user defined flags. Those are assigned via the 
 	/// connection's dtPoly definition. These are link flags used for internal purposes.
-	unsigned short flags = 0;
+	unsigned int flags = 0;
 	unsigned char area = 0;
 
 	/// End point side.
@@ -518,13 +518,13 @@ public:
 	///  @param[in]	ref		The polygon reference.
 	///  @param[in]	flags	The new flags for the polygon.
 	/// @return The status flags for the operation.
-	dtStatus setPolyFlags(dtPolyRef ref, unsigned short flags);
+	dtStatus setPolyFlags(dtPolyRef ref, unsigned int flags);
 
 	/// Gets the user defined flags for the specified polygon.
 	///  @param[in]		ref				The polygon reference.
 	///  @param[out]	resultFlags		The polygon flags.
 	/// @return The status flags for the operation.
-	dtStatus getPolyFlags(dtPolyRef ref, unsigned short* resultFlags) const;
+	dtStatus getPolyFlags(dtPolyRef ref, unsigned int* resultFlags) const;
 
 	/// Sets the user defined area for the specified polygon.
 	///  @param[in]	ref		The polygon reference.

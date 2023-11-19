@@ -106,7 +106,7 @@ struct dtTileCacheMeshProcess
 	virtual ~dtTileCacheMeshProcess() { }
 
 	virtual void process(struct dtNavMeshCreateParams* params,
-						 unsigned char* polyAreas, unsigned short* polyFlags) = 0;
+						 unsigned char* polyAreas, unsigned int* polyFlags) = 0;
 
 
 };
@@ -156,7 +156,7 @@ public:
 	// Cylinder obstacle.
 	dtStatus addObstacle(const float* pos, const float radius, const float height, const int area, dtObstacleRef* result);
 
-	dtStatus addOffMeshConnection(const float* spos, const float* epos, const float radius, const unsigned char area, const unsigned short flags, const bool bBiDirectional, dtOffMeshConnectionRef* result);
+	dtStatus addOffMeshConnection(const float* spos, const float* epos, const float radius, const unsigned char area, const unsigned int flags, const bool bBiDirectional, dtOffMeshConnectionRef* result);
 
 	// Aabb obstacle.
 	dtStatus addBoxObstacle(const float* bmin, const float* bmax, dtObstacleRef* result);

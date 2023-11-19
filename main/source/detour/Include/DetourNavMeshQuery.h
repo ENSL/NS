@@ -35,8 +35,8 @@
 class dtQueryFilter
 {
 	float m_areaCost[DT_MAX_AREAS];		///< Cost per area type. (Used by default implementation.)
-	unsigned short m_includeFlags;		///< Flags for polygons that can be visited. (Used by default implementation.)
-	unsigned short m_excludeFlags;		///< Flags for polygons that should not be visted. (Used by default implementation.)
+	unsigned int m_includeFlags;		///< Flags for polygons that can be visited. (Used by default implementation.)
+	unsigned int m_excludeFlags;		///< Flags for polygons that should not be visted. (Used by default implementation.)
 	
 public:
 	dtQueryFilter();
@@ -100,25 +100,25 @@ public:
 	/// Returns the include flags for the filter.
 	/// Any polygons that include one or more of these flags will be
 	/// included in the operation.
-	inline unsigned short getIncludeFlags() const { return m_includeFlags; }
+	inline unsigned int getIncludeFlags() const { return m_includeFlags; }
 
 	/// Sets the include flags for the filter.
 	/// @param[in]		flags	The new flags.
-	inline void setIncludeFlags(const unsigned short flags) { m_includeFlags = flags; }
-	inline void addIncludeFlags(const unsigned short flags) { m_includeFlags |= flags; }
-	inline void removeIncludeFlags(const unsigned short flags) { m_includeFlags &= ~flags; }
+	inline void setIncludeFlags(const unsigned int flags) { m_includeFlags = flags; }
+	inline void addIncludeFlags(const unsigned int flags) { m_includeFlags |= flags; }
+	inline void removeIncludeFlags(const unsigned int flags) { m_includeFlags &= ~flags; }
 
 	/// Returns the exclude flags for the filter.
 	/// Any polygons that include one ore more of these flags will be
 	/// excluded from the operation.
-	inline unsigned short getExcludeFlags() const { return m_excludeFlags; }
+	inline unsigned int getExcludeFlags() const { return m_excludeFlags; }
 
 
 	/// Sets the exclude flags for the filter.
 	/// @param[in]		flags		The new flags.
-	inline void setExcludeFlags(const unsigned short flags) { m_excludeFlags = flags; }
-	inline void addExcludeFlags(const unsigned short flags) { m_excludeFlags |= flags; }
-	inline void removeExcludeFlags(const unsigned short flags) { m_excludeFlags &= ~flags; }
+	inline void setExcludeFlags(const unsigned int flags) { m_excludeFlags = flags; }
+	inline void addExcludeFlags(const unsigned int flags) { m_excludeFlags |= flags; }
+	inline void removeExcludeFlags(const unsigned int flags) { m_excludeFlags &= ~flags; }
 
 	///@}
 

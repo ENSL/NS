@@ -256,10 +256,10 @@ float vSize2D(const Vector V)
 	return sqrtf((V.x * V.x) + (V.y * V.y));
 }
 
-// Returns true if the two vectors are the same (all components are within 0.01f of each other)
+// Returns true if the two vectors are the same (all components are within 0.0001f of each other)
 bool vEquals(const Vector v1, const Vector v2)
 {
-	return fabsf(v1.x - v2.x) <= 0.01f && fabsf(v1.y - v2.y) <= 0.01f && fabsf(v1.z - v2.z) <= 0.01f;
+	return fabsf(v1.x - v2.x) <= 0.0001f && fabsf(v1.y - v2.y) <= 0.0001f && fabsf(v1.z - v2.z) <= 0.0001f;
 }
 
 bool vEquals2D(const Vector v1, const Vector v2)

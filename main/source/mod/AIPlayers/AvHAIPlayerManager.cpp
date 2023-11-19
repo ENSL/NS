@@ -102,7 +102,7 @@ void AIMGR_UpdateAIPlayerCounts()
 		if (AIMGR_GetNumAIPlayers() > 0)
 		{
 			AIMGR_RemoveAIPlayerFromTeam(0);
-			
+		
 		}
 		return;
 	}
@@ -790,8 +790,9 @@ vector<AvHAIPlayer*> AIMGR_GetAIPlayersOnTeam(AvHTeamNumber Team)
 
 void AIMGR_UpdateAIMapData()
 {
-	UTIL_UpdateTileCache();
 	AITAC_UpdateMapAIData();
+	UTIL_UpdateTileCache();
+	AITAC_CheckNavMeshModified();
 }
 
 void AIMGR_BotPrecache()

@@ -47,7 +47,7 @@ edict_t* UTIL_TraceEntity(const edict_t* pEdict, const Vector& start, const Vect
 {
 	TraceResult hit;
 	edict_t* IgnoreEdict = (!FNullEnt(pEdict)) ? pEdict->v.pContainingEntity : NULL;
-	UTIL_TraceLine(start, end, dont_ignore_monsters, ignore_glass, IgnoreEdict, &hit);
+	UTIL_TraceLine(start, end, dont_ignore_monsters, dont_ignore_glass, IgnoreEdict, &hit);
 	return hit.pHit;
 }
 
@@ -173,6 +173,14 @@ Vector UTIL_GetFloorUnderEntity(const edict_t* Edict)
 Vector UTIL_GetClosestPointOnEntityToLocation(const Vector Location, edict_t* Entity)
 {
 	return Vector(clampf(Location.x, Entity->v.absmin.x, Entity->v.absmax.x), clampf(Location.y, Entity->v.absmin.y, Entity->v.absmax.y), clampf(Location.z, Entity->v.absmin.z, Entity->v.absmax.z));
+}
+
+Vector UTIL_GetClosestPointOnEntityToLocation(const Vector Location, edict_t* Entity, const Vector EntityLocation)
+{
+	Vector MinVec = EntityLocation - (Entity->v.size * 0.5f);
+	Vector MaxVec = EntityLocation + (Entity->v.size * 0.5f);
+
+	return Vector(clampf(Location.x, MinVec.x, MaxVec.x), clampf(Location.y, MinVec.y, MaxVec.y), clampf(Location.z, MinVec.z, MaxVec.z));
 }
 
 AvHAIDeployableStructureType IUSER3ToStructureType(const int inIUSER3)

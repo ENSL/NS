@@ -94,12 +94,16 @@ dtTileCache::~dtTileCache()
 	}
 	dtFree(m_obstacles);
 	m_obstacles = 0;
+
 	dtFree(m_offMeshConnections);
 	m_offMeshConnections = 0;
+
 	dtFree(m_posLookup);
 	m_posLookup = 0;
+
 	dtFree(m_tiles);
 	m_tiles = 0;
+
 	m_nreqs = 0;
 	m_nOffMeshReqs = 0;
 	m_nupdate = 0;
@@ -389,7 +393,7 @@ dtStatus dtTileCache::removeTile(dtCompressedTileRef ref, unsigned char** data, 
 	return DT_SUCCESS;
 }
 
-dtStatus dtTileCache::addOffMeshConnection(const float* spos, const float* epos, const float radius, const unsigned char area, const unsigned short flags, const bool bBiDirectional, dtOffMeshConnectionRef* result)
+dtStatus dtTileCache::addOffMeshConnection(const float* spos, const float* epos, const float radius, const unsigned char area, const unsigned int flags, const bool bBiDirectional, dtOffMeshConnectionRef* result)
 {
 	if (m_nOffMeshReqs >= MAX_REQUESTS)
 		return DT_FAILURE | DT_BUFFER_TOO_SMALL;
