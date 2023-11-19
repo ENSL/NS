@@ -29,6 +29,7 @@ int							AITAC_GetNumDeployablesNearLocation(const Vector& Location, const Depl
 void						AITAC_RefreshHiveData();
 void						AITAC_RefreshResourceNodes();
 void						AITAC_UpdateMapAIData();
+void						AITAC_CheckNavMeshModified();
 void						AITAC_RefreshBuildableStructures();
 void						AITAC_UpdateBuildableStructure(CBaseEntity* Structure);
 void						AITAC_RefreshReachabilityForStructure(AvHAIBuildableStructure* Structure);

@@ -20,6 +20,7 @@ Vector UTIL_GetCentreOfEntity(const edict_t* Entity);
 Vector UTIL_GetFloorUnderEntity(const edict_t* Edict);
 
 Vector UTIL_GetClosestPointOnEntityToLocation(const Vector UserLocation, edict_t* Entity);
+Vector UTIL_GetClosestPointOnEntityToLocation(const Vector Location, edict_t* Entity, const Vector EntityLocation);
 
 AvHAIDeployableStructureType IUSER3ToStructureType(const int inIUSER3);
 

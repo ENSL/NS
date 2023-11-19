@@ -1371,7 +1371,7 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 	#ifdef WIN32
 	else if(FStrEq(pcmd, "createfake"))
 	{
-		if(!theAvHPlayer || theIsServerOp || theIsPlaytest || theIsDedicatedServer || this->GetCheatsEnabled())
+		/*if (!theAvHPlayer || theIsServerOp || theIsPlaytest || theIsDedicatedServer || this->GetCheatsEnabled())
 		{
 			char theFakeClientName[256];
 			sprintf(theFakeClientName, "Bot%d", RANDOM_LONG(0, 2000));
@@ -1388,9 +1388,9 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 			ClientPutInServer(BotEnt);
 
 			BotEnt->v.flags |= FL_FAKECLIENT;
-		}
+		}*/
 
-		return true;
+		theSuccess = true;
 	}
 	#endif
 #endif
@@ -1450,6 +1450,31 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 		theSuccess = true;
 	}
+	else if (FStrEq(pcmd, "tracedoor2"))
+	{
+		Vector TraceStart = GetPlayerEyePosition(theAvHPlayer->edict()); // origin + pev->view_ofs
+		Vector LookDir = UTIL_GetForwardVector(theAvHPlayer->edict()->v.v_angle); // Converts view angles to normalized unit vector
+
+		Vector TraceEnd = TraceStart + (LookDir * 1000.0f);
+
+		edict_t* TracedEntity = UTIL_TraceEntity(theAvHPlayer->edict(), TraceStart, TraceEnd);
+
+		if (!FNullEnt(TracedEntity))
+		{
+			nav_door* Door = UTIL_GetNavDoorByEdict(TracedEntity);
+
+			if (Door)
+			{
+				vector<DoorTrigger> TriggerEnts;
+
+				UTIL_PopulateTriggersForEntity2(Door->DoorEdict, TriggerEnts);
+
+				bool bThing = true;
+			}
+		}
+
+		theSuccess = true;
+	}
 	else if (FStrEq(pcmd, "tracedoor"))
 	{
 		Vector TraceStart = GetPlayerEyePosition(theAvHPlayer->edict()); // origin + pev->view_ofs
@@ -1465,6 +1490,7 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 			if (Door)
 			{
+
 				for (auto it = Door->TriggerEnts.begin(); it != Door->TriggerEnts.end(); it++)
 				{
 					const char* ButtonTarget = STRING(it->Edict->v.target);
@@ -1479,6 +1505,25 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 				{
 					UTIL_DrawLine(INDEXENT(1), theAvHPlayer->pev->origin, UTIL_GetButtonFloorLocation(theAvHPlayer->pev->origin, Trigger->Edict), 10.0f);
 				}
+			}
+		}
+
+		theSuccess = true;
+	}
+	else if (FStrEq(pcmd, "getlift"))
+	{
+		const dtOffMeshConnection* NearestCon = DEBUG_FindNearestOffMeshConnectionToPoint(theAvHPlayer->pev->origin, SAMPLE_POLYFLAGS_LIFT);
+
+		Vector ConnectionStart = Vector(NearestCon->pos[0], -NearestCon->pos[2], NearestCon->pos[1]);
+		Vector ConnectionEnd = Vector(NearestCon->pos[3], -NearestCon->pos[5], NearestCon->pos[4]);
+
+		if (NearestCon)
+		{
+			nav_door* NearestDoor = UTIL_GetClosestLiftToPoints(ConnectionStart, ConnectionEnd);
+
+			if (NearestDoor)
+			{
+				UTIL_DrawLine(INDEXENT(1), theAvHPlayer->pev->origin, UTIL_GetCentreOfEntity(NearestDoor->DoorEdict), 10.0f, 255, 255, 0);
 			}
 		}
 

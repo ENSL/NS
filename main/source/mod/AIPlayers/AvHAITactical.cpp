@@ -940,7 +940,10 @@ void AITAC_UpdateMapAIData()
 	UTIL_UpdateWeldableObstacles();
 
 	AITAC_RefreshHiveData();
+}
 
+void AITAC_CheckNavMeshModified()
+{
 	if (bNavMeshModified)
 	{
 		AITAC_OnNavMeshModified();

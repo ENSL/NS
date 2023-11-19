@@ -63,9 +63,10 @@ enum SamplePolyFlags
 	SAMPLE_POLYFLAGS_TEAM2STRUCTURE = 1 << 12,	// A team 2 structure is in the way that cannot be jumped over. Impassable to team 2 players (assume cannot teamkill own structures)
 	SAMPLE_POLYFLAGS_WELD			= 1 << 13,	// Requires a welder to get through here
 	SAMPLE_POLYFLAGS_DOOR			= 1 << 14,	// Requires a welder to get through here
+	SAMPLE_POLYFLAGS_LIFT			= 1 << 15,	// Disabled, not usable by anyone
 
-	SAMPLE_POLYFLAGS_DISABLED		= 1 << 15,	// Disabled, not usable by anyone
-	SAMPLE_POLYFLAGS_ALL			= 0xffff	// All abilities.
+	SAMPLE_POLYFLAGS_DISABLED		= 1 << 16,	// Disabled, not usable by anyone
+	SAMPLE_POLYFLAGS_ALL			= -1	// All abilities.
 };
 
 // Door type. Not currently used, future feature so bots know how to open a door
@@ -101,6 +102,7 @@ typedef struct _NAV_DOOR
 	DoorActivationType ActivationType = DOOR_NONE; // How the door should be opened
 	TOGGLE_STATE CurrentState = TS_AT_BOTTOM;
 	float OpenDelay = 0.0f; // How long the door takes to start opening after activation
+	vector<Vector> StopPoints; // Where does this door/platform stop when triggered?
 } nav_door;
 
 typedef struct _NAV_WELDABLE
@@ -121,9 +123,9 @@ typedef struct _NAV_HITRESULT
 // Links together a tile cache, nav query and the nav mesh into one handy structure for all your querying needs
 typedef struct _NAV_MESH
 {
-	class dtTileCache* tileCache;
-	class dtNavMeshQuery* navQuery;
-	class dtNavMesh* navMesh;
+	class dtTileCache* tileCache = nullptr;
+	class dtNavMeshQuery* navQuery = nullptr;
+	class dtNavMesh* navMesh = nullptr;
 } nav_mesh;
 
 
@@ -448,23 +450,30 @@ void OnBotEndLadder(AvHAIPlayer* pBot);
 
 // Tracks all doors and their current status
 void UTIL_PopulateDoors();
+void UTIL_PopulateTrainStopPoints(nav_door* TrainDoor);
 
 void UTIL_UpdateWeldableObstacles();
 void UTIL_UpdateDoors(bool bInitial = false);
 void UTIL_UpdateDoorTriggers(nav_door* Door);
 void UTIL_PopulateTriggersForEntity(edict_t* Entity, vector<DoorTrigger>& TriggerList);
 
+bool UTIL_IsTriggerLinkedToDoor(CBaseEntity* TriggerEntity, CBaseEntity* Door);
+void UTIL_PopulateTriggersForEntity2(edict_t* Entity, vector<DoorTrigger>& TriggerList);
+
 void UTIL_PopulateWeldableObstacles();
 
 void UTIL_ApplyTempObstaclesToDoor(nav_door* DoorRef, const int Area);
 
 nav_door* UTIL_GetNavDoorByEdict(const edict_t* DoorEdict);
+nav_door* UTIL_GetClosestLiftToPoints(const Vector TopPoint, const Vector BottomPoint);
 
 Vector UTIL_AdjustPointAwayFromNavWall(const Vector Location, const float MaxDistanceFromWall);
 
 void UTIL_PopulateBaseNavProfiles();
 
 void OnOffMeshConnectionAdded(dtOffMeshConnection* NewConnection);
+
+const dtOffMeshConnection* DEBUG_FindNearestOffMeshConnectionToPoint(const Vector Point, unsigned int FilterFlags);
 
 #endif // BOT_NAVIGATION_H
 

@@ -61,7 +61,7 @@
 /// @see dtNavMeshQuery
 
 dtQueryFilter::dtQueryFilter() :
-	m_includeFlags(0xffff),
+	m_includeFlags(0xffffffff),
 	m_excludeFlags(0)
 {
 	for (int i = 0; i < DT_MAX_AREAS; ++i)
