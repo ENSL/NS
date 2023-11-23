@@ -6570,6 +6570,13 @@ bool UTIL_IsTriggerLinkedToDoor(CBaseEntity* TriggerEntity, CBaseEntity* Door)
 		CBaseEntity* TargetEntity = UTIL_FindEntityByTargetname(NULL, STRING(ToggleRef->pev->target));
 
 		if (TargetEntity && UTIL_IsTriggerLinkedToDoor(TargetEntity, Door)) { return true; }
+
+		FOR_ALL_ENTITIES("trigger_changetarget", CTriggerChangeTarget*)
+			if (theEntity->GetNextTarget() && theEntity->GetNextTarget()->edict() == TriggerEntity->edict() && FStrEq(STRING(theEntity->GetNewTargetName()), STRING(Door->pev->targetname)))
+			{
+				return true;
+			}
+		END_FOR_ALL_ENTITIES("trigger_changetarget")
 	}
 
 	return false;
@@ -6606,7 +6613,7 @@ void UTIL_PopulateTriggersForEntity2(edict_t* Entity, vector<DoorTrigger>& Trigg
 	{
 		if (UTIL_IsTriggerLinkedToDoor(TriggerRef, DoorRef))
 		{
-			DoorActivationType NewTriggerType = DOOR_BUTTON;
+			DoorActivationType NewTriggerType = DOOR_WELD;
 
 			DoorTrigger NewTrigger;
 			NewTrigger.Entity = TriggerRef;
@@ -6625,7 +6632,7 @@ void UTIL_PopulateTriggersForEntity2(edict_t* Entity, vector<DoorTrigger>& Trigg
 	{
 		if (UTIL_IsTriggerLinkedToDoor(TriggerRef, DoorRef))
 		{
-			DoorActivationType NewTriggerType = DOOR_BUTTON;
+			DoorActivationType NewTriggerType = DOOR_BREAK;
 
 			DoorTrigger NewTrigger;
 			NewTrigger.Entity = TriggerRef;
@@ -6644,7 +6651,7 @@ void UTIL_PopulateTriggersForEntity2(edict_t* Entity, vector<DoorTrigger>& Trigg
 	{
 		if (UTIL_IsTriggerLinkedToDoor(TriggerRef, DoorRef))
 		{
-			DoorActivationType NewTriggerType = DOOR_BUTTON;
+			DoorActivationType NewTriggerType = DOOR_TRIGGER;
 
 			DoorTrigger NewTrigger;
 			NewTrigger.Entity = TriggerRef;
@@ -6663,7 +6670,7 @@ void UTIL_PopulateTriggersForEntity2(edict_t* Entity, vector<DoorTrigger>& Trigg
 	{
 		if (UTIL_IsTriggerLinkedToDoor(TriggerRef, DoorRef))
 		{
-			DoorActivationType NewTriggerType = DOOR_BUTTON;
+			DoorActivationType NewTriggerType = DOOR_TRIGGER;
 
 			DoorTrigger NewTrigger;
 			NewTrigger.Entity = TriggerRef;
@@ -7145,7 +7152,7 @@ void UTIL_UpdateDoorTriggers(nav_door* Door)
 				else
 				{
 					const char* classname = STRING(ActivationTarget->pev->classname);
-					it->bIsActivated = (FStrEq(classname, "multi_manager") || FStrEq(classname, "trigger_changetarget") || FStrEq(classname, "multisource"));
+					it->bIsActivated = UTIL_IsTriggerLinkedToDoor(ActivationTarget, Door->DoorEntity);
 				}
 			}
 		}
