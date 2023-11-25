@@ -3506,7 +3506,6 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 		return;
 	}
 
-	UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, UTIL_GetCentreOfEntity(NearestLift->DoorEdict));
 
 	Vector LiftPosition = UTIL_GetCentreOfEntity(NearestLift->DoorEdict);
 
@@ -3520,8 +3519,10 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 	// Find the desired stop point for us to get onto the lift
 	for (auto it = NearestLift->StopPoints.begin(); it != NearestLift->StopPoints.end(); it++)
 	{
-		float thisStartDist = vDist3DSq(*it, StartPoint);
-		float thisEndDist = vDist3DSq(*it, EndPoint);
+		Vector LiftStopPoint = (*it) + Vector(0.0f, 0.0f, NearestLift->DoorEdict->v.size.z * 0.5f);
+
+		float thisStartDist = vDist3DSq(LiftStopPoint, StartPoint);
+		float thisEndDist = vDist3DSq(LiftStopPoint, EndPoint);
 		if (vIsZero(DesiredStartStop) || thisStartDist < minStartDist)
 		{
 			DesiredStartStop = *it;
@@ -3569,11 +3570,27 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 		return;
 	}
 
-	
-
 	if (bIsLiftMoving)
 	{
-		AITASK_SetMoveTask(pBot, &pBot->BotNavInfo.MovementTask, StartPoint, true);
+		if (vDist2DSq(pBot->Edict->v.origin, StartPoint) > sqrf(50.0f))
+		{
+			AITASK_SetMoveTask(pBot, &pBot->BotNavInfo.MovementTask, StartPoint, true);
+		}
+		return;
+	}
+
+	if (bIsLiftAtOrNearStart && vEquals(DesiredStartStop, DesiredEndStop))
+	{
+		if (!bIsOnLift)
+		{
+			if (vDist2DSq(pBot->Edict->v.origin, StartPoint) > sqrf(50.0f))
+			{
+				AITASK_SetMoveTask(pBot, &pBot->BotNavInfo.MovementTask, StartPoint, true);
+				return;
+			}
+
+			pBot->desiredMovementDir = UTIL_GetVectorNormal2D(LiftPosition - pBot->CollisionHullBottomLocation);			
+		}
 		return;
 	}
 
@@ -3588,7 +3605,7 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 
 			for (auto it = NearestLift->TriggerEnts.begin(); it != NearestLift->TriggerEnts.end(); it++)
 			{
-				if (!FNullEnt(it->Edict) && it->bIsActivated)
+				if (it->bIsActivated)
 				{
 					Vector CheckLocation = UTIL_GetCentreOfEntity(NearestLift->DoorEdict);
 					CheckLocation.z = pBot->Edict->v.origin.z;
@@ -3622,9 +3639,21 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 		{
 			if (gpGlobals->time < NearestLiftTrigger->NextActivationTime || !(NearestLift->DoorEdict->v.spawnflags & SF_TRAIN_WAIT_RETRIGGER) || (NearestLift->DoorEntity && NearestLift->DoorEntity->m_flWait > 0.0f))
 			{
-				if (!bIsOnLift && vDist2DSq(pBot->Edict->v.origin, StartPoint) > sqrf(50.0f) && !bIsLiftAtOrNearStart)
+				if (!bIsOnLift && !bIsLiftAtOrNearStart)
 				{
-					AITASK_SetMoveTask(pBot, &pBot->BotNavInfo.MovementTask, StartPoint, true);
+					// Make sure we won't be squashed by the lift coming down on us
+					if (vBBOverlaps2D(pBot->Edict->v.absmin, pBot->Edict->v.absmax, NearestLift->DoorEdict->v.absmin, NearestLift->DoorEdict->v.absmax))
+					{
+						pBot->desiredMovementDir = UTIL_GetVectorNormal2D(StartPoint - DesiredStartStop);
+					}
+					else
+					{
+						if (vDist2DSq(pBot->Edict->v.origin, StartPoint) > sqrf(32.0f))
+						{
+							AITASK_SetMoveTask(pBot, &pBot->BotNavInfo.MovementTask, StartPoint, true);
+						}
+					}
+					
 				}
 				else
 				{
@@ -3646,8 +3675,6 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 
 				if (ButtonReachableFromLift)
 				{
-					UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, ButtonFloorLocation, 255, 255, 0);
-
 					if (IsPlayerInUseRange(pBot->Edict, NearestLiftTrigger->Edict))
 					{
 						BotUseObject(pBot, NearestLiftTrigger->Edict, false);
@@ -3657,11 +3684,13 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 					if (!bIsOnLift)
 					{
 						pBot->desiredMovementDir = UTIL_GetVectorNormal2D(LiftPosition - pBot->Edict->v.origin);
+						UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, ButtonFloorLocation, 255, 0, 0);
 						return;
 					}
 					else
 					{
 						pBot->desiredMovementDir = UTIL_GetVectorNormal2D(ButtonFloorLocation - pBot->Edict->v.origin);
+						UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, ButtonFloorLocation, 255, 255, 0);
 						return;
 					}
 				}
@@ -3672,9 +3701,6 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 				Vector UseLocation = UTIL_GetButtonFloorLocation(pBot->Edict->v.origin, NearestLiftTrigger->Edict);
 
 				AITASK_SetUseTask(pBot, &pBot->BotNavInfo.MovementTask, NearestLiftTrigger->Edict, UseLocation, true);
-
-				UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, UTIL_GetCentreOfEntity(NearestLiftTrigger->Edict), 10.0f, 255, 255, 0);
-				UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, UseLocation, 10.0f, 255, 0, 0);
 			}
 			else if (NearestLiftTrigger->TriggerType == DOOR_TRIGGER)
 			{
@@ -5823,6 +5849,8 @@ bool IsBotStuck(AvHAIPlayer* pBot, const Vector MoveDestination)
 	// If invalid move destination then bail out
 	if (vIsZero(MoveDestination) || vIsZero(pBot->desiredMovementDir)) { return false; }
 
+	if (pBot->BotNavInfo.CurrentPathPoint->flag == SAMPLE_POLYFLAGS_LIFT) { return false; }
+
 	// If moving to a new destination set a new distance baseline. We do not reset the stuck timer
 	if (MoveDestination != pBot->BotNavInfo.StuckCheckMoveLocation)
 	{
@@ -6810,7 +6838,7 @@ bool UTIL_IsTriggerLinkedToDoor(CBaseEntity* TriggerEntity, CBaseEntity* Door)
 
 		CBaseEntity* TargetEntity = UTIL_FindEntityByTargetname(NULL, targetOnFinish);
 
-		if (TargetEntity && UTIL_IsTriggerLinkedToDoor(TargetEntity, Door)) { return true; }
+		if (TargetEntity && TargetEntity != TriggerEntity && UTIL_IsTriggerLinkedToDoor(TargetEntity, Door)) { return true; }
 
 		return false;
 	}
@@ -6823,7 +6851,12 @@ bool UTIL_IsTriggerLinkedToDoor(CBaseEntity* TriggerEntity, CBaseEntity* Door)
 		{
 			CBaseEntity* MMTargetEntity = UTIL_FindEntityByTargetname(NULL, STRING(MMRef->m_iTargetName[i]));
 
+			if (!MMTargetEntity) { continue; }
+
 			if (MMTargetEntity == Door) { return true; }
+
+			// Don't check this if it's targeting us (circular reference)
+			if (FStrEq(STRING(MMTargetEntity->pev->target), STRING(TriggerEntity->pev->targetname))) { continue; }
 
 			if (MMTargetEntity && UTIL_IsTriggerLinkedToDoor(MMTargetEntity, Door)) { return true; }
 		}
@@ -6891,7 +6924,11 @@ bool UTIL_IsTriggerLinkedToDoor(CBaseEntity* TriggerEntity, CBaseEntity* Door)
 	{
 		CBaseEntity* TargetEntity = UTIL_FindEntityByTargetname(NULL, STRING(ToggleRef->pev->target));
 
-		if (TargetEntity && UTIL_IsTriggerLinkedToDoor(TargetEntity, Door)) { return true; }
+		// Don't check this if it's targeting us (circular reference)
+		if (!FStrEq(STRING(TargetEntity->pev->target), STRING(TriggerEntity->pev->targetname)))
+		{ 
+			if (TargetEntity && UTIL_IsTriggerLinkedToDoor(TargetEntity, Door)) { return true; }
+		}
 
 		FOR_ALL_ENTITIES("trigger_changetarget", CTriggerChangeTarget*)
 			if (theEntity->GetNextTarget() && theEntity->GetNextTarget()->edict() == TriggerEntity->edict() && FStrEq(STRING(theEntity->GetNewTargetName()), STRING(Door->pev->targetname)))
@@ -7665,8 +7702,17 @@ void UTIL_PopulateDoors()
 		}
 		else
 		{
-			NewDoor.StopPoints.push_back(UTIL_GetCentreOfEntity(NewDoor.DoorEdict) + ToggleRef->m_vecPosition1);
-			NewDoor.StopPoints.push_back(UTIL_GetCentreOfEntity(NewDoor.DoorEdict) + ToggleRef->m_vecPosition2);
+			if (NewDoor.DoorEdict->v.spawnflags & DOOR_START_OPEN)
+			{
+				NewDoor.StopPoints.push_back(UTIL_GetCentreOfEntity(NewDoor.DoorEdict) + ToggleRef->m_vecPosition2);
+				NewDoor.StopPoints.push_back(UTIL_GetCentreOfEntity(NewDoor.DoorEdict) - ToggleRef->m_vecPosition1);
+			}
+			else
+			{
+				NewDoor.StopPoints.push_back(UTIL_GetCentreOfEntity(NewDoor.DoorEdict) + ToggleRef->m_vecPosition1);
+				NewDoor.StopPoints.push_back(UTIL_GetCentreOfEntity(NewDoor.DoorEdict) + ToggleRef->m_vecPosition2);
+			}
+			
 		}
 		
 
