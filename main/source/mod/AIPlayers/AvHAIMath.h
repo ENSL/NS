@@ -115,6 +115,9 @@ Vector UTIL_GetCrossProduct(const Vector v1, const Vector v2);
 // Returns the surface normal of a poly defined at points v1, v2 and v3 (clockwise)
 Vector UTIL_GetSurfaceNormal(const Vector v1, const Vector v2, const Vector v3);
 
+bool vPointOverlaps2D(const Vector Point, const Vector MinBB, const Vector MaxBB);
+bool vBBOverlaps2D(const Vector MinBBA, const Vector MaxBBA, const Vector MinBBB, const Vector MaxBBB);
+
 // WIP: Trying to get a working random unit vector in cone. Not currently used
 Vector UTIL_GetRandomUnitVectorInCone(const Vector ConeDirection, const float HalfAngleRadians);
 Vector random_unit_vector_within_cone(const Vector Direction, double HalfAngleRadians);

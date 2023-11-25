@@ -1500,6 +1500,18 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 			if (Door)
 			{
+				Vector CurrPoint = ZERO_VECTOR;
+
+				for (auto stop = Door->StopPoints.begin(); stop != Door->StopPoints.end(); stop++)
+				{
+					Vector Point = (*stop);
+					Point.z += Door->DoorEdict->v.size.z * 0.5f;
+
+					UTIL_DrawLine(INDEXENT(1), INDEXENT(1)->v.origin, Point, 10.0f);
+				}
+
+				
+
 				const dtOffMeshConnection* NearestCon = DEBUG_FindNearestOffMeshConnectionToPoint(theAvHPlayer->pev->origin, SAMPLE_POLYFLAGS_LIFT);
 
 				if (NearestCon)
@@ -1508,17 +1520,17 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 					Vector ConnectionStart = Vector(NearestCon->pos[0], -NearestCon->pos[2], NearestCon->pos[1]);
 					Vector ConnectionEnd = Vector(NearestCon->pos[3], -NearestCon->pos[5], NearestCon->pos[4]);
 
-					UTIL_DrawLine(INDEXENT(1), ConnectionStart, ConnectionEnd, 10.0f);
+					//UTIL_DrawLine(INDEXENT(1), ConnectionStart, ConnectionEnd, 10.0f);
 
 					for (auto stop = Door->StopPoints.begin(); stop != Door->StopPoints.end(); stop++)
 					{
-						UTIL_DrawLine(INDEXENT(1), ConnectionStart, *stop, 10.0f, 255, 0, 0);
+						//UTIL_DrawLine(INDEXENT(1), ConnectionStart, *stop, 10.0f, 255, 0, 0);
 
 						Vector NearestPointStart = UTIL_GetClosestPointOnEntityToLocation(ConnectionStart, Door->DoorEdict, *stop);
 						Vector NearestPointEnd = UTIL_GetClosestPointOnEntityToLocation(ConnectionEnd, Door->DoorEdict, *stop);
 
-						UTIL_DrawLine(INDEXENT(1), ConnectionStart, NearestPointStart, 10.0f, 255, 255, 0);
-						UTIL_DrawLine(INDEXENT(1), ConnectionEnd, NearestPointEnd, 10.0f, 0, 0, 255);
+						//UTIL_DrawLine(INDEXENT(1), ConnectionStart, NearestPointStart, 10.0f, 255, 255, 0);
+						//UTIL_DrawLine(INDEXENT(1), ConnectionEnd, NearestPointEnd, 10.0f, 0, 0, 255);
 					}
 				}
 				
