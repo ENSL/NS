@@ -1450,31 +1450,6 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 		theSuccess = true;
 	}
-	else if (FStrEq(pcmd, "tracedoor2"))
-	{
-		Vector TraceStart = GetPlayerEyePosition(theAvHPlayer->edict()); // origin + pev->view_ofs
-		Vector LookDir = UTIL_GetForwardVector(theAvHPlayer->edict()->v.v_angle); // Converts view angles to normalized unit vector
-
-		Vector TraceEnd = TraceStart + (LookDir * 1000.0f);
-
-		edict_t* TracedEntity = UTIL_TraceEntity(theAvHPlayer->edict(), TraceStart, TraceEnd);
-
-		if (!FNullEnt(TracedEntity))
-		{
-			nav_door* Door = UTIL_GetNavDoorByEdict(TracedEntity);
-
-			if (Door)
-			{
-				vector<DoorTrigger> TriggerEnts;
-
-				UTIL_PopulateTriggersForEntity2(Door->DoorEdict, TriggerEnts);
-
-				bool bThing = true;
-			}
-		}
-
-		theSuccess = true;
-	}
 	else if (FStrEq(pcmd, "tracedoor"))
 	{
 		Vector TraceStart = GetPlayerEyePosition(theAvHPlayer->edict()); // origin + pev->view_ofs
@@ -1510,16 +1485,60 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 		theSuccess = true;
 	}
+	else if (FStrEq(pcmd, "tracelift"))
+	{
+		Vector TraceStart = GetPlayerEyePosition(theAvHPlayer->edict()); // origin + pev->view_ofs
+		Vector LookDir = UTIL_GetForwardVector(theAvHPlayer->edict()->v.v_angle); // Converts view angles to normalized unit vector
+
+		Vector TraceEnd = TraceStart + (LookDir * 1000.0f);
+
+		edict_t* TracedEntity = UTIL_TraceEntity(theAvHPlayer->edict(), TraceStart, TraceEnd);
+
+		if (!FNullEnt(TracedEntity))
+		{
+			nav_door* Door = UTIL_GetNavDoorByEdict(TracedEntity);
+
+			if (Door)
+			{
+				const dtOffMeshConnection* NearestCon = DEBUG_FindNearestOffMeshConnectionToPoint(theAvHPlayer->pev->origin, SAMPLE_POLYFLAGS_LIFT);
+
+				if (NearestCon)
+				{
+
+					Vector ConnectionStart = Vector(NearestCon->pos[0], -NearestCon->pos[2], NearestCon->pos[1]);
+					Vector ConnectionEnd = Vector(NearestCon->pos[3], -NearestCon->pos[5], NearestCon->pos[4]);
+
+					UTIL_DrawLine(INDEXENT(1), ConnectionStart, ConnectionEnd, 10.0f);
+
+					for (auto stop = Door->StopPoints.begin(); stop != Door->StopPoints.end(); stop++)
+					{
+						UTIL_DrawLine(INDEXENT(1), ConnectionStart, *stop, 10.0f, 255, 0, 0);
+
+						Vector NearestPointStart = UTIL_GetClosestPointOnEntityToLocation(ConnectionStart, Door->DoorEdict, *stop);
+						Vector NearestPointEnd = UTIL_GetClosestPointOnEntityToLocation(ConnectionEnd, Door->DoorEdict, *stop);
+
+						UTIL_DrawLine(INDEXENT(1), ConnectionStart, NearestPointStart, 10.0f, 255, 255, 0);
+						UTIL_DrawLine(INDEXENT(1), ConnectionEnd, NearestPointEnd, 10.0f, 0, 0, 255);
+					}
+				}
+				
+			}
+		}
+
+		theSuccess = true;
+		}
 	else if (FStrEq(pcmd, "getlift"))
 	{
 		const dtOffMeshConnection* NearestCon = DEBUG_FindNearestOffMeshConnectionToPoint(theAvHPlayer->pev->origin, SAMPLE_POLYFLAGS_LIFT);
 
-		Vector ConnectionStart = Vector(NearestCon->pos[0], -NearestCon->pos[2], NearestCon->pos[1]);
-		Vector ConnectionEnd = Vector(NearestCon->pos[3], -NearestCon->pos[5], NearestCon->pos[4]);
-
 		if (NearestCon)
 		{
+			Vector ConnectionStart = Vector(NearestCon->pos[0], -NearestCon->pos[2], NearestCon->pos[1]);
+			Vector ConnectionEnd = Vector(NearestCon->pos[3], -NearestCon->pos[5], NearestCon->pos[4]);
+
 			nav_door* NearestDoor = UTIL_GetClosestLiftToPoints(ConnectionStart, ConnectionEnd);
+
+			UTIL_DrawLine(INDEXENT(1), ConnectionStart, ConnectionEnd, 10.0f, 0, 0, 255);
 
 			if (NearestDoor)
 			{

@@ -290,6 +290,7 @@ void AIDEBUG_DrawPath(vector<bot_path_node>& path, float DrawTime)
 			UTIL_DrawLine(INDEXENT(1), FromLoc, ToLoc, DrawTime, 255, 255, 0);
 			break;
 		case SAMPLE_POLYFLAGS_LADDER:
+		case SAMPLE_POLYFLAGS_LIFT:
 			UTIL_DrawLine(INDEXENT(1), FromLoc, ToLoc, DrawTime, 0, 0, 255);
 			break;
 		case SAMPLE_POLYFLAGS_WALLCLIMB:

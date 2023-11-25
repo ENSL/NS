@@ -934,7 +934,11 @@ bool AITASK_IsUseTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (!ToggleRef) { return false; }
 
-	return ToggleRef->GetToggleState() == TS_AT_BOTTOM;
+	DoorTrigger* TriggerRef = UTIL_GetDoorTriggerByEntity(Task->TaskTarget);
+
+	if (TriggerRef && gpGlobals->time < TriggerRef->NextActivationTime) { return false; }
+
+	return ToggleRef->GetToggleState() == TS_AT_BOTTOM || (ToggleRef->GetToggleState() == TS_AT_TOP && (ToggleRef->pev->spawnflags & 32));
 }
 
 
@@ -956,7 +960,12 @@ void BotProgressMoveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		return;
 	}
 
-	MoveTo(pBot, Task->TaskLocation, MOVESTYLE_NORMAL);
+	bool bMoveSuccess = MoveTo(pBot, Task->TaskLocation, MOVESTYLE_NORMAL);
+
+	if (!bMoveSuccess)
+	{
+		MoveDirectlyTo(pBot, Task->TaskLocation);
+	}
 
 	if (IsPlayerMarine(pBot->Edict))
 	{
@@ -998,7 +1007,12 @@ void BotProgressUseTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 			}
 		}
 
-		MoveTo(pBot, Task->TaskLocation, MOVESTYLE_NORMAL);
+		bool bMoveSuccess = MoveTo(pBot, Task->TaskLocation, MOVESTYLE_NORMAL);
+
+		if (!bMoveSuccess)
+		{
+			MoveDirectlyTo(pBot, Task->TaskLocation);
+		}
 	}
 }
 
