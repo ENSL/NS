@@ -89,6 +89,11 @@ typedef struct _DOOR_TRIGGER
 	DoorActivationType TriggerType = DOOR_NONE;
 	bool bIsActivated = false;
 	CBaseEntity* TriggerChangeTargetRef = nullptr;
+	float ActivationDelay = 0.0f;
+	float LastActivatedTime = 0.0f;
+	TOGGLE_STATE LastToggleState = TS_AT_BOTTOM;
+	float LastNextThink = 0.0f;
+	float NextActivationTime = 0.0f;
 } DoorTrigger;
 
 // Door reference. Not used, but is a future feature to allow bots to track if a door is open or not, and how to open it etc.
@@ -244,6 +249,12 @@ void WallClimbMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndP
 void BlinkClimbMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint, float RequiredClimbHeight);
 // Called by NewMove, determines the movement direction and inputs required to use a phase gate to reach end point
 void PhaseGateMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint);
+// Called by NewMove, determines the movement direction and inputs required to use a lift to reach an end point
+void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint);
+
+DoorTrigger* UTIL_GetDoorTriggerByEntity(edict_t* TriggerEntity);
+
+bool UTIL_TriggerHasBeenRecentlyActivated(edict_t* TriggerEntity);
 
 // Will check for any func_breakable which might be in the way (e.g. window, vent) and make the bot aim and attack it to break it. Marines will switch to knife to break it.
 void CheckAndHandleBreakableObstruction(AvHAIPlayer* pBot, const Vector MoveFrom, const Vector MoveTo);
@@ -251,6 +262,7 @@ void CheckAndHandleBreakableObstruction(AvHAIPlayer* pBot, const Vector MoveFrom
 void CheckAndHandleDoorObstruction(AvHAIPlayer* pBot);
 
 DoorTrigger* UTIL_GetNearestDoorTrigger(const Vector Location, nav_door* Door, CBaseEntity* IgnoreTrigger);
+DoorTrigger* UTIL_GetNearestDoorTriggerFromLift(edict_t* LiftEdict, nav_door* Door, CBaseEntity* IgnoreTrigger);
 bool UTIL_IsPathBlockedByDoor(const Vector StartLoc, const Vector EndLoc, edict_t* SearchDoor);
 
 edict_t* UTIL_GetDoorBlockingPathPoint(AvHAIPlayer* pBot, bot_path_node* PathNode, edict_t* SearchDoor);
@@ -465,7 +477,7 @@ void UTIL_PopulateWeldableObstacles();
 void UTIL_ApplyTempObstaclesToDoor(nav_door* DoorRef, const int Area);
 
 nav_door* UTIL_GetNavDoorByEdict(const edict_t* DoorEdict);
-nav_door* UTIL_GetClosestLiftToPoints(const Vector TopPoint, const Vector BottomPoint);
+nav_door* UTIL_GetClosestLiftToPoints(const Vector StartPoint, const Vector EndPoint);
 
 Vector UTIL_AdjustPointAwayFromNavWall(const Vector Location, const float MaxDistanceFromWall);
 

@@ -552,11 +552,11 @@ bool IsPlayerInUseRange(const edict_t* Player, const edict_t* Target)
 {
 	if (FNullEnt(Player) || FNullEnt(Target)) { return false; }
 
-	if (vDist3DSq(Player->v.origin, UTIL_GetCentreOfEntity(Target)) > sqrf(vSize3D(Target->v.size) + vSize3D(Player->v.size))) { return false; }
+	//if (vDist3DSq(Player->v.origin, UTIL_GetCentreOfEntity(Target)) > sqrf(vSize3D(Target->v.size) + vSize3D(Player->v.size))) { return false; }
 
 	CBaseEntity* UseObject = nullptr;
 
-	while ((UseObject = UTIL_FindEntityInSphere(UseObject, Player->v.origin, 60.0f)) != NULL)
+	while ((UseObject = UTIL_FindEntityInSphere(UseObject, Player->v.origin, 64.0f)) != NULL)
 	{
 		if (UseObject->edict() == Target) { return true; }
 	}

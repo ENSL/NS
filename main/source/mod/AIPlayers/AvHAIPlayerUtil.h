@@ -104,7 +104,7 @@ float GetPlayerEnergyRegenPerSecond(edict_t* Player);
 // Expresses the combined health and armour of a player vs max
 float GetPlayerOverallHealthPercent(const edict_t* Player);
 
-// Gets the world position of the player's viewpoint (i.e. camera position)
+// Gets the world position of the player's viewpoint (origin + view_ofs)
 Vector GetPlayerEyePosition(const edict_t* Player);
 
 // Player's current height based on their player class, can manually specify if you want the crouched height or not
