@@ -2273,7 +2273,12 @@ void BotProgressWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (IsPlayerInUseRange(pBot->Edict, Task->TaskTarget))
 	{
-		BotLookAt(pBot, UTIL_GetClosestPointOnEntityToLocation(pBot->Edict->v.origin, Task->TaskTarget));
+		Vector BBMin = Task->TaskTarget->v.absmin;
+		Vector BBMax = Task->TaskTarget->v.absmax;
+
+		vScaleBB(BBMin, BBMax, 0.75f);
+
+		BotLookAt(pBot, vClosestPointOnBB(pBot->CurrentEyePosition, BBMin, BBMax));
 		pBot->DesiredCombatWeapon = WEAPON_MARINE_WELDER;
 
 		if (GetBotCurrentWeapon(pBot) != WEAPON_MARINE_WELDER)

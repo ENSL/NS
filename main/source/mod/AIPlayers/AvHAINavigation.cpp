@@ -3546,7 +3546,19 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 	bool bWaitingToEmbark = (!bIsOnLift && vDist3DSq(pBot->Edict->v.origin, StartPoint) < vDist3DSq(pBot->Edict->v.origin, EndPoint)) || (bIsOnLift && !bIsLiftMoving && bIsLiftAtOrNearStart);
 
 	// Do nothing if we're on a moving lift
-	if (bIsLiftMoving && bIsOnLift) { return; }
+	if (bIsLiftMoving && bIsOnLift)
+	{
+		Vector LiftEdge = UTIL_GetClosestPointOnEntityToLocation(StartPoint, NearestLift->DoorEdict);
+
+		bool bFullyOnLift = vDist2DSq(pBot->Edict->v.origin, LiftEdge) > (sqrf(GetPlayerRadius(pBot->Player) * 1.1f));
+
+		if (!bFullyOnLift)
+		{
+			pBot->desiredMovementDir = UTIL_GetVectorNormal2D(LiftPosition - StartPoint);
+		}
+
+		return;
+	}
 
 	// if we've reached our stop, or we can directly get to the end point. Move straight there
 
@@ -3657,7 +3669,16 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 				}
 				else
 				{
-					if (!bIsOnLift && bIsLiftAtOrNearStart)
+					bool bFullyOnLift = false;
+
+					if (bIsOnLift)
+					{
+						Vector LiftEdge = UTIL_GetClosestPointOnEntityToLocation(StartPoint, NearestLift->DoorEdict);
+
+						bFullyOnLift = vDist2DSq(pBot->Edict->v.origin, LiftEdge) > (sqrf(GetPlayerRadius(pBot->Player) * 1.1f) );
+					}
+
+					if (bIsLiftAtOrNearStart && (!bIsOnLift || !bFullyOnLift) )
 					{
 						pBot->desiredMovementDir = UTIL_GetVectorNormal2D(LiftPosition - StartPoint);
 					}
@@ -3684,13 +3705,11 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 					if (!bIsOnLift)
 					{
 						pBot->desiredMovementDir = UTIL_GetVectorNormal2D(LiftPosition - pBot->Edict->v.origin);
-						UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, ButtonFloorLocation, 255, 0, 0);
 						return;
 					}
 					else
 					{
 						pBot->desiredMovementDir = UTIL_GetVectorNormal2D(ButtonFloorLocation - pBot->Edict->v.origin);
-						UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, ButtonFloorLocation, 255, 255, 0);
 						return;
 					}
 				}
@@ -6925,7 +6944,7 @@ bool UTIL_IsTriggerLinkedToDoor(CBaseEntity* TriggerEntity, CBaseEntity* Door)
 		CBaseEntity* TargetEntity = UTIL_FindEntityByTargetname(NULL, STRING(ToggleRef->pev->target));
 
 		// Don't check this if it's targeting us (circular reference)
-		if (!FStrEq(STRING(TargetEntity->pev->target), STRING(TriggerEntity->pev->targetname)))
+		if (TargetEntity && !FStrEq(STRING(TargetEntity->pev->target), STRING(TriggerEntity->pev->targetname)))
 		{ 
 			if (TargetEntity && UTIL_IsTriggerLinkedToDoor(TargetEntity, Door)) { return true; }
 		}

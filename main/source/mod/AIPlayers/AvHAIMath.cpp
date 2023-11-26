@@ -58,6 +58,28 @@ bool vBBOverlaps2D(const Vector MinBBA, const Vector MaxBBA, const Vector MinBBB
 		&&	 (MinBBA.y < MaxBBB.y && MaxBBA.y > MinBBB.y));
 }
 
+Vector vClosestPointOnBB(const Vector Point, const Vector MinBB, const Vector MaxBB)
+{
+	return Vector(clampf(Point.x, MinBB.x, MaxBB.x), clampf(Point.y, MinBB.y, MaxBB.y), clampf(Point.z, MinBB.z, MaxBB.z));
+}
+
+void vScaleBB(Vector& MinBB, Vector& MaxBB, const float Scale)
+{
+	Vector Centre = MinBB + ((MaxBB - MinBB) * 0.5f);
+
+	float SizeX = MaxBB.x - MinBB.x;
+	float SizeY = MaxBB.y - MinBB.y;
+	float SizeZ = MaxBB.z - MinBB.z;
+
+	MinBB.x = Centre.x - (SizeX * Scale);
+	MinBB.y = Centre.y - (SizeY * Scale);
+	MinBB.z = Centre.z - (SizeZ * Scale);
+
+	MaxBB.x = Centre.x + (SizeX * Scale);
+	MaxBB.y = Centre.y + (SizeY * Scale);
+	MaxBB.z = Centre.z + (SizeZ * Scale);
+}
+
 // Returns the 3D distance of point from a line defined between lineFrom and lineTo
 float vDistanceFromLine3D(const Vector lineFrom, const Vector lineTo, const Vector CheckPoint)
 {

@@ -118,6 +118,10 @@ Vector UTIL_GetSurfaceNormal(const Vector v1, const Vector v2, const Vector v3);
 bool vPointOverlaps2D(const Vector Point, const Vector MinBB, const Vector MaxBB);
 bool vBBOverlaps2D(const Vector MinBBA, const Vector MaxBBA, const Vector MinBBB, const Vector MaxBBB);
 
+Vector vClosestPointOnBB(const Vector Point, const Vector MinBB, const Vector MaxBB);
+
+void vScaleBB(Vector& MinBB, Vector& MaxBB, const float Scale);
+
 // WIP: Trying to get a working random unit vector in cone. Not currently used
 Vector UTIL_GetRandomUnitVectorInCone(const Vector ConeDirection, const float HalfAngleRadians);
 Vector random_unit_vector_within_cone(const Vector Direction, double HalfAngleRadians);
