@@ -631,12 +631,21 @@ void AIMGR_ResetRound()
 		AIStartedTime = gpGlobals->time;
 	}
 
+	AITAC_ClearMapAIData();
+
 	UTIL_PopulateDoors();
 	UTIL_PopulateWeldableObstacles();
 
-	AITAC_ClearMapAIData();
-
 	ALERT(at_console, "AI Manager Reset Round\n");
+}
+
+void AIMGR_RoundStarted()
+{
+	AITAC_RefreshHiveData();
+
+	UTIL_UpdateTileCache();
+
+	AITAC_RefreshResourceNodes();
 }
 
 void AIMGR_ClearBotData()

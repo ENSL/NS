@@ -3417,6 +3417,7 @@ void AvHGamerules::SetGameStarted(bool inGameStarted)
 	if(!this->mGameStarted && inGameStarted)
 	{
 		FireTargets(ktGameStartedStatus, NULL, NULL, USE_TOGGLE, 0.0f);
+		AIMGR_RoundStarted();
 		//AvHNexus::startGame();
 	}
 	this->mGameStarted = inGameStarted;
