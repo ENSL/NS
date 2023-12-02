@@ -77,6 +77,33 @@ struct TileCacheSetExportHeader
 	int OffMeshConsOffset;
 };
 
+struct TileCacheBuildHeader
+{
+	int magic;
+	int version;
+	int numRegularTiles;
+	int numOnosTiles;
+	int numBuildingTiles;
+
+	dtNavMeshParams regularMeshParams;
+	dtTileCacheParams regularCacheParams;
+
+	dtNavMeshParams onosMeshParams;
+	dtTileCacheParams onosCacheParams;
+
+	dtNavMeshParams buildingMeshParams;
+	dtTileCacheParams buildingCacheParams;
+
+	int NumSurfTypes;
+	int SurfTypesOffset;
+
+	int NumOffMeshCons;
+	int OffMeshConsOffset;
+
+	int NumConvexVols;
+	int ConvexVolOffset;
+};
+
 struct TileCacheTileHeader
 {
 	dtCompressedTileRef tileRef;
@@ -571,17 +598,15 @@ bool LoadNavMesh(const char* mapname)
 
 	FILE* savedFile = fopen(filename, "rb");
 
-	if (!savedFile)
-	{
-		char buf[64];
-		sprintf(buf, "Nav file for map %s not found.\n", mapname);
-		ALERT(at_console, buf);
-		return false;
-	}
+	if (!savedFile) { return false; }
+
+	LinearAllocator* m_talloc = new LinearAllocator(32000);
+	FastLZCompressor* m_tcomp = new FastLZCompressor;
+	MeshProcess* m_tmproc = new MeshProcess;
 
 	// Read header.
-	TileCacheSetExportHeader header;
-	size_t headerReadReturnCode = fread(&header, sizeof(TileCacheSetExportHeader), 1, savedFile);
+	TileCacheBuildHeader header;
+	size_t headerReadReturnCode = fread(&header, sizeof(TileCacheBuildHeader), 1, savedFile);
 	if (headerReadReturnCode != 1)
 	{
 		// Error or early EOF
@@ -589,139 +614,53 @@ bool LoadNavMesh(const char* mapname)
 		UnloadNavigationData();
 		return false;
 	}
-	if (header.magic != TILECACHESET_MAGIC)
+
+	if (header.magic != TILECACHESET_MAGIC || header.version != TILECACHESET_VERSION)
 	{
-		char buf[64];
-		sprintf(buf, "Header Magic does not match! %d\n", header.magic);
-		ALERT(at_console, buf);
-		fclose(savedFile);
-		UnloadNavigationData();
-		return false;
-	}
-	if (header.version != TILECACHESET_VERSION)
-	{
-		ALERT(at_console, "Header version does not match!\n");
 		fclose(savedFile);
 		UnloadNavigationData();
 		return false;
 	}
 
-	NavMeshes[REGULAR_NAV_MESH].navMesh = dtAllocNavMesh();
-	if (!NavMeshes[REGULAR_NAV_MESH].navMesh)
+	dtNavMeshParams* NavMeshParams[3] = { &header.regularMeshParams, &header.onosMeshParams, &header.buildingMeshParams };
+	dtTileCacheParams* TileCacheParams[3] = { &header.regularCacheParams, &header.onosCacheParams, &header.buildingCacheParams };
+
+	for (int i = 0; i <= BUILDING_NAV_MESH; i++)
 	{
-		ALERT(at_console, "Could not allocate navmesh\n");
-		fclose(savedFile);
-		UnloadNavigationData();
-		return false;
+		NavMeshes[i].navMesh = dtAllocNavMesh();
+
+		if (!NavMeshes[i].navMesh)
+		{
+			fclose(savedFile);
+			UnloadNavigationData();
+			return false;
+		}
+
+		dtStatus status = NavMeshes[i].navMesh->init(NavMeshParams[i]);
+		if (dtStatusFailed(status))
+		{
+			fclose(savedFile);
+			UnloadNavigationData();
+			return false;
+		}
+
+		NavMeshes[i].tileCache = dtAllocTileCache();
+		if (!NavMeshes[i].tileCache)
+		{
+			fclose(savedFile);
+			UnloadNavigationData();
+			return false;
+		}
+
+		status = NavMeshes[i].tileCache->init(TileCacheParams[i], m_talloc, m_tcomp, m_tmproc);
+		if (dtStatusFailed(status))
+		{
+			ALERT(at_console, "Could not initialise tile cache\n");
+			fclose(savedFile);
+			UnloadNavigationData();
+			return false;
+		}
 	}
-	dtStatus status = NavMeshes[REGULAR_NAV_MESH].navMesh->init(&header.regularMeshParams);
-	if (dtStatusFailed(status))
-	{
-		ALERT(at_console, "Could not initialise nav mesh\n");
-		fclose(savedFile);
-		UnloadNavigationData();
-		return false;
-	}
-
-	NavMeshes[REGULAR_NAV_MESH].tileCache = dtAllocTileCache();
-	if (!NavMeshes[REGULAR_NAV_MESH].tileCache)
-	{
-		ALERT(at_console, "Could not allocate tile cache\n");
-		fclose(savedFile);
-		UnloadNavigationData();
-		return false;
-	}
-
-
-	NavMeshes[ONOS_NAV_MESH].navMesh = dtAllocNavMesh();
-	if (!NavMeshes[ONOS_NAV_MESH].navMesh)
-	{
-		ALERT(at_console, "Could not allocate onos navmesh\n");
-		fclose(savedFile);
-		UnloadNavigationData();
-		return false;
-	}
-	status = NavMeshes[ONOS_NAV_MESH].navMesh->init(&header.onosMeshParams);
-	if (dtStatusFailed(status))
-	{
-		ALERT(at_console, "Could not initialise onos nav mesh\n");
-		fclose(savedFile);
-		UnloadNavigationData();
-		return false;
-	}
-
-	NavMeshes[ONOS_NAV_MESH].tileCache = dtAllocTileCache();
-	if (!NavMeshes[ONOS_NAV_MESH].tileCache)
-	{
-		ALERT(at_console, "Could not allocate onos tile cache\n");
-		fclose(savedFile);
-		UnloadNavigationData();
-		return false;
-	}
-
-
-	NavMeshes[BUILDING_NAV_MESH].navMesh = dtAllocNavMesh();
-	if (!NavMeshes[BUILDING_NAV_MESH].navMesh)
-	{
-		ALERT(at_console, "Could not allocate building navmesh\n");
-		fclose(savedFile);
-		UnloadNavigationData();
-		return false;
-	}
-	status = NavMeshes[BUILDING_NAV_MESH].navMesh->init(&header.buildingMeshParams);
-	if (dtStatusFailed(status))
-	{
-		ALERT(at_console, "Could not initialise building nav mesh\n");
-		fclose(savedFile);
-		UnloadNavigationData();
-		return false;
-	}
-
-	NavMeshes[BUILDING_NAV_MESH].tileCache = dtAllocTileCache();
-	if (!NavMeshes[BUILDING_NAV_MESH].tileCache)
-	{
-		ALERT(at_console, "Could not allocate building tile cache\n");
-		fclose(savedFile);
-		UnloadNavigationData();
-		return false;
-	}
-
-	int CurrFilePos = ftell(savedFile);
-
-	LinearAllocator* m_talloc = new LinearAllocator(32000);
-	FastLZCompressor* m_tcomp = new FastLZCompressor;
-	MeshProcess* m_tmproc = new MeshProcess;
-
-	// TODO: Need to pass all off mesh connection verts, areas, flags etc as arrays to m_tmproc. Needs to be exported from recast as such
-
-	status = NavMeshes[REGULAR_NAV_MESH].tileCache->init(&header.regularCacheParams, m_talloc, m_tcomp, m_tmproc);
-	if (dtStatusFailed(status))
-	{
-		ALERT(at_console, "Could not initialise tile cache\n");
-		fclose(savedFile);
-		UnloadNavigationData();
-		return false;
-	}
-
-	status = NavMeshes[ONOS_NAV_MESH].tileCache->init(&header.onosCacheParams, m_talloc, m_tcomp, m_tmproc);
-	if (dtStatusFailed(status))
-	{
-		ALERT(at_console, "Could not initialise tile cache\n");
-		fclose(savedFile);
-		UnloadNavigationData();
-		return false;
-	}
-
-	status = NavMeshes[BUILDING_NAV_MESH].tileCache->init(&header.buildingCacheParams, m_talloc, m_tcomp, m_tmproc);
-	if (dtStatusFailed(status))
-	{
-		ALERT(at_console, "Could not initialise tile cache\n");
-		fclose(savedFile);
-		UnloadNavigationData();
-		return false;
-	}
-
-	fseek(savedFile, CurrFilePos, SEEK_SET);
 
 	// Read tiles.
 	for (int i = 0; i < header.numRegularTiles; ++i)
@@ -851,43 +790,24 @@ bool LoadNavMesh(const char* mapname)
 
 		for (int ii = 0; ii < BUILDING_NAV_MESH; ii++)
 		{
-			NavMeshes[ii].tileCache->addOffMeshConnection(&def.pos[0], &def.pos[3], def.rad, def.area, def.flags, def.bBiDir, 0);
+			NavMeshes[ii].tileCache->addOffMeshConnection(&def.pos[0], &def.pos[3], 10.0f, def.area, def.flags, def.bBiDir, 0);
 		}
 	}
 
 	fclose(savedFile);
 
-	NavMeshes[REGULAR_NAV_MESH].navQuery = dtAllocNavMeshQuery();
-
-	dtStatus initStatus = NavMeshes[REGULAR_NAV_MESH].navQuery->init(NavMeshes[REGULAR_NAV_MESH].navMesh, 65535);
-
-	if (dtStatusFailed(initStatus))
+	for (int i = 0; i <= BUILDING_NAV_MESH; i++)
 	{
-		ALERT(at_console, "Could not initialise nav query\n");
-		UnloadNavigationData();
-		return false;
-	}
+		NavMeshes[i].navQuery = dtAllocNavMeshQuery();
 
-	NavMeshes[ONOS_NAV_MESH].navQuery = dtAllocNavMeshQuery();
+		dtStatus initStatus = NavMeshes[i].navQuery->init(NavMeshes[i].navMesh, 65535);
 
-	initStatus = NavMeshes[ONOS_NAV_MESH].navQuery->init(NavMeshes[ONOS_NAV_MESH].navMesh, 65535);
-
-	if (dtStatusFailed(initStatus))
-	{
-		ALERT(at_console, "Could not initialise onos nav query\n");
-		UnloadNavigationData();
-		return false;
-	}
-
-	NavMeshes[BUILDING_NAV_MESH].navQuery = dtAllocNavMeshQuery();
-
-	initStatus = NavMeshes[BUILDING_NAV_MESH].navQuery->init(NavMeshes[BUILDING_NAV_MESH].navMesh, 65535);
-
-	if (dtStatusFailed(initStatus))
-	{
-		ALERT(at_console, "Could not initialise building nav query\n");
-		UnloadNavigationData();
-		return false;
+		if (dtStatusFailed(initStatus))
+		{
+			ALERT(at_console, "Could not initialise nav query\n");
+			UnloadNavigationData();
+			return false;
+		}
 	}
 
 	return true;
@@ -914,120 +834,85 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].bFlyingProfile = false;
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_MARINE;
-	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_OBSTRUCTION, 2.0f);
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 2.0f);
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALLDAMAGE, 10.0f);
-	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
+	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
+	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_FLY | SAMPLE_POLYFLAGS_WALLCLIMB | SAMPLE_POLYFLAGS_WELD);
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
-	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
-	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
-	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_FLY);
+	
 
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].bFlyingProfile = false;
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_SKULK;
-	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
-	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
-	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_OBSTRUCTION, 2.0f);
-	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
-	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 1.0f);
-	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALLDAMAGE, 1.0f);
-	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_WALLCLIMB, 1.0f);
-	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE);
-	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM2PHASEGATE);
-	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_DUCKJUMP);
-	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
-	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_FLY);
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE | SAMPLE_POLYFLAGS_TEAM2PHASEGATE | SAMPLE_POLYFLAGS_DUCKJUMP | SAMPLE_POLYFLAGS_WELD | SAMPLE_POLYFLAGS_FLY);
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
+
 
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].bFlyingProfile = false;
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_GORGE;
-	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_OBSTRUCTION, 2.0f);
-	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALLDAMAGE, 10.0f);
-	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
-	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
-	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE);
-	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM2PHASEGATE);
-	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_DUCKJUMP);
-	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
-	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_FLY);
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE);
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM2PHASEGATE);
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_DUCKJUMP);
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_WELD);
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_FLY);
 
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].bFlyingProfile = true;
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_SKULK;
-	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_OBSTRUCTION, 2.0f);
-	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
-	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 1.0f);
-	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALLDAMAGE, 1.0f);
-	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_WALLCLIMB, 1.0f);
-	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
-	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE);
-	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM2PHASEGATE);
-	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE);
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM2PHASEGATE);
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_WELD);
 
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].bFlyingProfile = false;
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_SKULK;
-	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_OBSTRUCTION, 2.0f);
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.5f);
-	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 1.0f);
-	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALLDAMAGE, 1.0f);
-	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_WALLCLIMB, 1.0f);
-	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
-	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE);
-	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM2PHASEGATE);
-	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
-	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_FLY);
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE);
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM2PHASEGATE);
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_WELD);
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_FLY);
 
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].NavMeshIndex = ONOS_NAV_MESH;
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].bFlyingProfile = false;
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_ONOS;
-	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_OBSTRUCTION, 2.0f);
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 2.0f);
-	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 1.0f);
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALLDAMAGE, 10.0f);
-	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
-	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
-	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE);
-	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM2PHASEGATE);
-	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
-	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_NOONOS);
-	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.addExcludeFlags(SAMPLE_POLYFLAGS_FLY);
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE);
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM2PHASEGATE);
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_WELD);
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_NOONOS);
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_FLY);
 
 	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].NavMeshIndex = BUILDING_NAV_MESH;
-	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
+	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
 	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
-	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
-	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_OBSTRUCTION, 1.0f);
-	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
-	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 1.0f);
-	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALLDAMAGE, 1.0f);
-	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_WALLCLIMB, 1.0f);
 	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].bFlyingProfile = false;
 	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_MARINE;
 
 	BaseNavProfiles[ALL_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
-	BaseNavProfiles[ALL_NAV_PROFILE].Filters.setIncludeFlags(0xFFFF);
+	BaseNavProfiles[ALL_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
 	BaseNavProfiles[ALL_NAV_PROFILE].Filters.setExcludeFlags(0);
-	BaseNavProfiles[ALL_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
-	BaseNavProfiles[ALL_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_OBSTRUCTION, 1.0f);
-	BaseNavProfiles[ALL_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
-	BaseNavProfiles[ALL_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 1.0f);
-	BaseNavProfiles[ALL_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALLDAMAGE, 1.0f);
-	BaseNavProfiles[ALL_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_WALLCLIMB, 1.0f);
 	BaseNavProfiles[ALL_NAV_PROFILE].bFlyingProfile = false;
 	BaseNavProfiles[ALL_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_SKULK;
 }

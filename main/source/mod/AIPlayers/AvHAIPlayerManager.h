@@ -15,6 +15,8 @@ void AIMGR_BotPrecache();
 void	AIMGR_ResetRound();
 // Called when a new map is loaded. Clears all tactical information AND loads new navmesh.
 void	AIMGR_NewMap();
+// Called when the match begins (countdown finished). Populates initial tactical information.
+void AIMGR_RoundStarted();
 
 // Adds a new AI player to a team (0 = Auto-assign, 1 = Team A, 2 = Team B)
 void	AIMGR_AddAIPlayerToTeam(int Team);

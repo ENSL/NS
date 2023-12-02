@@ -63,7 +63,7 @@ enum SamplePolyFlags
 	SAMPLE_POLYFLAGS_TEAM2STRUCTURE = 1 << 12,	// A team 2 structure is in the way that cannot be jumped over. Impassable to team 2 players (assume cannot teamkill own structures)
 	SAMPLE_POLYFLAGS_WELD			= 1 << 13,	// Requires a welder to get through here
 	SAMPLE_POLYFLAGS_DOOR			= 1 << 14,	// Requires a welder to get through here
-	SAMPLE_POLYFLAGS_LIFT			= 1 << 15,	// Disabled, not usable by anyone
+	SAMPLE_POLYFLAGS_LIFT			= 1 << 15,	// Requires using a lift or moving platform
 
 	SAMPLE_POLYFLAGS_DISABLED		= 1 << 16,	// Disabled, not usable by anyone
 	SAMPLE_POLYFLAGS_ALL			= -1	// All abilities.

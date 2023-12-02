@@ -94,16 +94,12 @@ dtTileCache::~dtTileCache()
 	}
 	dtFree(m_obstacles);
 	m_obstacles = 0;
-
 	dtFree(m_offMeshConnections);
 	m_offMeshConnections = 0;
-
 	dtFree(m_posLookup);
 	m_posLookup = 0;
-
 	dtFree(m_tiles);
 	m_tiles = 0;
-
 	m_nreqs = 0;
 	m_nOffMeshReqs = 0;
 	m_nupdate = 0;
@@ -423,6 +419,8 @@ dtStatus dtTileCache::addOffMeshConnection(const float* spos, const float* epos,
 	memset(req, 0, sizeof(OffMeshRequest));
 	req->action = REQUEST_OFFMESH_ADD;
 	req->ref = getOffMeshRef(con);
+
+	con->userId = req->ref;
 	
 	if (result)
 		*result = req->ref;
