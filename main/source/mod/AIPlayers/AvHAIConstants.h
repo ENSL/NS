@@ -190,6 +190,7 @@ typedef struct _RESOURCE_NODE
 	unsigned int TeamAReachabilityFlags = AI_REACHABILITY_NONE;		// Is this reachable by the bots? Checks for marine reachability only
 	unsigned int TeamBReachabilityFlags = AI_REACHABILITY_NONE;		// Is this reachable by the bots? Checks for marine reachability only
 	bool bReachabilityMarkedDirty = false;							// Reachability needs to be recalculated
+	float NextReachabilityRefreshTime = 0.0f;
 } AvHAIResourceNode;
 
 // Data structure to hold information about each hive in the map

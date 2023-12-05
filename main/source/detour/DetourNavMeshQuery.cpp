@@ -1918,25 +1918,25 @@ dtStatus dtNavMeshQuery::findStraightPath(const float* startPos, const float* en
 	{
 		return DT_FAILURE | DT_INVALID_PARAM;
 	}
-	
+
 	dtStatus stat = 0;
-	
+
 	// TODO: Should this be callers responsibility?
 	float closestStartPos[3];
 	if (dtStatusFailed(closestPointOnPolyBoundary(path[0], startPos, closestStartPos)))
 		return DT_FAILURE | DT_INVALID_PARAM;
 
 	float closestEndPos[3];
-	if (dtStatusFailed(closestPointOnPolyBoundary(path[pathSize-1], endPos, closestEndPos)))
+	if (dtStatusFailed(closestPointOnPolyBoundary(path[pathSize - 1], endPos, closestEndPos)))
 		return DT_FAILURE | DT_INVALID_PARAM;
-	
+
 	// Add start point.
 	stat = appendVertex(closestStartPos, DT_STRAIGHTPATH_START, path[0],
-						straightPath, straightPathFlags, straightPathRefs,
-						straightPathCount, maxStraightPath);
+		straightPath, straightPathFlags, straightPathRefs,
+		straightPathCount, maxStraightPath);
 	if (stat != DT_IN_PROGRESS)
 		return stat;
-	
+
 	if (pathSize > 1)
 	{
 		float portalApex[3], portalLeft[3], portalRight[3];
@@ -1946,28 +1946,28 @@ dtStatus dtNavMeshQuery::findStraightPath(const float* startPos, const float* en
 		int apexIndex = 0;
 		int leftIndex = 0;
 		int rightIndex = 0;
-		
+
 		unsigned char leftPolyType = 0;
 		unsigned char rightPolyType = 0;
-		
+
 		dtPolyRef leftPolyRef = path[0];
 		dtPolyRef rightPolyRef = path[0];
-		
+
 		for (int i = 0; i < pathSize; ++i)
 		{
 			float left[3], right[3];
 			unsigned char toType;
-			
-			if (i+1 < pathSize)
+
+			if (i + 1 < pathSize)
 			{
 				unsigned char fromType; // fromType is ignored.
 
 				// Next portal.
-				if (dtStatusFailed(getPortalPoints(path[i], path[i+1], left, right, fromType, toType)))
+				if (dtStatusFailed(getPortalPoints(path[i], path[i + 1], left, right, fromType, toType)))
 				{
 					// Failed to get portal points, in practice this means that path[i+1] is invalid polygon.
 					// Clamp the end point to path[i], and return the path so far.
-					
+
 					if (dtStatusFailed(closestPointOnPolyBoundary(path[i], endPos, closestEndPos)))
 					{
 						// This should only happen when the first polygon is invalid.
@@ -1979,18 +1979,18 @@ dtStatus dtNavMeshQuery::findStraightPath(const float* startPos, const float* en
 					{
 						// Ignore status return value as we're just about to return anyway.
 						appendPortals(apexIndex, i, closestEndPos, path,
-											 straightPath, straightPathFlags, straightPathRefs,
-											 straightPathCount, maxStraightPath, options);
+							straightPath, straightPathFlags, straightPathRefs,
+							straightPathCount, maxStraightPath, options);
 					}
 
 					// Ignore status return value as we're just about to return anyway.
 					appendVertex(closestEndPos, 0, path[i],
-										straightPath, straightPathFlags, straightPathRefs,
-										straightPathCount, maxStraightPath);
-					
+						straightPath, straightPathFlags, straightPathRefs,
+						straightPathCount, maxStraightPath);
+
 					return DT_SUCCESS | DT_PARTIAL_RESULT | ((*straightPathCount >= maxStraightPath) ? DT_BUFFER_TOO_SMALL : 0);
 				}
-				
+
 				// If starting really close the portal, advance.
 				if (i == 0)
 				{
@@ -2004,17 +2004,17 @@ dtStatus dtNavMeshQuery::findStraightPath(const float* startPos, const float* en
 				// End of the path.
 				dtVcopy(left, closestEndPos);
 				dtVcopy(right, closestEndPos);
-				
+
 				toType = DT_POLYTYPE_GROUND;
 			}
-			
+
 			// Right vertex.
 			if (dtTriArea2D(portalApex, portalRight, right) <= 0.0f)
 			{
 				if (dtVequal(portalApex, portalRight) || dtTriArea2D(portalApex, portalLeft, right) > 0.0f)
 				{
 					dtVcopy(portalRight, right);
-					rightPolyRef = (i+1 < pathSize) ? path[i+1] : 0;
+					rightPolyRef = (i + 1 < pathSize) ? path[i + 1] : 0;
 					rightPolyType = toType;
 					rightIndex = i;
 				}
@@ -2024,48 +2024,48 @@ dtStatus dtNavMeshQuery::findStraightPath(const float* startPos, const float* en
 					if (options & (DT_STRAIGHTPATH_AREA_CROSSINGS | DT_STRAIGHTPATH_ALL_CROSSINGS))
 					{
 						stat = appendPortals(apexIndex, leftIndex, portalLeft, path,
-											 straightPath, straightPathFlags, straightPathRefs,
-											 straightPathCount, maxStraightPath, options);
+							straightPath, straightPathFlags, straightPathRefs,
+							straightPathCount, maxStraightPath, options);
 						if (stat != DT_IN_PROGRESS)
-							return stat;					
+							return stat;
 					}
-				
+
 					dtVcopy(portalApex, portalLeft);
 					apexIndex = leftIndex;
-					
+
 					unsigned char flags = 0;
 					if (!leftPolyRef)
 						flags = DT_STRAIGHTPATH_END;
 					else if (leftPolyType == DT_POLYTYPE_OFFMESH_CONNECTION)
 						flags = DT_STRAIGHTPATH_OFFMESH_CONNECTION;
 					dtPolyRef ref = leftPolyRef;
-					
+
 					// Append or update vertex
 					stat = appendVertex(portalApex, flags, ref,
-										straightPath, straightPathFlags, straightPathRefs,
-										straightPathCount, maxStraightPath);
+						straightPath, straightPathFlags, straightPathRefs,
+						straightPathCount, maxStraightPath);
 					if (stat != DT_IN_PROGRESS)
 						return stat;
-					
+
 					dtVcopy(portalLeft, portalApex);
 					dtVcopy(portalRight, portalApex);
 					leftIndex = apexIndex;
 					rightIndex = apexIndex;
-					
+
 					// Restart
 					i = apexIndex;
-					
+
 					continue;
 				}
 			}
-			
+
 			// Left vertex.
 			if (dtTriArea2D(portalApex, portalLeft, left) >= 0.0f)
 			{
 				if (dtVequal(portalApex, portalLeft) || dtTriArea2D(portalApex, portalRight, left) < 0.0f)
 				{
 					dtVcopy(portalLeft, left);
-					leftPolyRef = (i+1 < pathSize) ? path[i+1] : 0;
+					leftPolyRef = (i + 1 < pathSize) ? path[i + 1] : 0;
 					leftPolyType = toType;
 					leftIndex = i;
 				}
@@ -2075,15 +2075,15 @@ dtStatus dtNavMeshQuery::findStraightPath(const float* startPos, const float* en
 					if (options & (DT_STRAIGHTPATH_AREA_CROSSINGS | DT_STRAIGHTPATH_ALL_CROSSINGS))
 					{
 						stat = appendPortals(apexIndex, rightIndex, portalRight, path,
-											 straightPath, straightPathFlags, straightPathRefs,
-											 straightPathCount, maxStraightPath, options);
+							straightPath, straightPathFlags, straightPathRefs,
+							straightPathCount, maxStraightPath, options);
 						if (stat != DT_IN_PROGRESS)
 							return stat;
 					}
 
 					dtVcopy(portalApex, portalRight);
 					apexIndex = rightIndex;
-					
+
 					unsigned char flags = 0;
 					if (!rightPolyRef)
 						flags = DT_STRAIGHTPATH_END;
@@ -2093,19 +2093,19 @@ dtStatus dtNavMeshQuery::findStraightPath(const float* startPos, const float* en
 
 					// Append or update vertex
 					stat = appendVertex(portalApex, flags, ref,
-										straightPath, straightPathFlags, straightPathRefs,
-										straightPathCount, maxStraightPath);
+						straightPath, straightPathFlags, straightPathRefs,
+						straightPathCount, maxStraightPath);
 					if (stat != DT_IN_PROGRESS)
 						return stat;
-					
+
 					dtVcopy(portalLeft, portalApex);
 					dtVcopy(portalRight, portalApex);
 					leftIndex = apexIndex;
 					rightIndex = apexIndex;
-					
+
 					// Restart
 					i = apexIndex;
-					
+
 					continue;
 				}
 			}
@@ -2114,9 +2114,9 @@ dtStatus dtNavMeshQuery::findStraightPath(const float* startPos, const float* en
 		// Append portals along the current straight path segment.
 		if (options & (DT_STRAIGHTPATH_AREA_CROSSINGS | DT_STRAIGHTPATH_ALL_CROSSINGS))
 		{
-			stat = appendPortals(apexIndex, pathSize-1, closestEndPos, path,
-								 straightPath, straightPathFlags, straightPathRefs,
-								 straightPathCount, maxStraightPath, options);
+			stat = appendPortals(apexIndex, pathSize - 1, closestEndPos, path,
+				straightPath, straightPathFlags, straightPathRefs,
+				straightPathCount, maxStraightPath, options);
 			if (stat != DT_IN_PROGRESS)
 				return stat;
 		}
@@ -2124,9 +2124,9 @@ dtStatus dtNavMeshQuery::findStraightPath(const float* startPos, const float* en
 
 	// Ignore status return value as we're just about to return anyway.
 	appendVertex(closestEndPos, DT_STRAIGHTPATH_END, 0,
-						straightPath, straightPathFlags, straightPathRefs,
-						straightPathCount, maxStraightPath);
-	
+		straightPath, straightPathFlags, straightPathRefs,
+		straightPathCount, maxStraightPath);
+
 	return DT_SUCCESS | ((*straightPathCount >= maxStraightPath) ? DT_BUFFER_TOO_SMALL : 0);
 }
 
