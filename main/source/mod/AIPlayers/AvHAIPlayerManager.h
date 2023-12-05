@@ -43,6 +43,10 @@ int		AIMGR_AIPlayerExistsOnTeam(AvHTeamNumber Team);
 
 void	AIMGR_UpdateAIMapData();
 
+void AIDEBUG_SetDebugVector1(const Vector NewVector);
+void AIDEBUG_SetDebugVector2(const Vector NewVector);
+void AIDEBUG_TestPathFind();
+
 int AIMGR_GetNumAIPlayersOnTeam(AvHTeamNumber Team);
 
 AvHAIPlayer* AIMGR_GetAICommander(AvHTeamNumber Team);

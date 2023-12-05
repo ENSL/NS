@@ -1474,7 +1474,7 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 					bool bThing = true;
 				}
 
-				DoorTrigger* Trigger = UTIL_GetNearestDoorTrigger(theAvHPlayer->pev->origin, Door, nullptr);
+				DoorTrigger* Trigger = UTIL_GetNearestDoorTrigger(theAvHPlayer->pev->origin, Door, nullptr, true);
 
 				if (Trigger)
 				{
@@ -1485,26 +1485,21 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 		theSuccess = true;
 	}
-	else if (FStrEq(pcmd, "testreachable"))
+	else if (FStrEq(pcmd, "setdebugvector1"))
 	{
-		Vector TeamAStart = AITAC_GetTeamStartingLocation(TEAM_ONE);
-		Vector TeamBStart = AITAC_GetTeamStartingLocation(TEAM_TWO);
+		AIDEBUG_SetDebugVector1(UTIL_GetFloorUnderEntity(theAvHPlayer->edict()));
 
-		Vector CheckLoc = UTIL_GetFloorUnderEntity(theAvHPlayer->edict());
+		theSuccess = true;
+	}
+	else if (FStrEq(pcmd, "setdebugvector2"))
+	{
+		AIDEBUG_SetDebugVector2(UTIL_GetFloorUnderEntity(theAvHPlayer->edict()));
 
-		UTIL_DrawLine(INDEXENT(1), TeamAStart, CheckLoc, 10.0f, 0, 0, 255);
-		UTIL_DrawLine(INDEXENT(1), TeamBStart, CheckLoc, 10.0f, 255, 255, 0);
-
-		bool bTeamARechable = UTIL_PointIsReachable(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), TeamAStart, CheckLoc, max_player_use_reach);
-		bool bTeamBRechable = UTIL_PointIsReachable(GetBaseNavProfile(SKULK_BASE_NAV_PROFILE), TeamBStart, CheckLoc, max_player_use_reach);
-
-		char buf[64];
-
-		sprintf(buf, "Team A: %s\n", (bTeamARechable) ? "True" : "False");
-		UTIL_SayText(buf, theAvHPlayer);
-
-		sprintf(buf, "Team B: %s\n", (bTeamBRechable) ? "True" : "False");
-		UTIL_SayText(buf, theAvHPlayer);
+		theSuccess = true;
+	}
+	else if (FStrEq(pcmd, "testpathfind"))
+	{
+		AIDEBUG_TestPathFind();
 
 		theSuccess = true;
 	}

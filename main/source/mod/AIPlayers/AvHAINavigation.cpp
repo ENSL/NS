@@ -42,6 +42,8 @@ nav_profile BaseNavProfiles[MAX_NAV_PROFILES] = { }; // Array of nav profiles
 
 extern bool bNavMeshModified;
 
+bool bTileCacheUpToDate = false;
+
 struct NavMeshSetHeader
 {
 	int magic;
@@ -309,13 +311,11 @@ void AIDEBUG_DrawOffMeshConnections(float DrawTime)
 
 void UTIL_UpdateTileCache()
 {
-	bool bUpToDate = true;
-
 	for (int i = 0; i < MAX_NAV_MESHES; i++)
 	{
 		if (NavMeshes[i].tileCache)
 		{
-			NavMeshes[i].tileCache->update(0.0f, NavMeshes[i].navMesh, &bUpToDate);
+			NavMeshes[i].tileCache->update(0.0f, NavMeshes[i].navMesh, &bTileCacheUpToDate);
 		}
 	}	
 }
@@ -669,7 +669,6 @@ bool LoadNavMesh(const char* mapname)
 		size_t tileHeaderReadReturnCode = fread(&tileHeader, sizeof(tileHeader), 1, savedFile);
 		if (tileHeaderReadReturnCode != 1)
 		{
-			ALERT(at_console, "Tile header read returned code\n");
 			fclose(savedFile);
 			UnloadNavigationData();
 			return false;
@@ -683,8 +682,6 @@ bool LoadNavMesh(const char* mapname)
 		size_t tileDataReadReturnCode = fread(data, tileHeader.dataSize, 1, savedFile);
 		if (tileDataReadReturnCode != 1)
 		{
-			ALERT(at_console, "Tile data read returned code\n");
-			// Error or early EOF
 			dtFree(data);
 			fclose(savedFile);
 			UnloadNavigationData();
@@ -708,7 +705,6 @@ bool LoadNavMesh(const char* mapname)
 		size_t tileHeaderReadReturnCode = fread(&tileHeader, sizeof(tileHeader), 1, savedFile);
 		if (tileHeaderReadReturnCode != 1)
 		{
-			ALERT(at_console, "Tile header read returned code\n");
 			fclose(savedFile);
 			UnloadNavigationData();
 			return false;
@@ -722,8 +718,6 @@ bool LoadNavMesh(const char* mapname)
 		size_t tileDataReadReturnCode = fread(data, tileHeader.dataSize, 1, savedFile);
 		if (tileDataReadReturnCode != 1)
 		{
-			ALERT(at_console, "Tile data read returned code\n");
-			// Error or early EOF
 			dtFree(data);
 			fclose(savedFile);
 			UnloadNavigationData();
@@ -747,7 +741,6 @@ bool LoadNavMesh(const char* mapname)
 		size_t tileHeaderReadReturnCode = fread(&tileHeader, sizeof(tileHeader), 1, savedFile);
 		if (tileHeaderReadReturnCode != 1)
 		{
-			ALERT(at_console, "Tile header read returned code\n");
 			fclose(savedFile);
 			UnloadNavigationData();
 			return false;
@@ -761,8 +754,6 @@ bool LoadNavMesh(const char* mapname)
 		size_t tileDataReadReturnCode = fread(data, tileHeader.dataSize, 1, savedFile);
 		if (tileDataReadReturnCode != 1)
 		{
-			ALERT(at_console, "Tile data read returned code\n");
-			// Error or early EOF
 			dtFree(data);
 			fclose(savedFile);
 			UnloadNavigationData();
@@ -804,7 +795,6 @@ bool LoadNavMesh(const char* mapname)
 
 		if (dtStatusFailed(initStatus))
 		{
-			ALERT(at_console, "Could not initialise nav query\n");
 			UnloadNavigationData();
 			return false;
 		}
@@ -1622,7 +1612,7 @@ dtStatus FindPathClosestToPoint(AvHAIPlayer* pBot, const BotMoveStyle MoveStyle,
 	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(pBot->BotNavInfo.NavProfile);
 	const dtQueryFilter* m_navFilter = &pBot->BotNavInfo.NavProfile.Filters;
 
-	bool bHasWelder = !(m_navFilter->getExcludeFlags() & SAMPLE_POLYFLAGS_WELD);
+	bool bHasWelder = (m_navFilter->getIncludeFlags() & SAMPLE_POLYFLAGS_WELD);
 
 	if (!m_navQuery || !m_navMesh || !m_navFilter || vIsZero(FromLocation) || vIsZero(ToLocation))
 	{
@@ -1753,6 +1743,24 @@ dtStatus FindPathClosestToPoint(AvHAIPlayer* pBot, const BotMoveStyle MoveStyle,
 			if (CurrFlags == SAMPLE_POLYFLAGS_LADDER)
 			{
 				NextPathNode.requiredZ += 5.0f;
+			}
+
+			if (IsPlayerSkulk(pBot->Edict))
+			{
+				Vector CurrMoveDest = NextPathNode.Location;
+
+				NextPathNode.flag = SAMPLE_POLYFLAGS_WALLCLIMB;
+
+				Vector ThisMoveDest = Vector(NodeFromLocation.x, NodeFromLocation.y, NextPathNode.Location.z);
+
+				NextPathNode.Location = ThisMoveDest;
+
+				path.push_back(NextPathNode);
+
+				NextPathNode.Location = CurrMoveDest;
+				NextPathNode.FromLocation = ThisMoveDest;
+
+				CurrFlags = SAMPLE_POLYFLAGS_WALLCLIMB;
 			}
 
 		}
@@ -2026,7 +2034,7 @@ void CheckAndHandleDoorObstruction(AvHAIPlayer* pBot)
 		}
 
 
-		DoorTrigger* Trigger = UTIL_GetNearestDoorTrigger(pBot->Edict->v.origin, Door, nullptr);
+		DoorTrigger* Trigger = UTIL_GetNearestDoorTrigger(pBot->Edict->v.origin, Door, nullptr, true);
 
 		if (Trigger && Trigger->NextActivationTime < gpGlobals->time)
 		{
@@ -2593,7 +2601,7 @@ DoorTrigger* UTIL_GetNearestDoorTriggerFromLift(edict_t* LiftEdict, nav_door* Do
 	return NearestTrigger;
 }
 
-DoorTrigger* UTIL_GetNearestDoorTrigger(const Vector Location, nav_door* Door, CBaseEntity* IgnoreTrigger)
+DoorTrigger* UTIL_GetNearestDoorTrigger(const Vector Location, nav_door* Door, CBaseEntity* IgnoreTrigger, bool bCheckBlockedByDoor)
 {
 	if (!Door) { return nullptr; }
 
@@ -2610,7 +2618,7 @@ DoorTrigger* UTIL_GetNearestDoorTrigger(const Vector Location, nav_door* Door, C
 		{
 			Vector ButtonLocation = UTIL_GetButtonFloorLocation(Location, it->Edict);
 
-			if ((true || !UTIL_IsPathBlockedByDoor(Location, ButtonLocation, Door->DoorEdict)) && UTIL_PointIsReachable(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), Location, ButtonLocation, 64.0f))
+			if ((!bCheckBlockedByDoor || !UTIL_IsPathBlockedByDoor(Location, ButtonLocation, Door->DoorEdict)) && UTIL_PointIsReachable(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), Location, ButtonLocation, 64.0f))
 			{
 				float ThisDist = vDist3DSq(Location, ButtonLocation);
 
@@ -3453,7 +3461,7 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 
 	if ((bIsOnLift && !bIsLiftMoving && bIsLiftAtOrNearEnd) || UTIL_PointIsDirectlyReachable(BotNavPosition, EndPoint))
 	{
-		pBot->desiredMovementDir = UTIL_GetVectorNormal2D(EndPoint - pBot->CollisionHullBottomLocation);
+		MoveToWithoutNav(pBot, EndPoint);
 		return;
 	}
 
@@ -3529,7 +3537,7 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 
 		if (!NearestLiftTrigger)
 		{
-			NearestLiftTrigger = UTIL_GetNearestDoorTrigger(pBot->Edict->v.origin, NearestLift, nullptr);
+			NearestLiftTrigger = UTIL_GetNearestDoorTrigger(pBot->Edict->v.origin, NearestLift, nullptr, false);
 		}
 
 		if (NearestLiftTrigger)
@@ -3926,6 +3934,75 @@ void WallClimbMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndP
 
 	BotMoveLookAt(pBot, LookLocation);
 
+}
+
+void MoveToWithoutNav(AvHAIPlayer* pBot, const Vector Destination)
+{
+	Vector CurrentPos = (pBot->BotNavInfo.IsOnGround) ? pBot->Edict->v.origin : pBot->CurrentFloorPosition;
+
+	const Vector vForward = UTIL_GetVectorNormal2D(Destination - CurrentPos);
+	// Same goes for the right vector, might not be the same as the bot's right
+	const Vector vRight = UTIL_GetVectorNormal2D(UTIL_GetCrossProduct(vForward, UP_VECTOR));
+
+	const float PlayerRadius = GetPlayerRadius(pBot->Player);
+
+	Vector stTrcLft = pBot->Edict->v.origin - (vRight * PlayerRadius);
+	Vector stTrcRt = pBot->Edict->v.origin + (vRight * PlayerRadius);
+	stTrcLft.z += 2.0f;
+	stTrcRt.z += 2.0f;
+
+	Vector endTrcLft = stTrcLft + (vForward * (PlayerRadius * 2.0f));
+	Vector endTrcRt = stTrcRt + (vForward * (PlayerRadius * 2.0f));
+
+	bool bumpLeft = !UTIL_QuickHullTrace(pBot->Edict, stTrcLft, endTrcLft, head_hull);
+	bool bumpRight = !UTIL_QuickHullTrace(pBot->Edict, stTrcRt, endTrcRt, head_hull);
+
+	UTIL_DrawLine(INDEXENT(1), stTrcLft, endTrcLft, 255, 0, 0);
+	UTIL_DrawLine(INDEXENT(1), stTrcRt, endTrcRt, 0, 0, 255);
+
+	pBot->desiredMovementDir = vForward;
+
+	if (bumpRight && !bumpLeft)
+	{
+		pBot->desiredMovementDir = pBot->desiredMovementDir - vRight;
+	}
+	else if (bumpLeft && !bumpRight)
+	{
+		pBot->desiredMovementDir = pBot->desiredMovementDir + vRight;
+	}
+	else if (bumpLeft && bumpRight)
+	{
+		endTrcLft = endTrcLft - (vRight * PlayerRadius);
+		endTrcRt = endTrcRt + (vRight * PlayerRadius);
+
+		if (!UTIL_QuickTrace(pBot->Edict, stTrcLft, endTrcLft))
+		{
+			pBot->desiredMovementDir = pBot->desiredMovementDir + vRight;
+		}
+		else
+		{
+			pBot->desiredMovementDir = pBot->desiredMovementDir - vRight;
+		}
+	}
+
+	float DistFromDestination = vDist2DSq(pBot->Edict->v.origin, Destination);
+
+	if (vIsZero(pBot->LookTargetLocation))
+	{
+		Vector LookTarget = Destination;
+
+		if (DistFromDestination < sqrf(200.0f))
+		{
+			Vector LookNormal = UTIL_GetVectorNormal2D(LookTarget - pBot->CurrentEyePosition);
+
+			LookTarget = LookTarget + (LookNormal * 1000.0f);
+		}
+
+		BotLookAt(pBot, LookTarget);
+	}
+
+	HandlePlayerAvoidance(pBot, Destination);
+	BotMovementInputs(pBot);
 }
 
 void MoveDirectlyTo(AvHAIPlayer* pBot, const Vector Destination)
@@ -4915,7 +4992,7 @@ void MarineUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
 	}
 
 	// Did our nav profile previously indicate we could go through weldable doors?
-	bool bHadWelder = !(NavProfile->Filters.getExcludeFlags() & SAMPLE_POLYFLAGS_WELD);
+	bool bHadWelder = (NavProfile->Filters.getIncludeFlags() & SAMPLE_POLYFLAGS_WELD);
 
 	if (bHasWelder != bHadWelder)
 	{
@@ -4923,12 +5000,12 @@ void MarineUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
 
 		if (bHasWelder)
 		{
-			NavProfile->Filters.removeExcludeFlags(SAMPLE_POLYFLAGS_WELD);
+			NavProfile->Filters.addIncludeFlags(SAMPLE_POLYFLAGS_WELD);
 			NavProfile->ReachabilityFlag = AI_REACHABILITY_WELDER;
 		}
 		else
 		{
-			NavProfile->Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
+			NavProfile->Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_WELD);
 			NavProfile->ReachabilityFlag = AI_REACHABILITY_MARINE;
 		}
 	}
@@ -4936,12 +5013,12 @@ void MarineUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
 	SamplePolyFlags ExcludePhaseGateFlag = (pBot->Player->GetTeam() == GetGameRules()->GetTeamANumber()) ? SAMPLE_POLYFLAGS_TEAM2PHASEGATE : SAMPLE_POLYFLAGS_TEAM1PHASEGATE;
 	SamplePolyFlags IncludePhaseGateFlag = (ExcludePhaseGateFlag & SAMPLE_POLYFLAGS_TEAM1PHASEGATE) ? SAMPLE_POLYFLAGS_TEAM2PHASEGATE : SAMPLE_POLYFLAGS_TEAM1PHASEGATE;
 
-	if (!(NavProfile->Filters.getExcludeFlags() & ExcludePhaseGateFlag))
+	if (!(NavProfile->Filters.getIncludeFlags() & IncludePhaseGateFlag))
 	{
 		pBot->BotNavInfo.bNavProfileChanged = true;
 
-		NavProfile->Filters.removeExcludeFlags(IncludePhaseGateFlag);
-		NavProfile->Filters.addExcludeFlags(ExcludePhaseGateFlag);
+		NavProfile->Filters.addIncludeFlags(IncludePhaseGateFlag);
+		NavProfile->Filters.removeIncludeFlags(ExcludePhaseGateFlag);
 	}
 
 	if (MoveStyle == pBot->BotNavInfo.PreviousMoveStyle) { return; }
@@ -6674,8 +6751,8 @@ Vector UTIL_GetButtonFloorLocation(const Vector UserLocation, edict_t* ButtonEdi
 	nav_profile ButtonNavProfile;
 	memcpy(&ButtonNavProfile, &BaseNavProfiles[ALL_NAV_PROFILE], sizeof(nav_profile));
 
-	ButtonNavProfile.Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
-	ButtonNavProfile.Filters.addExcludeFlags(SAMPLE_POLYFLAGS_DOOR);
+	ButtonNavProfile.Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_WELD);
+	ButtonNavProfile.Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_DOOR);
 
 	Vector ButtonAccessPoint = UTIL_ProjectPointToNavmesh(ClosestPoint, Vector(100.0f, 100.0f, 100.0f), ButtonNavProfile);
 
@@ -7745,4 +7822,95 @@ const dtOffMeshConnection* DEBUG_FindNearestOffMeshConnectionToPoint(const Vecto
 	}
 
 	return Result;
+}
+
+dtStatus DEBUG_TestFindPath(const nav_profile& NavProfile, const Vector FromLocation, const Vector ToLocation, vector<bot_path_node>& path, float MaxAcceptableDistance)
+{
+	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfile);
+	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfile);
+	const dtQueryFilter* m_navFilter = &NavProfile.Filters;
+
+	if (!m_navQuery || !m_navMesh || !m_navFilter || vIsZero(FromLocation) || vIsZero(ToLocation))
+	{
+		return DT_FAILURE;
+	}
+
+	Vector FromFloorLocation = AdjustPointForPathfinding(FromLocation);
+	Vector ToFloorLocation = AdjustPointForPathfinding(ToLocation);
+
+	float pStartPos[3] = { FromFloorLocation.x, FromFloorLocation.z, -FromFloorLocation.y };
+	float pEndPos[3] = { ToFloorLocation.x, ToFloorLocation.z, -ToFloorLocation.y };
+
+	dtStatus status;
+	dtPolyRef StartPoly;
+	float StartNearest[3];
+	dtPolyRef EndPoly;
+	float EndNearest[3];
+	dtPolyRef PolyPath[MAX_PATH_POLY];
+	dtPolyRef StraightPolyPath[MAX_AI_PATH_SIZE];
+	int nPathCount = 0;
+	float StraightPath[MAX_AI_PATH_SIZE * 3];
+	unsigned char straightPathFlags[MAX_AI_PATH_SIZE];
+	memset(straightPathFlags, 0, sizeof(straightPathFlags));
+	int nVertCount = 0;
+
+	// find the start polygon
+	status = m_navQuery->findNearestPoly(pStartPos, pExtents, m_navFilter, &StartPoly, StartNearest);
+	if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK))
+	{
+		//BotSay(pBot, "findNearestPoly start failed!");
+		return (status & DT_STATUS_DETAIL_MASK); // couldn't find a polygon
+	}
+
+	// find the end polygon
+	status = m_navQuery->findNearestPoly(pEndPos, pExtents, m_navFilter, &EndPoly, EndNearest);
+	if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK))
+	{
+		//BotSay(pBot, "findNearestPoly end failed!");
+		return (status & DT_STATUS_DETAIL_MASK); // couldn't find a polygon
+	}
+
+	status = m_navQuery->findPath(StartPoly, EndPoly, StartNearest, EndNearest, m_navFilter, PolyPath, &nPathCount, MAX_PATH_POLY);
+
+	if (PolyPath[nPathCount - 1] != EndPoly)
+	{
+		return DT_FAILURE;
+	}
+
+	status = m_navQuery->findStraightPath(StartNearest, EndNearest, PolyPath, nPathCount, StraightPath, straightPathFlags, StraightPolyPath, &nVertCount, MAX_AI_PATH_SIZE, DT_STRAIGHTPATH_AREA_CROSSINGS);
+	if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK))
+	{
+		return (status & DT_STATUS_DETAIL_MASK); // couldn't create a path
+	}
+
+	if (nVertCount == 0)
+	{
+		return DT_FAILURE; // couldn't find a path
+	}
+
+	path.clear();
+
+	// At this point we have our path.  Copy it to the path store
+	int nIndex = 0;
+
+	Vector NodeFromLocation = FromFloorLocation;
+
+	for (int nVert = 0; nVert < nVertCount; nVert++)
+	{
+		bot_path_node NextPathNode;
+
+		NextPathNode.FromLocation = NodeFromLocation;
+
+		NextPathNode.Location.x = StraightPath[nIndex++];
+		NextPathNode.Location.z = StraightPath[nIndex++];
+		NextPathNode.Location.y = -StraightPath[nIndex++];
+		NextPathNode.area = SAMPLE_POLYAREA_GROUND;
+		NextPathNode.flag = SAMPLE_POLYFLAGS_WALK;
+
+		path.push_back(NextPathNode);
+
+		NodeFromLocation = NextPathNode.Location;
+	}
+
+	return DT_SUCCESS;
 }

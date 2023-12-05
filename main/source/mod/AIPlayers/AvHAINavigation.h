@@ -261,7 +261,7 @@ void CheckAndHandleBreakableObstruction(AvHAIPlayer* pBot, const Vector MoveFrom
 
 void CheckAndHandleDoorObstruction(AvHAIPlayer* pBot);
 
-DoorTrigger* UTIL_GetNearestDoorTrigger(const Vector Location, nav_door* Door, CBaseEntity* IgnoreTrigger);
+DoorTrigger* UTIL_GetNearestDoorTrigger(const Vector Location, nav_door* Door, CBaseEntity* IgnoreTrigger, bool bCheckBlockedByDoor);
 DoorTrigger* UTIL_GetNearestDoorTriggerFromLift(edict_t* LiftEdict, nav_door* Door, CBaseEntity* IgnoreTrigger);
 bool UTIL_IsPathBlockedByDoor(const Vector StartLoc, const Vector EndLoc, edict_t* SearchDoor);
 
@@ -341,6 +341,7 @@ bool IsBotPermaStuck(AvHAIPlayer* pBot);
 
 // Walks directly towards the destination. No path finding, just raw movement input. Will detect obstacles and try to jump/duck under them.
 void MoveDirectlyTo(AvHAIPlayer* pBot, const Vector Destination);
+void MoveToWithoutNav(AvHAIPlayer* pBot, const Vector Destination);
 
 // Check if there are any players in our way and try to move around them. If we can't, then back up to let them through
 void HandlePlayerAvoidance(AvHAIPlayer* pBot, const Vector MoveDestination);
@@ -355,6 +356,8 @@ Vector UTIL_FindHighestSuccessfulTracePoint(const Vector TraceFrom, const Vector
 // Similar to FindPathToPoint, but you can specify a max acceptable distance for partial results. Will return a failure if it can't reach at least MaxAcceptableDistance away from the ToLocation
 dtStatus FindPathClosestToPoint(AvHAIPlayer* pBot, const BotMoveStyle MoveStyle, const Vector FromLocation, const Vector ToLocation, vector<bot_path_node>& path, float MaxAcceptableDistance);
 dtStatus FindPathClosestToPoint(const nav_profile& NavProfile, const Vector FromLocation, const Vector ToLocation, vector<bot_path_node>& path, float MaxAcceptableDistance);
+
+dtStatus DEBUG_TestFindPath(const nav_profile& NavProfile, const Vector FromLocation, const Vector ToLocation, vector<bot_path_node>& path, float MaxAcceptableDistance);
 
 // If the bot is stuck and off the path or nav mesh, this will try to find a point it can directly move towards to get it back on track
 Vector FindClosestPointBackOnPath(AvHAIPlayer* pBot);
