@@ -824,6 +824,7 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].bFlyingProfile = false;
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_MARINE;
+	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_OBSTRUCTION, 2.0f);
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 2.0f);
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
@@ -836,6 +837,8 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].bFlyingProfile = false;
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_SKULK;
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_OBSTRUCTION, 2.0f);
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE | SAMPLE_POLYFLAGS_TEAM2PHASEGATE | SAMPLE_POLYFLAGS_DUCKJUMP | SAMPLE_POLYFLAGS_WELD | SAMPLE_POLYFLAGS_FLY);
@@ -845,6 +848,8 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].bFlyingProfile = false;
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_GORGE;
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_OBSTRUCTION, 2.0f);
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALLDAMAGE, 10.0f);
@@ -860,6 +865,8 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].bFlyingProfile = true;
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_SKULK;
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_OBSTRUCTION, 2.0f);
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
@@ -870,6 +877,8 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].bFlyingProfile = false;
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_SKULK;
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_OBSTRUCTION, 2.0f);
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.5f);
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
@@ -882,6 +891,7 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].NavMeshIndex = ONOS_NAV_MESH;
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].bFlyingProfile = false;
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_ONOS;
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_OBSTRUCTION, 2.0f);
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 2.0f);
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALLDAMAGE, 10.0f);
