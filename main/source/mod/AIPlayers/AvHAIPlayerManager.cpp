@@ -32,6 +32,8 @@ extern int m_spriteTexture;
 Vector DebugVector1 = ZERO_VECTOR;
 Vector DebugVector2 = ZERO_VECTOR;
 
+vector<bot_path_node> DebugPath;
+
 string BotNames[MAX_PLAYERS] = { "MrRobot",
 									"Wall-E",
 									"BeepBoop",
@@ -475,6 +477,23 @@ byte BotThrottledMsec(AvHAIPlayer* inAIPlayer)
 	return (byte)newmsec;
 }
 
+void AIDEBUG_SetDebugVector1(const Vector NewVector)
+{
+	DebugVector1 = NewVector;
+}
+
+void AIDEBUG_SetDebugVector2(const Vector NewVector)
+{
+	DebugVector2 = NewVector;
+}
+
+void AIDEBUG_TestPathFind()
+{
+	if (vIsZero(DebugVector1) || vIsZero(DebugVector2)) { return; }
+
+	DEBUG_TestFindPath(GetBaseNavProfile(SKULK_BASE_NAV_PROFILE), DebugVector1, DebugVector2, DebugPath, 60.0f);
+}
+
 void AIMGR_UpdateAIPlayers()
 {
 	// If bots are not enabled then do nothing
@@ -529,6 +548,8 @@ void AIMGR_UpdateAIPlayers()
 				UpdateBotChat(bot);
 
 				DroneThink(bot);
+
+				AIDEBUG_DrawPath(DebugPath, 0.0f);
 
 				AvHAIWeapon DesiredWeapon = (bot->DesiredMoveWeapon != WEAPON_NONE) ? bot->DesiredMoveWeapon : bot->DesiredCombatWeapon;
 
