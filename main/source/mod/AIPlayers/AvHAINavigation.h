@@ -81,6 +81,14 @@ enum DoorActivationType
 	DOOR_BREAK	 // Door activated by breaking something
 };
 
+// Door type. Not currently used, future feature so bots know how to open a door
+enum NavDoorType
+{
+	DOORTYPE_DOOR,   // No type, cannot be activated (permanently open/shut)
+	DOORTYPE_PLAT,    // Door activated by using it directly
+	DOORTYPE_TRAIN	// Door activated by touching a trigger_once or trigger_multiple
+};
+
 typedef struct _DOOR_TRIGGER
 {
 	CBaseEntity* Entity = nullptr;
@@ -101,13 +109,14 @@ typedef struct _NAV_DOOR
 {
 	CBaseToggle* DoorEntity = nullptr;
 	edict_t* DoorEdict = nullptr; // Reference to the func_door
-	unsigned int ObstacleRefs[32][MAX_NAV_MESHES]; // Dynamic obstacle ref. Used to add/remove the obstacle as the door is opened/closed
+	unsigned int ObstacleRefs[32][MAX_NAV_MESHES] = {}; // Dynamic obstacle ref. Used to add/remove the obstacle as the door is opened/closed
 	int NumObstacles = 0;
 	vector<DoorTrigger> TriggerEnts; // Reference to the trigger edicts (e.g. func_trigger, func_button etc.)
 	DoorActivationType ActivationType = DOOR_NONE; // How the door should be opened
 	TOGGLE_STATE CurrentState = TS_AT_BOTTOM;
 	float OpenDelay = 0.0f; // How long the door takes to start opening after activation
 	vector<Vector> StopPoints; // Where does this door/platform stop when triggered?
+	NavDoorType DoorType = DOORTYPE_DOOR;
 } nav_door;
 
 typedef struct _NAV_WELDABLE
@@ -439,6 +448,7 @@ const char* UTIL_NavmeshAreaToChar(const unsigned char Area);
 Vector UTIL_GetNearestLadderNormal(edict_t* pEdict);
 Vector UTIL_GetNearestLadderCentrePoint(edict_t* pEdict);
 Vector UTIL_GetNearestLadderTopPoint(edict_t* pEdict);
+Vector UTIL_GetNearestLadderTopPoint(const Vector SearchLocation);
 Vector UTIL_GetNearestLadderBottomPoint(edict_t* pEdict);
 
 // From the given start point, determine how high up the bot needs to climb to get to climb end. Will allow the bot to climb over railings
