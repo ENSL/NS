@@ -1502,7 +1502,7 @@ void DroneThink(AvHAIPlayer* pBot)
 		BotProgressTask(pBot, &pBot->PrimaryBotTask);
 	}
 
-	AIDEBUG_DrawBotPath(pBot);
+	//AIDEBUG_DrawBotPath(pBot);
 }
 
 void TestNavThink(AvHAIPlayer* pBot)

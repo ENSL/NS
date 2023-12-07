@@ -3708,9 +3708,11 @@ void PhaseGateMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndP
 
 bool IsBotOffPath(const AvHAIPlayer* pBot)
 {
+
 	// Can't be off the path if we don't have one...
 	if (pBot->BotNavInfo.CurrentPath.size() == 0) { return false; }
-	
+
+	if (pBot->BotNavInfo.CurrentPathPoint->flag == SAMPLE_POLYFLAGS_LIFT) { return false; }
 
 	// If we're trying to use a phase gate, then we're fine as long as there is a phase gate within reach at the start and end teleport points
 	if (pBot->BotNavInfo.CurrentPathPoint->flag == SAMPLE_POLYFLAGS_TEAM1PHASEGATE || pBot->BotNavInfo.CurrentPathPoint->flag == SAMPLE_POLYFLAGS_TEAM2PHASEGATE)
@@ -3981,8 +3983,8 @@ void MoveToWithoutNav(AvHAIPlayer* pBot, const Vector Destination)
 	bool bumpLeft = !UTIL_QuickHullTrace(pBot->Edict, stTrcLft, endTrcLft, head_hull);
 	bool bumpRight = !UTIL_QuickHullTrace(pBot->Edict, stTrcRt, endTrcRt, head_hull);
 
-	UTIL_DrawLine(INDEXENT(1), stTrcLft, endTrcLft, 255, 0, 0);
-	UTIL_DrawLine(INDEXENT(1), stTrcRt, endTrcRt, 0, 0, 255);
+	//UTIL_DrawLine(INDEXENT(1), stTrcLft, endTrcLft, 255, 0, 0);
+	//UTIL_DrawLine(INDEXENT(1), stTrcRt, endTrcRt, 0, 0, 255);
 
 	pBot->desiredMovementDir = vForward;
 
