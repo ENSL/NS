@@ -1238,10 +1238,10 @@ dtStatus dtNavMesh::addTile(unsigned char* data, int dataSize, int flags,
 
 	connectIntLinks(tile);
 
-	for (int i = 0; i < tile->header->offMeshConCount; i++)
-	{
-		baseOffMeshLinks(tile->offMeshCons[i]);
-	}
+	//for (int i = 0; i < tile->header->offMeshConCount; i++)
+	//{
+	//	baseOffMeshLinks(tile->offMeshCons[i]);
+	//}
 
 	// Create connections with neighbour tiles.
 	static const int MAX_NEIS = 32;

@@ -841,13 +841,6 @@ void AITAC_RefreshReachabilityForResNode(AvHAIResourceNode* ResNode)
 	else
 	{
 		bool bIsReachableSkulk = UTIL_PointIsReachable(GetBaseNavProfile(SKULK_BASE_NAV_PROFILE), TeamBStart, ResNodeLocation, max_player_use_reach);
-
-		if (!bIsReachableSkulk)
-		{
-			UTIL_DrawLine(INDEXENT(1), INDEXENT(1)->v.origin, ResNodeLocation, 20.0f);
-			UTIL_DrawLine(INDEXENT(1), INDEXENT(1)->v.origin, TeamBStart, 20.0f, 255, 255, 0);
-		}
-
 		bool bIsReachableGorge = UTIL_PointIsReachable(GetBaseNavProfile(GORGE_BASE_NAV_PROFILE), TeamBStart, ResNodeLocation, max_player_use_reach);
 		bool bIsReachableOnos = UTIL_PointIsReachable(GetBaseNavProfile(ONOS_BASE_NAV_PROFILE), TeamBStart, ResNodeLocation, max_player_use_reach);
 

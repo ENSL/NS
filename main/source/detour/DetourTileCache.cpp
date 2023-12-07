@@ -814,6 +814,7 @@ dtStatus dtTileCache::update(const float /*dt*/, dtNavMesh* navmesh,
 			if (con->state == DT_OFFMESH_DIRTY)
 			{
 				navmesh->unconnectOffMeshLink(con);
+				navmesh->baseOffMeshLinks(con);
 				navmesh->GlobalOffMeshLinks(con);
 				con->state = DT_OFFMESH_CLEAN;
 			}
