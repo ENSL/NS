@@ -1329,7 +1329,15 @@ dtStatus FindFlightPathToPoint(const nav_profile &NavProfile, Vector FromLocatio
 
 		bot_path_node NextPathNode;
 
-		NextPathNode.flag = SAMPLE_POLYFLAGS_WALK;
+		if (CurrFlags == SAMPLE_POLYFLAGS_LIFT)
+		{
+			NextPathNode.flag = CurrFlags;
+		}
+		else
+		{
+			NextPathNode.flag = SAMPLE_POLYFLAGS_WALK;
+		}
+		
 		NextPathNode.area = CurrArea;
 		NextPathNode.poly = StraightPolyPath[nVert];
 
@@ -1755,20 +1763,21 @@ dtStatus FindPathClosestToPoint(AvHAIPlayer* pBot, const BotMoveStyle MoveStyle,
 				NextPathNode.requiredZ += 5.0f;
 			}
 
-			if (IsPlayerSkulk(pBot->Edict))
+			if (IsPlayerSkulk(pBot->Edict) && CurrFlags == SAMPLE_POLYFLAGS_LADDER)
 			{
+				Vector NearestLadderTopPoint = UTIL_GetNearestLadderTopPoint(NextPathNode.Location);
+				NearestLadderTopPoint.z = NewRequiredZ;
+
 				Vector CurrMoveDest = NextPathNode.Location;
 
 				NextPathNode.flag = SAMPLE_POLYFLAGS_WALLCLIMB;
 
-				Vector ThisMoveDest = Vector(NodeFromLocation.x, NodeFromLocation.y, NextPathNode.Location.z);
-
-				NextPathNode.Location = ThisMoveDest;
+				NextPathNode.Location = NearestLadderTopPoint;
 
 				path.push_back(NextPathNode);
 
 				NextPathNode.Location = CurrMoveDest;
-				NextPathNode.FromLocation = ThisMoveDest;
+				NextPathNode.FromLocation = NearestLadderTopPoint;
 
 				CurrFlags = SAMPLE_POLYFLAGS_WALLCLIMB;
 			}
@@ -2680,7 +2689,7 @@ void CheckAndHandleBreakableObstruction(AvHAIPlayer* pBot, const Vector MoveFrom
 	{
 		if (IsPlayerSkulk(pBot->Edict))
 		{
-			DesiredWeapon = (BlockingBreakableEdict->v.health <= 20) ? WEAPON_SKULK_PARASITE : WEAPON_SKULK_BITE;
+			DesiredWeapon = (BlockingBreakableEdict->v.health <= 10) ? WEAPON_SKULK_PARASITE : WEAPON_SKULK_BITE;
 		}
 	}
 
@@ -3409,7 +3418,6 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 		return;
 	}
 
-
 	Vector LiftPosition = UTIL_GetCentreOfEntity(NearestLift->DoorEdict);
 
 	pBot->desiredMovementDir = ZERO_VECTOR;
@@ -3552,7 +3560,8 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 
 		if (NearestLiftTrigger)
 		{
-			if (gpGlobals->time < NearestLiftTrigger->NextActivationTime || !(NearestLift->DoorEdict->v.spawnflags & SF_TRAIN_WAIT_RETRIGGER) || (NearestLift->DoorEntity && NearestLift->DoorEntity->m_flWait > 0.0f))
+			// If the trigger is on cooldown, or the door/train is designed to automatically return without being summoned, then just wait for it to come back
+			if (gpGlobals->time < NearestLiftTrigger->NextActivationTime || (NearestLift->DoorType == DOORTYPE_TRAIN && !(NearestLift->DoorEdict->v.spawnflags & SF_TRAIN_WAIT_RETRIGGER)) || (NearestLift->DoorType == DOORTYPE_DOOR && NearestLift->DoorEntity && NearestLift->DoorEntity->GetToggleState() == TS_AT_TOP && NearestLift->DoorEntity->m_flWait > 0.0f && !(NearestLift->DoorEdict->v.spawnflags & SF_DOOR_NO_AUTO_RETURN)))
 			{
 				if (!bIsOnLift && !bIsLiftAtOrNearStart)
 				{
@@ -3595,14 +3604,21 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 
 				Vector NearestPointOnLiftToButton = UTIL_GetClosestPointOnEntityToLocation(ButtonFloorLocation, NearestLift->DoorEdict);
 
-				bool ButtonReachableFromLift = !vIsZero(ButtonFloorLocation) && (vDist2DSq(ButtonFloorLocation, NearestPointOnLiftToButton) <= sqrf(64.0f));
+				bool ButtonReachableFromLift = (NearestLiftTrigger->TriggerType == DOOR_TRIGGER) ? vBBOverlaps2D(NearestLiftTrigger->Edict->v.absmin, NearestLiftTrigger->Edict->v.absmax, NearestLift->DoorEdict->v.absmin, NearestLift->DoorEdict->v.absmax) : (!vIsZero(ButtonFloorLocation) && (vDist2DSq(ButtonFloorLocation, NearestPointOnLiftToButton) <= sqrf(64.0f)));
 
 				if (ButtonReachableFromLift)
 				{
-					if (IsPlayerInUseRange(pBot->Edict, NearestLiftTrigger->Edict))
+					if (NearestLiftTrigger->TriggerType == DOOR_BUTTON)
 					{
-						BotUseObject(pBot, NearestLiftTrigger->Edict, false);
-						return;
+						if (IsPlayerInUseRange(pBot->Edict, NearestLiftTrigger->Edict))
+						{
+							BotUseObject(pBot, NearestLiftTrigger->Edict, false);
+							return;
+						}
+					}
+					else
+					{
+						pBot->desiredMovementDir = UTIL_GetVectorNormal2D(NearestLiftTrigger->Edict->v.origin - pBot->Edict->v.origin);
 					}
 
 					if (!bIsOnLift)
@@ -3743,8 +3759,6 @@ bool IsBotOffPath(const AvHAIPlayer* pBot)
 	// Give us a chance to land before deciding we're off the path
 	if (!pBot->BotNavInfo.IsOnGround) { return false; }
 
-
-	// TODO: This sucks
 	if (pBot->BotNavInfo.CurrentPathPoint->flag == SAMPLE_POLYFLAGS_WALK)
 	{
 
@@ -5534,6 +5548,12 @@ void BotFollowFlightPath(AvHAIPlayer* pBot)
 		}
 	}
 
+	if (BotNavInfo->CurrentPathPoint->flag == SAMPLE_POLYFLAGS_LIFT)
+	{
+		LiftMove(pBot, BotNavInfo->CurrentPathPoint->FromLocation, CurrentMoveDest);
+		return;
+	}
+
 	if (BotNavInfo->CurrentPathPoint->area != SAMPLE_POLYAREA_CROUCH && next(BotNavInfo->CurrentPathPoint) != BotNavInfo->CurrentPath.end() && next(BotNavInfo->CurrentPathPoint)->area != SAMPLE_POLYAREA_CROUCH)
 	{
 		SkipAheadInFlightPath(pBot);
@@ -6368,6 +6388,43 @@ Vector UTIL_GetNearestLadderBottomPoint(edict_t* pEdict)
 	}
 
 	return pEdict->v.origin;
+}
+
+Vector UTIL_GetNearestLadderTopPoint(const Vector SearchLocation)
+{
+	TraceResult result;
+	CBaseEntity* entity = NULL;
+
+	entity = UTIL_FindEntityByClassname(entity, "func_ladder");
+
+	CBaseEntity* closestLadderRef = entity;
+	float lowestDist = 999999.0f;
+
+	while (entity)
+	{
+		Vector LadderMin = entity->pev->absmin;
+		Vector LadderMax = entity->pev->absmax;
+
+		float dist = vDistanceFromLine3D(LadderMin, LadderMax, SearchLocation);
+
+		if (dist < lowestDist)
+		{
+			closestLadderRef = entity;
+			lowestDist = dist;
+		}
+
+		entity = UTIL_FindEntityByClassname(entity, "func_ladder");
+	}
+
+	if (closestLadderRef)
+	{
+		Vector Centre = (closestLadderRef->pev->absmin + ((closestLadderRef->pev->absmax - closestLadderRef->pev->absmin) * 0.5f));
+		Centre.z = closestLadderRef->pev->absmax.z;
+		return Centre;
+
+	}
+
+	return SearchLocation;
 }
 
 Vector UTIL_GetNearestLadderTopPoint(edict_t* pEdict)
@@ -7689,10 +7746,12 @@ void UTIL_PopulateDoors()
 
 		if (TrainRef)
 		{
+			NewDoor.DoorType = DOORTYPE_TRAIN;
 			UTIL_PopulateTrainStopPoints(&NewDoor);
 		}
 		else
 		{
+			NewDoor.DoorType = DOORTYPE_DOOR;
 			if (NewDoor.DoorEdict->v.spawnflags & DOOR_START_OPEN)
 			{
 				NewDoor.StopPoints.push_back(UTIL_GetCentreOfEntity(NewDoor.DoorEdict) + ToggleRef->m_vecPosition2);
