@@ -113,6 +113,7 @@
 #include "AIPlayers/AvHAIPlayerManager.h"
 #include "AIPlayers/AvHAITask.h"
 #include "AIPlayers/AvHAITactical.h"
+#include "AIPlayers/AvHAICommander.h"
 
 extern AvHParticleTemplateListServer	gParticleTemplateList;
 extern CVoiceGameMgr					g_VoiceGameMgr;
@@ -1497,9 +1498,58 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 		theSuccess = true;
 	}
-	else if (FStrEq(pcmd, "testpathfind"))
+	else if (FStrEq(pcmd, "testcommanderbuild"))
 	{
-		AIDEBUG_TestPathFind();
+		AvHAIPlayer* AIComm = AIMGR_GetAICommander(theAvHPlayer->GetTeam());
+
+		if (AIComm)
+		{
+
+			Vector TraceStart = GetPlayerEyePosition(theAvHPlayer->edict()); // origin + pev->view_ofs
+			Vector LookDir = UTIL_GetForwardVector(theAvHPlayer->edict()->v.v_angle); // Converts view angles to normalized unit vector
+
+			Vector TraceEnd = TraceStart + (LookDir * 1000.0f);
+
+			TraceResult Hit;
+
+			UTIL_TraceLine(TraceStart, TraceEnd, ignore_monsters, theAvHPlayer->edict(), &Hit);
+
+			if (Hit.flFraction < 1.0f)
+			{
+				AICOMM_DeployStructure(AIComm, STRUCTURE_MARINE_ARMOURY, Hit.vecEndPos);
+			}
+
+		}
+
+		theSuccess = true;
+	}
+	else if (FStrEq(pcmd, "testresearchavailable"))
+	{
+		AvHTeam* PlayerTeam = GetGameRules()->GetTeam(theAvHPlayer->GetTeam());
+
+		if (PlayerTeam)
+		{
+			AvHMessageID Message = RESEARCH_ARMOR_ONE;
+			AvHMessageID Message2 = RESEARCH_ARMOR_TWO;
+
+			if (PlayerTeam->GetResearchManager().GetIsMessageAvailable(Message))
+			{
+				UTIL_SayText("Armour 1: TRUE\n", theAvHPlayer);
+			}
+			else
+			{
+				UTIL_SayText("Armour 1: FALSE\n", theAvHPlayer);
+			}
+
+			if (PlayerTeam->GetResearchManager().GetIsMessageAvailable(Message2))
+			{
+				UTIL_SayText("Armour 2: TRUE\n", theAvHPlayer);
+			}
+			else
+			{
+				UTIL_SayText("Armour 2: FALSE\n", theAvHPlayer);
+			}
+		}
 
 		theSuccess = true;
 	}

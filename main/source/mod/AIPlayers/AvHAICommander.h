@@ -1,0 +1,56 @@
+//
+// EvoBot - Neoptolemus' Natural Selection bot, based on Botman's HPB bot template
+//
+// bot_navigation.h
+// 
+// Handles all bot path finding and movement
+//
+
+#pragma once
+#ifndef AVH_AI_COMMANDER_H
+#define AVH_AI_COMMANDER_H
+
+#include "AvHAIConstants.h"
+
+bool AICOMM_DeployStructure(AvHAIPlayer* pBot, const AvHAIDeployableStructureType StructureToDeploy, const Vector Location);
+bool AICOMM_DeployItem(AvHAIPlayer* pBot, const AvHAIDeployableItemType ItemToDeploy, const Vector Location);
+bool AICOMM_UpgradeStructure(AvHAIPlayer* pBot, AvHAIBuildableStructure* StructureToUpgrade);
+bool AICOMM_ResearchTech(AvHAIPlayer* pBot, AvHAIBuildableStructure* StructureToResearch, AvHMessageID Research);
+bool AICOMM_RecycleStructure(AvHAIPlayer* pBot, AvHAIBuildableStructure* StructureToRecycle);
+
+bool AICOMM_IssueMovementOrder(AvHAIPlayer* pBot, edict_t* Recipient, const Vector MoveLocation);
+bool AICOMM_IssueBuildOrder(AvHAIPlayer* pBot, edict_t* Recipient, edict_t* TargetStructure);
+bool AICOMM_IssueSecureHiveOrder(AvHAIPlayer* pBot, edict_t* Recipient, const AvHAIHiveDefinition* HiveToSecure);
+bool AICOMM_IssueSiegeHiveOrder(AvHAIPlayer* pBot, edict_t* Recipient, const AvHAIHiveDefinition* HiveToSiege, const Vector SiegePosition);
+bool AICOMM_IssueSecureResNodeOrder(AvHAIPlayer* pBot, edict_t* Recipient, const AvHAIResourceNode* ResNode);
+
+void AICOMM_ClearAction(commander_action* Action);
+bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot, commander_action* Action);
+bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot);
+bool AICOMM_CheckForNextResearchAction(AvHAIPlayer* pBot, commander_action* Action);
+void AICOMM_SetDropHealthAction(AvHAIPlayer* pBot, commander_action* Action, edict_t* Recipient);
+void AICOMM_SetDropAmmoAction(AvHAIPlayer* pBot, commander_action* Action, edict_t* Recipient);
+void AICOMM_SetDeployStructureAction(AvHAIPlayer* pBot, commander_action* Action, AvHAIDeployableStructureType StructureToBuild, const Vector Location, bool bIsUrgent);
+void AICOMM_SetDeployItemAction(AvHAIPlayer* pBot, commander_action* Action, AvHAIDeployableItemType ItemToBuild, const Vector Location, bool bIsUrgent);
+
+void AICOMM_CommanderThink(AvHAIPlayer* pBot);
+
+const AvHAIHiveDefinition* AICOMM_GetEmptyHiveOpportunityNearestLocation(AvHAIPlayer* CommanderBot, const Vector SearchLocation);
+
+bool AICOMM_BuildInfantryPortal(AvHAIPlayer* pBot, edict_t* CommChair, commander_action* Action);
+bool AICOMM_PerformNextSiegeHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefinition* HiveToSiege, commander_action* Action);
+bool AICOMM_PerformNextSecureHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefinition* HiveToSiege, commander_action* Action);
+
+ai_commander_request* AICOMM_GetExistingRequestForPlayer(AvHAIPlayer* pBot, edict_t* Requestor);
+void AICOMM_CheckNewRequests(AvHAIPlayer* pBot);
+bool AICOMM_IsRequestValid(ai_commander_request* Request);
+
+bool AICOMM_IsHiveFullySecured(AvHAIPlayer* CommanderBot, const AvHAIHiveDefinition* Hive);
+
+bool AICOMM_ShouldCommanderLeaveChair(AvHAIPlayer* pBot);
+
+const AvHAIResourceNode* AICOMM_GetNearestResourceNodeCapOpportunity(const AvHTeamNumber Team, const Vector SearchLocation);
+const AvHAIHiveDefinition* AICOMM_GetHiveSiegeOpportunityNearestLocation(AvHAIPlayer* CommanderBot, const Vector SearchLocation);
+
+
+#endif // AVH_AI_COMMANDER_H

@@ -8,6 +8,7 @@
 #include "AvHAIWeaponHelper.h"
 #include "AvHAITactical.h"
 #include "AvHAITask.h"
+#include "AvHAICommander.h"
 
 #include "../AvHMessage.h"
 
@@ -134,7 +135,7 @@ void BotLookAt(AvHAIPlayer* pBot, edict_t* target)
 	Vector TargetVelocity = (TrackedEnemyRef) ? TrackedEnemyRef->LastSeenVelocity : pBot->LookTarget->v.velocity;
 	Vector TargetLocation = (TrackedEnemyRef) ? TrackedEnemyRef->LastSeenLocation : UTIL_GetCentreOfEntity(pBot->LookTarget);
 
-	AvHAIWeapon CurrentWeapon = GetBotCurrentWeapon(pBot);
+	AvHAIWeapon CurrentWeapon = GetPlayerCurrentWeapon(pBot->Player);
 
 	Vector NewLoc = UTIL_GetAimLocationToLeadTarget(pBot->CurrentEyePosition, TargetLocation, TargetVelocity, GetProjectileVelocityForWeapon(CurrentWeapon));
 
@@ -196,9 +197,9 @@ bool BotUseObject(AvHAIPlayer* pBot, edict_t* Target, bool bContinuous)
 	return false;
 }
 
-AvHAIWeapon GetBotCurrentWeapon(const AvHAIPlayer* pBot)
+AvHAIWeapon GetPlayerCurrentWeapon(const AvHPlayer* Player)
 {
-	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_pActiveItem);
+	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(Player->m_pActiveItem);
 
 	if (theBasePlayerWeapon)
 	{
@@ -248,7 +249,7 @@ void BotLeap(AvHAIPlayer* pBot, const Vector TargetLocation)
 
 	AvHAIWeapon LeapWeapon = (IsPlayerSkulk(pBot->Edict)) ? WEAPON_SKULK_LEAP : WEAPON_FADE_BLINK;
 
-	if (GetBotCurrentWeapon(pBot) != LeapWeapon)
+	if (GetPlayerCurrentWeapon(pBot->Player) != LeapWeapon)
 	{
 		pBot->DesiredMoveWeapon = LeapWeapon;
 		return;
@@ -415,11 +416,11 @@ void BotReloadWeapons(AvHAIPlayer* pBot)
 
 	if (gpGlobals->time - pBot->LastCombatTime > 5.0f)
 	{
-		AvHAIWeapon PrimaryWeapon = UTIL_GetBotPrimaryWeapon(pBot);
+		AvHAIWeapon PrimaryWeapon = UTIL_GetPlayerPrimaryWeapon(pBot->Player);
 		AvHAIWeapon SecondaryWeapon = GetBotMarineSecondaryWeapon(pBot);
-		AvHAIWeapon CurrentWeapon = GetBotCurrentWeapon(pBot);
+		AvHAIWeapon CurrentWeapon = GetPlayerCurrentWeapon(pBot->Player);
 
-		if (WeaponCanBeReloaded(PrimaryWeapon) && BotGetPrimaryWeaponClipAmmo(pBot) < BotGetPrimaryWeaponMaxClipSize(pBot) && BotGetPrimaryWeaponAmmoReserve(pBot) > 0)
+		if (WeaponCanBeReloaded(PrimaryWeapon) && UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) < UTIL_GetPlayerPrimaryWeaponMaxClipSize(pBot->Player) && UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) > 0)
 		{
 			pBot->DesiredCombatWeapon = PrimaryWeapon;
 
@@ -590,7 +591,7 @@ void BotShootTarget(AvHAIPlayer* pBot, AvHAIWeapon AttackWeapon, edict_t* Target
 {
 	if (FNullEnt(Target) || (Target->v.deadflag != DEAD_NO)) { return; }
 
-	AvHAIWeapon CurrentWeapon = GetBotCurrentWeapon(pBot);
+	AvHAIWeapon CurrentWeapon = GetPlayerCurrentWeapon(pBot->Player);
 
 	pBot->DesiredCombatWeapon = AttackWeapon;
 
@@ -686,15 +687,15 @@ void BotShootTarget(AvHAIPlayer* pBot, AvHAIWeapon AttackWeapon, edict_t* Target
 
 	if (WeaponCanBeReloaded(CurrentWeapon))
 	{
-		bool bShouldReload = (BotGetCurrentWeaponReserveAmmo(pBot) > 0);
+		bool bShouldReload = (GetPlayerCurrentWeaponReserveAmmo(pBot->Player) > 0);
 
 		if (CurrentWeapon == WEAPON_MARINE_SHOTGUN && IsEdictStructure(Target))
 		{
-			bShouldReload = bShouldReload && ((float)BotGetCurrentWeaponClipAmmo(pBot) / (float)BotGetCurrentWeaponMaxClipAmmo(pBot) < 0.5f);
+			bShouldReload = bShouldReload && ((float)GetPlayerCurrentWeaponClipAmmo(pBot->Player) / (float)GetPlayerCurrentWeaponMaxClipAmmo(pBot->Player) < 0.5f);
 		}
 		else
 		{
-			bShouldReload = bShouldReload && BotGetCurrentWeaponClipAmmo(pBot) == 0;
+			bShouldReload = bShouldReload && GetPlayerCurrentWeaponClipAmmo(pBot->Player) == 0;
 		}
 
 		if (bShouldReload)
@@ -790,7 +791,7 @@ void BotShootLocation(AvHAIPlayer* pBot, AvHAIWeapon AttackWeapon, const Vector 
 {
 	if (vIsZero(TargetLocation)) { return; }
 
-	AvHAIWeapon CurrentWeapon = GetBotCurrentWeapon(pBot);
+	AvHAIWeapon CurrentWeapon = GetPlayerCurrentWeapon(pBot->Player);
 
 	pBot->DesiredCombatWeapon = AttackWeapon;
 
@@ -881,15 +882,15 @@ void BotShootLocation(AvHAIPlayer* pBot, AvHAIWeapon AttackWeapon, const Vector 
 
 	if (WeaponCanBeReloaded(CurrentWeapon))
 	{
-		bool bShouldReload = (BotGetCurrentWeaponReserveAmmo(pBot) > 0);
+		bool bShouldReload = (GetPlayerCurrentWeaponReserveAmmo(pBot->Player) > 0);
 
 		if (CurrentWeapon == WEAPON_MARINE_SHOTGUN)
 		{
-			bShouldReload = bShouldReload && ((float)BotGetCurrentWeaponClipAmmo(pBot) / (float)BotGetCurrentWeaponMaxClipAmmo(pBot) < 0.5f);
+			bShouldReload = bShouldReload && ((float)GetPlayerCurrentWeaponClipAmmo(pBot->Player) / (float)GetPlayerCurrentWeaponMaxClipAmmo(pBot->Player) < 0.5f);
 		}
 		else
 		{
-			bShouldReload = bShouldReload && BotGetCurrentWeaponClipAmmo(pBot) == 0;
+			bShouldReload = bShouldReload && GetPlayerCurrentWeaponClipAmmo(pBot->Player) == 0;
 		}
 
 		if (bShouldReload)
@@ -1486,6 +1487,11 @@ void StartNewBotFrame(AvHAIPlayer* pBot)
 
 }
 
+void CustomThink(AvHAIPlayer* pBot)
+{
+	AICOMM_CommanderThink(pBot);
+}
+
 void DroneThink(AvHAIPlayer* pBot)
 {
 	AITASK_BotUpdateAndClearTasks(pBot);
@@ -1548,7 +1554,7 @@ void BotSwitchToWeapon(AvHAIPlayer* pBot, AvHAIWeapon NewWeaponSlot)
 
 bool ShouldBotThink(AvHAIPlayer* pBot)
 {
-	return IsPlayerActiveInGame(pBot->Edict) && !IsPlayerGestating(pBot->Edict);
+	return (IsPlayerActiveInGame(pBot->Edict) || IsPlayerCommander(pBot->Edict)) && !IsPlayerGestating(pBot->Edict);
 }
 
 void BotResumePlay(AvHAIPlayer* pBot)
@@ -1582,5 +1588,15 @@ void UpdateCommanderOrders(AvHAIPlayer* pBot)
 					break;
 			}
 		}
+	}
+}
+
+void BotStopCommanderMode(AvHAIPlayer* pBot)
+{
+	// Thanks EterniumDev (Alien) for logic to allow commander AI to leave the chair and build structures when needed
+
+	if (IsPlayerCommander(pBot->Edict))
+	{
+		CLIENT_COMMAND(pBot->Edict, "stopcommandermode");
 	}
 }

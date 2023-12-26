@@ -1941,7 +1941,7 @@ void AvHCommandStation::CommandUse( CBaseEntity* pActivator, CBaseEntity* pCalle
 	AvHPlayer* thePlayer = dynamic_cast<AvHPlayer*>(pActivator);
 
 	// Mapper-placed CCs can be killed but they don't go away
-	if(thePlayer && !(thePlayer->pev->flags & FL_FAKECLIENT) && !this->GetHasBeenKilled() && thePlayer->GetIsAbleToAct())
+	if(thePlayer && !this->GetHasBeenKilled() && thePlayer->GetIsAbleToAct())
 	{
 		AvHTeam* theTeam = thePlayer->GetTeamPointer();
 		if(theTeam && (theTeam->GetTeamType() == AVH_CLASS_TYPE_MARINE))

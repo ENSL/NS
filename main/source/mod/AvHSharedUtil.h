@@ -96,6 +96,7 @@ vec3_t AvHSHUGetRealLocation(const vec3_t& inLocation, const vec3_t& inMinBox, c
 void AvHSHUGetFirstNonSolidPoint(float* inStartPos, float* inEndPos, float* outNonSolidPoint);
 void AvHSHUGetFirstNonSolidPoint(const vec3_t& inStartPos, const vec3_t& inEndPos, vec3_t& outNonSolidPoint);
 bool AvHSHUGetIsBuilding(AvHMessageID inMessageID);
+bool AvHSHUGetIsMarineStructure(AvHUser3 inUser3);
 bool AvHSHUGetIsBuildTech(AvHMessageID inMessageID);
 bool AvHSHUGetIsWeaponFocusable(AvHWeaponID inWeaponID);
 bool AvHSHUGetDoesTechCostEnergy(AvHMessageID inMessageID);

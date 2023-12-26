@@ -148,7 +148,7 @@ bool AITASK_IsTaskUrgent(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	switch (Task->TaskType)
 	{
 	case TASK_GET_AMMO:
-		return (BotGetPrimaryWeaponAmmoReserve(pBot) == 0);
+		return (UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) == 0);
 	case TASK_GET_HEALTH:
 		return (IsPlayerMarine(pBot->Edict)) ? (pBot->Edict->v.health < 50.0f) : (GetPlayerOverallHealthPercent(pBot->Edict) < 50.0f);
 	case TASK_ATTACK:
@@ -157,7 +157,7 @@ bool AITASK_IsTaskUrgent(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	case TASK_WELD:
 		return false;
 	case TASK_RESUPPLY:
-		return (pBot->Edict->v.health < 50.0f) || (BotGetPrimaryWeaponAmmoReserve(pBot) == 0);
+		return (pBot->Edict->v.health < 50.0f) || (UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) == 0);
 	case TASK_MOVE:
 		return AITASK_IsMoveTaskUrgent(pBot, Task);
 	case TASK_BUILD:
@@ -420,7 +420,7 @@ bool AITASK_IsAmmoPickupTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (!UTIL_IsDroppedItemStillReachable(pBot, Task->TaskTarget)) { return false; }
 
-	return (vDist2DSq(pBot->Edict->v.origin, Task->TaskTarget->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(20.0f))) && (BotGetPrimaryWeaponAmmoReserve(pBot) < BotGetPrimaryWeaponMaxAmmoReserve(pBot));
+	return (vDist2DSq(pBot->Edict->v.origin, Task->TaskTarget->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(20.0f))) && (UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) < UTIL_GetPlayerPrimaryMaxAmmoReserve(pBot->Player));
 }
 
 bool AITASK_IsHealthPickupTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
@@ -475,7 +475,7 @@ bool AITASK_IsAttackTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	{
 		if (StructureType == STRUCTURE_ALIEN_HIVE || StructureType == STRUCTURE_ALIEN_OFFENCECHAMBER)
 		{
-			if (BotGetPrimaryWeaponClipAmmo(pBot) <= 0 && BotGetPrimaryWeaponAmmoReserve(pBot) <= 0)
+			if (UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) <= 0 && UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) <= 0)
 			{
 				return false;
 			}
@@ -499,7 +499,7 @@ bool AITASK_IsResupplyTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	if (!UTIL_StructureIsFullyBuilt(Task->TaskTarget) || UTIL_StructureIsRecycling(Task->TaskTarget)) { return false; }
 
 	return ((pBot->Edict->v.health < pBot->Edict->v.max_health)
-		|| (BotGetPrimaryWeaponAmmoReserve(pBot) < BotGetPrimaryWeaponMaxAmmoReserve(pBot))
+		|| (UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) < UTIL_GetPlayerPrimaryMaxAmmoReserve(pBot->Player))
 		|| (BotGetSecondaryWeaponAmmoReserve(pBot) < BotGetSecondaryWeaponMaxAmmoReserve(pBot))
 		);
 }
@@ -1020,7 +1020,7 @@ void BotProgressPickupTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
 	if (Task->TaskType == TASK_GET_AMMO)
 	{
-		pBot->DesiredCombatWeapon = UTIL_GetBotPrimaryWeapon(pBot);
+		pBot->DesiredCombatWeapon = UTIL_GetPlayerPrimaryWeapon(pBot->Player);
 	}
 
 	MoveTo(pBot, Task->TaskTarget->v.origin, MOVESTYLE_NORMAL);
@@ -1040,11 +1040,11 @@ void BotProgressPickupTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 			// Allows bots to drop their current primary weapon to pick up a new weapon
 			if (UTIL_DroppedItemIsPrimaryWeapon(ItemType))
 			{
-				AvHAIWeapon CurrentPrimaryWeapon = UTIL_GetBotPrimaryWeapon(pBot);
+				AvHAIWeapon CurrentPrimaryWeapon = UTIL_GetPlayerPrimaryWeapon(pBot->Player);
 
 				if (CurrentPrimaryWeapon != WEAPON_NONE && CurrentPrimaryWeapon != UTIL_GetWeaponTypeFromEdict(Task->TaskTarget))
 				{
-					if (GetBotCurrentWeapon(pBot) != CurrentPrimaryWeapon)
+					if (GetPlayerCurrentWeapon(pBot->Player) != CurrentPrimaryWeapon)
 					{
 						pBot->DesiredCombatWeapon = CurrentPrimaryWeapon;
 					}
@@ -1121,7 +1121,7 @@ void BotProgressMineStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	BotLookAt(pBot, Task->TaskLocation);
 
-	if (GetBotCurrentWeapon(pBot) == WEAPON_MARINE_MINES)
+	if (GetPlayerCurrentWeapon(pBot->Player) == WEAPON_MARINE_MINES)
 	{
 		float LookDot = UTIL_GetDotProduct(UTIL_GetForwardVector(pBot->Edict->v.v_angle), UTIL_GetVectorNormal(Task->TaskLocation - pBot->CurrentEyePosition));
 
@@ -1410,9 +1410,9 @@ void BotProgressReinforceStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 void BotProgressResupplyTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
-	if (BotGetPrimaryWeaponAmmoReserve(pBot) < BotGetPrimaryWeaponMaxAmmoReserve(pBot))
+	if (UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) < UTIL_GetPlayerPrimaryMaxAmmoReserve(pBot->Player))
 	{
-		pBot->DesiredCombatWeapon = UTIL_GetBotPrimaryWeapon(pBot);
+		pBot->DesiredCombatWeapon = UTIL_GetPlayerPrimaryWeapon(pBot->Player);
 	}
 	else
 	{
@@ -1442,9 +1442,9 @@ void MarineProgressBuildTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
 	edict_t* pEdict = pBot->Edict;
 
-	if (BotGetPrimaryWeaponClipAmmo(pBot) > 0 || BotGetPrimaryWeaponAmmoReserve(pBot) > 0)
+	if (UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) > 0 || UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) > 0)
 	{
-		pBot->DesiredCombatWeapon = UTIL_GetBotPrimaryWeapon(pBot);
+		pBot->DesiredCombatWeapon = UTIL_GetPlayerPrimaryWeapon(pBot->Player);
 	}
 	else
 	{
@@ -1454,7 +1454,7 @@ void MarineProgressBuildTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		}
 		else
 		{
-			pBot->DesiredCombatWeapon = UTIL_GetBotPrimaryWeapon(pBot);
+			pBot->DesiredCombatWeapon = UTIL_GetPlayerPrimaryWeapon(pBot->Player);
 		}
 	}
 
@@ -1656,6 +1656,9 @@ void BotProgressDefendTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 void BotProgressTakeCommandTask(AvHAIPlayer* pBot)
 {
+	// Don't take command if we already have a commander
+	if (pBot->Player->GetCommander()) { return; }
+
 	edict_t* CommChair = AITAC_GetCommChair(pBot->Player->GetTeam());
 
 	if (!CommChair) { return; }
@@ -1775,7 +1778,7 @@ void AlienProgressGetHealthTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	if (PlayerHasWeapon(pBot->Player, WEAPON_FADE_METABOLIZE))
 	{
 		pBot->DesiredCombatWeapon = WEAPON_FADE_METABOLIZE;
-		if (GetBotCurrentWeapon(pBot) == WEAPON_FADE_METABOLIZE)
+		if (GetPlayerCurrentWeapon(pBot->Player) == WEAPON_FADE_METABOLIZE)
 		{
 			pBot->Button |= IN_ATTACK;
 		}
@@ -1812,7 +1815,7 @@ void AlienProgressHealTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	{
 		pBot->DesiredCombatWeapon = WEAPON_GORGE_HEALINGSPRAY;
 		BotLookAt(pBot, UTIL_GetCentreOfEntity(Task->TaskTarget));
-		if (GetBotCurrentWeapon(pBot) == WEAPON_GORGE_HEALINGSPRAY)
+		if (GetPlayerCurrentWeapon(pBot->Player) == WEAPON_GORGE_HEALINGSPRAY)
 		{
 			pBot->Button |= IN_ATTACK;
 		}
@@ -2086,7 +2089,7 @@ void AlienProgressCapResNodeTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 				{
 					pBot->DesiredCombatWeapon = AttackWeapon;
 
-					if (GetBotCurrentWeapon(pBot) == AttackWeapon)
+					if (GetPlayerCurrentWeapon(pBot->Player) == AttackWeapon)
 					{
 						BotShootTarget(pBot, pBot->DesiredCombatWeapon, Task->TaskTarget);
 						return;
@@ -2281,7 +2284,7 @@ void BotProgressWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		BotLookAt(pBot, vClosestPointOnBB(pBot->CurrentEyePosition, BBMin, BBMax));
 		pBot->DesiredCombatWeapon = WEAPON_MARINE_WELDER;
 
-		if (GetBotCurrentWeapon(pBot) != WEAPON_MARINE_WELDER)
+		if (GetPlayerCurrentWeapon(pBot->Player) != WEAPON_MARINE_WELDER)
 		{
 			return;
 		}
@@ -2322,7 +2325,7 @@ void MarineProgressSecureHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (!TF || !(TF->StructureStatusFlags & STRUCTURE_STATUS_COMPLETED)) { bWaitForBuildingPlacement = true; }
 
-	bool bPhaseGatesAvailable = UTIL_ResearchIsComplete(pBot->Player->GetTeam(), TECH_PHASE_GATE);
+	bool bPhaseGatesAvailable = AITAC_ResearchIsComplete(pBot->Player->GetTeam(), TECH_PHASE_GATE);
 
 	if (bPhaseGatesAvailable && !bWaitForBuildingPlacement)
 	{
@@ -2443,7 +2446,7 @@ void MarineProgressCapResNodeTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 			{
 				pBot->DesiredCombatWeapon = AttackWeapon;
 
-				if (GetBotCurrentWeapon(pBot) == AttackWeapon)
+				if (GetPlayerCurrentWeapon(pBot->Player) == AttackWeapon)
 				{
 					//BotShootTarget(pBot, pBot->DesiredCombatWeapon, Task->TaskTarget);
 				}
