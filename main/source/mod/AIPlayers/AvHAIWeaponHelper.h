@@ -5,19 +5,25 @@
 
 #include "AvHAIPlayer.h"
 
-int BotGetCurrentWeaponClipAmmo(const AvHAIPlayer* pBot);
-int BotGetCurrentWeaponMaxClipAmmo(const AvHAIPlayer* pBot);
-int BotGetCurrentWeaponReserveAmmo(const AvHAIPlayer* pBot);
-AvHAIWeapon GetBotCurrentWeapon(const AvHAIPlayer* pBot);
+int GetPlayerCurrentWeaponClipAmmo(const AvHPlayer* Player);
+int GetPlayerCurrentWeaponMaxClipAmmo(const AvHPlayer* Player);
+int GetPlayerCurrentWeaponReserveAmmo(const AvHPlayer* Player);
+AvHAIWeapon GetPlayerCurrentWeapon(const AvHPlayer* Player);
 AvHBasePlayerWeapon* GetPlayerCurrentWeaponReference(const AvHPlayer* Player);
 
 
-AvHAIWeapon UTIL_GetBotPrimaryWeapon(const AvHAIPlayer* pBot);
+AvHAIWeapon UTIL_GetPlayerPrimaryWeapon(const AvHPlayer* Player);
+AvHAIWeapon UTIL_GetPlayerSecondaryWeapon(const AvHPlayer* Player);
 
-int BotGetPrimaryWeaponClipAmmo(const AvHAIPlayer* pBot);
-int BotGetPrimaryWeaponMaxClipSize(const AvHAIPlayer* pBot);
-int BotGetPrimaryWeaponAmmoReserve(AvHAIPlayer* pBot);
-int BotGetPrimaryWeaponMaxAmmoReserve(AvHAIPlayer* pBot);
+int UTIL_GetPlayerPrimaryWeaponClipAmmo(const AvHPlayer* Player);
+int UTIL_GetPlayerPrimaryWeaponMaxClipSize(const AvHPlayer* Player);
+int UTIL_GetPlayerPrimaryAmmoReserve(AvHPlayer* Player);
+int UTIL_GetPlayerPrimaryMaxAmmoReserve(AvHPlayer* Player);
+
+int UTIL_GetPlayerSecondaryWeaponClipAmmo(const AvHPlayer* Player);
+int UTIL_GetPlayerSecondaryWeaponMaxClipSize(const AvHPlayer* Player);
+int UTIL_GetPlayerSecondaryAmmoReserve(AvHPlayer* Player);
+int UTIL_GetPlayerSecondaryMaxAmmoReserve(AvHPlayer* Player);
 
 AvHAIWeapon GetBotMarineSecondaryWeapon(const AvHAIPlayer* pBot);
 int BotGetSecondaryWeaponClipAmmo(const AvHAIPlayer* pBot);

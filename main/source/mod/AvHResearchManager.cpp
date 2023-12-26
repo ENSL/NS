@@ -196,6 +196,11 @@ void AvHResearchManager::SetTeamNumber(AvHTeamNumber inTeamNumber)
 	this->mTeamNumber = inTeamNumber;
 }
 
+bool AvHResearchManager::GetResearchDone(AvHTechID inTech)
+{
+	return this->mTechNodes.GetIsTechResearched(inTech);
+}
+
 bool AvHResearchManager::SetResearchDone(AvHMessageID inTech, int inEntityIndex)
 {
 	bool theFoundIt = false;

@@ -547,13 +547,13 @@ void AIMGR_UpdateAIPlayers()
 
 				UpdateBotChat(bot);
 
-				DroneThink(bot);
+				CustomThink(bot);
 
 				AIDEBUG_DrawPath(DebugPath, 0.0f);
 
 				AvHAIWeapon DesiredWeapon = (bot->DesiredMoveWeapon != WEAPON_NONE) ? bot->DesiredMoveWeapon : bot->DesiredCombatWeapon;
 
-				if (DesiredWeapon != WEAPON_NONE && GetBotCurrentWeapon(bot) != DesiredWeapon)
+				if (DesiredWeapon != WEAPON_NONE && GetPlayerCurrentWeapon(bot->Player) != DesiredWeapon)
 				{
 					BotSwitchToWeapon(bot, DesiredWeapon);
 				}

@@ -486,6 +486,8 @@ public:
 	// 
 
 	bool			GetHasSeenATeam();
+
+	void				GiveOrderToSelection(AvHOrder& inOrder);
 private:
 	void				AcquireOverwatchTarget();
 	bool				AttemptToBuildAlienStructure(AvHMessageID inMessageID);
@@ -509,7 +511,7 @@ private:
 	void				GetSpeeds(int& outBaseSpeed, int& outUnemcumberedSpeed) const;
 	void				GiveCombatUpgradesOnSpawn();
 	bool				GiveOrderToSelection(AvHOrderType inOrder, Vector inNormRay);
-	void				GiveOrderToSelection(AvHOrder& inOrder);
+	
 	void				GiveUpgrade(AvHMessageID inUpgrade);
 	void				HandleOverwatch(void);
 	void				HandleResearch();

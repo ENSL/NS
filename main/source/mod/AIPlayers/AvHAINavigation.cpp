@@ -2679,7 +2679,7 @@ void CheckAndHandleBreakableObstruction(AvHAIPlayer* pBot, const Vector MoveFrom
 
 	Vector ClosestPoint = UTIL_GetClosestPointOnEntityToLocation(pBot->Edict->v.origin, BlockingBreakableEdict);
 
-	AvHAIWeapon DesiredWeapon = UTIL_GetBotPrimaryWeapon(pBot);
+	AvHAIWeapon DesiredWeapon = UTIL_GetPlayerPrimaryWeapon(pBot->Player);
 
 	if (IsPlayerMarine(pBot->Player))
 	{
@@ -2716,7 +2716,7 @@ void CheckAndHandleBreakableObstruction(AvHAIPlayer* pBot, const Vector MoveFrom
 
 		pBot->DesiredMoveWeapon = DesiredWeapon;
 
-		if (GetBotCurrentWeapon(pBot) == DesiredWeapon)
+		if (GetPlayerCurrentWeapon(pBot->Player) == DesiredWeapon)
 		{
 			pBot->Button |= IN_ATTACK;
 		}
@@ -3757,7 +3757,6 @@ bool IsBotOffPath(const AvHAIPlayer* pBot)
 		return (vEquals(PointOnPath, MoveTo, 2.0f) && !IsPlayerClimbingWall(pBot->Edict) && pBot->CollisionHullTopLocation.z < MoveTo.z);
 	}
 
-
 	// Give us a chance to land before deciding we're off the path
 	if (!pBot->BotNavInfo.IsOnGround) { return false; }
 
@@ -3845,7 +3844,7 @@ void BlinkClimbMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector End
 	pBot->DesiredMoveWeapon = WEAPON_FADE_BLINK;
 
 	// Wait until we have blink equipped before proceeding
-	if (GetBotCurrentWeapon(pBot) != WEAPON_FADE_BLINK) { return; }
+	if (GetPlayerCurrentWeapon(pBot->Player) != WEAPON_FADE_BLINK) { return; }
 
 	// Only blink if we're below the target climb height
 	if (pEdict->v.origin.z < RequiredClimbHeight)

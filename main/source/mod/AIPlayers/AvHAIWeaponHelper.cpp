@@ -16,9 +16,9 @@
 extern nav_mesh NavMeshes[MAX_NAV_MESHES]; // Array of nav meshes. Currently only 3 are used (building, onos, and regular)
 extern nav_profile BaseNavProfiles[MAX_NAV_PROFILES]; // Array of nav profiles
 
-int BotGetCurrentWeaponClipAmmo(const AvHAIPlayer* pBot)
+int GetPlayerCurrentWeaponClipAmmo(const AvHPlayer* Player)
 {
-	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_pActiveItem);
+	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(Player->m_pActiveItem);
 
 	if (theBasePlayerWeapon)
 	{
@@ -28,9 +28,9 @@ int BotGetCurrentWeaponClipAmmo(const AvHAIPlayer* pBot)
 	return 0;
 }
 
-int BotGetCurrentWeaponMaxClipAmmo(const AvHAIPlayer* pBot)
+int GetPlayerCurrentWeaponMaxClipAmmo(const AvHPlayer* Player)
 {
-	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_pActiveItem);
+	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(Player->m_pActiveItem);
 
 	if (theBasePlayerWeapon)
 	{
@@ -40,13 +40,13 @@ int BotGetCurrentWeaponMaxClipAmmo(const AvHAIPlayer* pBot)
 	return 0;
 }
 
-int BotGetCurrentWeaponReserveAmmo(const AvHAIPlayer* pBot)
+int GetPlayerCurrentWeaponReserveAmmo(const AvHPlayer* Player)
 {
-	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_pActiveItem);
+	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(Player->m_pActiveItem);
 
 	if (theBasePlayerWeapon)
 	{
-		return pBot->Player->m_rgAmmo[theBasePlayerWeapon->m_iPrimaryAmmoType];
+		return Player->m_rgAmmo[theBasePlayerWeapon->m_iPrimaryAmmoType];
 	}
 
 	return 0;
@@ -165,9 +165,21 @@ void InterruptReload(AvHAIPlayer* pBot)
 	pBot->Button |= IN_ATTACK;
 }
 
-AvHAIWeapon UTIL_GetBotPrimaryWeapon(const AvHAIPlayer* pBot)
+AvHAIWeapon UTIL_GetPlayerPrimaryWeapon(const AvHPlayer* Player)
 {
-	AvHBasePlayerWeapon* Weapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[1]);
+	AvHBasePlayerWeapon* Weapon = dynamic_cast<AvHBasePlayerWeapon*>(Player->m_rgpPlayerItems[1]);
+
+	if (Weapon)
+	{
+		return (AvHAIWeapon)Weapon->m_iId;
+	}
+
+	return WEAPON_INVALID;
+}
+
+AvHAIWeapon UTIL_GetPlayerSecondaryWeapon(const AvHPlayer* Player)
+{
+	AvHBasePlayerWeapon* Weapon = dynamic_cast<AvHBasePlayerWeapon*>(Player->m_rgpPlayerItems[2]);
 
 	if (Weapon)
 	{
@@ -206,9 +218,9 @@ AvHAIWeapon GetBotMarineSecondaryWeapon(const AvHAIPlayer* pBot)
 	return WEAPON_INVALID;
 }
 
-int BotGetPrimaryWeaponMaxAmmoReserve(AvHAIPlayer* pBot)
+int UTIL_GetPlayerPrimaryMaxAmmoReserve(AvHPlayer* Player)
 {
-	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[1]);
+	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(Player->m_rgpPlayerItems[1]);
 
 	if (theBasePlayerWeapon)
 	{
@@ -218,13 +230,37 @@ int BotGetPrimaryWeaponMaxAmmoReserve(AvHAIPlayer* pBot)
 	return 0;
 }
 
-int BotGetPrimaryWeaponAmmoReserve(AvHAIPlayer* pBot)
+int UTIL_GetPlayerPrimaryAmmoReserve(AvHPlayer* Player)
 {
-	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[1]);
+	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(Player->m_rgpPlayerItems[1]);
 
 	if (theBasePlayerWeapon)
 	{
-		return pBot->Player->m_rgAmmo[theBasePlayerWeapon->m_iPrimaryAmmoType];
+		return Player->m_rgAmmo[theBasePlayerWeapon->m_iPrimaryAmmoType];
+	}
+
+	return 0;
+}
+
+int UTIL_GetPlayerSecondaryMaxAmmoReserve(AvHPlayer* Player)
+{
+	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(Player->m_rgpPlayerItems[2]);
+
+	if (theBasePlayerWeapon)
+	{
+		return theBasePlayerWeapon->iMaxAmmo1();
+	}
+
+	return 0;
+}
+
+int UTIL_GetPlayerSecondaryAmmoReserve(AvHPlayer* Player)
+{
+	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(Player->m_rgpPlayerItems[2]);
+
+	if (theBasePlayerWeapon)
+	{
+		return Player->m_rgAmmo[theBasePlayerWeapon->m_iPrimaryAmmoType];
 	}
 
 	return 0;
@@ -242,9 +278,9 @@ int BotGetSecondaryWeaponAmmoReserve(AvHAIPlayer* pBot)
 	return 0;
 }
 
-int BotGetPrimaryWeaponClipAmmo(const AvHAIPlayer* pBot)
+int UTIL_GetPlayerPrimaryWeaponClipAmmo(const AvHPlayer* Player)
 {
-	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[1]);
+	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(Player->m_rgpPlayerItems[1]);
 
 	if (theBasePlayerWeapon)
 	{
@@ -266,9 +302,33 @@ int BotGetSecondaryWeaponClipAmmo(const AvHAIPlayer* pBot)
 	return 0;
 }
 
-int BotGetPrimaryWeaponMaxClipSize(const AvHAIPlayer* pBot)
+int UTIL_GetPlayerPrimaryWeaponMaxClipSize(const AvHPlayer* Player)
 {
-	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pBot->Player->m_rgpPlayerItems[1]);
+	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(Player->m_rgpPlayerItems[1]);
+
+	if (theBasePlayerWeapon)
+	{
+		return theBasePlayerWeapon->iMaxClip();
+	}
+
+	return 0;
+}
+
+int UTIL_GetPlayerSecondaryWeaponClipAmmo(const AvHPlayer* Player)
+{
+	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(Player->m_rgpPlayerItems[2]);
+
+	if (theBasePlayerWeapon)
+	{
+		return theBasePlayerWeapon->m_iClip;
+	}
+
+	return 0;
+}
+
+int UTIL_GetPlayerSecondaryWeaponMaxClipSize(const AvHPlayer* Player)
+{
+	AvHBasePlayerWeapon* theBasePlayerWeapon = dynamic_cast<AvHBasePlayerWeapon*>(Player->m_rgpPlayerItems[2]);
 
 	if (theBasePlayerWeapon)
 	{
@@ -471,9 +531,9 @@ AvHAIWeapon BotMarineChooseBestWeapon(AvHAIPlayer* pBot, edict_t* target)
 
 	if (FNullEnt(target))
 	{
-		if (BotGetPrimaryWeaponClipAmmo(pBot) > 0 || BotGetPrimaryWeaponAmmoReserve(pBot) > 0)
+		if (UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) > 0 || UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) > 0)
 		{
-			return UTIL_GetBotPrimaryWeapon(pBot);
+			return UTIL_GetPlayerPrimaryWeapon(pBot->Player);
 		}
 		else if (BotGetSecondaryWeaponClipAmmo(pBot) > 0 || BotGetSecondaryWeaponAmmoReserve(pBot) > 0)
 		{
@@ -481,7 +541,7 @@ AvHAIWeapon BotMarineChooseBestWeapon(AvHAIPlayer* pBot, edict_t* target)
 		}
 		else
 		{
-			return UTIL_GetBotPrimaryWeapon(pBot);
+			return UTIL_GetPlayerPrimaryWeapon(pBot->Player);
 		}
 	}
 
@@ -489,9 +549,9 @@ AvHAIWeapon BotMarineChooseBestWeapon(AvHAIPlayer* pBot, edict_t* target)
 	{
 		float DistFromEnemy = vDist2DSq(pBot->Edict->v.origin, target->v.origin);
 
-		if (UTIL_GetBotPrimaryWeapon(pBot) == WEAPON_MARINE_GL)
+		if (UTIL_GetPlayerPrimaryWeapon(pBot->Player) == WEAPON_MARINE_GL)
 		{
-			if (BotGetPrimaryWeaponClipAmmo(pBot) > 0 && DistFromEnemy > sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
+			if (UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) > 0 && DistFromEnemy > sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
 			{
 				return WEAPON_MARINE_GL;
 			}
@@ -506,7 +566,7 @@ AvHAIWeapon BotMarineChooseBestWeapon(AvHAIPlayer* pBot, edict_t* target)
 
 		if (DistFromEnemy <= sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
 		{
-			if (BotGetPrimaryWeaponClipAmmo(pBot) == 0)
+			if (UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) == 0)
 			{
 				if (BotGetSecondaryWeaponClipAmmo(pBot) > 0)
 				{
@@ -519,12 +579,12 @@ AvHAIWeapon BotMarineChooseBestWeapon(AvHAIPlayer* pBot, edict_t* target)
 			}
 			else
 			{
-				return UTIL_GetBotPrimaryWeapon(pBot);
+				return UTIL_GetPlayerPrimaryWeapon(pBot->Player);
 			}
 		}
 		else
 		{
-			AvHAIWeapon PrimaryWeapon = UTIL_GetBotPrimaryWeapon(pBot);
+			AvHAIWeapon PrimaryWeapon = UTIL_GetPlayerPrimaryWeapon(pBot->Player);
 
 			if (PrimaryWeapon == WEAPON_MARINE_SHOTGUN)
 			{
@@ -536,7 +596,7 @@ AvHAIWeapon BotMarineChooseBestWeapon(AvHAIPlayer* pBot, edict_t* target)
 					}
 					else
 					{
-						if (BotGetPrimaryWeaponClipAmmo(pBot) > 0 || BotGetPrimaryWeaponAmmoReserve(pBot) > 0)
+						if (UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) > 0 || UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) > 0)
 						{
 							return PrimaryWeapon;
 						}
@@ -548,7 +608,7 @@ AvHAIWeapon BotMarineChooseBestWeapon(AvHAIPlayer* pBot, edict_t* target)
 				}
 				else
 				{
-					if (BotGetPrimaryWeaponClipAmmo(pBot) > 0 || BotGetPrimaryWeaponAmmoReserve(pBot) > 0)
+					if (UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) > 0 || UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) > 0)
 					{
 						return PrimaryWeapon;
 					}
@@ -569,7 +629,7 @@ AvHAIWeapon BotMarineChooseBestWeapon(AvHAIPlayer* pBot, edict_t* target)
 			{
 				if (DistFromEnemy > sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
 				{
-					if (BotGetPrimaryWeaponClipAmmo(pBot) > 0 || BotGetPrimaryWeaponAmmoReserve(pBot) > 0)
+					if (UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) > 0 || UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) > 0)
 					{
 						return PrimaryWeapon;
 					}
@@ -583,7 +643,7 @@ AvHAIWeapon BotMarineChooseBestWeapon(AvHAIPlayer* pBot, edict_t* target)
 				}
 				else
 				{
-					if (BotGetPrimaryWeaponClipAmmo(pBot) > 0 || (DistFromEnemy > sqrf(UTIL_MetresToGoldSrcUnits(5.0f)) && BotGetPrimaryWeaponAmmoReserve(pBot) > 0))
+					if (UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) > 0 || (DistFromEnemy > sqrf(UTIL_MetresToGoldSrcUnits(5.0f)) && UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) > 0))
 					{
 						return PrimaryWeapon;
 					}
@@ -614,7 +674,7 @@ AvHAIWeapon BotAlienChooseBestWeaponForStructure(AvHAIPlayer* pBot, edict_t* tar
 
 	if (StructureType == STRUCTURE_NONE)
 	{
-		return UTIL_GetBotPrimaryWeapon(pBot);
+		return UTIL_GetPlayerPrimaryWeapon(pBot->Player);
 	}
 
 	if (PlayerHasWeapon(pBot->Player, WEAPON_GORGE_BILEBOMB))
@@ -651,7 +711,7 @@ AvHAIWeapon BotAlienChooseBestWeaponForStructure(AvHAIPlayer* pBot, edict_t* tar
 		}
 	}
 
-	return UTIL_GetBotPrimaryWeapon(pBot);
+	return UTIL_GetPlayerPrimaryWeapon(pBot->Player);
 }
 
 AvHAIWeapon BotMarineChooseBestWeaponForStructure(AvHAIPlayer* pBot, edict_t* target)
@@ -660,9 +720,9 @@ AvHAIWeapon BotMarineChooseBestWeaponForStructure(AvHAIPlayer* pBot, edict_t* ta
 
 	if (StructureType == STRUCTURE_NONE)
 	{
-		if (BotGetPrimaryWeaponClipAmmo(pBot) > 0 || BotGetPrimaryWeaponAmmoReserve(pBot) > 0)
+		if (UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) > 0 || UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) > 0)
 		{
-			return UTIL_GetBotPrimaryWeapon(pBot);
+			return UTIL_GetPlayerPrimaryWeapon(pBot->Player);
 		}
 		else if (BotGetSecondaryWeaponClipAmmo(pBot) > 0 || BotGetSecondaryWeaponAmmoReserve(pBot) > 0)
 		{
@@ -676,9 +736,9 @@ AvHAIWeapon BotMarineChooseBestWeaponForStructure(AvHAIPlayer* pBot, edict_t* ta
 
 	if (StructureType == STRUCTURE_ALIEN_HIVE || StructureType == STRUCTURE_ALIEN_OFFENCECHAMBER)
 	{
-		if (BotGetPrimaryWeaponClipAmmo(pBot) > 0 || BotGetPrimaryWeaponAmmoReserve(pBot) > 0)
+		if (UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) > 0 || UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) > 0)
 		{
-			return UTIL_GetBotPrimaryWeapon(pBot);
+			return UTIL_GetPlayerPrimaryWeapon(pBot->Player);
 		}
 		else if (BotGetSecondaryWeaponClipAmmo(pBot) > 0 || BotGetSecondaryWeaponAmmoReserve(pBot) > 0)
 		{
@@ -691,9 +751,9 @@ AvHAIWeapon BotMarineChooseBestWeaponForStructure(AvHAIPlayer* pBot, edict_t* ta
 	}
 	else
 	{
-		AvHAIWeapon PrimaryWeapon = UTIL_GetBotPrimaryWeapon(pBot);
+		AvHAIWeapon PrimaryWeapon = UTIL_GetPlayerPrimaryWeapon(pBot->Player);
 
-		if ((PrimaryWeapon == WEAPON_MARINE_GL || PrimaryWeapon == WEAPON_MARINE_SHOTGUN) && (BotGetPrimaryWeaponClipAmmo(pBot) > 0 || BotGetPrimaryWeaponAmmoReserve(pBot) > 0))
+		if ((PrimaryWeapon == WEAPON_MARINE_GL || PrimaryWeapon == WEAPON_MARINE_SHOTGUN) && (UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) > 0 || UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) > 0))
 		{
 			return PrimaryWeapon;
 		}
@@ -701,7 +761,7 @@ AvHAIWeapon BotMarineChooseBestWeaponForStructure(AvHAIPlayer* pBot, edict_t* ta
 		return WEAPON_MARINE_KNIFE;
 	}
 
-	return UTIL_GetBotPrimaryWeapon(pBot);
+	return UTIL_GetPlayerPrimaryWeapon(pBot->Player);
 }
 
 AvHAIWeapon GorgeGetBestWeaponForCombatTarget(AvHAIPlayer* pBot, edict_t* Target)
@@ -875,7 +935,7 @@ AvHAIWeapon FadeGetBestWeaponForCombatTarget(AvHAIPlayer* pBot, edict_t* Target)
 
 void BotReloadCurrentWeapon(AvHAIPlayer* pBot)
 {
-	AvHAIWeapon CurrentWeapon = GetBotCurrentWeapon(pBot);
+	AvHAIWeapon CurrentWeapon = GetPlayerCurrentWeapon(pBot->Player);
 
 	if (!WeaponCanBeReloaded(CurrentWeapon)) { return; }
 

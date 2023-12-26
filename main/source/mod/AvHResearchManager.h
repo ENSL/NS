@@ -79,6 +79,8 @@ public:
 	void				SetTeamNumber(AvHTeamNumber inTeamNumber);
 		
 	void				UpdateResearch();
+
+	bool				GetResearchDone(AvHTechID inTech);
 	
 private:
 	bool				SetResearchDone(AvHMessageID inTech, int inEntityIndex);

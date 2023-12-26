@@ -90,7 +90,7 @@ typedef enum _AI_REACHABILITY_STATUS
 	AI_REACHABILITY_ONOS = 1u << 3,
 	AI_REACHABILITY_WELDER = 1u << 4,
 
-	AI_REACHABILITY_ALL = 0xFFFF
+	AI_REACHABILITY_ALL = -1
 } AvHAIReachabilityStatus;
 
 typedef enum
@@ -101,8 +101,9 @@ typedef enum
 	STRUCTURE_STATUS_RECYCLING = 1 << 2,
 	STRUCTURE_STATUS_PARASITED = 1 << 3,
 	STRUCTURE_STATUS_UNDERATTACK = 1 << 4,
+	STRUCTURE_STATUS_RESEARCHING = 1 << 5,
 
-	STRUCTURE_STATUS_ALL = 0x7FFFFFFF
+	STRUCTURE_STATUS_ALL = -1
 } AvHAIStructureStatus;
 
 typedef enum
@@ -134,7 +135,7 @@ typedef enum
 	SEARCH_ALL_ALIEN_STRUCTURES = 0xFC000,
 	SEARCH_ANY_RES_TOWER = (STRUCTURE_MARINE_RESTOWER | STRUCTURE_ALIEN_RESTOWER),
 
-	SEARCH_ALL_STRUCTURES = 0x7FFFFFFF
+	SEARCH_ALL_STRUCTURES = -1
 
 } AvHAIDeployableStructureType;
 
@@ -157,7 +158,7 @@ typedef enum
 	DEPLOYABLE_ITEM_WEAPONS = 0xF80,
 	DEPLOYABLE_ITEM_EQUIPMENT = 0x6,
 
-	DEPLOYABLE_ITEM_ALL = 0x7FFFFFFF
+	DEPLOYABLE_ITEM_ALL = -1
 } AvHAIDeployableItemType;
 
 // Type of goal the commander wants to achieve
@@ -513,6 +514,7 @@ typedef struct _COMMANDER_ACTION
 	CommanderActionType ActionType = ACTION_NONE; // What action to perform (e.g. build, recycle, drop item etc)
 	CommanderActionStep ActionStep = ACTION_STEP_NONE; // Used for multi-stage processes such as selecting a building, issuing recycle command etc.
 	AvHAIDeployableStructureType StructureToBuild = STRUCTURE_NONE; // What structure to build if build action
+	AvHAIDeployableItemType ItemToPlace = DEPLOYABLE_ITEM_NONE;
 	int NumInstances = 0;
 	int NumDesiredInstances = 0;
 	StructurePurpose ActionPurpose = STRUCTURE_PURPOSE_NONE;
@@ -520,17 +522,26 @@ typedef struct _COMMANDER_ACTION
 	Vector DesiredCommanderLocation = g_vecZero; // To perform this action, where does the commander's view need to be? For building, usually directly above location, but could be off to side if obstructed by geometry
 	Vector LastAttemptedCommanderLocation = g_vecZero; // The position of the commander's view at the last action attempt
 	Vector LastAttemptedCommanderAngle = g_vecZero; // The click angle of the last action attempt
-	int AssignedPlayer = -1; // Which player index is assigned to perform the action (e.g. build structure)? Will send orders to that player (move here, build this structure etc.)
+	int AssignedPlayer = 0; // Which player index is assigned to perform the action (e.g. build structure)? Will send orders to that player (move here, build this structure etc.)
 	edict_t* StructureOrItem = nullptr; // Reference the structure edict. If a structure has been successfully placed but not yet fully built, it will be referenced here
 	edict_t* ActionTarget = nullptr; // Mostly used for dropping health packs and ammo for players where the drop location might be moving around
 	bool bHasAttemptedAction = false; // Has the commander tried placing a structure or item at the build location? If so, and it didn't appear, will try to adjust view around until it works
 	float StructureBuildAttemptTime = 0.0f; // When the commander tried placing a structure. Commander will wait a short while to confirm if the building appeared or if it should try again
 	int NumActionAttempts = 0; // Commander will give up after a certain number of attempts to place structure/item
-	AvHTechID ResearchId = TECH_NULL; // What research to perform if research action
+	AvHMessageID ResearchId = MESSAGE_NULL; // What research to perform if research action
 	bool bIsAwaitingBuildLink = false; // The AI has tried placing a structure or item and is waiting to confirm it worked or not
 	bool bIsActionUrgent = false;
 
 } commander_action;
+
+typedef struct _AI_COMMANDER_REQUEST
+{
+	bool bNewRequest = false; // Is this a new request just come in?
+	edict_t* Requestor = nullptr; // Who sent the request?
+	AvHMessageID RequestType = MESSAGE_NULL; // What did they request?
+	bool bResponded = false; // Have we already responded to this request?
+	float RequestTime = 0.0f; // When the request came in
+} ai_commander_request;
 
 typedef struct AVH_AI_PLAYER
 {
@@ -587,6 +598,8 @@ typedef struct AVH_AI_PLAYER
 	commander_action SupportAction;
 	commander_action RecycleAction;
 	commander_action* CurrentAction;
+
+	vector<ai_commander_request> ActiveRequests;
 
 	float next_commander_action_time = 0.0f;
 

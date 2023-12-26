@@ -55,6 +55,7 @@ void StartNewBotFrame(AvHAIPlayer* pBot);
 
 void TestNavThink(AvHAIPlayer* pBot);
 void DroneThink(AvHAIPlayer* pBot);
+void CustomThink(AvHAIPlayer* pBot);
 
 void BotSwitchToWeapon(AvHAIPlayer* pBot, AvHAIWeapon NewWeaponSlot);
 
@@ -63,5 +64,7 @@ bool ShouldBotThink(AvHAIPlayer* pBot);
 void BotResumePlay(AvHAIPlayer* pBot);
 
 void UpdateCommanderOrders(AvHAIPlayer* pBot);
+
+void BotStopCommanderMode(AvHAIPlayer* pBot);
 
 #endif
