@@ -145,8 +145,8 @@ edict_t* AITAC_GetMarineEligibleToBuildSiege(AvHTeamNumber Team, const AvHAIHive
 vector<AvHPlayer*> AITAC_GetAllPlayersOnTeam(AvHTeamNumber Team);
 edict_t* AITAC_GetNearestHiddenPlayerInLocation(AvHTeamNumber Team, const Vector Location, const float MaxRadius);
 
-const vector<AvHAIResourceNode>& AITAC_GetAllResourceNodes();
-const vector<AvHAIHiveDefinition>& AITAC_GetAllHives();
+const vector<AvHAIResourceNode*> AITAC_GetAllResourceNodes();
+const vector<AvHAIHiveDefinition*> AITAC_GetAllHives();
 
 bool AITAC_AnyPlayerOnTeamWithLOS(AvHTeamNumber Team, const Vector& Location, float SearchRadius);
 

@@ -154,9 +154,9 @@ static const float pReachableExtents[3] = { max_ai_use_reach, max_ai_use_reach, 
 
 static const int MAX_NAV_PROFILES = 16; // Max number of possible nav profiles. Currently 9 are used (see top of this header file)
 
-static const int REGULAR_NAV_MESH = 0;
-static const int ONOS_NAV_MESH = 1;
-static const int BUILDING_NAV_MESH = 2;
+static const int REGULAR_NAV_MESH = 0;	// Nav mesh used by all players except Onos and the AI commander
+static const int ONOS_NAV_MESH = 1;		// Nav mesh used by Onos (due to larger hitbox)
+static const int BUILDING_NAV_MESH = 2; // Nav mesh used by commander for building placement. Must be the last nav mesh index (see UTIL_AddStructureTemporaryObstacles)
 
 static const int DT_AREA_NULL = 0; // Represents a null area on the nav mesh. Not traversable and considered not on the nav mesh
 static const int DT_AREA_BLOCKED = 3; // Area occupied by an obstruction (e.g. building). Not traversable, but considered to be on the nav mesh
@@ -302,9 +302,10 @@ Vector UTIL_GetNearestPointOnNavWall(const nav_profile& NavProfile, const Vector
 	An example use case is to place an obstacle of area type SAMPLE_POLYAREA_OBSTRUCTION to mark where buildings are.
 	Using DT_AREA_NULL will effectively cut a hole in the nav mesh, meaning it's no longer considered a valid mesh position.
 */
-unsigned int UTIL_AddTemporaryObstacle(const Vector Location, float Radius, float Height, int area);
+unsigned int UTIL_AddTemporaryObstacle(unsigned int NavMeshIndex, const Vector Location, float Radius, float Height, int area);
 void UTIL_AddTemporaryObstacles(const Vector Location, float Radius, float Height, int area, unsigned int* ObstacleRefArray);
-
+void UTIL_AddStructureTemporaryObstacles(AvHAIBuildableStructure* Structure);
+void UTIL_RemoveStructureTemporaryObstacles(AvHAIBuildableStructure* Structure);
 
 unsigned int UTIL_AddTemporaryBoxObstacle(Vector bMin, Vector bMax, int area);
 

@@ -89,6 +89,7 @@ typedef enum _AI_REACHABILITY_STATUS
 	AI_REACHABILITY_GORGE = 1u << 2,
 	AI_REACHABILITY_ONOS = 1u << 3,
 	AI_REACHABILITY_WELDER = 1u << 4,
+	AI_REACHABILITY_UNREACHABLE = 1u << 5,
 
 	AI_REACHABILITY_ALL = -1
 } AvHAIReachabilityStatus;
@@ -179,6 +180,12 @@ typedef struct _OFF_MESH_CONN
 	edict_t* TargetObject = nullptr;
 } AvHAIOffMeshConnection;
 
+typedef struct _STRUCTURE_OBSTACLE
+{
+	unsigned int NavMeshIndex = 0;
+	unsigned int ObstacleRef = 0;
+} AvHAITempObstacle;
+
 // Data structure used to track resource nodes in the map
 typedef struct _RESOURCE_NODE
 {
@@ -266,7 +273,7 @@ typedef struct _AVH_AI_BUILDABLE_STRUCTURE
 	unsigned int TeamAReachabilityFlags = AI_REACHABILITY_NONE;
 	unsigned int TeamBReachabilityFlags = AI_REACHABILITY_NONE;
 	int LastSeen = 0; // Which refresh cycle was this last seen on? Used to determine if the building has been removed from play
-	unsigned int ObstacleRefs[MAX_NAV_MESHES]; // References to this structure's obstacles across each nav mesh
+	vector< AvHAITempObstacle> Obstacles;
 	vector<AvHAIOffMeshConnection> OffMeshConnections; // References to any off-mesh connections this structure is associated with
 	Vector LastSuccessfulCommanderLocation = g_vecZero; // Tracks the last commander view location where it successfully placed or selected the building
 	Vector LastSuccessfulCommanderAngle = g_vecZero; // Tracks the last commander input angle ("click" location) used to successfully place or select building

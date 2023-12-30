@@ -1597,6 +1597,9 @@ void BotStopCommanderMode(AvHAIPlayer* pBot)
 
 	if (IsPlayerCommander(pBot->Edict))
 	{
-		CLIENT_COMMAND(pBot->Edict, "stopcommandermode");
+		pBot->Player->SetUser3(AVH_USER3_MARINE_PLAYER);
+
+		// Cheesy way to make sure player class change is sent to everyone
+		pBot->Player->EffectivePlayerClassChanged();
 	}
 }

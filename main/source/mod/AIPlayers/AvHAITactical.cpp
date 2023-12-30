@@ -811,8 +811,8 @@ void AITAC_RefreshReachabilityForItem(AvHAIDroppedItem* Item)
 
 	if (!bOnNavMesh)
 	{
-		Item->TeamAReachabilityFlags = AI_REACHABILITY_NONE;
-		Item->TeamBReachabilityFlags = AI_REACHABILITY_NONE;
+		Item->TeamAReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
+		Item->TeamBReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
 		return;
 	}
 
@@ -838,6 +838,10 @@ void AITAC_RefreshReachabilityForItem(AvHAIDroppedItem* Item)
 			{
 				Item->TeamAReachabilityFlags |= AI_REACHABILITY_WELDER;
 			}
+			else
+			{
+				Item->TeamAReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
+			}
 		}
 	}
 
@@ -862,6 +866,10 @@ void AITAC_RefreshReachabilityForItem(AvHAIDroppedItem* Item)
 			if (bIsReachableWelder)
 			{
 				Item->TeamBReachabilityFlags |= AI_REACHABILITY_WELDER;
+			}
+			else
+			{
+				Item->TeamBReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
 			}
 		}
 	}
@@ -896,8 +904,8 @@ void AITAC_RefreshReachabilityForResNode(AvHAIResourceNode* ResNode)
 
 	if (!bOnNavMesh)
 	{
-		ResNode->TeamAReachabilityFlags = AI_REACHABILITY_NONE;
-		ResNode->TeamBReachabilityFlags = AI_REACHABILITY_NONE;
+		ResNode->TeamAReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
+		ResNode->TeamBReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
 		return;
 	}
 
@@ -926,6 +934,10 @@ void AITAC_RefreshReachabilityForResNode(AvHAIResourceNode* ResNode)
 			{
 				ResNode->TeamAReachabilityFlags |= AI_REACHABILITY_WELDER;
 			}
+			else
+			{
+				ResNode->TeamAReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
+			}
 		}
 	}
 	else
@@ -947,6 +959,11 @@ void AITAC_RefreshReachabilityForResNode(AvHAIResourceNode* ResNode)
 		if (bIsReachableOnos)
 		{
 			ResNode->TeamAReachabilityFlags |= AI_REACHABILITY_ONOS;
+		}
+
+		if (ResNode->TeamAReachabilityFlags == AI_REACHABILITY_NONE)
+		{
+			ResNode->TeamAReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
 		}
 	}
 
@@ -972,6 +989,10 @@ void AITAC_RefreshReachabilityForResNode(AvHAIResourceNode* ResNode)
 			{
 				ResNode->TeamBReachabilityFlags |= AI_REACHABILITY_WELDER;
 			}
+			else
+			{
+				ResNode->TeamBReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
+			}
 		}
 	}
 	else
@@ -993,6 +1014,11 @@ void AITAC_RefreshReachabilityForResNode(AvHAIResourceNode* ResNode)
 		if (bIsReachableOnos)
 		{
 			ResNode->TeamBReachabilityFlags |= AI_REACHABILITY_ONOS;
+		}
+
+		if (ResNode->TeamBReachabilityFlags == AI_REACHABILITY_NONE)
+		{
+			ResNode->TeamBReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
 		}
 	}
 
@@ -1274,7 +1300,6 @@ void AITAC_RefreshBuildableStructures()
 		if (it->second.LastSeen < StructureRefreshFrame)
 		{
 			AITAC_OnStructureDestroyed(&it->second);
-			UTIL_RemoveTemporaryObstacles(it->second.ObstacleRefs);
 			it = TeamAStructureMap.erase(it);
 		}
 		else
@@ -1293,7 +1318,6 @@ void AITAC_RefreshBuildableStructures()
 		if (it->second.LastSeen < StructureRefreshFrame)
 		{
 			AITAC_OnStructureDestroyed(&it->second);
-			UTIL_RemoveTemporaryObstacles(it->second.ObstacleRefs);
 			it = TeamBStructureMap.erase(it);
 		}
 		else
@@ -1476,12 +1500,15 @@ void AITAC_RefreshReachabilityForStructure(AvHAIBuildableStructure* Structure)
 
 	Structure->bReachabilityMarkedDirty = false;
 
+	Structure->TeamAReachabilityFlags = AI_REACHABILITY_NONE;
+	Structure->TeamBReachabilityFlags = AI_REACHABILITY_NONE;
+
 	bool bIsOnNavMesh = UTIL_PointIsOnNavmesh(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], UTIL_GetEntityGroundLocation(Structure->edict), Vector(max_player_use_reach, max_player_use_reach, max_player_use_reach));
 
 	if (!bIsOnNavMesh)
 	{
-		Structure->TeamAReachabilityFlags = AI_REACHABILITY_NONE;
-		Structure->TeamBReachabilityFlags = AI_REACHABILITY_NONE;
+		Structure->TeamAReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
+		Structure->TeamBReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
 		return;
 	}
 
@@ -1508,6 +1535,10 @@ void AITAC_RefreshReachabilityForStructure(AvHAIBuildableStructure* Structure)
 			{
 				Structure->TeamAReachabilityFlags |= AI_REACHABILITY_WELDER;
 			}
+			else
+			{
+				Structure->TeamAReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
+			}
 		}
 	}
 	else
@@ -1529,6 +1560,11 @@ void AITAC_RefreshReachabilityForStructure(AvHAIBuildableStructure* Structure)
 		if (bIsReachableOnos)
 		{
 			Structure->TeamAReachabilityFlags |= AI_REACHABILITY_ONOS;
+		}
+
+		if (Structure->TeamAReachabilityFlags == AI_REACHABILITY_NONE)
+		{
+			Structure->TeamAReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
 		}
 	}
 
@@ -1555,6 +1591,10 @@ void AITAC_RefreshReachabilityForStructure(AvHAIBuildableStructure* Structure)
 			{
 				Structure->TeamBReachabilityFlags |= AI_REACHABILITY_WELDER;
 			}
+			else
+			{
+				Structure->TeamBReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
+			}
 		}
 	}
 	else
@@ -1576,6 +1616,11 @@ void AITAC_RefreshReachabilityForStructure(AvHAIBuildableStructure* Structure)
 		if (bIsReachableOnos)
 		{
 			Structure->TeamBReachabilityFlags |= AI_REACHABILITY_ONOS;
+		}
+
+		if (Structure->TeamBReachabilityFlags == AI_REACHABILITY_NONE)
+		{
+			Structure->TeamBReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
 		}
 	}
 }
@@ -1602,29 +1647,16 @@ void AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 
 	std::unordered_map<int, AvHAIBuildableStructure>& BuildingMap = (BaseBuildable->GetTeamNumber() == TeamANumber) ? TeamAStructureMap : TeamBStructureMap;
 
+	// This is the first time we've seen this structure, so it must be new
 	if (BuildingMap[EntIndex].LastSeen == 0)
 	{
 		BuildingMap[EntIndex].EntityRef = BaseBuildable;
 		BuildingMap[EntIndex].edict = BuildingEdict;
 
 		BuildingMap[EntIndex].OffMeshConnections.clear();
+		BuildingMap[EntIndex].Obstacles.clear();
 
-		memset(&BuildingMap[EntIndex].ObstacleRefs, 0, sizeof(BuildingMap[EntIndex].ObstacleRefs));
-
-		bool bShouldCollide = UTIL_ShouldStructureCollide(StructureType);
-
-		if (bShouldCollide)
-		{
-			unsigned int area = UTIL_GetAreaForObstruction(StructureType, BuildingEdict);
-			float Radius = UTIL_GetStructureRadiusForObstruction(StructureType);
-			UTIL_AddTemporaryObstacles(UTIL_GetCentreOfEntity(BuildingMap[EntIndex].edict), Radius, 100.0f, area, BuildingMap[EntIndex].ObstacleRefs);
-		}
-		else
-		{
-			memset(BuildingMap[EntIndex].ObstacleRefs, 0, sizeof(unsigned int) * MAX_NAV_MESHES);
-		}
-
-		BuildingMap[EntIndex].Location = g_vecZero;
+		BuildingMap[EntIndex].Location = g_vecZero; // We set this just below after calculating reachability
 
 		AITAC_OnStructureCreated(&BuildingMap[EntIndex]);
 	}
@@ -1695,7 +1727,11 @@ void AITAC_OnStructureCreated(AvHAIBuildableStructure* NewStructure)
 {
 	if (!GetGameRules()->GetGameStarted()) { return; }
 
+	UTIL_AddStructureTemporaryObstacles(NewStructure);
+
 	AvHTeamNumber StructureTeam = NewStructure->EntityRef->GetTeamNumber();
+
+	AITAC_RefreshReachabilityForStructure(NewStructure);
 
 	if (StructureTeam == TEAM_IND) { return; }
 	
@@ -1791,6 +1827,8 @@ void AITAC_OnStructureBeginRecycling(AvHAIBuildableStructure* RecyclingStructure
 
 void AITAC_OnStructureDestroyed(AvHAIBuildableStructure* DestroyedStructure)
 {
+	UTIL_RemoveStructureTemporaryObstacles(DestroyedStructure);
+
 	if (DestroyedStructure->StructureType == STRUCTURE_MARINE_PHASEGATE)
 	{
 		// Eliminate all connections from this phase gate
@@ -3050,14 +3088,28 @@ vector<AvHPlayer*> AITAC_GetAllPlayersOnTeam(AvHTeamNumber Team)
 	return Result;
 }
 
-const vector<AvHAIResourceNode>& AITAC_GetAllResourceNodes()
+const vector<AvHAIResourceNode*> AITAC_GetAllResourceNodes()
 {
-	return ResourceNodes;
+	vector<AvHAIResourceNode*> Results;
+
+	for (auto it = ResourceNodes.begin(); it != ResourceNodes.end(); it++)
+	{
+		Results.push_back(&(*it));
+	}
+
+	return Results;
 }
 
-const vector<AvHAIHiveDefinition>& AITAC_GetAllHives()
+const vector<AvHAIHiveDefinition*> AITAC_GetAllHives()
 {
-	return Hives;
+	vector<AvHAIHiveDefinition*> Results;
+
+	for (auto it = Hives.begin(); it != Hives.end(); it++)
+	{
+		Results.push_back(&(*it));
+	}
+
+	return Results;
 }
 
 bool AITAC_AnyPlayerOnTeamWithLOS(AvHTeamNumber Team, const Vector& Location, float SearchRadius)
