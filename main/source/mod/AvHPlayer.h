@@ -487,6 +487,8 @@ public:
 
 	bool			GetHasSeenATeam();
 
+	bool				GetPurchaseAllowed(AvHMessageID inUpgrade, int& outCost, string* outErrorMessage = NULL) const;
+
 	void				GiveOrderToSelection(AvHOrder& inOrder);
 private:
 	void				AcquireOverwatchTarget();
@@ -505,7 +507,7 @@ private:
 	bool				QueryEnemySighted(CBaseEntity* inEntity);
 	bool				GetHasActiveAlienWeaponWithImpulse(AvHMessageID inMessageID) const;
 	bool				GetRandomGameStartedTick(float inApproximateFrameRate);
-	bool				GetPurchaseAllowed(AvHMessageID inUpgrade, int& outCost, string* outErrorMessage = NULL) const;
+	
 	int					GetRelevantWeight(void) const;
 	int					GetRelevantWeightForWeapon(AvHBasePlayerWeapon* inWeapon) const;
 	void				GetSpeeds(int& outBaseSpeed, int& outUnemcumberedSpeed) const;

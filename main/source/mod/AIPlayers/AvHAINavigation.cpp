@@ -418,29 +418,95 @@ Vector UTIL_GetNearestPointOnNavWall(const nav_profile &NavProfile, const Vector
 	return g_vecZero;
 }
 
-unsigned int UTIL_AddTemporaryObstacle(const Vector Location, float Radius, float Height, int area)
+unsigned int UTIL_AddTemporaryObstacle(unsigned int NavMeshIndex, const Vector Location, float Radius, float Height, int area)
 {
 	unsigned int ObstacleNum = 0;
-
-	float Pos[3] = { Location.x, Location.z - (Height * 0.5f), -Location.y };
-
-	for (int i = 0; i < MAX_NAV_MESHES; i++)
+		
+	if (NavMeshes[NavMeshIndex].tileCache)
 	{
-		if (NavMeshes[i].tileCache)
+		float Pos[3] = { Location.x, Location.z - (Height * 0.5f), -Location.y };
+
+		dtObstacleRef ObsRef = 0;
+		NavMeshes[NavMeshIndex].tileCache->addObstacle(Pos, Radius, Height, area, &ObsRef);
+
+		ObstacleNum = (unsigned int)ObsRef;
+
+		if (ObstacleNum > 0)
 		{
-			dtObstacleRef ObsRef = 0;
-			NavMeshes[i].tileCache->addObstacle(Pos, Radius, Height, area, &ObsRef);
-
-			ObstacleNum = (unsigned int)ObsRef;
-
-			if (area == DT_TILECACHE_NULL_AREA || area == DT_TILECACHE_WELD_AREA)
-			{
-				bNavMeshModified = true;
-			}
+			bNavMeshModified = true;
 		}
 	}
 
 	return ObstacleNum;
+}
+
+void UTIL_AddStructureTemporaryObstacles(AvHAIBuildableStructure* Structure)
+{
+	bool bCollideWithPlayers = UTIL_ShouldStructureCollide(Structure->StructureType);
+
+	float Radius = UTIL_GetStructureRadiusForObstruction(Structure->StructureType);
+
+	// Not all structures collide with players (e.g. phase gate)
+	if (bCollideWithPlayers)
+	{
+		unsigned int area = UTIL_GetAreaForObstruction(Structure->StructureType, Structure->edict);
+		
+		// We add an obstacle for the building nav mesh below
+		for (int i = 0; i < BUILDING_NAV_MESH; i++)
+		{
+			unsigned int NewObstacleRef = UTIL_AddTemporaryObstacle(i, UTIL_GetCentreOfEntity(Structure->edict), Radius, 100.0f, area);
+
+			if (NewObstacleRef > 0)
+			{
+				AvHAITempObstacle NewObstacle;
+				NewObstacle.NavMeshIndex = i;
+				NewObstacle.ObstacleRef = NewObstacleRef;
+
+				Structure->Obstacles.push_back(NewObstacle);
+			}
+		}
+	}
+
+	// Always cut a hole in the building nav mesh so we don't try to place anything on top of this structure in future
+	unsigned int NewObstacleRef = UTIL_AddTemporaryObstacle(BUILDING_NAV_MESH, UTIL_GetCentreOfEntity(Structure->edict), Radius * 1.5f, 100.0f, DT_TILECACHE_NULL_AREA);
+
+	if (NewObstacleRef > 0)
+	{
+		AvHAITempObstacle NewObstacle;
+		NewObstacle.NavMeshIndex = BUILDING_NAV_MESH;
+		NewObstacle.ObstacleRef = NewObstacleRef;
+
+		Structure->Obstacles.push_back(NewObstacle);
+	}
+	
+}
+
+void UTIL_RemoveStructureTemporaryObstacles(AvHAIBuildableStructure* Structure)
+{
+	for (auto it = Structure->Obstacles.begin(); it != Structure->Obstacles.end();)
+	{
+		int NavMeshIndex = it->NavMeshIndex;
+
+		if (NavMeshes[NavMeshIndex].tileCache)
+		{
+			const dtTileCacheObstacle* ObstacleToRemove = NavMeshes[NavMeshIndex].tileCache->getObstacleByRef((dtObstacleRef)it->ObstacleRef);
+
+			if (ObstacleToRemove)
+			{
+				dtStatus RemovalStatus = NavMeshes[NavMeshIndex].tileCache->removeObstacle((dtObstacleRef)it->ObstacleRef);
+				
+				if (dtStatusSucceed(RemovalStatus))
+				{
+					bNavMeshModified = true;
+				}
+			}
+
+			
+		}
+
+		it = Structure->Obstacles.erase(it);
+	}
+
 }
 
 void UTIL_AddTemporaryObstacles(const Vector Location, float Radius, float Height, int area, unsigned int* ObstacleRefArray)
@@ -460,7 +526,7 @@ void UTIL_AddTemporaryObstacles(const Vector Location, float Radius, float Heigh
 
 			ObstacleRefArray[i] = (unsigned int)ObsRef;
 
-			if (area == DT_TILECACHE_NULL_AREA || area == DT_TILECACHE_WELD_AREA)
+			if (ObstacleNum > 0)
 			{
 				bNavMeshModified = true;
 			}

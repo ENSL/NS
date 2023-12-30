@@ -27,6 +27,7 @@ bool AICOMM_IssueSecureResNodeOrder(AvHAIPlayer* pBot, edict_t* Recipient, const
 void AICOMM_ClearAction(commander_action* Action);
 bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot, commander_action* Action);
 bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot);
+bool AICOMM_CheckForNextRecycleAction(AvHAIPlayer* pBot);
 bool AICOMM_CheckForNextResearchAction(AvHAIPlayer* pBot, commander_action* Action);
 void AICOMM_SetDropHealthAction(AvHAIPlayer* pBot, commander_action* Action, edict_t* Recipient);
 void AICOMM_SetDropAmmoAction(AvHAIPlayer* pBot, commander_action* Action, edict_t* Recipient);
@@ -39,7 +40,7 @@ const AvHAIHiveDefinition* AICOMM_GetEmptyHiveOpportunityNearestLocation(AvHAIPl
 
 bool AICOMM_BuildInfantryPortal(AvHAIPlayer* pBot, edict_t* CommChair, commander_action* Action);
 bool AICOMM_PerformNextSiegeHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefinition* HiveToSiege, commander_action* Action);
-bool AICOMM_PerformNextSecureHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefinition* HiveToSiege, commander_action* Action);
+bool AICOMM_PerformNextSecureHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefinition* HiveToSecure, commander_action* Action);
 
 ai_commander_request* AICOMM_GetExistingRequestForPlayer(AvHAIPlayer* pBot, edict_t* Requestor);
 void AICOMM_CheckNewRequests(AvHAIPlayer* pBot);
