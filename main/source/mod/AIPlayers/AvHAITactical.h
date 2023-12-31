@@ -32,7 +32,7 @@ void						AITAC_RefreshResourceNodes();
 void						AITAC_UpdateMapAIData();
 void						AITAC_CheckNavMeshModified();
 void						AITAC_RefreshBuildableStructures();
-void						AITAC_UpdateBuildableStructure(CBaseEntity* Structure);
+AvHAIBuildableStructure*	AITAC_UpdateBuildableStructure(CBaseEntity* Structure);
 void						AITAC_RefreshReachabilityForStructure(AvHAIBuildableStructure* Structure);
 void						AITAC_RefreshReachabilityForResNode(AvHAIResourceNode* ResNode);
 void						AITAC_RefreshAllResNodeReachability();
@@ -49,6 +49,7 @@ float						AITAC_GetPhaseDistanceBetweenPoints(const Vector StartPoint, const Ve
 const AvHAIHiveDefinition*	AITAC_GetHiveAtIndex(int Index);
 const AvHAIHiveDefinition*	AITAC_GetHiveNearestLocation(const Vector SearchLocation);
 const AvHAIHiveDefinition*	AITAC_GetActiveHiveNearestLocation(const Vector SearchLocation);
+const AvHAIHiveDefinition*	AITAC_GetNonEmptyHiveNearestLocation(const Vector SearchLocation);
 
 Vector						AITAC_GetCommChairLocation(AvHTeamNumber Team);
 edict_t*					AITAC_GetCommChair(AvHTeamNumber Team);
