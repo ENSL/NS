@@ -11,14 +11,14 @@
 #include "../AvHSharedUtil.h"
 #include "../AvHServerUtil.h"
 
-bool AICOMM_DeployStructure(AvHAIPlayer* pBot, const AvHAIDeployableStructureType StructureToDeploy, const Vector Location)
+bool AICOMM_DeployStructure(AvHAIPlayer* pBot, const AvHAIDeployableStructureType StructureToDeploy, const Vector Location, StructurePurpose Purpose)
 {
+	if (vIsZero(Location)) { return false; }
+
 	AvHMessageID StructureID = UTIL_StructureTypeToImpulseCommand(StructureToDeploy);
 
 	Vector BuildLocation = Location;
 	BuildLocation.z += 4.0f;
-
-	UTIL_DrawLine(INDEXENT(1), INDEXENT(1)->v.origin, Location, 10.0f);
 
 	if (!AvHSHUGetIsSiteValidForBuild(StructureID, &BuildLocation)) { return false; }
 
@@ -28,9 +28,16 @@ bool AICOMM_DeployStructure(AvHAIPlayer* pBot, const AvHAIDeployableStructureTyp
 
 	if (!thePurchaseAllowed) { return false; }
 
-	bool theSuccess = (AvHSUBuildTechForPlayer(StructureID, BuildLocation, pBot->Player) != NULL);
+	CBaseEntity* NewStructureEntity = AvHSUBuildTechForPlayer(StructureID, BuildLocation, pBot->Player);
 
-	if (!theSuccess) { return false; }
+	if (!NewStructureEntity) { return false; }
+
+	AvHAIBuildableStructure* NewStructure = AITAC_UpdateBuildableStructure(NewStructureEntity);
+
+	if (NewStructure)
+	{
+		NewStructure->Purpose = Purpose;
+	}
 
 	pBot->Player->PayPurchaseCost(theCost);
 
@@ -885,10 +892,12 @@ bool AICOMM_PerformNextSiegeHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefinit
 	StructureFilter.ReachabilityTeam = CommanderTeam;
 	StructureFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
 
-	StructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(20.0f);
+	StructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(25.0f);
 
 	Vector SiegeLocation = ZERO_VECTOR;
 	AvHAIBuildableStructure* ExistingPG = nullptr;
+
+	edict_t* NearestBuilder = nullptr;
 
 	if (AITAC_PhaseGatesAvailable(CommanderTeam))
 	{
@@ -896,7 +905,7 @@ bool AICOMM_PerformNextSiegeHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefinit
 
 		ExistingPG = AITAC_FindClosestDeployableToLocation(HiveToSiege->Location, &StructureFilter);
 
-		if (ExistingPG && (ExistingPG->StructureStatusFlags & STRUCTURE_STATUS_COMPLETED))
+		if (ExistingPG)
 		{
 			SiegeLocation = ExistingPG->Location;
 		}
@@ -915,7 +924,7 @@ bool AICOMM_PerformNextSiegeHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefinit
 		}
 		else
 		{
-			edict_t* NearestBuilder = AITAC_GetNearestHiddenPlayerInLocation(CommanderTeam, HiveToSiege->Location, UTIL_MetresToGoldSrcUnits(20.0f));
+			NearestBuilder = AITAC_GetNearestHiddenPlayerInLocation(CommanderTeam, HiveToSiege->Location, UTIL_MetresToGoldSrcUnits(20.0f));
 
 			if (FNullEnt(NearestBuilder)) { return false; }
 
@@ -923,20 +932,28 @@ bool AICOMM_PerformNextSiegeHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefinit
 		}
 	}
 
-	edict_t* NearestBuilder = AITAC_GetNearestHiddenPlayerInLocation(CommanderTeam, SiegeLocation, UTIL_MetresToGoldSrcUnits(20.0f));
+	if (FNullEnt(NearestBuilder))
+	{
+		NearestBuilder = AITAC_GetNearestHiddenPlayerInLocation(CommanderTeam, SiegeLocation, UTIL_MetresToGoldSrcUnits(20.0f));
+	}
 
 	if (FNullEnt(NearestBuilder)) { return false; }
 
-	Vector NextBuildPosition = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), SiegeLocation, UTIL_MetresToGoldSrcUnits(3.0f));
+	Vector NextBuildPosition = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), SiegeLocation, UTIL_MetresToGoldSrcUnits(3.0f));
+
+	if (vIsZero(NextBuildPosition))
+	{
+		NextBuildPosition = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), SiegeLocation, UTIL_MetresToGoldSrcUnits(3.0f));
+	}
 
 	if (!ExistingPG)
 	{
-		return AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_PHASEGATE, NextBuildPosition);
+		return AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_PHASEGATE, NextBuildPosition, STRUCTURE_PURPOSE_SIEGE);
 	}
 
 	if (!ExistingTF)
 	{
-		return AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_TURRETFACTORY, NextBuildPosition);
+		return AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_TURRETFACTORY, NextBuildPosition, STRUCTURE_PURPOSE_SIEGE);
 	}
 
 	StructureFilter.DeployableTypes = STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY;
@@ -946,7 +963,7 @@ bool AICOMM_PerformNextSiegeHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefinit
 
 	if (!ExistingArmoury)
 	{
-		return AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_ARMOURY, NextBuildPosition);
+		return AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_ARMOURY, NextBuildPosition, STRUCTURE_PURPOSE_SIEGE);
 	}
 
 	if (ExistingTF->StructureType != STRUCTURE_MARINE_ADVTURRETFACTORY)
@@ -963,9 +980,14 @@ bool AICOMM_PerformNextSiegeHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefinit
 	{
 		SiegeLocation = ExistingTF->Location;
 
-		NextBuildPosition = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), SiegeLocation, UTIL_MetresToGoldSrcUnits(3.0f));
+		NextBuildPosition = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), SiegeLocation, UTIL_MetresToGoldSrcUnits(3.0f));
 
-		return AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_SIEGETURRET, NextBuildPosition);
+		if (vIsZero(NextBuildPosition))
+		{
+			NextBuildPosition = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), SiegeLocation, UTIL_MetresToGoldSrcUnits(3.0f));
+		}
+
+		return AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_SIEGETURRET, NextBuildPosition, STRUCTURE_PURPOSE_SIEGE);
 	}
 
 	if (!UTIL_IsStructureElectrified(ExistingTF->edict))
@@ -1019,7 +1041,7 @@ bool AICOMM_PerformNextSecureHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefini
 
 				if (!vIsZero(BuildLocation))
 				{
-					return AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_PHASEGATE, BuildLocation);
+					return AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_PHASEGATE, BuildLocation, STRUCTURE_PURPOSE_FORTIFY);
 				}
 
 				return false;
@@ -1039,7 +1061,7 @@ bool AICOMM_PerformNextSecureHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefini
 
 			if (!vIsZero(BuildLocation))
 			{
-				return AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_TURRETFACTORY, BuildLocation);
+				return AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_TURRETFACTORY, BuildLocation, STRUCTURE_PURPOSE_FORTIFY);
 			}
 
 			return false;
@@ -1057,7 +1079,7 @@ bool AICOMM_PerformNextSecureHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefini
 
 		if (!vIsZero(BuildLocation))
 		{
-			return AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_TURRET, BuildLocation);
+			return AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_TURRET, BuildLocation, STRUCTURE_PURPOSE_FORTIFY);
 		}
 
 		return false;
@@ -1147,6 +1169,38 @@ bool AICOMM_CheckForNextRecycleAction(AvHAIPlayer* pBot)
 	if (UnreachableStructure)
 	{
 		return AICOMM_RecycleStructure(pBot, UnreachableStructure);
+	}
+
+	vector<AvHAIHiveDefinition*> Hives = AITAC_GetAllHives();
+
+	for (auto HiveIt = Hives.begin(); HiveIt != Hives.end(); HiveIt++)
+	{
+		AvHAIHiveDefinition* Hive = (*HiveIt);
+
+		if (Hive->Status != HIVE_STATUS_UNBUILT) { continue; }
+
+		DeployableSearchFilter RedundantFilter;
+		RedundantFilter.DeployableTeam = pBot->Player->GetTeam();
+		RedundantFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+		RedundantFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(25.0f);
+
+		vector<AvHAIBuildableStructure*> NearbyStructures = AITAC_FindAllDeployables(Hive->Location, &RedundantFilter);
+
+		for (auto StructIt = NearbyStructures.begin(); StructIt != NearbyStructures.end(); StructIt++)
+		{
+			AvHAIBuildableStructure* Structure = (*StructIt);
+
+			if (Structure->Purpose == STRUCTURE_PURPOSE_SIEGE)
+			{
+				// Check for the potential situation where we can siege more than one hive at a time
+				const AvHAIHiveDefinition* NearestHive = AITAC_GetNonEmptyHiveNearestLocation(Structure->Location);
+
+				if (!NearestHive || vDist2DSq(NearestHive->Location, Structure->Location) > sqrf(UTIL_MetresToGoldSrcUnits(25.0f)))
+				{
+					return AICOMM_RecycleStructure(pBot, Structure);
+				}
+			}
+		}
 	}
 
 	return false;

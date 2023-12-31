@@ -1625,22 +1625,22 @@ void AITAC_RefreshReachabilityForStructure(AvHAIBuildableStructure* Structure)
 	}
 }
 
-void AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
+AvHAIBuildableStructure* AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 {
-	if (!Structure || (Structure->pev->effects & EF_NODRAW) || (Structure->pev->deadflag != DEAD_NO)) { return; }
+	if (!Structure || (Structure->pev->effects & EF_NODRAW) || (Structure->pev->deadflag != DEAD_NO)) { return nullptr; }
 
 	AvHBaseBuildable* BaseBuildable = dynamic_cast<AvHBaseBuildable*>(Structure);
 
-	if (!BaseBuildable) { return; }
+	if (!BaseBuildable) { return nullptr; }
 
 	edict_t* BuildingEdict = BaseBuildable->edict();
 
 	AvHAIDeployableStructureType StructureType = UTIL_IUSER3ToStructureType(BaseBuildable->pev->iuser3);
 
-	if (StructureType == STRUCTURE_NONE) { return; }
+	if (StructureType == STRUCTURE_NONE) { return nullptr; }
 
 	int EntIndex = BaseBuildable->entindex();
-	if (EntIndex < 0) { return; }
+	if (EntIndex < 0) { return nullptr; }
 
 	AvHTeamNumber TeamANumber = GetGameRules()->GetTeamANumber();
 	AvHTeamNumber TeamBNumber = GetGameRules()->GetTeamBNumber();
@@ -1720,6 +1720,8 @@ void AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 
 	BuildingMap[EntIndex].StructureStatusFlags = NewFlags;
 	BuildingMap[EntIndex].LastSeen = StructureRefreshFrame;
+
+	return &BuildingMap[EntIndex];
 
 }
 
@@ -2284,6 +2286,27 @@ const AvHAIHiveDefinition* AITAC_GetActiveHiveNearestLocation(const Vector Searc
 	for (auto it = Hives.begin(); it != Hives.end(); it++)
 	{
 		if (it->Status != HIVE_STATUS_BUILT) { continue; }
+
+		float ThisDist = vDist3DSq(SearchLocation, it->Location);
+
+		if (!Result || ThisDist < MinDist)
+		{
+			Result = &(*it);
+			MinDist = ThisDist;
+		}
+	}
+
+	return Result;
+}
+
+const AvHAIHiveDefinition* AITAC_GetNonEmptyHiveNearestLocation(const Vector SearchLocation)
+{
+	AvHAIHiveDefinition* Result = nullptr;
+	float MinDist = 0.0f;
+
+	for (auto it = Hives.begin(); it != Hives.end(); it++)
+	{
+		if (it->Status == HIVE_STATUS_UNBUILT) { continue; }
 
 		float ThisDist = vDist3DSq(SearchLocation, it->Location);
 
