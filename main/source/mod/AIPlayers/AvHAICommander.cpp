@@ -463,7 +463,7 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot, commander_action* Action)
 
 		if (!bAlreadyScanning)
 		{
-			Vector BuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), HiveUnderSiege->FloorLocation, UTIL_MetresToGoldSrcUnits(3.0f));
+			Vector BuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), HiveUnderSiege->FloorLocation, UTIL_MetresToGoldSrcUnits(3.0f));
 
 			if (AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_SCAN, BuildLocation))
 			{
