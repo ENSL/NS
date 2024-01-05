@@ -332,6 +332,17 @@ bool AITASK_IsTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	}
 	case TASK_REINFORCE_STRUCTURE:
 		return AITASK_IsReinforceStructureTaskStillValid(pBot, Task);
+	case TASK_SECURE_HIVE:
+	{
+		if (IsPlayerMarine(pBot->Edict))
+		{
+			return AITASK_IsMarineSecureHiveTaskStillValid(pBot, Task);
+		}
+		else
+		{
+			return false;
+		}
+	}
 	case TASK_DEFEND:
 		return AITASK_IsDefendTaskStillValid(pBot, Task);
 	case TASK_WELD:
@@ -548,11 +559,15 @@ bool AITASK_IsMarineBuildTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 		return false;
 	}
 
+	// Always go build if commanded to, regardless of how many are already working on it
 	if (!Task->bIssuedByCommander)
 	{
 		int NumBuilders = AITAC_GetNumPlayersOfTeamInArea((AvHTeamNumber)pBot->Edict->v.team, Task->TaskTarget->v.origin, UTIL_MetresToGoldSrcUnits(2.0f), false, pBot->Edict, AVH_USER3_NONE);
+		
+		// Only one marine should build stuff if it's near the marine base. If not, then two for safety
+		int NumDesiredBuilders = (vDist2DSq(Task->TaskTarget->v.origin, AITAC_GetCommChairLocation(pBot->Player->GetTeam())) < sqrf(UTIL_MetresToGoldSrcUnits(15.0f))) ? 1 : 2;
 
-		if (NumBuilders >= 2)
+		if (NumBuilders >= NumDesiredBuilders)
 		{
 			return false;
 		}
@@ -764,20 +779,17 @@ bool AITASK_IsMarineCapResNodeTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask*
 	// Always obey commander orders even if there's a bunch of other marines already there
 	if (!Task->bIssuedByCommander)
 	{
-		int NumMarinesNearby = AITAC_GetNumPlayersOfTeamInArea(pBot->Player->GetTeam(), Task->TaskLocation, UTIL_MetresToGoldSrcUnits(4.0f), false, pBot->Edict, AVH_USER3_NONE);
+		int DesiredNumCappers = (ResNodeIndex->OwningTeam == AIMGR_GetEnemyTeam(pBot->Player->GetTeam())) ? 2 : 1;
+		int NumMarinesNearby = AITAC_GetNumPlayersOfTeamInArea(pBot->Player->GetTeam(), Task->TaskLocation, UTIL_MetresToGoldSrcUnits(4.0f), false, pBot->Edict, AVH_USER3_COMMANDER_PLAYER);
 
-		if (NumMarinesNearby >= 2 && vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation) > sqrf(UTIL_MetresToGoldSrcUnits(4.0f))) { return false; }
+		if (NumMarinesNearby >= DesiredNumCappers && vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation) > sqrf(UTIL_MetresToGoldSrcUnits(4.0f))) { return false; }
 	}
 
 	if (ResNodeIndex->bIsOccupied)
 	{
-		if (ResNodeIndex->OwningTeam == pBot->Player->GetTeam() && !FNullEnt(ResNodeIndex->ActiveTowerEntity))
+		if (ResNodeIndex->OwningTeam == pBot->Player->GetTeam())
 		{
-			return !UTIL_StructureIsFullyBuilt(ResNodeIndex->ActiveTowerEntity);
-		}
-		else
-		{
-			return true;
+			return (FNullEnt(ResNodeIndex->ActiveTowerEntity) || !UTIL_StructureIsFullyBuilt(ResNodeIndex->ActiveTowerEntity));
 		}
 	}
 
@@ -874,6 +886,67 @@ bool AITASK_IsReinforceStructureTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTas
 
 	// We have all available chambers set up
 	return false;
+}
+
+bool AITASK_IsMarineSecureHiveTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
+{
+	if (!Task || FNullEnt(Task->TaskTarget) || IsPlayerAlien(pBot->Edict)) { return false; }
+
+	AvHAIHiveDefinition* HiveToSecure = AITAC_GetHiveFromEdict(Task->TaskTarget);
+
+	if (!HiveToSecure || HiveToSecure->Status != HIVE_STATUS_UNBUILT) { return false; }
+
+	// A marine bot will consider their "secure hive" task completed if the following structures have been fully built:
+	// Phase gate (only if tech available)
+	// Turret factory (regular or advanced)
+	// 5 turrets
+	// Resource node has been capped by the bot's team
+
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+
+	bool bPhaseGatesAvailable = AITAC_PhaseGatesAvailable(BotTeam);
+
+	bool bHasPhaseGate = false;
+	bool bHasTurretFactory = false;
+	bool bTurretFactoryElectrified = false;
+	int NumTurrets = 0;
+
+	DeployableSearchFilter SearchFilter;
+	SearchFilter.DeployableTypes = (STRUCTURE_MARINE_PHASEGATE | STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_MARINE_ADVTURRETFACTORY);
+	SearchFilter.DeployableTeam = BotTeam;
+	SearchFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+	SearchFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+	SearchFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
+
+	vector<AvHAIBuildableStructure*> HiveStructures = AITAC_FindAllDeployables(HiveToSecure->FloorLocation, &SearchFilter);
+
+	for (auto it = HiveStructures.begin(); it != HiveStructures.end(); it++)
+	{
+		AvHAIBuildableStructure* Structure = (*it);
+
+		if (Structure->StructureType == STRUCTURE_MARINE_TURRETFACTORY)
+		{
+			bHasPhaseGate = true;
+		}
+
+		if (Structure->StructureType == STRUCTURE_MARINE_TURRETFACTORY || Structure->StructureType == STRUCTURE_MARINE_ADVTURRETFACTORY)
+		{
+			bHasTurretFactory = true;
+
+			SearchFilter.DeployableTypes = STRUCTURE_MARINE_TURRET;
+			SearchFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(8.0f);
+
+			NumTurrets = AITAC_GetNumDeployablesNearLocation(Structure->Location, &SearchFilter);
+
+		}
+
+	}
+
+	const AvHAIResourceNode* ResNode = HiveToSecure->HiveResNodeRef;
+
+	bool bSecuredResNode = (!ResNode || (ResNode->OwningTeam == BotTeam && !FNullEnt(ResNode->ActiveTowerEntity) && UTIL_StructureIsFullyBuilt(ResNode->ActiveTowerEntity)));
+
+	return !((!bPhaseGatesAvailable || bHasPhaseGate) && bHasTurretFactory && NumTurrets >= 5 && bSecuredResNode);
 }
 
 bool AITASK_IsEvolveTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
@@ -1436,6 +1509,88 @@ void BotProgressResupplyTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		BotLookAt(pBot, UTIL_GetCentreOfEntity(Task->TaskTarget));
 	}
 
+}
+
+void AIPlayerBuildStructure(AvHAIPlayer* pBot, edict_t* BuildTarget)
+{
+	if (!pBot || !IsPlayerActiveInGame(pBot->Edict) || FNullEnt(BuildTarget) || UTIL_StructureIsFullyBuilt(BuildTarget)) { return; }
+
+	if (IsPlayerAlien(pBot->Edict) && !IsPlayerGorge(pBot->Edict)) { return; }
+
+	if (IsPlayerMarine(pBot->Edict))
+	{
+		// If we're not already building
+		if (pBot->Edict->v.viewmodel != 0)
+		{
+			// If someone else is building, then we will guard
+			edict_t* OtherBuilder = AITAC_GetClosestPlayerOnTeamWithLOS(pBot->Player->GetTeam(), BuildTarget->v.origin, UTIL_MetresToGoldSrcUnits(2.0f), pBot->Edict);
+
+			if (!FNullEnt(OtherBuilder) && OtherBuilder->v.weaponmodel == 0)
+			{
+				BotGuardLocation(pBot, BuildTarget->v.origin);
+				return;
+			}
+		}
+	}
+
+	if (IsPlayerInUseRange(pBot->Edict, BuildTarget))
+	{
+		// If we were ducking before then keep ducking
+		if (pBot->Edict->v.oldbuttons & IN_DUCK)
+		{
+			pBot->Button |= IN_DUCK;
+		}
+
+		BotUseObject(pBot, BuildTarget, true);
+
+		// Haven't started building, maybe not quite looking at the right angle
+		if (pBot->Edict->v.weaponmodel != 0)
+		{
+			if (vDist2DSq(pBot->Edict->v.origin, BuildTarget->v.origin) > sqrf(60.0f))
+			{
+				MoveDirectlyTo(pBot, BuildTarget->v.origin);
+			}
+			else
+			{
+				Vector NewViewPoint = UTIL_GetRandomPointInBoundingBox(BuildTarget->v.absmin, BuildTarget->v.absmax);
+
+				BotLookAt(pBot, NewViewPoint);
+			}
+		}
+
+		return;
+	}
+	else
+	{
+		// Might need to duck if it's an infantry portal
+		if (vDist2DSq(pBot->Edict->v.origin, BuildTarget->v.origin) < sqrf(max_player_use_reach))
+		{
+			if (BuildTarget->v.origin > pBot->Edict->v.origin)
+			{
+				BotJump(pBot);
+			}
+			else
+			{
+				pBot->Button |= IN_DUCK;
+			}
+
+		}
+	}
+
+	MoveTo(pBot, BuildTarget->v.origin, MOVESTYLE_NORMAL);
+
+	if (IsPlayerMarine(pBot->Edict))
+	{
+		if (gpGlobals->time - pBot->LastCombatTime > 5.0f)
+		{
+			BotReloadWeapons(pBot);
+		}
+	}
+
+	if (vDist2DSq(pBot->Edict->v.origin, BuildTarget->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
+	{
+		BotLookAt(pBot, UTIL_GetCentreOfEntity(BuildTarget));
+	}
 }
 
 void MarineProgressBuildTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
@@ -2314,70 +2469,66 @@ void MarineProgressSecureHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (!Hive) { return; }
 
-	bool bWaitForBuildingPlacement = false;
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
 
 	DeployableSearchFilter StructureFilter;
-	StructureFilter.DeployableTypes = (STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_MARINE_ADVTURRETFACTORY);
+	StructureFilter.DeployableTypes = SEARCH_ALL_MARINE_STRUCTURES;
 	StructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
-	StructureFilter.ReachabilityFlags = AI_REACHABILITY_MARINE;
+	StructureFilter.DeployableTeam = BotTeam;
+	StructureFilter.ReachabilityTeam = BotTeam;
+	StructureFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+	StructureFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING | STRUCTURE_STATUS_COMPLETED;
 
-	AvHAIBuildableStructure* TF = AITAC_FindClosestDeployableToLocation(Hive->FloorLocation, &StructureFilter);
+	vector<AvHAIBuildableStructure*> BuildableStructures = AITAC_FindAllDeployables(Hive->FloorLocation, &StructureFilter);
 
-	if (!TF || !(TF->StructureStatusFlags & STRUCTURE_STATUS_COMPLETED)) { bWaitForBuildingPlacement = true; }
+	AvHAIBuildableStructure* StructureToBuild = nullptr;
+	float MinDist = 0.0f;
 
-	bool bPhaseGatesAvailable = AITAC_ResearchIsComplete(pBot->Player->GetTeam(), TECH_PHASE_GATE);
-
-	if (bPhaseGatesAvailable && !bWaitForBuildingPlacement)
+	for (auto it = BuildableStructures.begin(); it != BuildableStructures.end(); it++)
 	{
-		StructureFilter.DeployableTypes = STRUCTURE_MARINE_PHASEGATE;
-
-		AvHAIBuildableStructure* PhaseGate = AITAC_FindClosestDeployableToLocation(Hive->FloorLocation, &StructureFilter);
-
-		if (!PhaseGate || !(TF->StructureStatusFlags & STRUCTURE_STATUS_COMPLETED)) { bWaitForBuildingPlacement = true; }
-	}
-
-	if (!bWaitForBuildingPlacement)
-	{
-		StructureFilter.DeployableTypes = STRUCTURE_MARINE_TURRET;
-
-		int NumTurrets = AITAC_GetNumDeployablesNearLocation(TF->Location, &StructureFilter);
-
-		if (NumTurrets < 5) { bWaitForBuildingPlacement = true; }
-	}
-
-	if (bWaitForBuildingPlacement)
-	{
-		if (TF)
-		{
-			BotGuardLocation(pBot, TF->Location);
-		}
-		else
-		{
-			BotGuardLocation(pBot, Task->TaskLocation);
-		}
+		AvHAIBuildableStructure* ThisStructure = (*it);
 		
+		if (ThisStructure->StructureType == STRUCTURE_MARINE_PHASEGATE)
+		{
+			AIPlayerBuildStructure(pBot, ThisStructure->edict);
+			return;
+		}
+
+		float ThisDist = vDist2DSq(pBot->Edict->v.origin, ThisStructure->Location);
+
+		if (!StructureToBuild || ThisDist < MinDist)
+		{
+			StructureToBuild = ThisStructure;
+			MinDist = ThisDist;
+		}
+	}
+
+	if (StructureToBuild)
+	{
+		AIPlayerBuildStructure(pBot, StructureToBuild->edict);
 		return;
 	}
 
 	const AvHAIResourceNode* ResNode = Hive->HiveResNodeRef;
 
-	if (ResNode && ResNode->OwningTeam != pBot->Player->GetTeam())
+	if (ResNode && ResNode->bIsOccupied)
 	{
-		if (ResNode->bIsOccupied)
+		if (ResNode->OwningTeam != BotTeam)
 		{
 			BotAttackTarget(pBot, ResNode->ActiveTowerEntity);
+			return;
 		}
 		else
 		{
-			BotGuardLocation(pBot, ResNode->Location);
+			if (!UTIL_StructureIsFullyBuilt(ResNode->ActiveTowerEntity))
+			{
+				AIPlayerBuildStructure(pBot, ResNode->ActiveTowerEntity);
+				return;
+			}
 		}
-
-		return;
 	}
 
 	BotGuardLocation(pBot, Task->TaskLocation);
-
-
 	
 }
 
@@ -2413,24 +2564,7 @@ void MarineProgressCapResNodeTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		{
 			if (!UTIL_StructureIsFullyBuilt(ResNodeIndex->ActiveTowerEntity))
 			{
-				// Now we're committed, don't get distracted
-				Task->bTaskIsUrgent = true;
-				if (UTIL_PlayerHasLOSToEntity(pBot->Edict, ResNodeIndex->ActiveTowerEntity, max_player_use_reach, true))
-				{
-					BotUseObject(pBot, ResNodeIndex->ActiveTowerEntity, true);
-					if (vDist2DSq(pBot->Edict->v.origin, ResNodeIndex->ActiveTowerEntity->v.origin) > sqrf(50.0f))
-					{
-						MoveDirectlyTo(pBot, ResNodeIndex->ActiveTowerEntity->v.origin);
-					}
-					return;
-				}
-
-				MoveTo(pBot, ResNodeIndex->ActiveTowerEntity->v.origin, MOVESTYLE_NORMAL);
-
-				if (vDist2DSq(pBot->Edict->v.origin, ResNodeIndex->ActiveTowerEntity->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
-				{
-					BotLookAt(pBot, UTIL_GetCentreOfEntity(ResNodeIndex->ActiveTowerEntity));
-				}
+				AIPlayerBuildStructure(pBot, ResNodeIndex->ActiveTowerEntity);
 
 				return;
 			}

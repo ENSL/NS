@@ -9,7 +9,9 @@
 #include "AvHAITactical.h"
 #include "AvHAITask.h"
 #include "AvHAICommander.h"
+#include "AvHAIPlayerManager.h"
 
+#include "../AvHGamerules.h"
 #include "../AvHMessage.h"
 
 extern nav_mesh NavMeshes[MAX_NAV_MESHES]; // Array of nav meshes. Currently only 3 are used (building, onos, and regular)
@@ -1511,6 +1513,546 @@ void DroneThink(AvHAIPlayer* pBot)
 	//AIDEBUG_DrawBotPath(pBot);
 }
 
+void SetNewAIPlayerRole(AvHAIPlayer* pBot, AvHAIBotRole NewRole)
+{
+	if (NewRole != pBot->BotRole)
+	{
+		AITASK_ClearBotTask(pBot, &pBot->PrimaryBotTask);
+		AITASK_ClearBotTask(pBot, &pBot->SecondaryBotTask);
+
+		pBot->BotRole = NewRole;
+	}
+}
+
+void UpdateAIPlayerCORole(AvHAIPlayer* pBot)
+{
+
+}
+
+void UpdateAIPlayerDMRole(AvHAIPlayer* pBot)
+{
+
+}
+
+void UpdateAIAlienPlayerNSRole(AvHAIPlayer* pBot)
+{
+
+}
+
+bool ShouldAIPlayerTakeCommand(AvHAIPlayer* pBot)
+{
+	AvHAICommanderMode CurrentCommanderMode = AIMGR_GetCommanderMode();
+
+	// Don't go commander if bots are not allowed to
+	if (CurrentCommanderMode == COMMANDERMODE_DISABLED) { return false; }
+
+	AvHTeamNumber BotTeamNumber = pBot->Player->GetTeam();
+	AvHTeam* BotTeam = GetGameRules()->GetTeam(BotTeamNumber);
+
+	// Don't go commander if we're not an alien. You never know with the way I structure my logic...
+	if (!BotTeam || BotTeam->GetTeamType() != AVH_CLASS_TYPE_MARINE) { return false; }
+
+	// Don't go commander if we're only supposed to command when there aren't any humans and we have one
+	if (CurrentCommanderMode == COMMANDERMODE_IFNOHUMAN && AIMGR_GetNumHumanPlayersOnTeam(BotTeamNumber) > 0) { return false; }
+
+	AvHPlayer* CurrentCommander = BotTeam->GetCommanderPlayer();
+
+	// Don't go commander if we already have one, and it's not us
+	if (CurrentCommander)
+	{
+		return CurrentCommander == pBot->Player;
+	}
+
+	// Don't go commander if there is another bot already taking command
+	if (AIMGR_GetNumAIPlayersWithRoleOnTeam(BotTeamNumber, BOT_ROLE_COMMAND, pBot) > 0) { return false; }
+
+	float ThisBotDist = vDist2DSq(pBot->Edict->v.origin, AITAC_GetCommChairLocation(BotTeamNumber));
+
+	// Only go commander if we're the closest bot to the chair
+	vector <AvHAIPlayer*> BotList = AIMGR_GetAIPlayersOnTeam(BotTeamNumber);
+
+	for (auto it = BotList.begin(); it != BotList.end(); it++)
+	{
+		AvHAIPlayer* OtherBot = (*it);
+
+		float OtherBotDist = vDist2DSq(OtherBot->Edict->v.origin, AITAC_GetCommChairLocation(BotTeamNumber));
+
+		if (OtherBot != pBot && IsPlayerActiveInGame(pBot->Edict) && OtherBotDist < ThisBotDist)
+		{
+			// We aren't the closest, let the other guy take command
+			return false;
+		}
+	}
+
+	// We must be the closest!
+	return true;
+}
+
+void UpdateAIMarinePlayerNSRole(AvHAIPlayer* pBot)
+{
+	AvHTeamNumber BotTeamNumber = pBot->Player->GetTeam();
+
+	if (BotTeamNumber == TEAM_IND)
+	{ 
+		SetNewAIPlayerRole(pBot, BOT_ROLE_NONE);
+		
+		return;
+	}
+		
+	if (ShouldAIPlayerTakeCommand(pBot))
+	{
+		// We're going to go commander!
+		SetNewAIPlayerRole(pBot, BOT_ROLE_COMMAND);
+		return;
+	}
+
+	int NumSweeperBots = AIMGR_GetNumAIPlayersWithRoleOnTeam(BotTeamNumber, BOT_ROLE_SWEEPER, pBot);
+
+	// Always have a sweeper
+	if (NumSweeperBots < 1)
+	{
+		SetNewAIPlayerRole(pBot, BOT_ROLE_SWEEPER);
+		return;
+	}
+
+	// Always go bombardier if we have a grenade launcher
+	if (PlayerHasWeapon(pBot->Player, WEAPON_MARINE_GL))
+	{
+		SetNewAIPlayerRole(pBot, BOT_ROLE_BOMBARDIER);
+		return;
+	}
+
+	// If we own less than half the res nodes in the map, then we want 2 marines to cap them. Otherwise, have 1
+	float ResNodeOwnership = AITAC_GetTeamResNodeOwnership(BotTeamNumber);
+
+	int DesiredResCappers = (ResNodeOwnership < 0.5f) ? 2 : 1;
+
+	int NumCappers = AIMGR_GetNumAIPlayersWithRoleOnTeam(BotTeamNumber, BOT_ROLE_FIND_RESOURCES, pBot);
+
+	if (NumCappers < DesiredResCappers)
+	{
+		SetNewAIPlayerRole(pBot, BOT_ROLE_FIND_RESOURCES);
+		return;
+	}
+
+	// Everyone else goes assault
+	SetNewAIPlayerRole(pBot, BOT_ROLE_ASSAULT);
+
+}
+
+void AIPlayerNSThink(AvHAIPlayer* pBot)
+{
+	AvHTeam* BotTeam = GetGameRules()->GetTeam(pBot->Player->GetTeam());
+
+	if (!BotTeam) { return; }
+
+	if (BotTeam->GetTeamType() == AVH_CLASS_TYPE_MARINE)
+	{
+		AIPlayerNSMarineThink(pBot);
+	}
+	else
+	{
+		AIPlayerNSAlienThink(pBot);
+	}
+}
+
+AvHAIPlayerTask* AIPlayerGetNextTask(AvHAIPlayer* pBot)
+{
+
+	// Any orders issued by the commander take priority over everything else
+	if (pBot->CommanderTask.TaskType != TASK_NONE)
+	{
+		if (pBot->SecondaryBotTask.bTaskIsUrgent)
+		{
+			return &pBot->SecondaryBotTask;
+		}
+		else
+		{
+			return &pBot->CommanderTask;
+		}
+	}
+
+	// Prioritise healing our friends (heal tasks are only valid if the target is close by anyway)
+	if (pBot->SecondaryBotTask.TaskType == TASK_HEAL)
+	{
+		return &pBot->SecondaryBotTask;
+	}
+
+	if (AITASK_IsTaskUrgent(pBot, &pBot->WantsAndNeedsTask))
+	{
+		return &pBot->WantsAndNeedsTask;
+	}
+
+	if (AITASK_IsTaskUrgent(pBot, &pBot->PrimaryBotTask))
+	{
+		return &pBot->PrimaryBotTask;
+	}
+
+	if (AITASK_IsTaskUrgent(pBot, &pBot->SecondaryBotTask))
+	{
+		return &pBot->SecondaryBotTask;
+	}
+
+	if (pBot->WantsAndNeedsTask.TaskType != TASK_NONE)
+	{
+		return &pBot->WantsAndNeedsTask;
+	}
+
+	if (pBot->SecondaryBotTask.TaskType != TASK_NONE)
+	{
+		return &pBot->SecondaryBotTask;
+	}
+
+	return &pBot->PrimaryBotTask;
+}
+
+void AIPlayerNSMarineThink(AvHAIPlayer* pBot)
+{
+	UpdateAIMarinePlayerNSRole(pBot);
+
+	if (pBot->BotRole == BOT_ROLE_COMMAND)
+	{
+		AICOMM_CommanderThink(pBot);
+		return;
+	}
+
+	if (!pBot->CurrentTask) { pBot->CurrentTask = &pBot->PrimaryBotTask; }
+
+	if (gpGlobals->time < pBot->BotNextTaskEvaluationTime)
+	{
+		if (pBot->CurrentTask && pBot->CurrentTask->TaskType != TASK_NONE)
+		{
+			BotProgressTask(pBot, pBot->CurrentTask);
+			return;
+		}		
+	}
+
+	pBot->BotNextTaskEvaluationTime = gpGlobals->time + frandrange(0.2f, 0.5f);
+
+	AITASK_BotUpdateAndClearTasks(pBot);
+
+	AIPlayerSetPrimaryMarineTask(pBot, &pBot->PrimaryBotTask);
+	AIPlayerSetSecondaryMarineTask(pBot, &pBot->SecondaryBotTask);
+
+	pBot->CurrentTask = AIPlayerGetNextTask(pBot);
+
+	if (pBot->CurrentTask && pBot->CurrentTask->TaskType != TASK_NONE)
+	{
+		BotProgressTask(pBot, pBot->CurrentTask);
+	}
+
+	if (pBot->DesiredCombatWeapon == WEAPON_NONE)
+	{
+		pBot->DesiredCombatWeapon = BotMarineChooseBestWeapon(pBot, nullptr);
+	}
+
+	if (pBot->CommanderTask.TaskType != TASK_NONE)
+	{
+		UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, pBot->CommanderTask.TaskLocation);
+	}
+}
+
+void AIPlayerSetPrimaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
+{
+	switch (pBot->BotRole)
+	{
+	case BOT_ROLE_SWEEPER:
+		AIPlayerSetMarineSweeperPrimaryTask(pBot, Task);
+		return;
+	case BOT_ROLE_FIND_RESOURCES:
+		AIPlayerSetMarineCapperPrimaryTask(pBot, Task);
+		return;
+	case BOT_ROLE_ASSAULT:
+		AIPlayerSetMarineAssaultPrimaryTask(pBot, Task);
+		return;
+	case BOT_ROLE_BOMBARDIER:
+		AIPlayerSetMarineBombardierPrimaryTask(pBot, Task);
+		return;
+	default:
+		return;
+	}
+
+}
+
+void AIPlayerSetMarineSweeperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
+{
+	if (Task->TaskType == TASK_GUARD) { return; }
+
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+
+	Vector CommChairLocation = AITAC_GetCommChairLocation(BotTeam);
+
+	DeployableSearchFilter StructureFilter;
+	StructureFilter.DeployableTypes = STRUCTURE_MARINE_PHASEGATE;
+	StructureFilter.DeployableTeam = BotTeam;
+	StructureFilter.ReachabilityTeam = BotTeam;
+	StructureFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+	StructureFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+	StructureFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+
+	if (AITAC_GetNumDeployablesNearLocation(CommChairLocation, &StructureFilter) < 2)
+	{
+		Task->TaskType = TASK_GUARD;
+		Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(pBot->BotNavInfo.NavProfile, CommChairLocation, UTIL_MetresToGoldSrcUnits(10.0f));
+		Task->bTaskIsUrgent = false;
+		Task->TaskLength = frandrange(20.0f, 30.0f);
+		return;
+	}
+
+	AvHAIBuildableStructure* NearestPG = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &StructureFilter);
+
+	vector<AvHAIBuildableStructure*> AllPG = AITAC_FindAllDeployables(pBot->Edict->v.origin, &StructureFilter);
+
+	AvHAIBuildableStructure* RandomPG = nullptr;
+	int HighestRand = 0;
+
+	for (auto it = AllPG.begin(); it != AllPG.end(); it++)
+	{
+		AvHAIBuildableStructure* ThisStruct = (*it);
+
+		if (ThisStruct == NearestPG) { continue; }
+
+		int ThisRand = irandrange(0, 100);
+
+		if (!RandomPG || ThisRand > HighestRand)
+		{
+			RandomPG = ThisStruct;
+			HighestRand = ThisRand;
+		}
+	}
+
+	if (RandomPG)
+	{
+		Task->TaskType = TASK_GUARD;
+		Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(pBot->BotNavInfo.NavProfile, RandomPG->Location, UTIL_MetresToGoldSrcUnits(5.0f));
+		Task->bTaskIsUrgent = false;
+		Task->TaskLength = frandrange(20.0f, 30.0f);
+		return;
+	}
+
+}
+
+void AIPlayerSetMarineCapperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
+{
+	DeployableSearchFilter NodeFilter;
+	NodeFilter.DeployableTeam = TEAM_IND;
+	NodeFilter.ReachabilityTeam = pBot->Player->GetTeam();
+	NodeFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+
+	AvHAIResourceNode* NearestNode = nullptr;
+	float MinDist = 0.0f;
+
+	vector<AvHAIResourceNode*> UnclaimedResourceNodes = AITAC_GetAllMatchingResourceNodes(pBot->Edict->v.origin, &NodeFilter);
+	
+	for (auto it = UnclaimedResourceNodes.begin(); it != UnclaimedResourceNodes.end(); it++)
+	{
+		AvHAIResourceNode* ResNode = (*it);
+		int NumCappers = AITAC_GetNumPlayersOfTeamInArea(pBot->Player->GetTeam(), ResNode->Location, UTIL_MetresToGoldSrcUnits(4.0), false, pBot->Edict, AVH_USER3_COMMANDER_PLAYER);
+
+		// Only want one capper to grab an empty one
+		if (NumCappers == 0)
+		{
+			float ThisDist = vDist2DSq(pBot->Edict->v.origin, ResNode->Location);
+
+			if (!NearestNode || ThisDist < MinDist)
+			{
+				NearestNode = ResNode;
+				MinDist = ThisDist;
+			}
+		}
+	}
+
+	if (NearestNode)
+	{
+		AITASK_SetCapResNodeTask(pBot, Task, NearestNode, false);
+		return;
+	}
+
+	MinDist = 0.0f;
+
+	NodeFilter.DeployableTeam = AIMGR_GetEnemyTeam(pBot->Player->GetTeam());
+
+	vector<AvHAIResourceNode*> EnemyResourceNodes = AITAC_GetAllMatchingResourceNodes(pBot->Edict->v.origin, &NodeFilter);
+
+	for (auto it = EnemyResourceNodes.begin(); it != EnemyResourceNodes.end(); it++)
+	{
+		AvHAIResourceNode* ResNode = (*it);
+		int NumCappers = AITAC_GetNumPlayersOfTeamInArea(pBot->Player->GetTeam(), ResNode->Location, UTIL_MetresToGoldSrcUnits(4.0), false, pBot->Edict, AVH_USER3_COMMANDER_PLAYER);
+
+		// Allow for 2 cappers to attack an enemy resource node
+		if (NumCappers < 2)
+		{
+			float ThisDist = vDist2DSq(pBot->Edict->v.origin, ResNode->Location);
+
+			if (!NearestNode || ThisDist < MinDist)
+			{
+				NearestNode = ResNode;
+				MinDist = ThisDist;
+			}
+		}
+	}
+
+	if (NearestNode)
+	{
+		AITASK_SetCapResNodeTask(pBot, Task, NearestNode, false);
+		return;
+	}
+
+	// No res nodes to cap, go do assault stuff
+	AIPlayerSetMarineAssaultPrimaryTask(pBot, Task);
+}
+
+void AIPlayerSetMarineAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
+{
+	// Go attack sieged hive
+	const AvHAIHiveDefinition* ActiveSiegeHive = AITAC_GetNearestHiveUnderActiveSiege(pBot->Player->GetTeam(), pBot->Edict->v.origin);
+
+	if (ActiveSiegeHive)
+	{
+		AITASK_SetAttackTask(pBot, Task, ActiveSiegeHive->HiveEntity->edict(), false);
+		return;
+	}
+
+	// Go to empty hive without other marines in it
+
+	vector<AvHAIHiveDefinition*> AllHives = AITAC_GetAllHives();
+
+	AvHAIHiveDefinition* NearestEmptyHive = nullptr;
+	float MinDist = 0.0f;
+
+	for (auto it = AllHives.begin(); it != AllHives.end(); it++)
+	{
+		AvHAIHiveDefinition* ThisHive = (*it);
+		if (ThisHive->Status != HIVE_STATUS_UNBUILT) { continue; }
+
+		int NumMarinesSecuring = AITAC_GetNumPlayersOfTeamInArea(pBot->Player->GetTeam(), ThisHive->Location, UTIL_MetresToGoldSrcUnits(15.0f), false, pBot->Edict, AVH_USER3_COMMANDER_PLAYER);
+
+		if (NumMarinesSecuring < 2)
+		{
+			float ThisDist = vDist2DSq(ThisHive->Location, pBot->Edict->v.origin);
+
+			if (!NearestEmptyHive || ThisDist < MinDist)
+			{
+				NearestEmptyHive = ThisHive;
+				MinDist = ThisDist;
+			}
+		}
+	}
+
+	if (NearestEmptyHive)
+	{
+		AITASK_SetSecureHiveTask(pBot, Task, NearestEmptyHive->HiveEntity->edict(), NearestEmptyHive->FloorLocation, false);
+		return;
+	}
+
+	// Go to a good siege location if phase gates available
+
+	if (AITAC_PhaseGatesAvailable(pBot->Player->GetTeam()))
+	{
+		const AvHAIHiveDefinition* ActiveHive = AITAC_GetActiveHiveNearestLocation(pBot->Edict->v.origin);
+
+		if (ActiveHive)
+		{
+			if (Task->TaskType != TASK_MOVE)
+			{
+				AITASK_SetMoveTask(pBot, Task, UTIL_GetRandomPointOnNavmeshInDonut(pBot->BotNavInfo.NavProfile, ActiveHive->FloorLocation, UTIL_MetresToGoldSrcUnits(10.0f), UTIL_MetresToGoldSrcUnits(20.0f)), false);
+			}
+
+			return;
+			
+		}
+	}
+	
+}
+
+void AIPlayerSetMarineBombardierPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
+{
+	// Go attack sieged hive
+
+	// Go clear res nodes
+
+
+}
+
+void AIPlayerSetSecondaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
+{
+	// Find any nearby unbuilt structures
+	DeployableSearchFilter UnbuiltFilter;
+	UnbuiltFilter.DeployableTypes = SEARCH_ALL_MARINE_STRUCTURES;
+	UnbuiltFilter.DeployableTeam = pBot->Player->GetTeam();
+	UnbuiltFilter.ReachabilityTeam = pBot->Player->GetTeam();
+	UnbuiltFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+	UnbuiltFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING | STRUCTURE_STATUS_COMPLETED;
+	UnbuiltFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(20.0f);
+
+	vector <AvHAIBuildableStructure*> BuildableStructures = AITAC_FindAllDeployables(pBot->Edict->v.origin, &UnbuiltFilter);
+
+	AvHAIBuildableStructure* NearestStructure = nullptr;
+	float MinDist = 0.0f;
+
+	for (auto it = BuildableStructures.begin(); it != BuildableStructures.end(); it++)
+	{
+		int NumBuilders = AITAC_GetNumPlayersOfTeamInArea(pBot->Player->GetTeam(), (*it)->Location, UTIL_MetresToGoldSrcUnits(5.0f), false, pBot->Edict, AVH_USER3_COMMANDER_PLAYER);
+
+		int NumDesiredBuilders = (vDist2DSq((*it)->Location, AITAC_GetCommChairLocation(pBot->Player->GetTeam())) < sqrf(UTIL_MetresToGoldSrcUnits(15.0f))) ? 1 : 2;
+
+		if (NumBuilders < NumDesiredBuilders)
+		{
+			float ThisDist = vDist2DSq((*it)->Location, pBot->Edict->v.origin);
+			if (!NearestStructure || ThisDist < MinDist)
+			{
+				NearestStructure = (*it);
+				MinDist = ThisDist;
+			}
+		}
+	}
+
+	if (NearestStructure)
+	{
+		AITASK_SetBuildTask(pBot, Task, NearestStructure->edict, false);
+		return;
+	}
+
+}
+
+void AIPlayerNSAlienThink(AvHAIPlayer* pBot)
+{
+	UpdateAIAlienPlayerNSRole(pBot);
+}
+
+void AIPlayerCOThink(AvHAIPlayer* pBot)
+{
+
+}
+
+void AIPlayerDMThink(AvHAIPlayer* pBot)
+{
+
+}
+
+void AIPlayerThink(AvHAIPlayer* pBot)
+{
+	switch (GetGameRules()->GetMapMode())
+	{
+		case MAP_MODE_NS:
+			AIPlayerNSThink(pBot);
+			break;
+		case MAP_MODE_CO:
+			AIPlayerCOThink(pBot);
+			break;
+		default:
+			AIPlayerDMThink(pBot);
+			break;
+	}
+
+	AvHAIWeapon DesiredWeapon = (pBot->DesiredMoveWeapon != WEAPON_NONE) ? pBot->DesiredMoveWeapon : pBot->DesiredCombatWeapon;
+
+	if (DesiredWeapon != WEAPON_NONE && GetPlayerCurrentWeapon(pBot->Player) != DesiredWeapon)
+	{
+		BotSwitchToWeapon(pBot, DesiredWeapon);
+	}
+}
+
 void TestNavThink(AvHAIPlayer* pBot)
 {
 	AITASK_BotUpdateAndClearTasks(pBot);
@@ -1579,16 +2121,57 @@ void UpdateCommanderOrders(AvHAIPlayer* pBot)
 			switch (it->GetOrderType())
 			{
 				case ORDERTYPEL_MOVE:
-					AITASK_SetMoveTask(pBot, &pBot->CommanderTask, OrderLocation, true);
+					AIPlayerReceiveMoveOrder(pBot, OrderLocation);
 					break;
 				case ORDERTYPET_BUILD:
-					AITASK_SetBuildTask(pBot, &pBot->CommanderTask, INDEXENT(it->GetTargetIndex()), true);
+					AIPlayerReceiveBuildOrder(pBot, INDEXENT(it->GetTargetIndex()));
 					break;
 				default:
 					break;
 			}
 		}
 	}
+}
+
+void AIPlayerReceiveBuildOrder(AvHAIPlayer* pBot, edict_t* BuildTarget)
+{
+	AITASK_SetBuildTask(pBot, &pBot->CommanderTask, BuildTarget, true);
+}
+
+void AIPlayerReceiveMoveOrder(AvHAIPlayer* pBot, Vector Destination)
+{
+
+	const AvHAIResourceNode* ResNodeRef = AITAC_GetNearestResourceNodeToLocation(Destination);
+
+	// We've been asked to go to a resource node if the movement order is near it
+	if (ResNodeRef && vDist2DSq(ResNodeRef->Location, Destination) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
+	{
+		// If this resource node doesn't belong to us, or the tower isn't fully built, interpret the order as a "cap this node" order
+		if (ResNodeRef->OwningTeam != pBot->Player->GetTeam() || FNullEnt(ResNodeRef->ActiveTowerEntity) || !UTIL_StructureIsFullyBuilt(ResNodeRef->ActiveTowerEntity))
+		{
+			AITASK_SetCapResNodeTask(pBot, &pBot->CommanderTask, ResNodeRef, false);
+			pBot->CommanderTask.bIssuedByCommander = true;
+			return;
+		}
+	}
+
+	const AvHAIHiveDefinition* HiveRef = AITAC_GetHiveNearestLocation(Destination);
+
+	// Have we been asked to go to an empty hive? If so, then treat the order as a "help secure this hive" command
+	if (HiveRef && HiveRef->Status == HIVE_STATUS_UNBUILT && vDist2DSq(HiveRef->Location, Destination) < sqrf(UTIL_MetresToGoldSrcUnits(15.0f)))
+	{
+		if (!AICOMM_IsHiveFullySecured(pBot, HiveRef, false))
+		{
+			AITASK_SetSecureHiveTask(pBot, &pBot->CommanderTask, HiveRef->HiveEntity->edict(), Destination, false);
+			pBot->CommanderTask.bIssuedByCommander = true;
+			return;
+		}
+	}
+
+	// Otherwise, treat as a normal move order. Go there and wait a bit to see what the commander wants to do next
+	AITASK_SetMoveTask(pBot, &pBot->CommanderTask, Destination, true);
+	pBot->CommanderTask.bIssuedByCommander = true;
+	
 }
 
 void BotStopCommanderMode(AvHAIPlayer* pBot)

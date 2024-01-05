@@ -27,7 +27,9 @@ AvHAIBuildableStructure*	AITAC_FindFurthestDeployableFromLocation(const Vector& 
 AvHAIBuildableStructure*	AITAC_GetDeployableRefFromEdict(const edict_t* Structure);
 AvHAIBuildableStructure*	AITAC_GetNearestDeployableDirectlyReachable(AvHAIPlayer* pBot, const Vector Location, const DeployableSearchFilter* Filter);
 int							AITAC_GetNumDeployablesNearLocation(const Vector& Location, const DeployableSearchFilter* Filter);
+void						AITAC_PopulateHiveData();
 void						AITAC_RefreshHiveData();
+void						AITAC_PopulateResourceNodes();
 void						AITAC_RefreshResourceNodes();
 void						AITAC_UpdateMapAIData();
 void						AITAC_CheckNavMeshModified();
@@ -102,14 +104,20 @@ bool UTIL_StructureIsRecycling(edict_t* Structure);
 bool AITAC_StructureCanBeUpgraded(edict_t* Structure);
 
 AvHAIHiveDefinition* AITAC_GetHiveFromEdict(const edict_t* Edict);
+AvHAIResourceNode* AITAC_GetResourceNodeFromEdict(const edict_t* Edict);
 
+// What percentage of all viable (can be reached by the requested team) resource nodes does the team currently own? Expressed as 0.0 - 1.0
+float AITAC_GetTeamResNodeOwnership(const AvHTeamNumber Team);
+int	AITAC_GetNumResourceNodesNearLocation(const Vector Location, const DeployableSearchFilter* Filter);
 AvHAIResourceNode* AITAC_FindNearestResourceNodeToLocation(const Vector Location, const DeployableSearchFilter* Filter);
 AvHAIResourceNode* AITAC_GetNearestResourceNodeToLocation(const Vector Location);
+vector<AvHAIResourceNode*> AITAC_GetAllMatchingResourceNodes(const Vector Location, const DeployableSearchFilter* Filter);
 
 bool UTIL_IsBuildableStructureStillReachable(AvHAIPlayer* pBot, const edict_t* Structure);
 bool UTIL_IsDroppedItemStillReachable(AvHAIPlayer* pBot, const edict_t* Item);
 AvHAIWeapon UTIL_GetWeaponTypeFromEdict(const edict_t* ItemEdict);
 
+int AITAC_GetNumActivePlayersOnTeam(const AvHTeamNumber Team);
 int AITAC_GetNumPlayersOfTeamInArea(const AvHTeamNumber Team, const Vector SearchLocation, const float SearchRadius, const bool bConsiderPhaseDist, const edict_t* IgnorePlayer, const AvHUser3 IgnoreClass);
 int AITAC_GetNumPlayersOnTeamOfClass(const AvHTeamNumber Team, const AvHUser3 SearchClass, const edict_t* IgnorePlayer);
 edict_t* AITAC_GetNearestPlayerOfClassInArea(const AvHTeamNumber Team, const Vector SearchLocation, const float SearchRadius, const bool bConsiderPhaseDist, const edict_t* IgnorePlayer, const AvHUser3 SearchClass);
@@ -143,7 +151,6 @@ int AITAC_GetNumDeadPlayersOnTeam(const AvHTeamNumber Team);
 const AvHAIHiveDefinition* AITAC_GetNearestHiveUnderActiveSiege(AvHTeamNumber SiegingTeam, const Vector SearchLocation);
 edict_t* AITAC_GetMarineEligibleToBuildSiege(AvHTeamNumber Team, const AvHAIHiveDefinition* Hive);
 
-vector<AvHPlayer*> AITAC_GetAllPlayersOnTeam(AvHTeamNumber Team);
 edict_t* AITAC_GetNearestHiddenPlayerInLocation(AvHTeamNumber Team, const Vector Location, const float MaxRadius);
 
 const vector<AvHAIResourceNode*> AITAC_GetAllResourceNodes();

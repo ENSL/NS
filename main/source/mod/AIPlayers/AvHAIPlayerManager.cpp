@@ -68,6 +68,21 @@ string BotNames[MAX_PLAYERS] = { "MrRobot",
 									"TerminalFerocity"
 };
 
+AvHAICommanderMode AIMGR_GetCommanderMode()
+{
+	if (avh_botcommandermode.value == 0)
+	{
+		return COMMANDERMODE_DISABLED;
+	}
+
+	if (avh_botcommandermode.value == 1)
+	{
+		return COMMANDERMODE_IFNOHUMAN;
+	}
+
+	return COMMANDERMODE_ENABLED;
+
+}
 
 void AIMGR_UpdateAIPlayerCounts()
 {
@@ -472,7 +487,10 @@ byte BotThrottledMsec(AvHAIPlayer* inAIPlayer)
 	if (newmsec > 255)
 	{
 		newmsec = 255;
-	}		
+	}
+
+	// save the command time
+	inAIPlayer->f_previous_command_time = gpGlobals->time;
 
 	return (byte)newmsec;
 }
@@ -547,16 +565,9 @@ void AIMGR_UpdateAIPlayers()
 
 				UpdateBotChat(bot);
 
-				CustomThink(bot);
+				AIPlayerThink(bot);
 
 				AIDEBUG_DrawPath(DebugPath, 0.0f);
-
-				AvHAIWeapon DesiredWeapon = (bot->DesiredMoveWeapon != WEAPON_NONE) ? bot->DesiredMoveWeapon : bot->DesiredCombatWeapon;
-
-				if (DesiredWeapon != WEAPON_NONE && GetPlayerCurrentWeapon(bot->Player) != DesiredWeapon)
-				{
-					BotSwitchToWeapon(bot, DesiredWeapon);
-				}
 
 				BotUpdateDesiredViewRotation(bot);
 			}
@@ -567,10 +578,7 @@ void AIMGR_UpdateAIPlayers()
 			}
 
 			// Needed to correctly handle client prediction and physics calculations
-			byte adjustedmsec = BotThrottledMsec(bot);
-
-			// save the command time
-			bot->f_previous_command_time = gpGlobals->time;
+			byte adjustedmsec = BotThrottledMsec(bot);			
 
 			// Simulate PM_PlayerMove so client prediction and stuff can be executed correctly.
 			RUN_AI_MOVE(bot->Edict, bot->Edict->v.v_angle, bot->ForwardMove,
@@ -596,6 +604,29 @@ int AIMGR_GetNumAIPlayers()
 	return ActiveAIPlayers.size();
 }
 
+vector<AvHPlayer*> AIMGR_GetAllPlayersOnTeam(AvHTeamNumber Team)
+{
+	vector<AvHPlayer*> Result;
+
+	for (int i = 1; i <= gpGlobals->maxClients; i++)
+	{
+		edict_t* PlayerEdict = INDEXENT(i);
+
+		if (!FNullEnt(PlayerEdict) && PlayerEdict->v.team == Team)
+		{
+			AvHPlayer* PlayerRef = dynamic_cast<AvHPlayer*>(CBaseEntity::Instance(PlayerEdict));
+
+			if (PlayerRef)
+			{
+				Result.push_back(PlayerRef);
+			}
+
+		}
+	}
+
+	return Result;
+}
+
 int AIMGR_GetNumAIPlayersOnTeam(AvHTeamNumber Team)
 {
 	int Result = 0;
@@ -605,6 +636,46 @@ int AIMGR_GetNumAIPlayersOnTeam(AvHTeamNumber Team)
 		if (it->Player->GetTeam() == Team)
 		{
 			Result++;
+		}
+	}
+
+	return Result;
+}
+
+int AIMGR_GetNumHumanPlayersOnTeam(AvHTeamNumber Team)
+{
+	int Result = 0;
+
+	vector<AvHPlayer*> TeamPlayers = AIMGR_GetAllPlayersOnTeam(Team);
+
+	for (auto it = TeamPlayers.begin(); it != TeamPlayers.end(); it++)
+	{
+		AvHPlayer* ThisPlayer = (*it);
+		edict_t* PlayerEdict = ThisPlayer->edict();
+
+		if (!(PlayerEdict->v.flags & FL_FAKECLIENT))
+		{
+			Result++;
+		}
+	}
+
+	return Result;
+}
+
+int AIMGR_GetNumAIPlayersWithRoleOnTeam(AvHTeamNumber Team, AvHAIBotRole Role, AvHAIPlayer* IgnoreAIPlayer)
+{
+	int Result = 0;
+
+	for (auto it = ActiveAIPlayers.begin(); it != ActiveAIPlayers.end(); it++)
+	{
+		if (&(*it) == IgnoreAIPlayer) { continue; }
+
+		if (it->Player->GetTeam() == Team)
+		{
+			if (it->BotRole == Role)
+			{
+				Result++;
+			}
 		}
 	}
 
@@ -662,11 +733,15 @@ void AIMGR_ResetRound()
 
 void AIMGR_RoundStarted()
 {
+	AITAC_PopulateResourceNodes();
+	AITAC_PopulateHiveData();
+
+	AITAC_RefreshResourceNodes();
+
 	AITAC_RefreshHiveData();
 
 	UTIL_UpdateTileCache();
-
-	AITAC_RefreshResourceNodes();
+	
 }
 
 void AIMGR_ClearBotData()

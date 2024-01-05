@@ -14,15 +14,6 @@ typedef enum _BOTFILLMODE
 
 } BotFillMode;
 
-// Bot commander mode, should the bot go commander and when
-typedef enum _COMMANDERMODE
-{
-	COMMANDERMODE_NEVER = 0, // Bot never tries to command
-	COMMANDERMODE_IFNOHUMAN, // Bot only commands if no human is on the marine team
-	COMMANDERMODE_ALWAYS     // Bot will always take command if no human does after CommanderWaitTime expires
-
-} CommanderMode;
-
 // Each map can have a desired marine and alien team size
 typedef struct _TEAMSIZEDEFINITIONS
 {

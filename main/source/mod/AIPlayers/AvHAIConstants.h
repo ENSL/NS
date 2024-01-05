@@ -171,6 +171,36 @@ typedef enum _STRUCTUREPURPOSE
 
 } StructurePurpose;
 
+typedef enum _AVHAICOMMANDERMODE
+{
+	COMMANDERMODE_DISABLED,		// AI Commander not allowed
+	COMMANDERMODE_IFNOHUMAN,	// AI Commander only allowed if no humans are on the marine team
+	COMMANDERMODE_ENABLED		// AI Commander allowed if no human takes charge (following grace period)
+} AvHAICommanderMode;
+
+// Bot's role on the team. For marines, this only governs what they do when left to their own devices.
+// Marine bots will always listen to orders from the commander regardless of role.
+typedef enum _AVHAIBOTROLE
+{
+	BOT_ROLE_NONE,			 // No defined role
+
+	// General Roles
+
+	BOT_ROLE_FIND_RESOURCES, // Will hunt for uncapped resource nodes and cap them. Will attack enemy resource towers
+	BOT_ROLE_SWEEPER,		 // Defensive role to protect infrastructure and build at base. Will patrol to keep outposts secure
+	BOT_ROLE_ASSAULT,		 // Will go to attack the hive and other alien structures
+
+	// Marine-only Roles
+
+	BOT_ROLE_COMMAND,		 // Will attempt to take command
+	BOT_ROLE_BOMBARDIER,	 // Bot is armed with a GL and wants to wreck your shit
+
+	// Alien-only roles
+
+	BOT_ROLE_BUILDER,		 // Will focus on building chambers and hives. Stays gorge most of the time
+	BOT_ROLE_HARASS		 // Focuses on taking down enemy resource nodes and hunting the enemy
+} AvHAIBotRole;
+
 typedef struct _OFF_MESH_CONN
 {
 	unsigned int ConnectionRefs[2];
@@ -349,27 +379,6 @@ typedef enum
 }
 BotAttackResult;
 
-// Bot's role on the team. For marines, this only governs what they do when left to their own devices.
-// Marine bots will always listen to orders from the commander regardless of role.
-enum BotRole
-{
-	BOT_ROLE_NONE,			 // No defined role
-
-	// Marine Roles
-
-	BOT_ROLE_COMMAND,		 // Will attempt to take command
-	BOT_ROLE_FIND_RESOURCES, // Will hunt for uncapped resource nodes and cap them. Will attack enemy resource towers
-	BOT_ROLE_SWEEPER,		 // Defensive role to protect infrastructure and build at base. Will patrol to keep outposts secure
-	BOT_ROLE_ASSAULT,		 // Will go to attack the hive and other alien structures
-	BOT_ROLE_BOMBARDIER,	 // Bot is armed with a GL and wants to wreck your shit
-
-	// Alien roles
-
-	BOT_ROLE_RES_CAPPER,	 // Will hunt for uncapped nodes or ones held by the enemy and cap them
-	BOT_ROLE_BUILDER,		 // Will focus on building chambers and hives. Stays gorge most of the time
-	BOT_ROLE_HARASS,		 // Focuses on taking down enemy resource nodes and hunting the enemy
-	BOT_ROLE_DESTROYER		 // Will go fade/onos when it can, focuses on attacking critical infrastructure
-};
 
 // Bot path node. A path will be several of these strung together to lead the bot to its destination
 typedef struct _BOT_PATH_NODE
@@ -541,6 +550,24 @@ typedef struct _COMMANDER_ACTION
 
 } commander_action;
 
+typedef enum
+{
+	ORDERPURPOSE_NONE,
+	ORDERPURPOSE_SECURE_HIVE,
+	ORDERPURPOSE_SIEGE_HIVE,
+	ORDERPURPOSE_SECURE_RESNODE
+} AvHAIOrderPurpose;
+
+typedef struct _AI_COMMANDER_ORDER
+{
+	edict_t* Assignee = nullptr;
+	AvHAIOrderPurpose OrderPurpose = ORDERPURPOSE_NONE;
+	edict_t* OrderTarget = nullptr;
+	Vector OrderLocation = g_vecZero;
+	float LastReminderTime = 0.0f;
+	float LastPlayerDistance = 0.0f;
+} ai_commander_order;
+
 typedef struct _AI_COMMANDER_REQUEST
 {
 	bool bNewRequest = false; // Is this a new request just come in?
@@ -593,6 +620,8 @@ typedef struct AVH_AI_PLAYER
 	AvHAIPlayerTask WantsAndNeedsTask;
 	AvHAIPlayerTask CommanderTask; // Task assigned by the commander
 
+	float BotNextTaskEvaluationTime = 0.0f;
+
 	bot_skill BotSkillSettings;
 
 	char PathStatus[128]; // Debug used to help figure out what's going on with a bot's path finding
@@ -607,6 +636,7 @@ typedef struct AVH_AI_PLAYER
 	commander_action* CurrentAction;
 
 	vector<ai_commander_request> ActiveRequests;
+	vector<ai_commander_order> ActiveOrders;
 
 	float next_commander_action_time = 0.0f;
 
@@ -632,6 +662,9 @@ typedef struct AVH_AI_PLAYER
 
 	Vector ViewForwardVector = g_vecZero; // Bot's current forward unit vector
 	Vector LastSafeLocation = g_vecZero;
+
+	AvHAIBotRole BotRole = BOT_ROLE_NONE;
+
 
 } AvHAIPlayer;
 
