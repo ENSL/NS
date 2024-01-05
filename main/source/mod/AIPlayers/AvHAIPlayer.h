@@ -53,9 +53,28 @@ void UpdateBotChat(AvHAIPlayer* pBot);
 void ClearBotInputs(AvHAIPlayer* pBot);
 void StartNewBotFrame(AvHAIPlayer* pBot);
 
+void AIPlayerThink(AvHAIPlayer* pBot);
+// Think routine for regular NS game mode
+void AIPlayerNSThink(AvHAIPlayer* pBot);
+void AIPlayerNSMarineThink(AvHAIPlayer* pBot);
+void AIPlayerNSAlienThink(AvHAIPlayer* pBot);
+// Think routine for the combat game mode
+void AIPlayerCOThink(AvHAIPlayer* pBot);
+// Think routine for the deathmatch game mode (e.g. when playing CS maps)
+void AIPlayerDMThink(AvHAIPlayer* pBot);
+
 void TestNavThink(AvHAIPlayer* pBot);
 void DroneThink(AvHAIPlayer* pBot);
 void CustomThink(AvHAIPlayer* pBot);
+
+AvHAIPlayerTask* AIPlayerGetNextTask(AvHAIPlayer* pBot);
+void AIPlayerSetPrimaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
+void AIPlayerSetMarineSweeperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
+void AIPlayerSetMarineCapperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
+void AIPlayerSetMarineAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
+void AIPlayerSetMarineBombardierPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
+
+void AIPlayerSetSecondaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 
 void BotSwitchToWeapon(AvHAIPlayer* pBot, AvHAIWeapon NewWeaponSlot);
 
@@ -64,7 +83,17 @@ bool ShouldBotThink(AvHAIPlayer* pBot);
 void BotResumePlay(AvHAIPlayer* pBot);
 
 void UpdateCommanderOrders(AvHAIPlayer* pBot);
+void AIPlayerReceiveMoveOrder(AvHAIPlayer* pBot, Vector Destination);
+void AIPlayerReceiveBuildOrder(AvHAIPlayer* pBot, edict_t* BuildTarget);
 
 void BotStopCommanderMode(AvHAIPlayer* pBot);
+
+void SetNewAIPlayerRole(AvHAIPlayer* pBot, AvHAIBotRole NewRole);
+void UpdateAIMarinePlayerNSRole(AvHAIPlayer* pBot);
+void UpdateAIAlienPlayerNSRole(AvHAIPlayer* pBot);
+void UpdateAIPlayerCORole(AvHAIPlayer* pBot);
+void UpdateAIPlayerDMRole(AvHAIPlayer* pBot);
+
+bool ShouldAIPlayerTakeCommand(AvHAIPlayer* pBot);
 
 #endif

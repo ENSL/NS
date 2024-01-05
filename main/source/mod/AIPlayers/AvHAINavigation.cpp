@@ -468,7 +468,7 @@ void UTIL_AddStructureTemporaryObstacles(AvHAIBuildableStructure* Structure)
 	}
 
 	// Always cut a hole in the building nav mesh so we don't try to place anything on top of this structure in future
-	unsigned int NewObstacleRef = UTIL_AddTemporaryObstacle(BUILDING_NAV_MESH, UTIL_GetCentreOfEntity(Structure->edict), Radius * 1.5f, 100.0f, DT_TILECACHE_NULL_AREA);
+	unsigned int NewObstacleRef = UTIL_AddTemporaryObstacle(BUILDING_NAV_MESH, UTIL_GetCentreOfEntity(Structure->edict), Radius * 1.1f, 100.0f, DT_TILECACHE_NULL_AREA);
 
 	if (NewObstacleRef > 0)
 	{

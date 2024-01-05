@@ -36,6 +36,8 @@ void	AIMGR_UpdateTeamBalance();
 // Called by UpdateAIPlayerCounts. If auto-mode is fill teams, will add/remove bots needed to maintain minimum player counts and balance
 void	AIMGR_UpdateFillTeams();
 
+vector<AvHPlayer*> AIMGR_GetAllPlayersOnTeam(AvHTeamNumber Team);
+
 // How many AI players are in the game (does not include third-party bots like RCBot/Whichbot)
 int		AIMGR_GetNumAIPlayers();
 // Returns true if an AI player is on the requested team (does NOT include third-party bots like RCBot/Whichbot)
@@ -43,11 +45,16 @@ int		AIMGR_AIPlayerExistsOnTeam(AvHTeamNumber Team);
 
 void	AIMGR_UpdateAIMapData();
 
+AvHAICommanderMode AIMGR_GetCommanderMode();
+
 void AIDEBUG_SetDebugVector1(const Vector NewVector);
 void AIDEBUG_SetDebugVector2(const Vector NewVector);
 void AIDEBUG_TestPathFind();
 
 int AIMGR_GetNumAIPlayersOnTeam(AvHTeamNumber Team);
+int AIMGR_GetNumHumanPlayersOnTeam(AvHTeamNumber Team);
+
+int AIMGR_GetNumAIPlayersWithRoleOnTeam(AvHTeamNumber Team, AvHAIBotRole Role, AvHAIPlayer* IgnoreAIPlayer);
 
 AvHAIPlayer* AIMGR_GetAICommander(AvHTeamNumber Team);
 

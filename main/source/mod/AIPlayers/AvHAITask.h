@@ -44,6 +44,7 @@ bool AITASK_IsDefendTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 bool AITASK_IsEvolveTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 
 bool AITASK_IsReinforceStructureTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
+bool AITASK_IsMarineSecureHiveTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 
 bool AITASK_IsAlienGetHealthTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 bool AITASK_IsAlienHealTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
@@ -86,6 +87,8 @@ void BotProgressEvolveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 void MarineProgressBuildTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 void MarineProgressCapResNodeTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 void BotProgressWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
+
+void AIPlayerBuildStructure(AvHAIPlayer* pBot, edict_t* BuildTarget);
 
 void MarineProgressSecureHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 
