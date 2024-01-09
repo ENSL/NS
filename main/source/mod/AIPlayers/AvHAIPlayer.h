@@ -22,21 +22,21 @@ float GetLeapCost(AvHAIPlayer* pBot);
 
 void BotReloadWeapons(AvHAIPlayer* pBot);
 
-void LinkDeployedObjectToCommanderAction(AvHAIPlayer* Commander, AvHAIBuildableStructure* NewStructure);
-
 // Make the bot type something in either global or team chat
 void BotSay(AvHAIPlayer* pBot, bool bTeamSay, float Delay, char* textToSay);
 bot_msg* GetAvailableBotMsgSlot(AvHAIPlayer* pBot);
 
 void BotDropWeapon(AvHAIPlayer* pBot);
 
-void BotAttackTarget(AvHAIPlayer* pBot, edict_t* Target);
+void BotAttackNonPlayerTarget(AvHAIPlayer* pBot, edict_t* Target);
+void BotMarineAttackNonPlayerTarget(AvHAIPlayer* pBot, edict_t* Target);
+void BotAlienAttackNonPlayerTarget(AvHAIPlayer* pBot, edict_t* Target);
 
 void BotShootTarget(AvHAIPlayer* pBot, AvHAIWeapon AttackWeapon, edict_t* Target);
 void BotShootLocation(AvHAIPlayer* pBot, AvHAIWeapon AttackWeapon, const Vector TargetLocation);
 void BombardierAttackTarget(AvHAIPlayer* pBot, edict_t* Target);
 
-void BotEvolveLifeform(AvHAIPlayer* pBot, AvHMessageID Lifeform);
+void BotEvolveLifeform(AvHAIPlayer* pBot, Vector DesiredEvolveLocation, AvHMessageID TargetLifeform);
 
 enemy_status* GetTrackedEnemyRefForTarget(AvHAIPlayer* pBot, edict_t* Target);
 

@@ -126,7 +126,7 @@ struct OffMeshConnectionDef
 	bool bBiDir = false;
 	float Rad = 0.0f;
 	unsigned char Area = 0;
-	unsigned short Flag = 0;
+	unsigned int Flag = 0;
 	bool bPendingDelete = false;
 	bool bDirty = false;
 };
@@ -244,13 +244,13 @@ struct MeshProcess : public dtTileCacheMeshProcess
 			}
 			else if (polyAreas[i] == DT_TILECACHE_TEAM1STRUCTURE_AREA)
 			{
-				polyAreas[i] = SAMPLE_POLYAREA_BLOCKED;
-				polyFlags[i] = SAMPLE_POLYFLAGS_BLOCKED | SAMPLE_POLYFLAGS_TEAM1STRUCTURE;
+				polyAreas[i] = SAMPLE_POLYAREA_STRUCTUREBLOCK;
+				polyFlags[i] = SAMPLE_POLYFLAGS_TEAM1STRUCTURE;
 			}
 			else if (polyAreas[i] == DT_TILECACHE_TEAM2STRUCTURE_AREA)
 			{
-				polyAreas[i] = SAMPLE_POLYAREA_BLOCKED;
-				polyFlags[i] = SAMPLE_POLYFLAGS_BLOCKED | SAMPLE_POLYFLAGS_TEAM2STRUCTURE;
+				polyAreas[i] = SAMPLE_POLYAREA_STRUCTUREBLOCK;
+				polyFlags[i] = SAMPLE_POLYFLAGS_TEAM2STRUCTURE;
 			}
 			else if (polyAreas[i] == DT_TILECACHE_WELD_AREA)
 			{
@@ -431,7 +431,7 @@ unsigned int UTIL_AddTemporaryObstacle(unsigned int NavMeshIndex, const Vector L
 
 		ObstacleNum = (unsigned int)ObsRef;
 
-		if (ObstacleNum > 0)
+		if (ObstacleNum > 0 && NavMeshIndex != BUILDING_NAV_MESH)
 		{
 			bNavMeshModified = true;
 		}
@@ -894,6 +894,7 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_OBSTRUCTION, 2.0f);
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 2.0f);
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
+	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_STRUCTUREBLOCK, 20.0f);
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALLDAMAGE, 10.0f);
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_FLY | SAMPLE_POLYFLAGS_WALLCLIMB | SAMPLE_POLYFLAGS_WELD);
@@ -906,6 +907,8 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_OBSTRUCTION, 2.0f);
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_STRUCTUREBLOCK, 20.0f);
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE | SAMPLE_POLYFLAGS_TEAM2PHASEGATE | SAMPLE_POLYFLAGS_DUCKJUMP | SAMPLE_POLYFLAGS_WELD | SAMPLE_POLYFLAGS_FLY);
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
@@ -919,6 +922,7 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_OBSTRUCTION, 2.0f);
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALLDAMAGE, 10.0f);
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_STRUCTUREBLOCK, 20.0f);
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
@@ -934,6 +938,8 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_GROUND, 1.0f);
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_OBSTRUCTION, 2.0f);
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_STRUCTUREBLOCK, 20.0f);
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE);
@@ -947,6 +953,8 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.0f);
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_OBSTRUCTION, 2.0f);
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 1.5f);
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_STRUCTUREBLOCK, 20.0f);
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE);
@@ -961,6 +969,8 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_OBSTRUCTION, 2.0f);
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_CROUCH, 2.0f);
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALLDAMAGE, 10.0f);
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_STRUCTUREBLOCK, 5.0f); // Onos is a wrecking machine, structures shouldn't be such an obstacle for them!
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
@@ -1360,7 +1370,7 @@ dtStatus FindFlightPathToPoint(const nav_profile &NavProfile, Vector FromLocatio
 	m_navMesh->getPolyArea(StraightPolyPath[0], &CurrArea);
 	m_navMesh->getPolyFlags(StraightPolyPath[0], &CurrFlags);
 
-	CurrFlags &= ~(SAMPLE_POLYFLAGS_TEAM1STRUCTURE | SAMPLE_POLYFLAGS_TEAM2STRUCTURE | SAMPLE_POLYFLAGS_NOONOS);
+	CurrFlags &= ~(SAMPLE_POLYFLAGS_NOONOS);
 
 	// At this point we have our path.  Copy it to the path store
 	int nIndex = 0;
@@ -1380,7 +1390,7 @@ dtStatus FindFlightPathToPoint(const nav_profile &NavProfile, Vector FromLocatio
 		m_navMesh->getPolyArea(StraightPolyPath[nVert], &ThisArea);
 		m_navMesh->getPolyFlags(StraightPolyPath[nVert], &ThisFlags);
 
-		ThisFlags &= ~(SAMPLE_POLYFLAGS_TEAM1STRUCTURE | SAMPLE_POLYFLAGS_TEAM2STRUCTURE);
+		ThisFlags &= ~(SAMPLE_POLYFLAGS_NOONOS);
 
 		if (ThisArea == SAMPLE_POLYAREA_GROUND || ThisArea == SAMPLE_POLYAREA_CROUCH)
 		{
@@ -1605,7 +1615,7 @@ dtStatus FindPathClosestToPoint(const nav_profile& NavProfile, const Vector From
 	m_navMesh->getPolyFlags(StraightPolyPath[0], &CurrFlags);
 	m_navMesh->getPolyArea(StraightPolyPath[0], &CurrArea);
 
-	CurrFlags &= ~(SAMPLE_POLYFLAGS_TEAM1STRUCTURE | SAMPLE_POLYFLAGS_TEAM2STRUCTURE | SAMPLE_POLYFLAGS_NOONOS);
+	CurrFlags &= ~(SAMPLE_POLYFLAGS_NOONOS);
 
 	// At this point we have our path.  Copy it to the path store
 	int nIndex = 0;
@@ -1627,7 +1637,7 @@ dtStatus FindPathClosestToPoint(const nav_profile& NavProfile, const Vector From
 		m_navMesh->getPolyArea(StraightPolyPath[nVert], &ThisArea);
 		m_navMesh->getPolyFlags(StraightPolyPath[nVert], &ThisFlags);
 
-		ThisFlags &= ~(SAMPLE_POLYFLAGS_TEAM1STRUCTURE | SAMPLE_POLYFLAGS_TEAM2STRUCTURE | SAMPLE_POLYFLAGS_NOONOS);
+		ThisFlags &= ~(SAMPLE_POLYFLAGS_NOONOS);
 
 		if (ThisArea == SAMPLE_POLYAREA_GROUND || ThisArea == SAMPLE_POLYAREA_CROUCH)
 		{
@@ -1774,7 +1784,7 @@ dtStatus FindPathClosestToPoint(AvHAIPlayer* pBot, const BotMoveStyle MoveStyle,
 	m_navMesh->getPolyFlags(StraightPolyPath[0], &CurrFlags);
 	m_navMesh->getPolyArea(StraightPolyPath[0], &CurrArea);
 
-	CurrFlags &= ~(SAMPLE_POLYFLAGS_TEAM1STRUCTURE | SAMPLE_POLYFLAGS_TEAM2STRUCTURE | SAMPLE_POLYFLAGS_NOONOS);
+	CurrFlags &= ~(SAMPLE_POLYFLAGS_NOONOS);
 
 	// At this point we have our path.  Copy it to the path store
 	int nIndex = 0;
@@ -1861,7 +1871,7 @@ dtStatus FindPathClosestToPoint(AvHAIPlayer* pBot, const BotMoveStyle MoveStyle,
 		m_navMesh->getPolyFlags(StraightPolyPath[nVert], &CurrFlags);
 		m_navMesh->getPolyArea(StraightPolyPath[nVert], &CurrArea);
 
-		CurrFlags &= ~(SAMPLE_POLYFLAGS_TEAM1STRUCTURE | SAMPLE_POLYFLAGS_TEAM2STRUCTURE | SAMPLE_POLYFLAGS_NOONOS);
+		CurrFlags &= ~(SAMPLE_POLYFLAGS_NOONOS);
 
 		NodeFromLocation = NextPathNode.Location;
 
@@ -1971,6 +1981,8 @@ bool HasBotReachedPathPoint(const AvHAIPlayer* pBot)
 			return ((vDist2D(pEdict->v.origin, MoveTo) < playerRadius && bDestIsDirectlyReachable) || bAtOrPastDestination);
 		}
 	case SAMPLE_POLYFLAGS_BLOCKED:
+	case SAMPLE_POLYFLAGS_TEAM1STRUCTURE:
+	case SAMPLE_POLYFLAGS_TEAM2STRUCTURE:
 		return bAtOrPastDestination;
 	case SAMPLE_POLYFLAGS_FALL:
 	case SAMPLE_POLYFLAGS_JUMP:
@@ -2019,7 +2031,7 @@ bool HasBotReachedPathPoint(const AvHAIPlayer* pBot)
 
 void CheckAndHandleDoorObstruction(AvHAIPlayer* pBot)
 {
-	edict_t* BlockingDoorEdict = UTIL_GetDoorBlockingPathPoint(pBot->Edict->v.origin, pBot->BotNavInfo.CurrentPathPoint->Location, SAMPLE_POLYAREA_GROUND, nullptr);
+	edict_t* BlockingDoorEdict = UTIL_GetDoorBlockingPathPoint(pBot->Edict->v.origin, pBot->BotNavInfo.CurrentPathPoint->Location, pBot->BotNavInfo.CurrentPathPoint->flag, nullptr);
 	
 	if (FNullEnt(BlockingDoorEdict))
 	{
@@ -2114,7 +2126,7 @@ void CheckAndHandleDoorObstruction(AvHAIPlayer* pBot)
 		// Door must be shot to open
 		if (Door->ActivationType == DOOR_SHOOT)
 		{
-			BotAttackTarget(pBot, Door->DoorEdict);
+			BotAttackNonPlayerTarget(pBot, Door->DoorEdict);
 			return;
 		}
 
@@ -2386,7 +2398,7 @@ edict_t* UTIL_GetBreakableBlockingPathPoint(AvHAIPlayer* pBot, bot_path_node* Pa
 	return nullptr;
 }
 
-edict_t* UTIL_GetBreakableBlockingPathPoint(AvHAIPlayer* pBot, const Vector FromLocation, const Vector ToLocation, const unsigned short MovementFlag, edict_t* SearchBreakable)
+edict_t* UTIL_GetBreakableBlockingPathPoint(AvHAIPlayer* pBot, const Vector FromLocation, const Vector ToLocation, const unsigned int MovementFlag, edict_t* SearchBreakable)
 {
 	Vector FromLoc = FromLocation;
 	Vector ToLoc = ToLocation;
@@ -2495,7 +2507,7 @@ edict_t* UTIL_GetBreakableBlockingPathPoint(AvHAIPlayer* pBot, const Vector From
 	return nullptr;
 }
 
-edict_t* UTIL_GetDoorBlockingPathPoint(const Vector FromLocation, const Vector ToLocation, const unsigned short MovementFlag, edict_t* SearchDoor)
+edict_t* UTIL_GetDoorBlockingPathPoint(const Vector FromLocation, const Vector ToLocation, const unsigned int MovementFlag, edict_t* SearchDoor)
 {
 
 	Vector FromLoc = FromLocation;
@@ -2839,6 +2851,10 @@ void NewMove(AvHAIPlayer* pBot)
 	case SAMPLE_POLYFLAGS_BLOCKED:
 		BlockedMove(pBot, MoveFrom, MoveTo);
 		break;
+	case SAMPLE_POLYFLAGS_TEAM1STRUCTURE:
+	case SAMPLE_POLYFLAGS_TEAM2STRUCTURE:
+		StructureBlockedMove(pBot, MoveFrom, MoveTo);
+		break;
 	case SAMPLE_POLYFLAGS_WALLCLIMB:
 	{
 		if (IsPlayerSkulk(pBot->Edict))
@@ -3021,6 +3037,50 @@ void FallMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 	if (!UTIL_QuickTrace(pBot->Edict, HeadLocation, (HeadLocation + (pBot->desiredMovementDir * 50.0f))))
 	{
 		pBot->Button |= IN_DUCK;
+	}
+}
+
+void StructureBlockedMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
+{
+	Vector vForward = UTIL_GetVectorNormal2D(EndPoint - StartPoint);
+
+	pBot->desiredMovementDir = vForward;
+
+	DeployableSearchFilter BlockingFilter;
+	BlockingFilter.DeployableTeam = AIMGR_GetEnemyTeam(pBot->Player->GetTeam());
+	BlockingFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(3.0f);
+
+	vector<AvHAIBuildableStructure*> BlockingStructures = AITAC_FindAllDeployables(pBot->Edict->v.origin, &BlockingFilter);
+
+	AvHAIBuildableStructure* CulpritStructure = nullptr;
+	float MinDist = 0.0f;
+
+	for (auto it = BlockingStructures.begin(); it != BlockingStructures.end(); it++)
+	{
+		AvHAIBuildableStructure* ThisStructure = (*it);
+
+		float ThisDist = vDistanceFromLine2DSq(StartPoint, EndPoint, ThisStructure->Location);
+
+		if (!CulpritStructure || ThisDist < MinDist)
+		{
+			CulpritStructure = ThisStructure;
+		}
+	}
+
+	if (CulpritStructure)
+	{
+		BotMoveLookAt(pBot, CulpritStructure->Location);
+
+		AvHAIWeapon AttackWeapon = (IsPlayerAlien(pBot->Edict)) ? BotAlienChooseBestWeaponForStructure(pBot, CulpritStructure->edict) : BotMarineChooseBestWeaponForStructure(pBot, CulpritStructure->edict);
+
+		if (GetPlayerCurrentWeapon(pBot->Player) != AttackWeapon)
+		{
+			pBot->DesiredMoveWeapon = AttackWeapon;
+		}
+		else
+		{
+			BotShootTarget(pBot, AttackWeapon, CulpritStructure->edict);
+		}
 	}
 }
 
@@ -4876,7 +4936,7 @@ bool AbortCurrentMove(AvHAIPlayer* pBot, const Vector NewDestination)
 
 	Vector MoveFrom = pBot->BotNavInfo.CurrentPathPoint->FromLocation;
 	Vector MoveTo = pBot->BotNavInfo.CurrentPathPoint->Location;
-	unsigned short flag = pBot->BotNavInfo.CurrentPathPoint->flag;
+	unsigned int flag = pBot->BotNavInfo.CurrentPathPoint->flag;
 
 	Vector ClosestPointOnLine = vClosestPointOnLine2D(MoveFrom, MoveTo, pBot->Edict->v.origin);
 
@@ -4893,7 +4953,7 @@ bool AbortCurrentMove(AvHAIPlayer* pBot, const Vector NewDestination)
 
 	if (flag == SAMPLE_POLYFLAGS_WALK)
 	{
-		if (UTIL_PointIsDirectlyReachable(pBot->Edict->v.origin, MoveFrom) || UTIL_PointIsDirectlyReachable(pBot->Edict->v.origin, MoveTo))
+		if (UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, MoveFrom) || UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, MoveTo))
 		{
 			return true;
 		}
@@ -5040,31 +5100,37 @@ void SetBaseNavProfile(AvHAIPlayer* pBot)
 
 void UpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
 {
-
-	if (IsPlayerMarine(pBot->Player))
-	{
-		MarineUpdateBotMoveProfile(pBot, MoveStyle);
-		return;
-	}
-
 	switch (pBot->Edict->v.iuser3)
 	{
+		case AVH_USER3_MARINE_PLAYER:
+			MarineUpdateBotMoveProfile(pBot, MoveStyle);
+			break;
 		case AVH_USER3_ALIEN_PLAYER1:
 			SkulkUpdateBotMoveProfile(pBot, MoveStyle);
-			return;
+			break;
 		case AVH_USER3_ALIEN_PLAYER2:
 			GorgeUpdateBotMoveProfile(pBot, MoveStyle);
-			return;
+			break;
 		case AVH_USER3_ALIEN_PLAYER3:
 			LerkUpdateBotMoveProfile(pBot, MoveStyle);
-			return;
+			break;
 		case AVH_USER3_ALIEN_PLAYER4:
 			FadeUpdateBotMoveProfile(pBot, MoveStyle);
-			return;
+			break;
 		case AVH_USER3_ALIEN_PLAYER5:
 			OnosUpdateBotMoveProfile(pBot, MoveStyle);
-			return;
+			break;
+	}
 
+	if (pBot->Player->GetTeam() == GetGameRules()->GetTeamANumber())
+	{
+		pBot->BotNavInfo.NavProfile.Filters.removeExcludeFlags(SAMPLE_POLYFLAGS_TEAM2STRUCTURE);
+		pBot->BotNavInfo.NavProfile.Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM1STRUCTURE);
+	}
+	else
+	{
+		pBot->BotNavInfo.NavProfile.Filters.removeExcludeFlags(SAMPLE_POLYFLAGS_TEAM1STRUCTURE);
+		pBot->BotNavInfo.NavProfile.Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM2STRUCTURE);
 	}
 
 }
@@ -5303,6 +5369,8 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 	
 	bool bIsFlyingProfile = pBot->BotNavInfo.NavProfile.bFlyingProfile;
 
+	bool bForceRecalculation = (pBot->BotNavInfo.NextForceRecalc > 0.0f && gpGlobals->time >= pBot->BotNavInfo.NextForceRecalc);
+
 	if (BotNavInfo->CurrentPath.size() > 0)
 	{
 		if (pBot->BotNavInfo.CurrentPathPoint == pBot->BotNavInfo.CurrentPath.end())
@@ -5327,10 +5395,10 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 		}
 
 		bool bUltimateDestinationChanged = !vEquals(Destination, BotNavInfo->TargetDestination, GetPlayerRadius(pBot->Player)) && !vEquals(Destination, MoveTaskDestination) && !vEquals(Destination, MoveTaskOrigin) && !vEquals(Destination, MoveSecondaryOrigin);
-
+		
 		bool bHasReachedDestination = BotIsAtLocation(pBot, BotNavInfo->TargetDestination);
 
-		if (bUltimateDestinationChanged || bNavProfileChanged || bHasReachedDestination)
+		if (bUltimateDestinationChanged || bNavProfileChanged || bHasReachedDestination || bForceRecalculation)
 		{
 			// First abort our current move so we don't try to recalculate half-way up a wall or ladder
 			if (bIsFlyingProfile || AbortCurrentMove(pBot, Destination))
@@ -5363,7 +5431,7 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 	bool bCanRecalculatePath = (gpGlobals->time - pBot->BotNavInfo.LastPathCalcTime > MIN_PATH_RECALC_TIME);
 
 	// Only recalculate the path if there isn't a path, or something has changed and enough time has elapsed since the last path calculation
-	bool bShouldCalculatePath = bCanRecalculatePath && (BotNavInfo->CurrentPath.size() == 0 || !vEquals(Destination, BotNavInfo->PathDestination));
+	bool bShouldCalculatePath = bCanRecalculatePath && (bForceRecalculation || BotNavInfo->CurrentPath.size() == 0 || !vEquals(Destination, BotNavInfo->PathDestination));
 
 	if (bShouldCalculatePath)
 	{
@@ -5374,8 +5442,8 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 		}
 
 		pBot->BotNavInfo.LastPathCalcTime = gpGlobals->time;
-		BotNavInfo->bPendingRecalculation = false;
 		BotNavInfo->bNavProfileChanged = false;
+		BotNavInfo->NextForceRecalc = 0.0f;
 
 		if (vIsZero(BotNavInfo->TargetDestination))
 		{
@@ -5831,7 +5899,7 @@ void BotFollowPath(AvHAIPlayer* pBot)
 
 	Vector MoveTo = BotNavInfo->CurrentPathPoint->Location;
 
-	unsigned short CurrentFlag = BotNavInfo->CurrentPathPoint->flag;
+	unsigned int CurrentFlag = BotNavInfo->CurrentPathPoint->flag;
 
 	bool bIsUsingPhaseGate = (CurrentFlag == SAMPLE_POLYFLAGS_TEAM1PHASEGATE || CurrentFlag == SAMPLE_POLYFLAGS_TEAM2PHASEGATE);
 
@@ -7882,7 +7950,7 @@ nav_door* UTIL_GetClosestLiftToPoints(const Vector StartPoint, const Vector EndP
 	return Result;
 }
 
-void UTIL_AddOffMeshConnection(Vector StartLoc, Vector EndLoc, unsigned char area, unsigned short flags, bool bBiDirectional, AvHAIOffMeshConnection* RemoveConnectionDef)
+void UTIL_AddOffMeshConnection(Vector StartLoc, Vector EndLoc, unsigned char area, unsigned int flags, bool bBiDirectional, AvHAIOffMeshConnection* RemoveConnectionDef)
 {
 	Vector ConnStart, ConnEnd;
 

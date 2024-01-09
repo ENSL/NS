@@ -682,6 +682,11 @@ AvHAIWeapon BotAlienChooseBestWeaponForStructure(AvHAIPlayer* pBot, edict_t* tar
 		return WEAPON_GORGE_BILEBOMB;
 	}
 
+	if (PlayerHasWeapon(pBot->Player, WEAPON_FADE_ACIDROCKET) && StructureType == STRUCTURE_ALIEN_HIVE || IsDamagingStructure(StructureType))
+	{
+		return WEAPON_FADE_ACIDROCKET;
+	}
+
 	// If we have xenocide, then choose it if we have lots of good targets in blast radius
 	if (PlayerHasWeapon(pBot->Player, WEAPON_SKULK_XENOCIDE))
 	{
@@ -718,7 +723,7 @@ AvHAIWeapon BotMarineChooseBestWeaponForStructure(AvHAIPlayer* pBot, edict_t* ta
 {
 	AvHAIDeployableStructureType StructureType = GetStructureTypeFromEdict(target);
 
-	if (StructureType == STRUCTURE_NONE)
+	if (StructureType == STRUCTURE_NONE || StructureType == STRUCTURE_ALIEN_HIVE || IsDamagingStructure(StructureType))
 	{
 		if (UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) > 0 || UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) > 0)
 		{
@@ -734,34 +739,14 @@ AvHAIWeapon BotMarineChooseBestWeaponForStructure(AvHAIPlayer* pBot, edict_t* ta
 		}
 	}
 
-	if (StructureType == STRUCTURE_ALIEN_HIVE || StructureType == STRUCTURE_ALIEN_OFFENCECHAMBER)
-	{
-		if (UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) > 0 || UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) > 0)
-		{
-			return UTIL_GetPlayerPrimaryWeapon(pBot->Player);
-		}
-		else if (BotGetSecondaryWeaponClipAmmo(pBot) > 0 || BotGetSecondaryWeaponAmmoReserve(pBot) > 0)
-		{
-			return GetBotMarineSecondaryWeapon(pBot);
-		}
-		else
-		{
-			return WEAPON_MARINE_KNIFE;
-		}
-	}
-	else
-	{
-		AvHAIWeapon PrimaryWeapon = UTIL_GetPlayerPrimaryWeapon(pBot->Player);
+	AvHAIWeapon PrimaryWeapon = UTIL_GetPlayerPrimaryWeapon(pBot->Player);
 
-		if ((PrimaryWeapon == WEAPON_MARINE_GL || PrimaryWeapon == WEAPON_MARINE_SHOTGUN) && (UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) > 0 || UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) > 0))
-		{
-			return PrimaryWeapon;
-		}
-
-		return WEAPON_MARINE_KNIFE;
+	if ((PrimaryWeapon == WEAPON_MARINE_GL || PrimaryWeapon == WEAPON_MARINE_SHOTGUN) && (UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) > 0 || UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) > 0))
+	{
+		return PrimaryWeapon;
 	}
 
-	return UTIL_GetPlayerPrimaryWeapon(pBot->Player);
+	return WEAPON_MARINE_KNIFE;
 }
 
 AvHAIWeapon GorgeGetBestWeaponForCombatTarget(AvHAIPlayer* pBot, edict_t* Target)

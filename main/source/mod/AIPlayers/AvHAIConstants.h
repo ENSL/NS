@@ -204,7 +204,7 @@ typedef enum _AVHAIBOTROLE
 typedef struct _OFF_MESH_CONN
 {
 	unsigned int ConnectionRefs[2];
-	unsigned short ConnectionFlags = 0;
+	unsigned int ConnectionFlags = 0;
 	Vector FromLocation = g_vecZero;
 	Vector ToLocation = g_vecZero;
 	edict_t* TargetObject = nullptr;
@@ -379,6 +379,14 @@ typedef enum
 }
 BotAttackResult;
 
+typedef enum
+{
+	BUILD_ATTEMPT_NONE = 0,
+	BUILD_ATTEMPT_PENDING,
+	BUILD_ATTEMPT_SUCCESS,
+	BUILD_ATTEMPT_FAILED
+} BotBuildAttemptStatus;
+
 
 // Bot path node. A path will be several of these strung together to lead the bot to its destination
 typedef struct _BOT_PATH_NODE
@@ -386,7 +394,7 @@ typedef struct _BOT_PATH_NODE
 	Vector FromLocation = g_vecZero; // Location to move from
 	Vector Location = g_vecZero; // Location to move to
 	float requiredZ = 0.0f; // If climbing a up ladder or wall, how high should they aim to get before dismounting.
-	unsigned short flag = 0; // Is this a ladder movement, wall climb, walk etc
+	unsigned int flag = 0; // Is this a ladder movement, wall climb, walk etc
 	unsigned char area = 0; // Is this a crouch area, normal walking area etc
 	unsigned int poly = 0; // The nav mesh poly this point resides on
 } bot_path_node;
@@ -447,6 +455,16 @@ typedef struct _AVH_AI_PLAYER_TASK
 	float TaskLength = 0.0f; // If a task has gone on longer than this time, it will be considered completed
 } AvHAIPlayerTask;
 
+typedef struct _AVH_AI_BUILD_ATTEMPT
+{
+	AvHAIDeployableStructureType AttemptedStructureType = STRUCTURE_NONE;
+	Vector AttemptedLocation = g_vecZero;
+	int NumAttempts = 0;
+	BotBuildAttemptStatus BuildStatus = BUILD_ATTEMPT_NONE;
+	float BuildAttemptTime = 0.0f;
+	AvHAIBuildableStructure* LinkedStructure = nullptr;
+} AvHAIBuildAttempt;
+
 // Contains the bot's current navigation info, such as current path
 typedef struct _NAV_STATUS
 {
@@ -486,7 +504,7 @@ typedef struct _NAV_STATUS
 	BotMoveStyle MoveStyle = MOVESTYLE_NORMAL; // Current desired move style (e.g. normal, ambush, hide). Will trigger new path calculations if this changes
 	float LastPathCalcTime = 0.0f; // When the bot last calculated a path, to limit how frequently it can recalculate
 
-	bool bPendingRecalculation = false; // This bot should recalculate its path as soon as it can
+	float NextForceRecalc = 0.0f; // If set, then the bot will force-recalc its current path
 
 	bool bZig; // Is the bot zigging, or zagging?
 	float NextZigTime; // Controls how frequently they zig or zag
@@ -496,7 +514,7 @@ typedef struct _NAV_STATUS
 	nav_profile NavProfile;
 	bool bNavProfileChanged = false;
 
-	unsigned short SpecialMovementFlags = 0; // Any special movement flags required for this path (e.g. needs a welder, needs a jetpack etc.)
+	unsigned int SpecialMovementFlags = 0; // Any special movement flags required for this path (e.g. needs a welder, needs a jetpack etc.)
 
 
 } nav_status;
@@ -629,11 +647,7 @@ typedef struct AVH_AI_PLAYER
 
 	nav_status BotNavInfo; // Bot's movement information, their current path, where in the path they are etc.
 
-	commander_action BuildAction;
-	commander_action ResearchAction;
-	commander_action SupportAction;
-	commander_action RecycleAction;
-	commander_action* CurrentAction;
+	AvHAIBuildAttempt BuildAttempts;
 
 	vector<ai_commander_request> ActiveRequests;
 	vector<ai_commander_order> ActiveOrders;

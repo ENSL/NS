@@ -223,6 +223,25 @@ bool IsEdictStructure(const edict_t* edict)
 	return (GetDeployableObjectTypeFromEdict(edict) != STRUCTURE_NONE);
 }
 
+bool IsDamagingStructure(const edict_t* StructureEdict)
+{
+	return IsDamagingStructure(GetStructureTypeFromEdict(StructureEdict));
+}
+
+bool IsDamagingStructure(AvHAIDeployableStructureType StructureType)
+{
+	switch (StructureType)
+	{
+		case STRUCTURE_ALIEN_OFFENCECHAMBER:
+		case STRUCTURE_MARINE_TURRETFACTORY:
+			return true;
+		default:
+			return false;
+	}
+
+	return false;
+}
+
 AvHAIDeployableStructureType GetStructureTypeFromEdict(const edict_t* StructureEdict)
 {
 	if (FNullEnt(StructureEdict)) { return STRUCTURE_NONE; }

@@ -28,6 +28,11 @@ bool IsEdictStructure(const edict_t* edict);
 
 AvHAIDeployableStructureType GetStructureTypeFromEdict(const edict_t* StructureEdict);
 
+// Returns true if this structure shoots back (turret or offence chamber)
+bool IsDamagingStructure(const edict_t* StructureEdict);
+// Returns true if this structure shoots back (turret or offence chamber)
+bool IsDamagingStructure(AvHAIDeployableStructureType StructureType);
+
 bool GetNearestMapLocationAtPoint(vec3_t SearchLocation, string& outLocation);
 
 AvHAIDeployableStructureType GetDeployableObjectTypeFromEdict(const edict_t* StructureEdict);
