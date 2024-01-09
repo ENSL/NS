@@ -35,10 +35,10 @@ bool AICOMM_DoesPlayerOrderNeedReminder(AvHAIPlayer* pBot, ai_commander_order* O
 void AICOMM_IssueOrderForAssignedJob(AvHAIPlayer* pBot, ai_commander_order* Order);
 
 void AICOMM_ClearAction(commander_action* Action);
-bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot, commander_action* Action);
+bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot);
 bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot);
 bool AICOMM_CheckForNextRecycleAction(AvHAIPlayer* pBot);
-bool AICOMM_CheckForNextResearchAction(AvHAIPlayer* pBot, commander_action* Action);
+bool AICOMM_CheckForNextResearchAction(AvHAIPlayer* pBot);
 void AICOMM_SetDropHealthAction(AvHAIPlayer* pBot, commander_action* Action, edict_t* Recipient);
 void AICOMM_SetDropAmmoAction(AvHAIPlayer* pBot, commander_action* Action, edict_t* Recipient);
 void AICOMM_SetDeployStructureAction(AvHAIPlayer* pBot, commander_action* Action, AvHAIDeployableStructureType StructureToBuild, const Vector Location, bool bIsUrgent);
@@ -48,9 +48,9 @@ void AICOMM_CommanderThink(AvHAIPlayer* pBot);
 
 const AvHAIHiveDefinition* AICOMM_GetEmptyHiveOpportunityNearestLocation(AvHAIPlayer* CommanderBot, const Vector SearchLocation);
 
-bool AICOMM_BuildInfantryPortal(AvHAIPlayer* pBot, edict_t* CommChair, commander_action* Action);
-bool AICOMM_PerformNextSiegeHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefinition* HiveToSiege, commander_action* Action);
-bool AICOMM_PerformNextSecureHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefinition* HiveToSecure, commander_action* Action);
+bool AICOMM_BuildInfantryPortal(AvHAIPlayer* pBot, edict_t* CommChair);
+bool AICOMM_PerformNextSiegeHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefinition* HiveToSiege);
+bool AICOMM_PerformNextSecureHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefinition* HiveToSecure);
 
 ai_commander_request* AICOMM_GetExistingRequestForPlayer(AvHAIPlayer* pBot, edict_t* Requestor);
 void AICOMM_CheckNewRequests(AvHAIPlayer* pBot);

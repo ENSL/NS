@@ -44,7 +44,7 @@ void						AITAC_OnStructureCompleted(AvHAIBuildableStructure* NewStructure);
 void						AITAC_OnStructureBeginRecycling(AvHAIBuildableStructure* RecyclingStructure);
 void						AITAC_OnStructureDestroyed(AvHAIBuildableStructure* DestroyedStructure);
 void						AITAC_LinkDeployedItemToAction(AvHAIPlayer* CommanderBot, const AvHAIDroppedItem* NewItem);
-void						AITAC_LinkAlienStructureToTask(AvHAIPlayer* pBot, AvHAIBuildableStructure* NewStructure);
+void						AITAC_LinkAlienStructureToPlayer(AvHAIBuildableStructure* NewStructure);
 
 float						AITAC_GetPhaseDistanceBetweenPoints(const Vector StartPoint, const Vector EndPoint);
 

@@ -1498,27 +1498,39 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 		theSuccess = true;
 	}
-	else if (FStrEq(pcmd, "testcommanderbuild"))
+	else if (FStrEq(pcmd, "setdebugaiplayer"))
 	{
-		AvHAIPlayer* AIComm = AIMGR_GetAICommander(theAvHPlayer->GetTeam());
+		CBaseEntity* SpectatedPlayer = theAvHPlayer->GetSpectatingEntity();
 
-		if (AIComm)
+		if (SpectatedPlayer)
 		{
+			AIMGR_SetDebugAIPlayer(SpectatedPlayer->edict());
+		}
 
-			Vector TraceStart = GetPlayerEyePosition(theAvHPlayer->edict()); // origin + pev->view_ofs
-			Vector LookDir = UTIL_GetForwardVector(theAvHPlayer->edict()->v.v_angle); // Converts view angles to normalized unit vector
+		theSuccess = true;
+	}
+	else if (FStrEq(pcmd, "testalienreinforce"))
+	{
+		vector<AvHAIPlayer*> AlienPlayers = AIMGR_GetAIPlayersOnTeam(TEAM_TWO);
 
-			Vector TraceEnd = TraceStart + (LookDir * 1000.0f);
+		if (AlienPlayers.size() > 0)
+		{
+			AvHAIPlayer* NewCapper = AlienPlayers[0];
 
-			TraceResult Hit;
-
-			UTIL_TraceLine(TraceStart, TraceEnd, ignore_monsters, theAvHPlayer->edict(), &Hit);
-
-			if (Hit.flFraction < 1.0f)
+			if (NewCapper)
 			{
-				AICOMM_DeployStructure(AIComm, STRUCTURE_MARINE_ARMOURY, Hit.vecEndPos);
-			}
+				DeployableSearchFilter ResNodeFilter;
+				ResNodeFilter.DeployableTeam = TEAM_TWO;
+				ResNodeFilter.ReachabilityTeam = TEAM_TWO;
+				ResNodeFilter.ReachabilityFlags = NewCapper->BotNavInfo.NavProfile.ReachabilityFlag;
 
+				AvHAIResourceNode* ResNode = AITAC_FindNearestResourceNodeToLocation(NewCapper->Edict->v.origin, &ResNodeFilter);
+
+				if (ResNode)
+				{
+					AITASK_SetReinforceStructureTask(NewCapper, &NewCapper->PrimaryBotTask, ResNode->ActiveTowerEntity, true);
+				}
+			}
 		}
 
 		theSuccess = true;

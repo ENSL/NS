@@ -221,9 +221,9 @@ AvHAIBuildableStructure* AITAC_FindClosestDeployableToLocation(const Vector& Loc
 	{
 		for (auto& it : TeamAStructureMap)
 		{
-			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
-			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
 			if (!(it.second.StructureType & Filter->DeployableTypes)) { continue; }
+			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
+			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }			
 
 			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
 
@@ -248,10 +248,10 @@ AvHAIBuildableStructure* AITAC_FindClosestDeployableToLocation(const Vector& Loc
 	{
 		for (auto& it : TeamBStructureMap)
 		{
+			if (!(it.second.StructureType & Filter->DeployableTypes)) { continue; }
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
-			if (!(it.second.StructureType & Filter->DeployableTypes)) { continue; }
-
+			
 			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
 
 			if (Filter->ReachabilityTeam != TEAM_IND)
@@ -1182,6 +1182,18 @@ void AITAC_OnNavMeshModified()
 	{
 		it->bReachabilityMarkedDirty = true;
 	}
+
+	vector<AvHAIPlayer*> AllAIPlayers = AIMGR_GetAllAIPlayers();
+
+	for (auto it = AllAIPlayers.begin(); it != AllAIPlayers.end(); it++)
+	{
+		AvHAIPlayer* ThisPlayer = (*it);
+
+		if (IsPlayerActiveInGame(ThisPlayer->Edict) && ThisPlayer->BotNavInfo.CurrentPath.size() > 0)
+		{
+			ThisPlayer->BotNavInfo.NextForceRecalc = gpGlobals->time + frandrange(0.0f, 1.0f);
+		}
+	}
 }
 
 void AITAC_RefreshBuildableStructures()
@@ -1660,6 +1672,8 @@ AvHAIBuildableStructure* AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 
 	std::unordered_map<int, AvHAIBuildableStructure>& BuildingMap = (BaseBuildable->GetTeamNumber() == TeamANumber) ? TeamAStructureMap : TeamBStructureMap;
 
+	BuildingMap[EntIndex].StructureType = StructureType;
+
 	// This is the first time we've seen this structure, so it must be new
 	if (BuildingMap[EntIndex].LastSeen == 0)
 	{
@@ -1673,8 +1687,6 @@ AvHAIBuildableStructure* AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 
 		AITAC_OnStructureCreated(&BuildingMap[EntIndex]);
 	}
-
-	BuildingMap[EntIndex].StructureType = StructureType;
 
 	if (vIsZero(BuildingMap[EntIndex].Location) || !vEquals(BaseBuildable->pev->origin, BuildingMap[EntIndex].Location, 5.0f))
 	{
@@ -1754,24 +1766,9 @@ void AITAC_OnStructureCreated(AvHAIBuildableStructure* NewStructure)
 
 	if (!Team) { return; }
 
-	if (Team->GetTeamType() == AVH_CLASS_TYPE_MARINE)
+	if (Team->GetTeamType() == AVH_CLASS_TYPE_ALIEN)
 	{
-		AvHAIPlayer* ActiveAICommander = AIMGR_GetAICommander(StructureTeam);
-
-		if (ActiveAICommander)
-		{
-			LinkDeployedObjectToCommanderAction(ActiveAICommander, NewStructure);
-		}
-	}
-	else
-	{
-		AvHAIPlayer* BuildingPlayer = AIMGR_FindPlayerOnTeamWaitingBuildLink(StructureTeam, NewStructure->StructureType, NewStructure->Location);
-
-		if (BuildingPlayer)
-		{
-			AITAC_LinkAlienStructureToTask(BuildingPlayer, NewStructure);
-		}
-
+		AITAC_LinkAlienStructureToPlayer(NewStructure);
 	}
 
 }
@@ -1805,7 +1802,7 @@ void AITAC_OnStructureCompleted(AvHAIBuildableStructure* NewStructure)
 			NewConnection.TargetObject = OtherPhaseGate->edict;
 			memset(&NewConnection.ConnectionRefs[0], 0, sizeof(NewConnection.ConnectionRefs));
 
-			UTIL_AddOffMeshConnection(NewStructure->Location, OtherPhaseGate->Location, SAMPLE_POLYAREA_GROUND, NewFlag, true, &NewConnection);
+			UTIL_AddOffMeshConnection(NewStructure->Location, OtherPhaseGate->Location, SAMPLE_POLYAREA_PHASEGATE, NewFlag, true, &NewConnection);
 
 			NewStructure->OffMeshConnections.push_back(NewConnection);
 
@@ -1875,9 +1872,24 @@ void AITAC_OnStructureDestroyed(AvHAIBuildableStructure* DestroyedStructure)
 	}
 }
 
-void AITAC_LinkAlienStructureToTask(AvHAIPlayer* pBot, AvHAIBuildableStructure* NewStructure)
+void AITAC_LinkAlienStructureToPlayer(AvHAIBuildableStructure* NewStructure)
 {
+	vector<AvHAIPlayer*> AllTeamPlayers = AIMGR_GetAIPlayersOnTeam((AvHTeamNumber)NewStructure->edict->v.team);
 
+	for (auto it = AllTeamPlayers.begin(); it != AllTeamPlayers.end(); it++)
+	{
+		AvHAIPlayer* Player = (*it);
+
+		if (Player->BuildAttempts.BuildStatus == BUILD_ATTEMPT_PENDING && Player->BuildAttempts.AttemptedStructureType == NewStructure->StructureType)
+		{
+			if (vDist2DSq(NewStructure->Location, Player->BuildAttempts.AttemptedLocation) < sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
+			{
+				Player->BuildAttempts.BuildStatus = BUILD_ATTEMPT_SUCCESS;
+				Player->BuildAttempts.LinkedStructure = NewStructure;
+			}
+			
+		}
+	}
 }
 
 void AITAC_LinkDeployedItemToAction(AvHAIPlayer* CommanderBot, const AvHAIDroppedItem* NewItem)
@@ -2044,18 +2056,18 @@ unsigned char UTIL_GetAreaForObstruction(AvHAIDeployableStructureType StructureT
 	AvHTeamNumber TeamA = GetGameRules()->GetTeamANumber();
 	AvHTeamNumber TeamB = GetGameRules()->GetTeamBNumber();
 
-	unsigned char StructureArea = (BuildingEdict->v.team == TeamA) ? DT_TILECACHE_TEAM1STRUCTURE_AREA : DT_TILECACHE_TEAM2STRUCTURE_AREA;
+	unsigned char TeamStructureArea = (BuildingEdict->v.team == TeamA) ? DT_TILECACHE_TEAM1STRUCTURE_AREA : DT_TILECACHE_TEAM2STRUCTURE_AREA;
 
 	switch (StructureType)
 	{
-	case STRUCTURE_MARINE_RESTOWER:
 	case STRUCTURE_MARINE_COMMCHAIR:
 	case STRUCTURE_MARINE_ARMOURY:
 	case STRUCTURE_MARINE_ADVARMOURY:
 	case STRUCTURE_MARINE_OBSERVATORY:
 	case STRUCTURE_ALIEN_RESTOWER:
+	case STRUCTURE_MARINE_RESTOWER:
 	case STRUCTURE_ALIEN_HIVE:
-		return StructureArea;
+		return TeamStructureArea;
 	default:
 		return DT_TILECACHE_BLOCKED_AREA;
 	}
@@ -2072,6 +2084,8 @@ float UTIL_GetStructureRadiusForObstruction(AvHAIDeployableStructureType Structu
 	case STRUCTURE_MARINE_TURRETFACTORY:
 	case STRUCTURE_MARINE_COMMCHAIR:
 		return 60.0f;
+	case STRUCTURE_MARINE_TURRET:
+		return 30.0f;
 	default:
 		return 40.0f;
 

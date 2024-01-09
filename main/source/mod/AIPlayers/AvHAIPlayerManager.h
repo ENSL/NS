@@ -58,13 +58,17 @@ int AIMGR_GetNumAIPlayersWithRoleOnTeam(AvHTeamNumber Team, AvHAIBotRole Role, A
 
 AvHAIPlayer* AIMGR_GetAICommander(AvHTeamNumber Team);
 
-AvHAIPlayer* AIMGR_FindPlayerOnTeamWaitingBuildLink(const AvHTeamNumber Team, const AvHAIDeployableStructureType NewStructure, const Vector BuildLocation);
+
 
 AvHTeamNumber AIMGR_GetEnemyTeam(const AvHTeamNumber FriendlyTeam);
+AvHClassType AIMGR_GetEnemyTeamType(const AvHTeamNumber FriendlyTeam);
 
 vector<AvHAIPlayer*> AIMGR_GetAllAIPlayers();
 vector<AvHAIPlayer*> AIMGR_GetAIPlayersOnTeam(AvHTeamNumber Team);
 
 void AIMGR_ClearBotData();
+
+AvHAIPlayer* AIMGR_GetDebugAIPlayer();
+void AIMGR_SetDebugAIPlayer(edict_t* AIPlayer);
 
 #endif

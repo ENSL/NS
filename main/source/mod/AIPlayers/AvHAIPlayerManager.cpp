@@ -32,6 +32,8 @@ extern int m_spriteTexture;
 Vector DebugVector1 = ZERO_VECTOR;
 Vector DebugVector2 = ZERO_VECTOR;
 
+AvHAIPlayer* DebugAIPlayer = nullptr;
+
 vector<bot_path_node> DebugPath;
 
 string BotNames[MAX_PLAYERS] = { "MrRobot",
@@ -70,17 +72,17 @@ string BotNames[MAX_PLAYERS] = { "MrRobot",
 
 AvHAICommanderMode AIMGR_GetCommanderMode()
 {
-	if (avh_botcommandermode.value == 0)
+	if (avh_botcommandermode.value == 1)
 	{
-		return COMMANDERMODE_DISABLED;
+		return COMMANDERMODE_ENABLED;
 	}
 
-	if (avh_botcommandermode.value == 1)
+	if (avh_botcommandermode.value == 2)
 	{
 		return COMMANDERMODE_IFNOHUMAN;
 	}
 
-	return COMMANDERMODE_ENABLED;
+	return COMMANDERMODE_DISABLED;
 
 }
 
@@ -124,15 +126,15 @@ void AIMGR_UpdateAIPlayerCounts()
 		return;
 	}
 
-	if (avh_botautomode.value == 1) // Balance only: bots will only be added and removed to ensure teams remain balanced
+	if (avh_botautomode.value == 1) // Fill teams: bots will be added and removed to maintain a minimum player count
 	{
-		AIMGR_UpdateTeamBalance();
+		AIMGR_UpdateFillTeams();
 		return;
 	}
 
-	if (avh_botautomode.value == 2) // Fill teams: bots will be added and removed to maintain a minimum player count
+	if (avh_botautomode.value == 2) // Balance only: bots will only be added and removed to ensure teams remain balanced
 	{
-		AIMGR_UpdateFillTeams();
+		AIMGR_UpdateTeamBalance();
 		return;
 	}
 
@@ -455,6 +457,12 @@ void AIMGR_AddAIPlayerToTeam(int Team)
 		NewAIPlayer.Edict = BotEnt;
 		NewAIPlayer.Team = theNewAIPlayer->GetTeam();
 
+		NewAIPlayer.CurrentTask = nullptr;
+		NewAIPlayer.PrimaryBotTask.TaskType = TASK_NONE;
+		NewAIPlayer.SecondaryBotTask.TaskType = TASK_NONE;
+		NewAIPlayer.WantsAndNeedsTask.TaskType = TASK_NONE;
+		NewAIPlayer.CommanderTask.TaskType = TASK_NONE;
+
 		const bot_skill BotSkillSettings = CONFIG_GetGlobalBotSkillLevel();
 
 		memcpy(&NewAIPlayer.BotSkillSettings, &BotSkillSettings, sizeof(bot_skill));
@@ -565,9 +573,7 @@ void AIMGR_UpdateAIPlayers()
 
 				UpdateBotChat(bot);
 
-				AIPlayerThink(bot);
-
-				AIDEBUG_DrawPath(DebugPath, 0.0f);
+				DroneThink(bot);
 
 				BotUpdateDesiredViewRotation(bot);
 			}
@@ -813,49 +819,21 @@ AvHAIPlayer* AIMGR_GetAICommander(AvHTeamNumber Team)
 	return nullptr;
 }
 
-AvHAIPlayer* AIMGR_FindPlayerOnTeamWaitingBuildLink(const AvHTeamNumber Team, const AvHAIDeployableStructureType NewStructure, const Vector BuildLocation)
-{
-	vector<AvHAIPlayer*> TeamPlayers = AIMGR_GetAIPlayersOnTeam(Team);
-
-	for (auto it = TeamPlayers.begin(); it != TeamPlayers.end(); it++)
-	{
-		AvHAIPlayer* AIPlayer = (*it);
-
-		if (AIPlayer->PrimaryBotTask.bIsWaitingForBuildLink && AIPlayer->PrimaryBotTask.StructureType == NewStructure)
-		{
-			if (vDist2DSq(BuildLocation, AIPlayer->PrimaryBotTask.TaskLocation) < sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
-			{
-				return AIPlayer;
-			}
-
-		}
-
-		if (AIPlayer->SecondaryBotTask.bIsWaitingForBuildLink && AIPlayer->SecondaryBotTask.StructureType == NewStructure)
-		{
-			if (vDist2DSq(BuildLocation, AIPlayer->SecondaryBotTask.TaskLocation) < sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
-			{
-				return AIPlayer;
-			}
-		}
-
-		if (AIPlayer->WantsAndNeedsTask.bIsWaitingForBuildLink && AIPlayer->WantsAndNeedsTask.StructureType == NewStructure)
-		{
-			if (vDist2DSq(BuildLocation, AIPlayer->WantsAndNeedsTask.TaskLocation) < sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
-			{
-				return AIPlayer;
-			}
-		}
-	}
-
-	return nullptr;
-}
-
 AvHTeamNumber AIMGR_GetEnemyTeam(const AvHTeamNumber FriendlyTeam)
 {
 	AvHTeamNumber TeamANumber = GetGameRules()->GetTeamANumber();
 	AvHTeamNumber TeamBNumber = GetGameRules()->GetTeamBNumber();
 
 	return (FriendlyTeam == TeamANumber) ? TeamBNumber : TeamANumber;
+}
+
+AvHClassType AIMGR_GetEnemyTeamType(const AvHTeamNumber FriendlyTeam)
+{
+	AvHTeamNumber EnemyTeamNumber = AIMGR_GetEnemyTeam(FriendlyTeam);
+
+	AvHTeam* TeamRef = GetGameRules()->GetTeam(EnemyTeamNumber);
+
+	return (TeamRef) ? TeamRef->GetTeamType() : AVH_CLASS_TYPE_UNDEFINED;
 }
 
 vector<AvHAIPlayer*> AIMGR_GetAllAIPlayers()
@@ -903,4 +881,21 @@ void AIMGR_UpdateAIMapData()
 void AIMGR_BotPrecache()
 {
 	m_spriteTexture = PRECACHE_MODEL("sprites/zbeam6.spr");
+}
+
+AvHAIPlayer* AIMGR_GetDebugAIPlayer()
+{
+	return DebugAIPlayer;
+}
+
+void AIMGR_SetDebugAIPlayer(edict_t* AIPlayer)
+{
+	for (auto it = ActiveAIPlayers.begin(); it != ActiveAIPlayers.end(); it++)
+	{
+		if (it->Edict == AIPlayer)
+		{
+			DebugAIPlayer = &(*it);
+			return;
+		}
+	}
 }

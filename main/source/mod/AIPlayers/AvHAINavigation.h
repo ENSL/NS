@@ -37,12 +37,14 @@ constexpr auto MAX_PATH_POLY = 512; // Max nav mesh polys that can be traversed 
 // Possible area types. Water, Road, Door and Grass are not used (left-over from Detour library)
 enum SamplePolyAreas
 {
-	SAMPLE_POLYAREA_GROUND		= 0,	// Regular ground movement
-	SAMPLE_POLYAREA_CROUCH		= 1,	// Requires crouched movement
-	SAMPLE_POLYAREA_BLOCKED		= 2,	// Requires a jump to get over
-	SAMPLE_POLYAREA_FALLDAMAGE	= 3,	// Requires taking fall damage (if not immune to it)
-	SAMPLE_POLYAREA_WALLCLIMB	= 4,	// Requires the ability to wall-stick, fly or blink
-	SAMPLE_POLYAREA_OBSTRUCTION	= 5		// There is a door or weldable object in the way
+	SAMPLE_POLYAREA_GROUND			= 0,	// Regular ground movement
+	SAMPLE_POLYAREA_CROUCH			= 1,	// Requires crouched movement
+	SAMPLE_POLYAREA_BLOCKED			= 2,	// Requires a jump to get over
+	SAMPLE_POLYAREA_FALLDAMAGE		= 3,	// Requires taking fall damage (if not immune to it)
+	SAMPLE_POLYAREA_WALLCLIMB		= 4,	// Requires the ability to wall-stick, fly or blink
+	SAMPLE_POLYAREA_OBSTRUCTION		= 5,	// There is a door or weldable object in the way
+	SAMPLE_POLYAREA_STRUCTUREBLOCK	= 6,	// An enemy structure is blocking the way that must be destroyed
+	SAMPLE_POLYAREA_PHASEGATE		= 7		// Phase gate area, for area cost calculation
 };
 
 // Possible movement types. Swim and door are not used
@@ -247,6 +249,8 @@ void GroundMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoin
 void JumpMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint);
 // Called by NewMove, determines movement direction and jump inputs to hop over obstructions (structures)
 void BlockedMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint);
+// Called by NewMove, determines which structure is in the way and attacks it
+void StructureBlockedMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint);
 // Called by NewMove, determines the movement direction and inputs required to drop down from start to end points
 void FallMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint);
 // Called by NewMove, determines the movement direction and inputs required to climb a ladder to reach endpoint
@@ -275,9 +279,9 @@ DoorTrigger* UTIL_GetNearestDoorTriggerFromLift(edict_t* LiftEdict, nav_door* Do
 bool UTIL_IsPathBlockedByDoor(const Vector StartLoc, const Vector EndLoc, edict_t* SearchDoor);
 
 edict_t* UTIL_GetDoorBlockingPathPoint(AvHAIPlayer* pBot, bot_path_node* PathNode, edict_t* SearchDoor);
-edict_t* UTIL_GetDoorBlockingPathPoint(const Vector FromLocation, const Vector ToLocation, const unsigned short MovementFlag, edict_t* SearchDoor);
+edict_t* UTIL_GetDoorBlockingPathPoint(const Vector FromLocation, const Vector ToLocation, const unsigned int MovementFlag, edict_t* SearchDoor);
 edict_t* UTIL_GetBreakableBlockingPathPoint(AvHAIPlayer* pBot, bot_path_node* PathNode, edict_t* SearchBreakable);
-edict_t* UTIL_GetBreakableBlockingPathPoint(AvHAIPlayer* pBot, const Vector FromLocation, const Vector ToLocation, const unsigned short MovementFlag, edict_t* SearchBreakable);
+edict_t* UTIL_GetBreakableBlockingPathPoint(AvHAIPlayer* pBot, const Vector FromLocation, const Vector ToLocation, const unsigned int MovementFlag, edict_t* SearchBreakable);
 
 
 Vector UTIL_GetButtonFloorLocation(const Vector UserLocation, edict_t* ButtonEdict);
@@ -316,7 +320,7 @@ void UTIL_RemoveTemporaryObstacle(unsigned int ObstacleRef);
 
 void UTIL_RemoveTemporaryObstacles(unsigned int* ObstacleRefs);
 
-void UTIL_AddOffMeshConnection(Vector StartLoc, Vector EndLoc, unsigned char area, unsigned short flags, bool bBiDirectional, AvHAIOffMeshConnection* RemoveConnectionDef);
+void UTIL_AddOffMeshConnection(Vector StartLoc, Vector EndLoc, unsigned char area, unsigned int flags, bool bBiDirectional, AvHAIOffMeshConnection* RemoveConnectionDef);
 void UTIL_RemoveOffMeshConnections(AvHAIOffMeshConnection* RemoveConnectionDef);
 
 

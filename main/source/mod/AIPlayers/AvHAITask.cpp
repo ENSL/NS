@@ -137,6 +137,8 @@ void AITASK_ClearBotTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	Task->LastBuildAttemptTime = 0.0f;
 	Task->BuildAttempts = 0;
 	Task->StructureType = STRUCTURE_NONE;
+
+	memset(&pBot->BuildAttempts, 0, sizeof(AvHAIBuildAttempt));
 }
 
 bool AITASK_IsTaskUrgent(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
@@ -714,8 +716,6 @@ bool AITASK_IsAlienCapResNodeTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* 
 		return false;
 	}
 
-	if (!IsPlayerSkulk(pBot->Edict) && !IsPlayerGorge(pBot->Edict)) { return false; }
-
 	const AvHAIResourceNode* ResNodeIndex = AITAC_GetNearestResourceNodeToLocation(Task->TaskLocation);
 
 	if (!ResNodeIndex)
@@ -723,8 +723,53 @@ bool AITASK_IsAlienCapResNodeTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* 
 		return false;
 	}
 
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+
+	// Don't waste resources switching down to gorge if we're a lerk, fade or onos
+	// but we can still clear the area of enemy structures
+	if (!IsPlayerSkulk(pBot->Edict) && !IsPlayerGorge(pBot->Edict))
+	{
+		DeployableSearchFilter EnemyStructuresFilter;
+		EnemyStructuresFilter.DeployableTeam = AIMGR_GetEnemyTeam(BotTeam);
+		EnemyStructuresFilter.ReachabilityTeam = BotTeam;
+		EnemyStructuresFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+		EnemyStructuresFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
+
+		return AITAC_DeployableExistsAtLocation(ResNodeIndex->Location, &EnemyStructuresFilter); 
+	}
+
+	// We can attack structures basically if we aren't stuck with Gorge's spit attack
+	bool bCanAttackStructures = (!IsPlayerGorge(pBot->Edict) || PlayerHasWeapon(pBot->Player, WEAPON_GORGE_BILEBOMB));
+
+	if (ResNodeIndex->bIsOccupied)
+	{
+		// If we have a tower on the node, we can still help build it if it's not finished yet,
+		// or we can clear the area if we're able to
+		if (ResNodeIndex->OwningTeam == BotTeam)
+		{
+			if (IsPlayerGorge(pBot->Edict) && !UTIL_StructureIsFullyBuilt(ResNodeIndex->ActiveTowerEntity)) { return true; }
+
+			// If the tower is fully built and we don't have bile bomb then our work here is done
+			if (!bCanAttackStructures) { return false; }
+			
+			// If we can clear the area of enemy junk then do so, otherwise we're finished
+			DeployableSearchFilter EnemyStructuresFilter;
+			EnemyStructuresFilter.DeployableTeam = AIMGR_GetEnemyTeam(BotTeam);
+			EnemyStructuresFilter.ReachabilityTeam = BotTeam;
+			EnemyStructuresFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+			EnemyStructuresFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
+
+			return AITAC_DeployableExistsAtLocation(ResNodeIndex->Location, &EnemyStructuresFilter);
+		}
+		else
+		{
+			// Enemy owns the res node, but we can cap it if we're able to attack structures, or there's a friend in the area who can.
+			return (bCanAttackStructures || AITAC_GetNumPlayersOfTeamInArea(BotTeam, ResNodeIndex->Location, UTIL_MetresToGoldSrcUnits(5.0f), false, pBot->Edict, AVH_USER3_ALIEN_PLAYER2) > 0);
+		}
+	}
+
 	// If another gorge is claiming this spot, then move on
-	if (!IsPlayerGorge(pBot->Edict) && !ResNodeIndex->bIsOccupied)
+	if (!IsPlayerGorge(pBot->Edict))
 	{
 		edict_t* OtherBuilder = AITAC_GetNearestPlayerOfClassInArea(pBot->Player->GetTeam(), ResNodeIndex->Location, UTIL_MetresToGoldSrcUnits(5.0f), false, pBot->Edict, AVH_USER3_ALIEN_PLAYER2);
 
@@ -732,36 +777,15 @@ bool AITASK_IsAlienCapResNodeTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* 
 		{
 			if (GetPlayerResources(OtherBuilder) >= (int)(kResourceTowerCost * 0.7f))
 			{
-				return false;
-			}
-		}
-	}
+				// If we can clear the area of enemy junk then do so, otherwise we will let the other guy place the tower
+				DeployableSearchFilter EnemyStructuresFilter;
+				EnemyStructuresFilter.DeployableTeam = AIMGR_GetEnemyTeam(BotTeam);
+				EnemyStructuresFilter.ReachabilityTeam = BotTeam;
+				EnemyStructuresFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+				EnemyStructuresFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
 
-
-	if (ResNodeIndex->bIsOccupied)
-	{
-		if (IsPlayerGorge(pBot->Edict))
-		{
-			if (ResNodeIndex->OwningTeam == pBot->Player->GetTeam())
-			{
-				return !UTIL_StructureIsFullyBuilt(ResNodeIndex->ActiveTowerEntity);
+				return AITAC_DeployableExistsAtLocation(ResNodeIndex->Location, &EnemyStructuresFilter);
 			}
-			else
-			{
-				return PlayerHasWeapon(pBot->Player, WEAPON_GORGE_BILEBOMB);
-			}
-
-		}
-		else
-		{
-			return (ResNodeIndex->OwningTeam != pBot->Player->GetTeam());
-		}
-	}
-	else
-	{
-		if (Task->BuildAttempts > 3)
-		{
-			return false;
 		}
 	}
 
@@ -776,7 +800,9 @@ bool AITASK_IsMarineCapResNodeTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask*
 
 	if (!ResNodeIndex) { return false; }
 
-	// Always obey commander orders even if there's a bunch of other marines already there
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+
+	// Always obey commander orders even if there's a bunch of other marines already there, otherwise don't bother if someone else is securing it
 	if (!Task->bIssuedByCommander)
 	{
 		int DesiredNumCappers = (ResNodeIndex->OwningTeam == AIMGR_GetEnemyTeam(pBot->Player->GetTeam())) ? 2 : 1;
@@ -785,15 +811,24 @@ bool AITASK_IsMarineCapResNodeTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask*
 		if (NumMarinesNearby >= DesiredNumCappers && vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation) > sqrf(UTIL_MetresToGoldSrcUnits(4.0f))) { return false; }
 	}
 
-	if (ResNodeIndex->bIsOccupied)
-	{
-		if (ResNodeIndex->OwningTeam == pBot->Player->GetTeam())
-		{
-			return (FNullEnt(ResNodeIndex->ActiveTowerEntity) || !UTIL_StructureIsFullyBuilt(ResNodeIndex->ActiveTowerEntity));
-		}
-	}
+	// Obviously still valid task if the node is empty
+	if (!ResNodeIndex->bIsOccupied) { return true; }
 
-	return true;
+	// Also obviously still valid if it's owned by the enemy
+	if (ResNodeIndex->OwningTeam != BotTeam) { return true; }
+
+	// Likewise, still valid if there isn't a tower or it's not fully built
+	if (FNullEnt(ResNodeIndex->ActiveTowerEntity) || !UTIL_StructureIsFullyBuilt(ResNodeIndex->ActiveTowerEntity)) { return true; }
+
+	// At this point, the node is capped fully. However, don't consider a res node secured if the enemy still has their junk lying around. Clear it all out.
+	DeployableSearchFilter EnemyStructures;
+	EnemyStructures.DeployableTypes = SEARCH_ALL_STRUCTURES;
+	EnemyStructures.DeployableTeam = AIMGR_GetEnemyTeam(BotTeam);
+	EnemyStructures.ReachabilityTeam = BotTeam;
+	EnemyStructures.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+	EnemyStructures.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
+
+	return AITAC_DeployableExistsAtLocation(ResNodeIndex->Location, &EnemyStructures);
 }
 
 bool AITASK_IsDefendTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
@@ -823,69 +858,77 @@ bool AITASK_IsReinforceStructureTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTas
 
 	if (!FNullEnt(Task->TaskSecondaryTarget) && !UTIL_StructureIsFullyBuilt(Task->TaskSecondaryTarget)) { return true; }
 
-	if (Task->TaskTarget->v.team != pBot->Player->GetTeam()) { return false; }
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
 
+	if (Task->TaskTarget->v.team != BotTeam) { return false; }
+
+	// The reinforce structure task is true if we have an undecided hive available that we could build a new chamber with
 	bool bActiveHiveWithoutTechExists = AITAC_TeamHiveWithTechExists(pBot->Player->GetTeam(), MESSAGE_NULL);
 
 	if (bActiveHiveWithoutTechExists) { return true; }
 
 	DeployableSearchFilter StructureFilter;
-	StructureFilter.DeployableTypes = STRUCTURE_ALIEN_OFFENCECHAMBER;
+	StructureFilter.DeployableTypes = STRUCTURE_ALIEN_OFFENCECHAMBER | ALIEN_BUILD_DEFENSE_CHAMBER | ALIEN_BUILD_MOVEMENT_CHAMBER | ALIEN_BUILD_SENSORY_CHAMBER;
 	StructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
 	StructureFilter.DeployableTeam = pBot->Player->GetTeam();
 
-	// At least 2 offence chambers
-	int NumOffenceChambers = AITAC_GetNumDeployablesNearLocation(Task->TaskTarget->v.origin, &StructureFilter);
+	vector<AvHAIBuildableStructure*> AllNearbyStructures = AITAC_FindAllDeployables(Task->TaskTarget->v.origin, &StructureFilter);
 
-	if (NumOffenceChambers < 2) { return true; }
+	bool bUnfinishedStructureExists = false;
+	int NumOffenceChambers = 0;
+	int NumDefenceChambers = 0;
+	int NumMovementChambers = 0;
+	int NumSensoryChambers = 0;
 
-	// At least 2 defence chambers, if the hive exists for it
-	if (AITAC_TeamHiveWithTechExists(pBot->Player->GetTeam(), ALIEN_BUILD_DEFENSE_CHAMBER))
+	for (auto it = AllNearbyStructures.begin(); it != AllNearbyStructures.end(); it++)
 	{
-		StructureFilter.DeployableTypes = STRUCTURE_ALIEN_DEFENCECHAMBER;
-		int NumDefenceChambers = AITAC_GetNumDeployablesNearLocation(Task->TaskTarget->v.origin, &StructureFilter);
+		AvHAIBuildableStructure* ThisStructure = (*it);
 
-		if (NumDefenceChambers < 2) { return true; }
+		if (!(ThisStructure->StructureStatusFlags & STRUCTURE_STATUS_COMPLETED)) { bUnfinishedStructureExists = true; }
 
-		StructureFilter.MaxSearchRadius = 0.0f;
-		int NumTotalDefenceChambers = AITAC_GetNumDeployablesNearLocation(Task->TaskTarget->v.origin, &StructureFilter);
+		switch (ThisStructure->StructureType)
+		{
+			case STRUCTURE_ALIEN_OFFENCECHAMBER:
+				NumOffenceChambers++;
+				break;
+			case STRUCTURE_ALIEN_DEFENCECHAMBER:
+				NumDefenceChambers++;
+				break;
+			case STRUCTURE_ALIEN_MOVEMENTCHAMBER:
+				NumMovementChambers++;
+				break;
+			case STRUCTURE_ALIEN_SENSORYCHAMBER:
+				NumSensoryChambers++;
+				break;
+			default:
+				break;
 
-		if (NumTotalDefenceChambers < 3) { return true; }
+		}
 	}
 
-	// At least 1 movement and sensory chamber, if the hive exists for them
-	if (AITAC_TeamHiveWithTechExists(pBot->Player->GetTeam(), ALIEN_BUILD_MOVEMENT_CHAMBER))
-	{
-		StructureFilter.DeployableTypes = STRUCTURE_ALIEN_MOVEMENTCHAMBER;
-		StructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
+	// Task is still valid if we have any missing structures, or we're a gorge at the target site and there is an incomplete structure that we can finish off
 
-		bool bHasMoveChamber = AITAC_DeployableExistsAtLocation(Task->TaskTarget->v.origin, &StructureFilter);
+	if (NumOffenceChambers < 2
+		|| (AITAC_TeamHiveWithTechExists(BotTeam, ALIEN_BUILD_DEFENSE_CHAMBER) && NumDefenceChambers < 2)
+		|| (AITAC_TeamHiveWithTechExists(BotTeam, ALIEN_BUILD_MOVEMENT_CHAMBER) && NumMovementChambers < 1)
+		|| (AITAC_TeamHiveWithTechExists(BotTeam, ALIEN_BUILD_SENSORY_CHAMBER) && NumSensoryChambers < 1)
+		|| (IsPlayerGorge(pBot->Edict) && bUnfinishedStructureExists && vDist2DSq(pBot->Edict->v.origin, Task->TaskTarget->v.origin) <= sqrf(UTIL_MetresToGoldSrcUnits(10.0f)))
+		) {	return true; }
 
-		if (!bHasMoveChamber) { return true; }
+	// Otherwise, are there any enemy structures lying around we could clear out?
 
-		StructureFilter.MaxSearchRadius = 0.0f;
-		int NumTotalMoveChambers = AITAC_GetNumDeployablesNearLocation(Task->TaskTarget->v.origin, &StructureFilter);
+	bool bCanAttackStructures = (!IsPlayerGorge(pBot->Edict) || PlayerHasWeapon(pBot->Player, WEAPON_GORGE_BILEBOMB));
 
-		if (NumTotalMoveChambers < 3) { return true; }
-	}
+	if (!bCanAttackStructures) { return false; }
 
-	if (AITAC_TeamHiveWithTechExists(pBot->Player->GetTeam(), ALIEN_BUILD_SENSORY_CHAMBER))
-	{
-		StructureFilter.DeployableTypes = STRUCTURE_ALIEN_SENSORYCHAMBER;
-		StructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
+	DeployableSearchFilter EnemyStuff;
+	EnemyStuff.DeployableTypes = SEARCH_ALL_STRUCTURES;
+	EnemyStuff.DeployableTeam = AIMGR_GetEnemyTeam(BotTeam);
+	EnemyStuff.ReachabilityTeam = BotTeam;
+	EnemyStuff.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+	EnemyStuff.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
 
-		bool bHasSensoryChamber = AITAC_DeployableExistsAtLocation(Task->TaskTarget->v.origin, &StructureFilter);
-
-		if (!bHasSensoryChamber) { return true; }
-
-		StructureFilter.MaxSearchRadius = 0.0f;
-		int NumTotalSensoryChambers = AITAC_GetNumDeployablesNearLocation(Task->TaskTarget->v.origin, &StructureFilter);
-
-		if (NumTotalSensoryChambers < 3) { return true; }
-	}
-
-	// We have all available chambers set up
-	return false;
+	return AITAC_DeployableExistsAtLocation(Task->TaskTarget->v.origin, &EnemyStuff);
 }
 
 bool AITASK_IsMarineSecureHiveTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
@@ -946,7 +989,18 @@ bool AITASK_IsMarineSecureHiveTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask*
 
 	bool bSecuredResNode = (!ResNode || (ResNode->OwningTeam == BotTeam && !FNullEnt(ResNode->ActiveTowerEntity) && UTIL_StructureIsFullyBuilt(ResNode->ActiveTowerEntity)));
 
-	return !((!bPhaseGatesAvailable || bHasPhaseGate) && bHasTurretFactory && NumTurrets >= 5 && bSecuredResNode);
+	if ((bPhaseGatesAvailable && !bHasPhaseGate) || !bHasTurretFactory || NumTurrets < 5) { return true; }
+
+	// Don't consider a hive secured if the enemy still has their junk in there. Clear it all out.
+
+	DeployableSearchFilter EnemyStructures;
+	EnemyStructures.DeployableTypes = SEARCH_ALL_STRUCTURES;
+	EnemyStructures.DeployableTeam = AIMGR_GetEnemyTeam(BotTeam);
+	EnemyStructures.ReachabilityTeam = BotTeam;
+	EnemyStructures.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+	EnemyStructures.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
+
+	return AITAC_DeployableExistsAtLocation(HiveToSecure->FloorLocation, &EnemyStructures);
 }
 
 bool AITASK_IsEvolveTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
@@ -1214,7 +1268,6 @@ void BotProgressReinforceStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (!FNullEnt(Task->TaskSecondaryTarget))
 	{
-
 		if (UTIL_StructureIsFullyBuilt(Task->TaskSecondaryTarget))
 		{
 			Task->TaskSecondaryTarget = nullptr;
@@ -1448,6 +1501,24 @@ void BotProgressReinforceStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (pBot->Player->GetResources() < ResRequired)
 	{
+		if (!IsPlayerGorge(pBot->Edict) || PlayerHasWeapon(pBot->Player, WEAPON_GORGE_BILEBOMB))
+		{
+			DeployableSearchFilter EnemyStuff;
+			EnemyStuff.DeployableTeam = AIMGR_GetEnemyTeam(pBot->Player->GetTeam());
+			EnemyStuff.DeployableTypes = SEARCH_ALL_STRUCTURES;
+			EnemyStuff.ReachabilityTeam = pBot->Player->GetTeam();
+			EnemyStuff.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+			EnemyStuff.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(10.0f);
+
+			AvHAIBuildableStructure* NearestEnemyStructure = AITAC_FindClosestDeployableToLocation(Task->TaskTarget->v.origin, &EnemyStuff);
+
+			if (NearestEnemyStructure)
+			{
+				BotAttackNonPlayerTarget(pBot, NearestEnemyStructure->edict);
+				return;
+			}
+		}
+
 		BotGuardLocation(pBot, Task->TaskLocation);
 		return;
 	}
@@ -1460,7 +1531,7 @@ void BotProgressReinforceStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (!IsPlayerGorge(pBot->Edict))
 	{
-		AITASK_SetEvolveTask(pBot, &pBot->WantsAndNeedsTask, pBot->Edict->v.origin, ALIEN_LIFEFORM_TWO, true);
+		BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_TWO);
 		return;
 	}
 
@@ -1578,14 +1649,6 @@ void AIPlayerBuildStructure(AvHAIPlayer* pBot, edict_t* BuildTarget)
 	}
 
 	MoveTo(pBot, BuildTarget->v.origin, MOVESTYLE_NORMAL);
-
-	if (IsPlayerMarine(pBot->Edict))
-	{
-		if (gpGlobals->time - pBot->LastCombatTime > 5.0f)
-		{
-			BotReloadWeapons(pBot);
-		}
-	}
 
 	if (vDist2DSq(pBot->Edict->v.origin, BuildTarget->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
 	{
@@ -2204,107 +2267,140 @@ void AlienProgressCapResNodeTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (!ResNodeIndex) { return; }
 
-	int NumResourcesRequired = (IsPlayerGorge(pBot->Edict) ? BALANCE_VAR(kResourceTowerCost) : (BALANCE_VAR(kResourceTowerCost) + BALANCE_VAR(kGorgeCost)));
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
 
-	float DistFromNode = vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation);
+	// We can attack structures if we're not a gorge stuck with spit as our only offensive weapon
+	bool bBotCanAttackStructures = !IsPlayerGorge(pBot->Edict) || PlayerHasWeapon(pBot->Player, WEAPON_GORGE_BILEBOMB);
 
-	if (DistFromNode > sqrf(UTIL_MetresToGoldSrcUnits(2.0f)) || !UTIL_QuickTrace(pBot->Edict, pBot->CurrentEyePosition, (Task->TaskLocation + Vector(0.0f, 0.0f, 50.0f))))
+	// First, clear out any marine phase gates nearby so they can't send backup, if we can actually do meaningful damage to them
+	if (bBotCanAttackStructures)
 	{
-		MoveTo(pBot, Task->TaskLocation, MOVESTYLE_NORMAL);
-		return;
+		AvHClassType EnemyClassType = AIMGR_GetEnemyTeamType(BotTeam);
+
+		if (EnemyClassType == AVH_CLASS_TYPE_MARINE)
+		{
+			DeployableSearchFilter PGFilter;
+			PGFilter.DeployableTeam = AIMGR_GetEnemyTeam(BotTeam);
+			PGFilter.DeployableTypes = STRUCTURE_MARINE_PHASEGATE;
+			PGFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
+			PGFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+			AvHAIBuildableStructure* PG = AITAC_FindClosestDeployableToLocation(ResNodeIndex->Location, &PGFilter);
+
+			if (PG)
+			{
+				BotAttackNonPlayerTarget(pBot, PG->edict);
+				return;
+			}
+		}
 	}
 
 	if (ResNodeIndex->bIsOccupied)
 	{
-		Task->TaskTarget = ResNodeIndex->ActiveTowerEntity;
-
-		if (ResNodeIndex->OwningTeam != pBot->Player->GetTeam())
-		{
-
-			if (IsPlayerGorge(pBot->Edict) && !PlayerHasWeapon(pBot->Player, WEAPON_GORGE_BILEBOMB))
-			{
-				int NumAllies = AITAC_GetNumPlayersOfTeamInArea(pBot->Player->GetTeam(), Task->TaskLocation, UTIL_MetresToGoldSrcUnits(5.0f), false, pBot->Edict, AVH_USER3_ALIEN_PLAYER2);
-				if (NumAllies > 0)
-				{
-					BotGuardLocation(pBot, Task->TaskLocation);
-				}
-				else
-				{
-					BotEvolveLifeform(pBot, ALIEN_LIFEFORM_ONE);
-				}
-			}
-			else
-			{
-				AvHAIWeapon AttackWeapon = BotAlienChooseBestWeaponForStructure(pBot, Task->TaskTarget);
-
-				float MaxRange = GetMaxIdealWeaponRange(AttackWeapon);
-				bool bHullSweep = IsMeleeWeapon(AttackWeapon);
-
-				if (UTIL_PlayerHasLOSToEntity(pBot->Edict, Task->TaskTarget, MaxRange, bHullSweep))
-				{
-					pBot->DesiredCombatWeapon = AttackWeapon;
-
-					if (GetPlayerCurrentWeapon(pBot->Player) == AttackWeapon)
-					{
-						BotShootTarget(pBot, pBot->DesiredCombatWeapon, Task->TaskTarget);
-						return;
-					}
-				}
-				else
-				{
-					MoveTo(pBot, Task->TaskTarget->v.origin, MOVESTYLE_NORMAL);
-				}
-			}
-			return;
-		}
-		else
+		// If we have a tower on there already then help build it if we're gorge
+		if (ResNodeIndex->OwningTeam == BotTeam)
 		{
 			if (!UTIL_StructureIsFullyBuilt(ResNodeIndex->ActiveTowerEntity))
 			{
-				if (UTIL_PlayerHasLOSToEntity(pBot->Edict, ResNodeIndex->ActiveTowerEntity, max_player_use_reach, true))
+				if (IsPlayerGorge(pBot->Edict))
 				{
-					BotUseObject(pBot, ResNodeIndex->ActiveTowerEntity, true);
-					if (vDist2DSq(pBot->Edict->v.origin, ResNodeIndex->ActiveTowerEntity->v.origin) > sqrf(60.0f))
-					{
-						MoveDirectlyTo(pBot, ResNodeIndex->ActiveTowerEntity->v.origin);
-					}
+					AIPlayerBuildStructure(pBot, ResNodeIndex->ActiveTowerEntity);
 					return;
-				}
+				}				
+			}
+		}
+		else
+		{
+			// If the enemy owns it then destroy it if we can, or go Skulk to do so.
+			if (bBotCanAttackStructures)
+			{
+				BotAttackNonPlayerTarget(pBot, ResNodeIndex->ActiveTowerEntity);
+				return;
+			}
+			else
+			{
+				BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_ONE);
+				return;
+			}
+		}
+	}
+	else
+	{
+		// Node is empty and not capped by either side
 
-				MoveTo(pBot, ResNodeIndex->ActiveTowerEntity->v.origin, MOVESTYLE_NORMAL);
+		int NumResourcesRequired = (IsPlayerGorge(pBot->Edict) ? BALANCE_VAR(kResourceTowerCost) : (BALANCE_VAR(kResourceTowerCost) + BALANCE_VAR(kGorgeCost)));
 
-				if (vDist2DSq(pBot->Edict->v.origin, ResNodeIndex->ActiveTowerEntity->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
+		// We have enough resources to place the tower (includes cost of evolving to gorge if necessary)
+		if (pBot->Player->GetResources() >= NumResourcesRequired)
+		{
+			float CurrDist = vDist2DSq(pBot->CurrentFloorPosition, ResNodeIndex->Location);
+
+			// Get close enough to place the tower if we aren't
+			if (CurrDist > sqrf(UTIL_MetresToGoldSrcUnits(3.0f)))
+			{
+				MoveTo(pBot, ResNodeIndex->Location, MOVESTYLE_NORMAL);
+				return;
+			}
+
+			// Back up a bit if we're too close
+			if (CurrDist < sqrf(UTIL_MetresToGoldSrcUnits(1.0f)))
+			{
+				BotLookAt(pBot, ResNodeIndex->Location);
+				Vector Orientation = UTIL_GetVectorNormal2D(pBot->Edict->v.origin - ResNodeIndex->Location);
+				Vector NewMoveLoc = ResNodeIndex->Location + (Orientation * UTIL_MetresToGoldSrcUnits(2.0f));
+				MoveToWithoutNav(pBot, NewMoveLoc);
+				
+				return;
+			}
+
+			if (!IsPlayerGorge(pBot->Edict))
+			{
+				BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_TWO);
+				return;
+			}
+			else
+			{
+				BotLookAt(pBot, Task->TaskLocation);
+
+				if (gpGlobals->time - Task->LastBuildAttemptTime < 1.0f) { return; }
+
+				float LookDot = UTIL_GetDotProduct2D(UTIL_GetForwardVector2D(pBot->Edict->v.v_angle), UTIL_GetVectorNormal2D(Task->TaskLocation - pBot->Edict->v.origin));
+
+				if (LookDot > 0.9f)
 				{
-					BotLookAt(pBot, UTIL_GetCentreOfEntity(ResNodeIndex->ActiveTowerEntity));
+
+					pBot->Impulse = ALIEN_BUILD_RESOURCES;
+					Task->LastBuildAttemptTime = gpGlobals->time + 1.0f;
+					Task->bIsWaitingForBuildLink = true;
+					Task->BuildAttempts++;
 				}
 
 				return;
 			}
 		}
-
-		return;
 	}
 
-	if (!IsPlayerGorge(pBot->Edict))
+	// We don't have enough resources to cap the node yet, so take out any enemy structures in the area while we wait if we can
+	if (bBotCanAttackStructures)
 	{
-		BotEvolveLifeform(pBot, ALIEN_LIFEFORM_TWO);
-		return;
+		DeployableSearchFilter EnemyStructureFilter;
+		EnemyStructureFilter.DeployableTeam = AIMGR_GetEnemyTeam(BotTeam);
+		EnemyStructureFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
+		EnemyStructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
+
+		AvHAIBuildableStructure* AttackTarget = AITAC_FindClosestDeployableToLocation(ResNodeIndex->Location, &EnemyStructureFilter);
+
+		if (AttackTarget)
+		{
+			BotAttackNonPlayerTarget(pBot, AttackTarget->edict);
+			return;
+		}
 	}
 
-	BotLookAt(pBot, Task->TaskLocation);
+	// No structures to take out, just wait for resources
+	BotGuardLocation(pBot, ResNodeIndex->Location);
 
-	if (gpGlobals->time - Task->LastBuildAttemptTime < 1.0f) { return; }
 
-	float LookDot = UTIL_GetDotProduct2D(UTIL_GetForwardVector2D(pBot->Edict->v.v_angle), UTIL_GetVectorNormal2D(Task->TaskLocation - pBot->Edict->v.origin));
-
-	if (LookDot > 0.9f)
-	{
-
-		pBot->Impulse = ALIEN_BUILD_RESOURCES;
-		Task->LastBuildAttemptTime = gpGlobals->time + 1.0f;
-		Task->bIsWaitingForBuildLink = true;
-		Task->BuildAttempts++;
-	}
 }
 
 void BotProgressTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
@@ -2477,9 +2573,11 @@ void MarineProgressSecureHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	StructureFilter.DeployableTeam = BotTeam;
 	StructureFilter.ReachabilityTeam = BotTeam;
 	StructureFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
-	StructureFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING | STRUCTURE_STATUS_COMPLETED;
+	StructureFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
 
 	vector<AvHAIBuildableStructure*> BuildableStructures = AITAC_FindAllDeployables(Hive->FloorLocation, &StructureFilter);
+
+	bool bKeyStructureBuilt = false;
 
 	AvHAIBuildableStructure* StructureToBuild = nullptr;
 	float MinDist = 0.0f;
@@ -2487,7 +2585,15 @@ void MarineProgressSecureHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	for (auto it = BuildableStructures.begin(); it != BuildableStructures.end(); it++)
 	{
 		AvHAIBuildableStructure* ThisStructure = (*it);
+
+		if ((ThisStructure->StructureStatusFlags & STRUCTURE_STATUS_COMPLETED) && (ThisStructure->StructureType & (STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_MARINE_ADVTURRETFACTORY | STRUCTURE_MARINE_PHASEGATE)))
+		{
+			bKeyStructureBuilt = true;
+		}
+
+		if (ThisStructure->StructureStatusFlags & STRUCTURE_STATUS_COMPLETED) { continue; }
 		
+		// Phase gates always take priority, so just go and build it if there is one
 		if (ThisStructure->StructureType == STRUCTURE_MARINE_PHASEGATE)
 		{
 			AIPlayerBuildStructure(pBot, ThisStructure->edict);
@@ -2515,8 +2621,13 @@ void MarineProgressSecureHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	{
 		if (ResNode->OwningTeam != BotTeam)
 		{
-			BotAttackTarget(pBot, ResNode->ActiveTowerEntity);
-			return;
+			// Don't attack the RT until we have build a TF or PG. Avoids giving the game away too quickly
+			if (bKeyStructureBuilt)
+			{
+				BotAttackNonPlayerTarget(pBot, ResNode->ActiveTowerEntity);
+				return;
+			}
+			
 		}
 		else
 		{
@@ -2528,6 +2639,25 @@ void MarineProgressSecureHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		}
 	}
 
+	// We won't start attacking enemy structures until we have built a turret factory or phase gate so we don't reveal our evil plans until we're ready
+	if (bKeyStructureBuilt)
+	{
+		DeployableSearchFilter EnemyStructures;
+		EnemyStructures.DeployableTypes = SEARCH_ALL_STRUCTURES;
+		EnemyStructures.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
+		EnemyStructures.DeployableTeam = AIMGR_GetEnemyTeam(BotTeam);
+		EnemyStructures.ReachabilityTeam = BotTeam;
+		EnemyStructures.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+
+		AvHAIBuildableStructure* EnemyStructure = AITAC_FindClosestDeployableToLocation(Hive->FloorLocation, &EnemyStructures);
+
+		if (EnemyStructure)
+		{
+			BotAttackNonPlayerTarget(pBot, EnemyStructure->edict);
+			return;
+		}
+	}
+
 	BotGuardLocation(pBot, Task->TaskLocation);
 	
 }
@@ -2536,34 +2666,26 @@ void MarineProgressCapResNodeTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
 	if (!Task) { return; }
 
-	float DistFromNode = vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation);
+	const AvHAIResourceNode* ResNodeIndex = AITAC_GetNearestResourceNodeToLocation(Task->TaskLocation);
 
-	if (DistFromNode > sqrf(UTIL_MetresToGoldSrcUnits(5.0f)) || !UTIL_QuickTrace(pBot->Edict, pBot->CurrentEyePosition, (Task->TaskLocation + Vector(0.0f, 0.0f, 50.0f))))
+	// This shouldn't happen, but if somehow it does then at least do SOMETHING
+	if (!ResNodeIndex)
 	{
 		MoveTo(pBot, Task->TaskLocation, MOVESTYLE_NORMAL);
-
-		if (gpGlobals->time - pBot->LastCombatTime > 5.0f)
-		{
-			BotReloadWeapons(pBot);
-		}
-
 		return;
 	}
 
-	const AvHAIResourceNode* ResNodeIndex = AITAC_GetNearestResourceNodeToLocation(Task->TaskLocation);
-
-	if (!ResNodeIndex) { return; }
-
+	// There is a res tower, ours or the enemies
 	if (ResNodeIndex->bIsOccupied)
 	{
 		Task->TaskTarget = ResNodeIndex->ActiveTowerEntity;
-		// Cancel the waiting timeout since a tower has been placed for us
-		Task->TaskLength = 0.0f;
-
+		
 		if (ResNodeIndex->OwningTeam == pBot->Player->GetTeam())
 		{
 			if (!UTIL_StructureIsFullyBuilt(ResNodeIndex->ActiveTowerEntity))
 			{
+				// Cancel the waiting timeout since there is something for us to do
+				Task->TaskLength = 0.0f;
 				AIPlayerBuildStructure(pBot, ResNodeIndex->ActiveTowerEntity);
 
 				return;
@@ -2571,29 +2693,63 @@ void MarineProgressCapResNodeTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		}
 		else
 		{
-			AvHAIWeapon AttackWeapon = BotMarineChooseBestWeaponForStructure(pBot, Task->TaskTarget);
+			// Cancel the waiting timeout since there is something for us to do
+			Task->TaskLength = 0.0f;
 
-			float MaxRange = GetMaxIdealWeaponRange(AttackWeapon);
-			bool bHullSweep = IsMeleeWeapon(AttackWeapon);
+			// If we're playing MvM, then check the enemy hasn't got a phase gate nearby which could bring in defenders. If so, take that out first.
+			AvHClassType EnemyType = AIMGR_GetEnemyTeamType(pBot->Player->GetTeam());
 
-			if (UTIL_PlayerHasLOSToEntity(pBot->Edict, Task->TaskTarget, MaxRange, bHullSweep))
+			if (EnemyType == AVH_CLASS_TYPE_MARINE)
 			{
-				pBot->DesiredCombatWeapon = AttackWeapon;
+				DeployableSearchFilter EnemyStructureFilter;
+				EnemyStructureFilter.DeployableTeam = AIMGR_GetEnemyTeam(pBot->Player->GetTeam());
+				EnemyStructureFilter.DeployableTypes = STRUCTURE_MARINE_PHASEGATE;
+				EnemyStructureFilter.ReachabilityTeam = pBot->Player->GetTeam();
+				EnemyStructureFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+				EnemyStructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
 
-				if (GetPlayerCurrentWeapon(pBot->Player) == AttackWeapon)
+				AvHAIBuildableStructure* EnemyStructure = AITAC_FindClosestDeployableToLocation(Task->TaskLocation, &EnemyStructureFilter);
+
+				if (EnemyStructure)
 				{
-					//BotShootTarget(pBot, pBot->DesiredCombatWeapon, Task->TaskTarget);
+					BotAttackNonPlayerTarget(pBot, EnemyStructure->edict);
+					return;
 				}
 			}
-			else
-			{
-				MoveTo(pBot, Task->TaskTarget->v.origin, MOVESTYLE_NORMAL);
-			}
+
+			BotAttackNonPlayerTarget(pBot, ResNodeIndex->ActiveTowerEntity);
+			return;
 		}
+	}
+
+	// Clear out any enemy structures around the node
+	DeployableSearchFilter EnemyStructureFilter;
+
+	EnemyStructureFilter.DeployableTeam = AIMGR_GetEnemyTeam(pBot->Player->GetTeam());
+	EnemyStructureFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
+	EnemyStructureFilter.ReachabilityTeam = pBot->Player->GetTeam();
+	EnemyStructureFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+	EnemyStructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
+
+	AvHAIBuildableStructure* EnemyStructure = AITAC_FindClosestDeployableToLocation(Task->TaskLocation, &EnemyStructureFilter);
+
+	if (EnemyStructure)
+	{
+		// Cancel the waiting timeout since we have something useful to do
+		Task->TaskLength = 0.0f;
+		BotAttackNonPlayerTarget(pBot, EnemyStructure->edict);
+		return;
 	}
 	else
 	{
-		// Give the commander 30 seconds to drop a tower for us, or give up and move on
+		// If we're not at our destination yet, go there
+		if (vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation) > UTIL_MetresToGoldSrcUnits(5.0f))
+		{
+			MoveTo(pBot, Task->TaskLocation, MOVESTYLE_NORMAL);
+			return;
+		}
+
+		// Empty res node with nothing to do but wait, stick around for 30 seconds and then move on if the commander doesn't drop an RT to build
 		if (Task->TaskLength == 0.0f)
 		{
 			Task->TaskStartedTime = gpGlobals->time;
@@ -3104,9 +3260,11 @@ void AITASK_SetCapResNodeTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, const Av
 
 	AITASK_ClearBotTask(pBot, Task);
 
+	Vector WaitLocation = UTIL_GetRandomPointOnNavmeshInRadius(pBot->BotNavInfo.NavProfile, NodeRef->Location, UTIL_MetresToGoldSrcUnits(1.0f));
+
 	Task->TaskType = TASK_CAP_RESNODE;
 	Task->StructureType = NodeStructureType;
-	Task->TaskLocation = NodeRef->Location;
+	Task->TaskLocation = (!vIsZero(WaitLocation)) ? WaitLocation : NodeRef->Location;
 
 	if (!FNullEnt(NodeRef->ActiveTowerEntity))
 	{
@@ -3246,6 +3404,8 @@ void AITASK_SetReinforceStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, 
 	}
 
 	AITASK_ClearBotTask(pBot, Task);
+
+	if (FNullEnt(Target) || Target->v.deadflag != DEAD_NO) { return; }
 
 	Task->TaskType = TASK_REINFORCE_STRUCTURE;
 	Task->TaskTarget = Target;

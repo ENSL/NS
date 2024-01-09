@@ -341,53 +341,6 @@ void BotLeap(AvHAIPlayer* pBot, const Vector TargetLocation)
 	}
 }
 
-
-void LinkDeployedObjectToCommanderAction(AvHAIPlayer* Commander, AvHAIBuildableStructure* NewStructure)
-{
-	if (!Commander || !NewStructure || FNullEnt(Commander->Edict)) { return; }
-
-	commander_action* Action = nullptr;
-
-	if (Commander->BuildAction.bIsAwaitingBuildLink && Commander->BuildAction.StructureToBuild == NewStructure->StructureType)
-	{
-		if (vDist2DSq(Commander->BuildAction.BuildLocation, NewStructure->Location) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
-		{
-			Action = &Commander->BuildAction;
-		}
-	}
-
-	if (!Action)
-	{
-		if (Commander->SupportAction.bIsAwaitingBuildLink && Commander->SupportAction.StructureToBuild == NewStructure->StructureType)
-		{
-			if (vDist2DSq(Commander->SupportAction.BuildLocation, NewStructure->Location) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
-			{
-				Action = &Commander->SupportAction;
-			}
-		}
-	}
-
-	if (!Action) { return; }
-
-	NewStructure->LastSuccessfulCommanderLocation = Action->LastAttemptedCommanderLocation;
-	NewStructure->LastSuccessfulCommanderAngle = Action->LastAttemptedCommanderAngle;
-	NewStructure->Purpose = Action->ActionPurpose;
-
-	float CoolDown = (Action->NumDesiredInstances > 1) ? 0.33f : commander_action_cooldown;
-
-	Commander->next_commander_action_time = gpGlobals->time + CoolDown;
-
-	Action->NumInstances++;
-
-	if (Action->NumDesiredInstances > 1)
-	{
-		Action->BuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], Action->BuildLocation, UTIL_MetresToGoldSrcUnits(1.0f));
-	}
-
-	Action->bIsAwaitingBuildLink = false;
-
-}
-
 bot_msg* GetAvailableBotMsgSlot(AvHAIPlayer* pBot)
 {
 	for (int i = 0; i < 5; i++)
@@ -466,28 +419,9 @@ void BotDropWeapon(AvHAIPlayer* pBot)
 	}
 }
 
-void BotAttackTarget(AvHAIPlayer* pBot, edict_t* Target)
+void BotAlienAttackNonPlayerTarget(AvHAIPlayer* pBot, edict_t* Target)
 {
-	if (FNullEnt(Target) || (Target->v.deadflag != DEAD_NO)) { return; }
-
-	AvHAIWeapon Weapon = WEAPON_INVALID;
-
-	if (IsPlayerMarine(pBot->Edict))
-	{
-		Weapon = BotMarineChooseBestWeaponForStructure(pBot, Target);
-	}
-	else
-	{
-		Weapon = BotAlienChooseBestWeaponForStructure(pBot, Target);
-	}
-
-	// Add special logic for grenade launchers since they aren't used like regular marine hitscan weapons
-	// This will handle things like firing from around corners, making sure they have cover from allies etc.
-	if (Weapon == WEAPON_MARINE_GL)
-	{
-		BombardierAttackTarget(pBot, Target);
-		return;
-	}
+	AvHAIWeapon Weapon = BotAlienChooseBestWeaponForStructure(pBot, Target);
 
 	BotAttackResult AttackResult = PerformAttackLOSCheck(pBot, Weapon, Target);
 
@@ -502,21 +436,7 @@ void BotAttackTarget(AvHAIPlayer* pBot, edict_t* Target)
 			pBot->Button |= IN_DUCK;
 		}
 
-		if (IsPlayerLerk(pBot->Edict))
-		{
-			if (AITAC_ShouldBotBeCautious(pBot))
-			{
-				MoveTo(pBot, Target->v.origin, MOVESTYLE_HIDE, 100.0f);
-			}
-			else
-			{
-				MoveTo(pBot, Target->v.origin, MOVESTYLE_NORMAL, 100.0f);
-			}
-
-			return;
-		}
-
-		Vector AttackPoint = (IsEdictPlayer(Target) || IsEdictStructure(Target)) ? Target->v.origin : UTIL_GetButtonFloorLocation(pBot->Edict->v.origin, Target);
+		Vector AttackPoint = (IsEdictStructure(Target)) ? Target->v.origin : UTIL_GetButtonFloorLocation(pBot->Edict->v.origin, Target);
 
 		if (StructureType == STRUCTURE_ALIEN_HIVE)
 		{
@@ -528,25 +448,39 @@ void BotAttackTarget(AvHAIPlayer* pBot, edict_t* Target)
 			}
 		}
 
-		MoveTo(pBot, AttackPoint, MOVESTYLE_NORMAL, WeaponRange);
-
-		if (IsPlayerMarine(pBot->Edict))
+		if (IsPlayerLerk(pBot->Edict))
 		{
-			if (gpGlobals->time - pBot->LastCombatTime > 5.0f)
+			if (AITAC_ShouldBotBeCautious(pBot))
 			{
-				BotReloadWeapons(pBot);
+				MoveTo(pBot, AttackPoint, MOVESTYLE_HIDE, 100.0f);
 			}
+			else
+			{
+				MoveTo(pBot, AttackPoint, MOVESTYLE_NORMAL, 100.0f);
+			}
+
+			return;
 		}
+
+		MoveTo(pBot, AttackPoint, MOVESTYLE_NORMAL, WeaponRange);
 
 		return;
 	}
 
 	if (AttackResult == ATTACK_BLOCKED)
 	{
-		if (!(IsEdictPlayer(Target) && !IsEdictStructure(Target)))
+
+		// We're attacking a shootable trigger
+		if (!IsEdictStructure(Target))
 		{
 			Vector AttackPoint = UTIL_GetButtonFloorLocation(pBot->Edict->v.origin, Target);
 			MoveTo(pBot, AttackPoint, MOVESTYLE_NORMAL, WeaponRange);
+			return;
+		}
+
+		// If we have regen and are hurt and are attacking a damaging structure, let us heal up a bit
+		if ((StructureType == STRUCTURE_MARINE_TURRET || StructureType == STRUCTURE_ALIEN_OFFENCECHAMBER) && GetPlayerOverallHealthPercent(pBot->Edict) < 0.75f && AvHGetAlienUpgradeLevel(pBot->Edict->v.iuser4, MASK_UPGRADE_2) > 0)
+		{
 			return;
 		}
 
@@ -587,6 +521,130 @@ void BotAttackTarget(AvHAIPlayer* pBot, edict_t* Target)
 
 		BotShootTarget(pBot, Weapon, Target);
 	}
+}
+
+void BotMarineAttackNonPlayerTarget(AvHAIPlayer* pBot, edict_t* Target)
+{
+	AvHAIWeapon Weapon = BotMarineChooseBestWeaponForStructure(pBot, Target);
+
+	// Add special logic for grenade launchers since they aren't used like regular marine hitscan weapons
+	// This will handle things like firing from around corners, making sure they have cover from allies etc.
+	if (Weapon == WEAPON_MARINE_GL)
+	{
+		BombardierAttackTarget(pBot, Target);
+		return;
+	}
+
+	BotAttackResult AttackResult = PerformAttackLOSCheck(pBot, Weapon, Target);
+
+	float WeaponRange = GetMaxIdealWeaponRange(Weapon);
+
+	AvHAIDeployableStructureType StructureType = GetStructureTypeFromEdict(Target);
+
+	if (AttackResult == ATTACK_OUTOFRANGE)
+	{
+		if (vDist2DSq(pBot->Edict->v.origin, Target->v.origin) < sqrf(max_player_use_reach))
+		{
+			pBot->Button |= IN_DUCK;
+		}
+
+		Vector AttackPoint = (IsEdictStructure(Target)) ? Target->v.origin : UTIL_GetButtonFloorLocation(pBot->Edict->v.origin, Target);
+
+		if (StructureType == STRUCTURE_ALIEN_HIVE)
+		{
+			const AvHAIHiveDefinition* HiveDefinition = AITAC_GetHiveFromEdict(Target);
+
+			if (HiveDefinition)
+			{
+				AttackPoint = HiveDefinition->FloorLocation;
+			}
+		}
+
+		MoveTo(pBot, AttackPoint, MOVESTYLE_NORMAL, WeaponRange);
+
+		return;
+	}
+
+	if (AttackResult == ATTACK_BLOCKED)
+	{
+		// Finish reloading, we are probably behind cover
+		if (IsPlayerReloading(pBot->Player))
+		{
+			return;
+		}
+
+		// We're attacking a shootable trigger
+		if (!IsEdictStructure(Target))
+		{
+			Vector AttackPoint = UTIL_GetButtonFloorLocation(pBot->Edict->v.origin, Target);
+			MoveTo(pBot, AttackPoint, MOVESTYLE_NORMAL, WeaponRange);
+			return;
+		}
+
+		if (vIsZero(pBot->BotNavInfo.ActualMoveDestination) || UTIL_TraceEntity(pBot->Edict, pBot->BotNavInfo.ActualMoveDestination + Vector(0.0f, 0.0f, 32.0f), UTIL_GetCentreOfEntity(Target)) != Target)
+		{
+			Vector NewAttackLocation = ZERO_VECTOR;
+
+			if (vIsZero(pBot->BotNavInfo.ActualMoveDestination))
+			{
+				NewAttackLocation = FindClosestNavigablePointToDestination(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, UTIL_GetEntityGroundLocation(Target), WeaponRange);
+			}
+			else
+			{
+				NewAttackLocation = UTIL_GetRandomPointOnNavmeshInRadius(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, 2.0f);
+
+				// Did we find a clear spot we could attack from? If so, make that our new move destination
+				if (NewAttackLocation != ZERO_VECTOR && UTIL_TraceEntity(pBot->Edict, NewAttackLocation + Vector(0.0f, 0.0f, 32.0f), UTIL_GetCentreOfEntity(Target)) == Target)
+				{
+					MoveTo(pBot, NewAttackLocation, MOVESTYLE_NORMAL);
+				}
+			}
+		}
+		else
+		{
+			MoveTo(pBot, pBot->BotNavInfo.TargetDestination, MOVESTYLE_NORMAL);
+		}
+
+		return;
+	}
+
+	if (AttackResult == ATTACK_SUCCESS)
+	{
+		if (IsPlayerReloading(pBot->Player))
+		{
+			if (StructureType == STRUCTURE_MARINE_TURRET || StructureType == STRUCTURE_ALIEN_OFFENCECHAMBER)
+			{
+				MoveTo(pBot, AITAC_GetTeamStartingLocation(pBot->Player->GetTeam()), MOVESTYLE_NORMAL);
+				return;
+			}
+		}
+
+		// If we were ducking before then keep ducking
+		if (pBot->Edict->v.oldbuttons & IN_DUCK)
+		{
+			pBot->Button |= IN_DUCK;
+		}
+
+		BotShootTarget(pBot, Weapon, Target);
+	}
+
+}
+
+void BotAttackNonPlayerTarget(AvHAIPlayer* pBot, edict_t* Target)
+{
+	if (FNullEnt(Target) || (Target->v.deadflag != DEAD_NO)) { return; }
+
+	AvHAIWeapon Weapon = WEAPON_INVALID;
+
+	if (IsPlayerMarine(pBot->Edict))
+	{
+		BotMarineAttackNonPlayerTarget(pBot, Target);
+	}
+	else
+	{
+		BotAlienAttackNonPlayerTarget(pBot, Target);
+	}
+
 }
 
 void BotShootTarget(AvHAIPlayer* pBot, AvHAIWeapon AttackWeapon, edict_t* Target)
@@ -926,8 +984,23 @@ void BotShootLocation(AvHAIPlayer* pBot, AvHAIWeapon AttackWeapon, const Vector 
 	}
 }
 
-void BotEvolveLifeform(AvHAIPlayer* pBot, AvHMessageID TargetLifeform)
+void BotEvolveLifeform(AvHAIPlayer* pBot, Vector DesiredEvolveLocation, AvHMessageID TargetLifeform)
 {
+	if (!IsPlayerAlien(pBot->Edict)) { return; }
+
+	Vector EvolvePoint = UTIL_ProjectPointToNavmesh(DesiredEvolveLocation, GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE));
+
+	if (vIsZero(EvolvePoint))
+	{
+		EvolvePoint = DesiredEvolveLocation;
+	}
+
+	if (vDist2DSq(pBot->Edict->v.origin, EvolvePoint) > sqrf(32.0f))
+	{
+		MoveTo(pBot, EvolvePoint, MOVESTYLE_NORMAL);
+		return;
+	}
+
 	pBot->Impulse = TargetLifeform;
 }
 
@@ -1487,6 +1560,15 @@ void StartNewBotFrame(AvHAIPlayer* pBot)
 		UpdateCommanderOrders(pBot);
 	}
 
+	// If we tried placing a building as gorge, and nothing has appeared within 0.5s, the placement failed.
+	if (pBot->BuildAttempts.BuildStatus == BUILD_ATTEMPT_PENDING)
+	{
+		if ((gpGlobals->time - pBot->BuildAttempts.BuildAttemptTime) > 0.5f)
+		{
+			pBot->BuildAttempts.BuildStatus = BUILD_ATTEMPT_FAILED;
+		}
+	}
+
 }
 
 void CustomThink(AvHAIPlayer* pBot)
@@ -1510,7 +1592,14 @@ void DroneThink(AvHAIPlayer* pBot)
 		BotProgressTask(pBot, &pBot->PrimaryBotTask);
 	}
 
-	//AIDEBUG_DrawBotPath(pBot);
+	AIDEBUG_DrawBotPath(pBot);
+
+	AvHAIWeapon DesiredWeapon = (pBot->DesiredMoveWeapon != WEAPON_NONE) ? pBot->DesiredMoveWeapon : pBot->DesiredCombatWeapon;
+
+	if (DesiredWeapon != WEAPON_NONE && GetPlayerCurrentWeapon(pBot->Player) != DesiredWeapon)
+	{
+		BotSwitchToWeapon(pBot, DesiredWeapon);
+	}
 }
 
 void SetNewAIPlayerRole(AvHAIPlayer* pBot, AvHAIBotRole NewRole)
@@ -2032,6 +2121,12 @@ void AIPlayerDMThink(AvHAIPlayer* pBot)
 
 void AIPlayerThink(AvHAIPlayer* pBot)
 {
+	if (pBot == AIMGR_GetDebugAIPlayer())
+	{
+		bool bBreak = true;
+
+	}
+
 	switch (GetGameRules()->GetMapMode())
 	{
 		case MAP_MODE_NS:
