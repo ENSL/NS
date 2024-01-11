@@ -513,6 +513,16 @@ void AIDEBUG_SetDebugVector2(const Vector NewVector)
 	DebugVector2 = NewVector;
 }
 
+Vector AIDEBUG_GetDebugVector1()
+{
+	return DebugVector1;
+}
+
+Vector AIDEBUG_GetDebugVector2()
+{
+	return DebugVector2;
+}
+
 void AIDEBUG_TestPathFind()
 {
 	if (vIsZero(DebugVector1) || vIsZero(DebugVector2)) { return; }
@@ -573,7 +583,7 @@ void AIMGR_UpdateAIPlayers()
 
 				UpdateBotChat(bot);
 
-				DroneThink(bot);
+				CustomThink(bot);
 
 				BotUpdateDesiredViewRotation(bot);
 			}

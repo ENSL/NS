@@ -133,12 +133,11 @@ void AITASK_ClearBotTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	Task->bIssuedByCommander = false;
 	Task->bTargetIsPlayer = false;
 	Task->bTaskIsUrgent = false;
-	Task->bIsWaitingForBuildLink = false;
 	Task->LastBuildAttemptTime = 0.0f;
 	Task->BuildAttempts = 0;
 	Task->StructureType = STRUCTURE_NONE;
 
-	memset(&pBot->BuildAttempts, 0, sizeof(AvHAIBuildAttempt));
+	memset(&pBot->ActiveBuildInfo, 0, sizeof(AvHAIBuildAttempt));
 }
 
 bool AITASK_IsTaskUrgent(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
@@ -586,9 +585,9 @@ bool AITASK_IsAlienBuildTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (Task->StructureType == STRUCTURE_NONE) { return false; }
 
-	if (Task->BuildAttempts >= 3) { return false; }
+	if (pBot->ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_PENDING) { return true; }
 
-	if (Task->bIsWaitingForBuildLink) { return true; }
+	if (pBot->ActiveBuildInfo.NumAttempts >= 3) { return false; }	
 
 	if (!FNullEnt(Task->TaskTarget) && !UTIL_IsBuildableStructureStillReachable(pBot, Task->TaskTarget)) { return false; }
 
@@ -1523,32 +1522,9 @@ void BotProgressReinforceStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		return;
 	}
 
-	if (vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation) > sqrf(max_player_use_reach))
-	{
-		MoveTo(pBot, Task->TaskLocation, MOVESTYLE_NORMAL);
-		return;
-	}
 
-	if (!IsPlayerGorge(pBot->Edict))
-	{
-		BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_TWO);
-		return;
-	}
+	BotAlienPlaceChamber(pBot, Task->TaskLocation, Task->StructureType);
 
-	Vector LookLocation = Task->TaskLocation;
-	LookLocation.z += 10.0f;
-
-	BotLookAt(pBot, LookLocation);
-
-	float LookDot = UTIL_GetDotProduct2D(UTIL_GetForwardVector2D(pBot->Edict->v.v_angle), UTIL_GetVectorNormal2D(LookLocation - pBot->Edict->v.origin));
-
-	if (LookDot > 0.9f)
-	{
-		pBot->Impulse = UTIL_StructureTypeToImpulseCommand(Task->StructureType);
-		Task->LastBuildAttemptTime = gpGlobals->time;
-		Task->BuildAttempts++;
-		Task->bIsWaitingForBuildLink = true;
-	}
 
 }
 
@@ -2048,7 +2024,7 @@ void AlienProgressHealTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 void AlienProgressBuildHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
-	if (gpGlobals->time - Task->LastBuildAttemptTime < 1.0f)
+	if (pBot->ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_PENDING)
 	{
 		return;
 	}
@@ -2061,30 +2037,7 @@ void AlienProgressBuildHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		return;
 	}
 
-	if (Task->bIsWaitingForBuildLink)
-	{
-		Task->TaskLocation = FindClosestNavigablePointToDestination(BaseNavProfiles[GORGE_BASE_NAV_PROFILE], pBot->Edict->v.origin, Hive->FloorLocation, UTIL_MetresToGoldSrcUnits(7.5f));
-
-		if (vIsZero(Task->TaskLocation))
-		{
-			AITASK_ClearBotTask(pBot, Task);
-			return;
-		}
-
-		float Dist = vDist2D(Task->TaskLocation, Hive->Location);
-
-		float MaxDist = (UTIL_MetresToGoldSrcUnits(7.5f) - Dist);
-
-		Vector AltLocation = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[GORGE_BASE_NAV_PROFILE], Task->TaskLocation, MaxDist);
-
-		if (AltLocation != g_vecZero)
-		{
-			Task->TaskLocation = AltLocation;
-		}
-
-		Task->bIsWaitingForBuildLink = false;
-	}
-
+	
 	int ResRequired = UTIL_GetCostOfStructureType(Task->StructureType);
 
 	if (!IsPlayerGorge(pBot->Edict))
@@ -2098,44 +2051,7 @@ void AlienProgressBuildHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		return;
 	}
 
-	if (vDist2DSq(pBot->Edict->v.origin, Hive->Location) > sqrf(UTIL_MetresToGoldSrcUnits(7.5f)))
-	{
-		MoveTo(pBot, Task->TaskLocation, MOVESTYLE_NORMAL);
-		return;
-	}
-
-	if (!IsPlayerGorge(pBot->Edict))
-	{
-		if (pBot->WantsAndNeedsTask.TaskType != TASK_EVOLVE || pBot->WantsAndNeedsTask.Evolution != ALIEN_LIFEFORM_TWO)
-		{
-			AITASK_SetEvolveTask(pBot, &pBot->WantsAndNeedsTask, pBot->Edict->v.origin, ALIEN_LIFEFORM_TWO, true);
-		}
-
-		return;
-	}
-
-	BotMoveLookAt(pBot, Hive->Location);
-
-	Vector TraceStart = GetPlayerEyePosition(pBot->Edict);
-	Vector TraceEnd = TraceStart + (UTIL_GetForwardVector(pBot->Edict->v.v_angle) * 60.0f);
-
-	if (UTIL_QuickTrace(pBot->Edict, TraceStart, TraceEnd))
-	{
-		pBot->Impulse = UTIL_StructureTypeToImpulseCommand(Task->StructureType);
-
-		if (vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation) > sqrf(max_player_use_reach))
-		{
-			MoveTo(pBot, Task->TaskLocation, MOVESTYLE_NORMAL);
-			return;
-		}
-		else
-		{
-			Task->LastBuildAttemptTime = gpGlobals->time;
-			Task->BuildAttempts++;
-			Task->bIsWaitingForBuildLink = true;
-			Task->bTaskIsUrgent = true;
-		}
-	}
+	BotAlienBuildHive(pBot, Hive);
 }
 
 void AlienProgressBuildTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
@@ -2146,8 +2062,9 @@ void AlienProgressBuildTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		return;
 	}
 
-	if (!FNullEnt(Task->TaskTarget))
+	if (pBot->ActiveBuildInfo.LinkedStructure)
 	{
+		if (UTIL_StructureIsFullyBuilt(pBot->ActiveBuildInfo.LinkedStructure->edict)) { return; }
 
 		if (IsPlayerInUseRange(pBot->Edict, Task->TaskTarget))
 		{
@@ -2164,46 +2081,11 @@ void AlienProgressBuildTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		return;
 	}
 
-	if (Task->StructureType == STRUCTURE_ALIEN_RESTOWER)
+	// We tried and failed to place the structure
+	if (pBot->ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_FAILED)
 	{
-		const AvHAIResourceNode* ResNodeIndex = AITAC_GetNearestResourceNodeToLocation(Task->TaskLocation);
-
-		if (ResNodeIndex)
-		{
-			if (ResNodeIndex->bIsOccupied && !ResNodeIndex->OwningTeam == pBot->Player->GetTeam())
-			{
-				Task->TaskTarget = ResNodeIndex->ActiveTowerEntity;
-				return;
-			}
-		}
-	}
-
-	if (gpGlobals->time - Task->LastBuildAttemptTime < 1.0f)
-	{
-		return;
-	}
-
-	if (Task->bIsWaitingForBuildLink)
-	{
-		Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[GORGE_BASE_NAV_PROFILE], Task->TaskLocation, UTIL_MetresToGoldSrcUnits(2.0f));
-		Task->bIsWaitingForBuildLink = false;
-	}
-
-	// If we are building a chamber
-	if (Task->StructureType != STRUCTURE_ALIEN_RESTOWER)
-	{
-		dtPolyRef Poly = UTIL_GetNavAreaAtLocation(BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE], Task->TaskLocation);
-
-		if (Poly != SAMPLE_POLYAREA_GROUND)
-		{
-			Vector NewLocation = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE], Task->TaskLocation, UTIL_MetresToGoldSrcUnits(2.0f));
-
-			if (NewLocation != g_vecZero)
-			{
-				Task->TaskLocation = NewLocation;
-				return;
-			}
-		}
+		Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE], Task->TaskLocation, UTIL_MetresToGoldSrcUnits(2.0f));
+		pBot->ActiveBuildInfo.BuildStatus = BUILD_ATTEMPT_NONE;
 	}
 
 	int ResRequired = UTIL_GetCostOfStructureType(Task->StructureType);
@@ -2219,46 +2101,180 @@ void AlienProgressBuildTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		return;
 	}
 
-	if (vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation) > sqrf(max_player_use_reach))
+	BotAlienPlaceChamber(pBot, Task->TaskLocation, Task->StructureType);
+}
+
+void BotAlienPlaceChamber(AvHAIPlayer* pBot, Vector Location, AvHAIDeployableStructureType DesiredStructure)
+{
+	if (vIsZero(Location) || DesiredStructure == STRUCTURE_NONE) { return; }
+
+	if (pBot->ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_PENDING) { return; }
+
+	float DistFromBuildLocation = vDist2DSq(pBot->Edict->v.origin, Location);
+
+	if (DistFromBuildLocation > sqrf(UTIL_MetresToGoldSrcUnits(1.0f)))
 	{
-		MoveTo(pBot, Task->TaskLocation, MOVESTYLE_NORMAL);
+		MoveTo(pBot, Location, MOVESTYLE_NORMAL);
+		return;
+	}
+
+	if (DistFromBuildLocation < sqrf(UTIL_MetresToGoldSrcUnits(0.5f)))
+	{
+		BotLookAt(pBot, Location);
+		Vector Orientation = UTIL_GetVectorNormal2D(pBot->Edict->v.origin - Location);
+		Vector NewMoveLoc = Location + (Orientation * UTIL_MetresToGoldSrcUnits(2.0f));
+		MoveToWithoutNav(pBot, NewMoveLoc);
+
+		return;
+	}
+
+	Vector LookLocation = Location;
+	LookLocation.z += 10.0f;
+
+	BotLookAt(pBot, LookLocation);
+
+	int ResRequired = UTIL_GetCostOfStructureType(DesiredStructure);
+
+	if (!IsPlayerGorge(pBot->Edict))
+	{
+		ResRequired += BALANCE_VAR(kGorgeCost);
+	}
+
+	if (pBot->Player->GetResources() < ResRequired)
+	{
 		return;
 	}
 
 	if (!IsPlayerGorge(pBot->Edict))
 	{
-		AITASK_SetEvolveTask(pBot, &pBot->WantsAndNeedsTask, pBot->Edict->v.origin, ALIEN_LIFEFORM_TWO, true);
-		
+		BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_TWO);
 		return;
 	}
-
-	Vector LookLocation = Task->TaskLocation;
-	LookLocation.z += 10.0f;
-
-	if (Task->StructureType == STRUCTURE_ALIEN_RESTOWER)
-	{
-		const AvHAIResourceNode* ResNode = AITAC_GetNearestResourceNodeToLocation(Task->TaskLocation);
-
-		if (ResNode)
-		{
-			LookLocation = ResNode->Location;
-		}
-	}
-
-	BotLookAt(pBot, LookLocation);
-
+	
 	float LookDot = UTIL_GetDotProduct2D(UTIL_GetForwardVector2D(pBot->Edict->v.v_angle), UTIL_GetVectorNormal2D(LookLocation - pBot->Edict->v.origin));
 
 	if (LookDot > 0.9f)
 	{
-		pBot->Impulse = UTIL_StructureTypeToImpulseCommand(Task->StructureType);
-		Task->LastBuildAttemptTime = gpGlobals->time;
-		Task->BuildAttempts++;
-		Task->bIsWaitingForBuildLink = true;
-		Task->bTaskIsUrgent = true;
+		pBot->Impulse = UTIL_StructureTypeToImpulseCommand(DesiredStructure);
+		RegisterBotAlienBuildAttempt(pBot, Location, DesiredStructure);
+	}
+}
+
+void BotAlienBuildResTower(AvHAIPlayer* pBot, const AvHAIResourceNode* NodeToCap)
+{
+	if (NodeToCap->bIsOccupied) { return; }
+
+	if (pBot->ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_PENDING) { return; }
+
+	float CurrDist = vDist2DSq(pBot->CurrentFloorPosition, NodeToCap->Location);
+
+	// Get close enough to place the tower if we aren't
+	if (CurrDist > sqrf(UTIL_MetresToGoldSrcUnits(3.0f)))
+	{
+		MoveTo(pBot, NodeToCap->Location, MOVESTYLE_NORMAL);
+		return;
 	}
 
-	return;
+	// Back up a bit if we're too close
+	if (CurrDist < sqrf(UTIL_MetresToGoldSrcUnits(1.0f)))
+	{
+		BotLookAt(pBot, NodeToCap->Location);
+		Vector Orientation = UTIL_GetVectorNormal2D(pBot->Edict->v.origin - NodeToCap->Location);
+		Vector NewMoveLoc = NodeToCap->Location + (Orientation * UTIL_MetresToGoldSrcUnits(2.0f));
+		MoveToWithoutNav(pBot, NewMoveLoc);
+
+		return;
+	}
+
+	int ResRequired = UTIL_GetCostOfStructureType(STRUCTURE_ALIEN_RESTOWER);
+
+	if (!IsPlayerGorge(pBot->Edict))
+	{
+		ResRequired += BALANCE_VAR(kGorgeCost);
+	}
+
+	BotLookAt(pBot, NodeToCap->Location);
+
+	if (pBot->Player->GetResources() < ResRequired)
+	{
+		return;
+	}
+
+	if (!IsPlayerGorge(pBot->Edict))
+	{
+		BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_TWO);
+		return;
+	}
+
+	float LookDot = UTIL_GetDotProduct2D(UTIL_GetForwardVector2D(pBot->Edict->v.v_angle), UTIL_GetVectorNormal2D(NodeToCap->Location - pBot->Edict->v.origin));
+
+	if (LookDot > 0.9f)
+	{
+		pBot->Impulse = UTIL_StructureTypeToImpulseCommand(STRUCTURE_ALIEN_RESTOWER);
+		RegisterBotAlienBuildAttempt(pBot, NodeToCap->Location, STRUCTURE_ALIEN_RESTOWER);
+	}
+
+
+
+
+}
+
+void BotAlienBuildHive(AvHAIPlayer* pBot, const AvHAIHiveDefinition* HiveToBuild)
+{
+	// Do nothing if the hive is already built / under construction
+	if (HiveToBuild->Status != HIVE_STATUS_UNBUILT) { return; }
+
+	if (pBot->ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_PENDING) { return; }
+
+	if (vDist2DSq(pBot->Edict->v.origin, HiveToBuild->Location) > sqrf(UTIL_MetresToGoldSrcUnits(7.5f)))
+	{
+		MoveTo(pBot, HiveToBuild->FloorLocation, MOVESTYLE_NORMAL);
+		return;
+	}
+
+	BotLookAt(pBot, HiveToBuild->Location);
+
+	Vector TraceStart = GetPlayerEyePosition(pBot->Edict);
+	Vector TraceEnd = TraceStart + (UTIL_GetForwardVector(pBot->Edict->v.v_angle) * 60.0f);
+
+	if (!UTIL_QuickTrace(pBot->Edict, TraceStart, TraceEnd))
+	{
+		MoveTo(pBot, HiveToBuild->FloorLocation, MOVESTYLE_NORMAL);
+		return;
+	}
+	else
+	{
+		int ResRequired = UTIL_GetCostOfStructureType(STRUCTURE_ALIEN_HIVE);
+
+		if (!IsPlayerGorge(pBot->Edict))
+		{
+			ResRequired += BALANCE_VAR(kGorgeCost);
+		}
+
+		if (pBot->Player->GetResources() < ResRequired)
+		{
+			return;
+		}
+
+		if (!IsPlayerGorge(pBot->Edict))
+		{
+			BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_TWO);
+			return;
+		}
+
+		pBot->Impulse = UTIL_StructureTypeToImpulseCommand(STRUCTURE_ALIEN_HIVE);
+		RegisterBotAlienBuildAttempt(pBot, HiveToBuild->Location, STRUCTURE_ALIEN_HIVE);
+	}
+}
+
+void RegisterBotAlienBuildAttempt(AvHAIPlayer* pBot, Vector PlacementLocation, AvHAIDeployableStructureType DesiredStructure)
+{
+	pBot->ActiveBuildInfo.AttemptedLocation = PlacementLocation;
+	pBot->ActiveBuildInfo.BuildAttemptTime = gpGlobals->time;
+	pBot->ActiveBuildInfo.LinkedStructure = nullptr;
+	pBot->ActiveBuildInfo.NumAttempts++;
+	pBot->ActiveBuildInfo.AttemptedStructureType = DesiredStructure;
+	pBot->ActiveBuildInfo.BuildStatus = BUILD_ATTEMPT_PENDING;
 }
 
 void AlienProgressCapResNodeTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
@@ -2333,50 +2349,8 @@ void AlienProgressCapResNodeTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		// We have enough resources to place the tower (includes cost of evolving to gorge if necessary)
 		if (pBot->Player->GetResources() >= NumResourcesRequired)
 		{
-			float CurrDist = vDist2DSq(pBot->CurrentFloorPosition, ResNodeIndex->Location);
-
-			// Get close enough to place the tower if we aren't
-			if (CurrDist > sqrf(UTIL_MetresToGoldSrcUnits(3.0f)))
-			{
-				MoveTo(pBot, ResNodeIndex->Location, MOVESTYLE_NORMAL);
-				return;
-			}
-
-			// Back up a bit if we're too close
-			if (CurrDist < sqrf(UTIL_MetresToGoldSrcUnits(1.0f)))
-			{
-				BotLookAt(pBot, ResNodeIndex->Location);
-				Vector Orientation = UTIL_GetVectorNormal2D(pBot->Edict->v.origin - ResNodeIndex->Location);
-				Vector NewMoveLoc = ResNodeIndex->Location + (Orientation * UTIL_MetresToGoldSrcUnits(2.0f));
-				MoveToWithoutNav(pBot, NewMoveLoc);
-				
-				return;
-			}
-
-			if (!IsPlayerGorge(pBot->Edict))
-			{
-				BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_TWO);
-				return;
-			}
-			else
-			{
-				BotLookAt(pBot, Task->TaskLocation);
-
-				if (gpGlobals->time - Task->LastBuildAttemptTime < 1.0f) { return; }
-
-				float LookDot = UTIL_GetDotProduct2D(UTIL_GetForwardVector2D(pBot->Edict->v.v_angle), UTIL_GetVectorNormal2D(Task->TaskLocation - pBot->Edict->v.origin));
-
-				if (LookDot > 0.9f)
-				{
-
-					pBot->Impulse = ALIEN_BUILD_RESOURCES;
-					Task->LastBuildAttemptTime = gpGlobals->time + 1.0f;
-					Task->bIsWaitingForBuildLink = true;
-					Task->BuildAttempts++;
-				}
-
-				return;
-			}
+			BotAlienBuildResTower(pBot, ResNodeIndex);
+			return;
 		}
 	}
 

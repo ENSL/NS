@@ -47,6 +47,8 @@ void	AIMGR_UpdateAIMapData();
 
 AvHAICommanderMode AIMGR_GetCommanderMode();
 
+Vector AIDEBUG_GetDebugVector1();
+Vector AIDEBUG_GetDebugVector2();
 void AIDEBUG_SetDebugVector1(const Vector NewVector);
 void AIDEBUG_SetDebugVector2(const Vector NewVector);
 void AIDEBUG_TestPathFind();

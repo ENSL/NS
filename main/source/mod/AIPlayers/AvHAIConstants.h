@@ -647,7 +647,7 @@ typedef struct AVH_AI_PLAYER
 
 	nav_status BotNavInfo; // Bot's movement information, their current path, where in the path they are etc.
 
-	AvHAIBuildAttempt BuildAttempts;
+	AvHAIBuildAttempt ActiveBuildInfo; // If gorge, the current status of any recent attempt to place a structure
 
 	vector<ai_commander_request> ActiveRequests;
 	vector<ai_commander_order> ActiveOrders;

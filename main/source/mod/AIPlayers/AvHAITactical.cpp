@@ -1880,12 +1880,12 @@ void AITAC_LinkAlienStructureToPlayer(AvHAIBuildableStructure* NewStructure)
 	{
 		AvHAIPlayer* Player = (*it);
 
-		if (Player->BuildAttempts.BuildStatus == BUILD_ATTEMPT_PENDING && Player->BuildAttempts.AttemptedStructureType == NewStructure->StructureType)
+		if (Player->ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_PENDING && Player->ActiveBuildInfo.AttemptedStructureType == NewStructure->StructureType)
 		{
-			if (vDist2DSq(NewStructure->Location, Player->BuildAttempts.AttemptedLocation) < sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
+			if (vDist2DSq(NewStructure->Location, Player->ActiveBuildInfo.AttemptedLocation) < sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
 			{
-				Player->BuildAttempts.BuildStatus = BUILD_ATTEMPT_SUCCESS;
-				Player->BuildAttempts.LinkedStructure = NewStructure;
+				Player->ActiveBuildInfo.BuildStatus = BUILD_ATTEMPT_SUCCESS;
+				Player->ActiveBuildInfo.LinkedStructure = NewStructure;
 			}
 			
 		}
