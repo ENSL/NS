@@ -109,4 +109,10 @@ AvHAIPlayer* GetFirstBotWithReinforceTask(AvHTeamNumber Team, edict_t* Reinforce
 
 void UTIL_ClearGuardInfo(AvHAIPlayer* pBot);
 
+void BotAlienPlaceChamber(AvHAIPlayer* pBot, Vector Location, AvHAIDeployableStructureType DesiredStructure);
+void BotAlienBuildHive(AvHAIPlayer* pBot, const AvHAIHiveDefinition* HiveToBuild);
+void BotAlienBuildResTower(AvHAIPlayer* pBot, const AvHAIResourceNode* NodeToCap);
+
+void RegisterBotAlienBuildAttempt(AvHAIPlayer* pBot, Vector PlacementLocation, AvHAIDeployableStructureType DesiredStructure);
+
 #endif

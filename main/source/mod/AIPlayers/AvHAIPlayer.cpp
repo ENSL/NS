@@ -1560,20 +1560,43 @@ void StartNewBotFrame(AvHAIPlayer* pBot)
 		UpdateCommanderOrders(pBot);
 	}
 
-	// If we tried placing a building as gorge, and nothing has appeared within 0.5s, the placement failed.
-	if (pBot->BuildAttempts.BuildStatus == BUILD_ATTEMPT_PENDING)
+	// If we tried placing a building as gorge, and nothing has appeared within the expected time, then mark it as a failed attempt.
+	if (pBot->ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_PENDING)
 	{
-		if ((gpGlobals->time - pBot->BuildAttempts.BuildAttemptTime) > 0.5f)
+		if (pBot->ActiveBuildInfo.AttemptedStructureType == STRUCTURE_ALIEN_HIVE)
 		{
-			pBot->BuildAttempts.BuildStatus = BUILD_ATTEMPT_FAILED;
+			// Give a 3-second grace period to check if the hive placement was successful
+			if ((gpGlobals->time - pBot->ActiveBuildInfo.BuildAttemptTime) > 3.0f)
+			{
+				const AvHAIHiveDefinition* NearestHive = AITAC_GetHiveNearestLocation(pBot->ActiveBuildInfo.AttemptedLocation);
+
+				pBot->ActiveBuildInfo.BuildStatus = (NearestHive->Status != HIVE_STATUS_UNBUILT) ? BUILD_ATTEMPT_SUCCESS : BUILD_ATTEMPT_FAILED;
+			}
 		}
+		else
+		{
+			// All other structures should appear near-instantly
+			if ((gpGlobals->time - pBot->ActiveBuildInfo.BuildAttemptTime) > 0.5f)
+			{
+				pBot->ActiveBuildInfo.BuildStatus = BUILD_ATTEMPT_FAILED;
+			}
+		}
+
 	}
 
 }
 
 void CustomThink(AvHAIPlayer* pBot)
 {
-	AICOMM_CommanderThink(pBot);
+	if (IsPlayerAlien(pBot->Edict))
+	{
+		if (!vIsZero(AIDEBUG_GetDebugVector1()))
+		{
+			const AvHAIHiveDefinition* Hive = AITAC_GetHiveNearestLocation(AIDEBUG_GetDebugVector1());
+
+			BotAlienBuildHive(pBot, Hive);
+		}
+	}
 }
 
 void DroneThink(AvHAIPlayer* pBot)
@@ -2124,7 +2147,6 @@ void AIPlayerThink(AvHAIPlayer* pBot)
 	if (pBot == AIMGR_GetDebugAIPlayer())
 	{
 		bool bBreak = true;
-
 	}
 
 	switch (GetGameRules()->GetMapMode())
