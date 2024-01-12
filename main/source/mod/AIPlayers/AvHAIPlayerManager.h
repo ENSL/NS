@@ -38,7 +38,9 @@ void	AIMGR_UpdateFillTeams();
 
 vector<AvHPlayer*> AIMGR_GetAllPlayersOnTeam(AvHTeamNumber Team);
 
-// How many AI players are in the game (does not include third-party bots like RCBot/Whichbot)
+// Convenient helper function to get total number of players (human and AI) on a team
+int AIMGR_GetNumPlayersOnTeam(AvHTeamNumber Team);
+// How many AI players are in the game (does NOT include third-party bots like RCBot/Whichbot)
 int		AIMGR_GetNumAIPlayers();
 // Returns true if an AI player is on the requested team (does NOT include third-party bots like RCBot/Whichbot)
 int		AIMGR_AIPlayerExistsOnTeam(AvHTeamNumber Team);

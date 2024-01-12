@@ -14,6 +14,7 @@
 #include "AvHAIHelper.h"
 #include "AvHAIConstants.h"
 #include "AvHAIPlayerManager.h"
+#include "AvHAIConfig.h"
 
 #include "../AvHGamerules.h"
 #include "../AvHServerUtil.h"
@@ -3299,4 +3300,56 @@ bool AITAC_AnyPlayerOnTeamWithLOS(AvHTeamNumber Team, const Vector& Location, fl
 	}
 
 	return false;
+}
+
+bool AITAC_IsAlienBuilderNeeded(AvHAIPlayer* pBot)
+{
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+
+	AvHMessageID HiveTechOne = CONFIG_GetHiveTechAtIndex(0);
+	AvHMessageID HiveTechTwo = CONFIG_GetHiveTechAtIndex(1);
+	AvHMessageID HiveTechThree = CONFIG_GetHiveTechAtIndex(2);
+
+	AvHAIDeployableStructureType ChamberTypeOne = UTIL_GetChamberTypeForHiveTech(HiveTechOne);
+	AvHAIDeployableStructureType ChamberTypeTwo = UTIL_GetChamberTypeForHiveTech(HiveTechTwo);
+	AvHAIDeployableStructureType ChamberTypeThree = UTIL_GetChamberTypeForHiveTech(HiveTechThree);
+
+	DeployableSearchFilter StructureFilter;
+	StructureFilter.DeployableTeam = BotTeam;
+
+	int NumTeamPlayers = AIMGR_GetNumPlayersOnTeam(BotTeam);
+	int MaxBuilders = imini(2, (int)floorf((float)NumTeamPlayers * 0.5f));
+	int NumCurrentBuilders = AIMGR_GetNumAIPlayersWithRoleOnTeam(BotTeam, BOT_ROLE_BUILDER, pBot);
+
+	if (MaxBuilders == 0) { return false; }
+
+	// We have a hive without any associated chambers yet
+	if (AITAC_TeamHiveWithTechExists(BotTeam, MESSAGE_NULL))
+	{
+		return NumCurrentBuilders < MaxBuilders;
+	}
+
+	StructureFilter.DeployableTypes = ChamberTypeOne;
+	if (AITAC_TeamHiveWithTechExists(BotTeam, HiveTechOne) && AITAC_GetNumDeployablesNearLocation(pBot->Edict->v.origin, &StructureFilter) < 3) { return NumBuilders < 1; }
+	
+	StructureFilter.DeployableTypes = ChamberTypeTwo;
+	if (AITAC_TeamHiveWithTechExists(BotTeam, HiveTechTwo) && AITAC_GetNumDeployablesNearLocation(pBot->Edict->v.origin, &StructureFilter) < 3) { return NumBuilders < 1; }
+	
+	StructureFilter.DeployableTypes = ChamberTypeThree;
+	if (AITAC_TeamHiveWithTechExists(BotTeam, HiveTechThree) && AITAC_GetNumDeployablesNearLocation(pBot->Edict->v.origin, &StructureFilter) < 3) { return NumBuilders < 1; }
+
+	DeployableSearchFilter ResNodeFilter;
+	ResNodeFilter.DeployableTeam = BotTeam;
+	ResNodeFilter.ReachabilityTeam = BotTeam;
+	ResNodeFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+
+	vector <AvHAIResourceNode*> OwnedNodes = AITAC_GetAllMatchingResourceNodes(pBot->Edict->v.origin, &ResNodeFilter);
+
+	for (auto it = OwnedNodes.begin(); it != OwnedNodes.end(); it++)
+	{
+		AvHAIResourceNode* ThisNode = (*it);
+
+		
+	}
+
 }

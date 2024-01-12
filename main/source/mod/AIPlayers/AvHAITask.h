@@ -112,6 +112,7 @@ void UTIL_ClearGuardInfo(AvHAIPlayer* pBot);
 void BotAlienPlaceChamber(AvHAIPlayer* pBot, Vector Location, AvHAIDeployableStructureType DesiredStructure);
 void BotAlienBuildHive(AvHAIPlayer* pBot, const AvHAIHiveDefinition* HiveToBuild);
 void BotAlienBuildResTower(AvHAIPlayer* pBot, const AvHAIResourceNode* NodeToCap);
+void BotAlienHealTarget(AvHAIPlayer* pBot, edict_t* HealTarget);
 
 void RegisterBotAlienBuildAttempt(AvHAIPlayer* pBot, Vector PlacementLocation, AvHAIDeployableStructureType DesiredStructure);
 
