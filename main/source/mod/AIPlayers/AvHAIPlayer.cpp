@@ -1001,7 +1001,31 @@ void BotEvolveLifeform(AvHAIPlayer* pBot, Vector DesiredEvolveLocation, AvHMessa
 		return;
 	}
 
-	pBot->Impulse = TargetLifeform;
+	float EvolveCost = 0.0f;
+
+	switch (TargetLifeform)
+	{
+	case ALIEN_LIFEFORM_TWO:
+		EvolveCost = BALANCE_VAR(kGorgeCost);
+		break;
+	case ALIEN_LIFEFORM_THREE:
+		EvolveCost = BALANCE_VAR(kLerkCost);
+		break;
+	case ALIEN_LIFEFORM_FOUR:
+		EvolveCost = BALANCE_VAR(kFadeCost);
+		break;
+	case ALIEN_LIFEFORM_FIVE:
+		EvolveCost = BALANCE_VAR(kOnosCost);
+		break;
+	default:
+		EvolveCost = 0.0f;
+		break;
+	}
+
+	if (pBot->Player->GetResources() >= EvolveCost)
+	{
+		pBot->Impulse = TargetLifeform;
+	}
 }
 
 void BotUpdateDesiredViewRotation(AvHAIPlayer* pBot)
@@ -1646,11 +1670,6 @@ void UpdateAIPlayerDMRole(AvHAIPlayer* pBot)
 
 }
 
-void UpdateAIAlienPlayerNSRole(AvHAIPlayer* pBot)
-{
-
-}
-
 bool ShouldAIPlayerTakeCommand(AvHAIPlayer* pBot)
 {
 	AvHAICommanderMode CurrentCommanderMode = AIMGR_GetCommanderMode();
@@ -1698,6 +1717,34 @@ bool ShouldAIPlayerTakeCommand(AvHAIPlayer* pBot)
 
 	// We must be the closest!
 	return true;
+}
+
+void UpdateAIAlienPlayerNSRole(AvHAIPlayer* pBot)
+{
+	AvHTeamNumber BotTeamNumber = pBot->Player->GetTeam();
+
+	if (BotTeamNumber == TEAM_IND)
+	{
+		SetNewAIPlayerRole(pBot, BOT_ROLE_NONE);
+
+		return;
+	}
+
+	// Don't switch roles if already fade/onos or those resources are potentially wasted
+	if (IsPlayerFade(pBot->Edict) || IsPlayerOnos(pBot->Edict))
+	{
+		SetNewAIPlayerRole(pBot, BOT_ROLE_ASSAULT);
+		return;
+	}
+
+	// Likewise for lerks
+	if (IsPlayerLerk(pBot->Edict))
+	{
+		SetNewAIPlayerRole(pBot, BOT_ROLE_HARASS);
+		return;
+	}
+
+
 }
 
 void UpdateAIMarinePlayerNSRole(AvHAIPlayer* pBot)
@@ -1856,11 +1903,6 @@ void AIPlayerNSMarineThink(AvHAIPlayer* pBot)
 	if (pBot->DesiredCombatWeapon == WEAPON_NONE)
 	{
 		pBot->DesiredCombatWeapon = BotMarineChooseBestWeapon(pBot, nullptr);
-	}
-
-	if (pBot->CommanderTask.TaskType != TASK_NONE)
-	{
-		UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, pBot->CommanderTask.TaskLocation);
 	}
 }
 

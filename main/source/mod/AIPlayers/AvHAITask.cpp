@@ -1999,27 +1999,9 @@ void AlienProgressGetHealthTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 void AlienProgressHealTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
-	if (!IsPlayerGorge(pBot->Edict) || FNullEnt(Task->TaskTarget) || IsPlayerDead(Task->TaskTarget)) { return; }
+	if (FNullEnt(Task->TaskTarget) || IsPlayerDead(Task->TaskTarget)) { return; }
 
-	float DesiredDist = (IsEdictStructure(Task->TaskTarget)) ? kHealingSprayRange : (kHealingSprayRange * 0.5f);
-
-	BotAttackResult LOSCheck = PerformAttackLOSCheck(pBot, WEAPON_GORGE_HEALINGSPRAY, Task->TaskTarget);
-
-	if (LOSCheck == ATTACK_SUCCESS)
-	{
-		pBot->DesiredCombatWeapon = WEAPON_GORGE_HEALINGSPRAY;
-		BotLookAt(pBot, UTIL_GetCentreOfEntity(Task->TaskTarget));
-		if (GetPlayerCurrentWeapon(pBot->Player) == WEAPON_GORGE_HEALINGSPRAY)
-		{
-			pBot->Button |= IN_ATTACK;
-		}
-
-		return;
-	}
-	else
-	{
-		MoveTo(pBot, UTIL_GetEntityGroundLocation(Task->TaskTarget), MOVESTYLE_NORMAL, kHealingSprayRange);
-	}
+	BotAlienHealTarget(pBot, Task->TaskTarget);
 }
 
 void AlienProgressBuildHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
@@ -2214,9 +2196,6 @@ void BotAlienBuildResTower(AvHAIPlayer* pBot, const AvHAIResourceNode* NodeToCap
 		RegisterBotAlienBuildAttempt(pBot, NodeToCap->Location, STRUCTURE_ALIEN_RESTOWER);
 	}
 
-
-
-
 }
 
 void BotAlienBuildHive(AvHAIPlayer* pBot, const AvHAIHiveDefinition* HiveToBuild)
@@ -2265,6 +2244,33 @@ void BotAlienBuildHive(AvHAIPlayer* pBot, const AvHAIHiveDefinition* HiveToBuild
 		pBot->Impulse = UTIL_StructureTypeToImpulseCommand(STRUCTURE_ALIEN_HIVE);
 		RegisterBotAlienBuildAttempt(pBot, HiveToBuild->Location, STRUCTURE_ALIEN_HIVE);
 	}
+}
+
+void BotAlienHealTarget(AvHAIPlayer* pBot, edict_t* HealTarget)
+{
+	float MaxHealRange = GetMaxIdealWeaponRange(WEAPON_GORGE_HEALINGSPRAY);
+	float TargetHealRange = MaxHealRange * 0.5f;
+	
+	BotAttackResult HitCheck = PerformAttackLOSCheck(pBot, WEAPON_GORGE_HEALINGSPRAY, HealTarget);
+
+	if (HitCheck == ATTACK_SUCCESS)
+	{
+		if (IsPlayerGorge(pBot->Edict))
+		{
+			BotShootTarget(pBot, WEAPON_GORGE_HEALINGSPRAY, HealTarget);
+			return;
+		}
+		else
+		{
+			BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_TWO);
+			return;
+		}
+	}
+	else
+	{
+		MoveTo(pBot, UTIL_GetEntityGroundLocation(HealTarget), MOVESTYLE_NORMAL, MaxHealRange);
+	}
+
 }
 
 void RegisterBotAlienBuildAttempt(AvHAIPlayer* pBot, Vector PlacementLocation, AvHAIDeployableStructureType DesiredStructure)

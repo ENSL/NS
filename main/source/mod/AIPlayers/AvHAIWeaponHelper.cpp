@@ -399,7 +399,7 @@ float GetMaxIdealWeaponRange(const AvHAIWeapon Weapon)
 	case WEAPON_LERK_BITE:
 		return BALANCE_VAR(kBite2Range);
 	case WEAPON_GORGE_HEALINGSPRAY:
-		return BALANCE_VAR(kHealingSprayRange);
+		return BALANCE_VAR(kHealingSprayRange) * 0.5f;
 	case WEAPON_MARINE_WELDER:
 		return BALANCE_VAR(kWelderRange);
 	default:

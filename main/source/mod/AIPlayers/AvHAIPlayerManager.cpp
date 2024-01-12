@@ -142,6 +142,16 @@ void AIMGR_UpdateAIPlayerCounts()
 	return;
 }
 
+int AIMGR_GetNumPlayersOnTeam(AvHTeamNumber Team)
+{
+	AvHTeamNumber teamA = GetGameRules()->GetTeamANumber();
+	AvHTeamNumber teamB = GetGameRules()->GetTeamBNumber();
+
+	if (Team != teamA && Team != teamB) { return 0; }
+
+	return (Team == teamA) ? GetGameRules()->GetTeamAPlayerCount() : GetGameRules()->GetTeamBPlayerCount();
+}
+
 void AIMGR_UpdateTeamBalance()
 {
 	AvHTeamNumber teamA = GetGameRules()->GetTeamANumber();
