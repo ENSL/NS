@@ -1535,6 +1535,57 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 		theSuccess = true;
 	}
+	else if (FStrEq(pcmd, "getaliencomp"))
+	{
+		vector<AvHAIPlayer*> AlienPlayers = AIMGR_GetAIPlayersOnTeam(TEAM_TWO);
+
+		int NumBuilders = 0;
+		int NumCappers = 0;
+		int NumHarassers = 0;
+		int NumAssault = 0;
+
+		for (auto it = AlienPlayers.begin(); it != AlienPlayers.end(); it++)
+		{
+			AvHAIPlayer* NewCapper = (*it);
+
+			if (NewCapper)
+			{
+				switch (NewCapper->BotRole)
+				{
+					case BOT_ROLE_BUILDER:
+						NumBuilders++;
+						break;
+					case BOT_ROLE_FIND_RESOURCES:
+						NumCappers++;
+						break;
+					case BOT_ROLE_HARASS:
+						NumHarassers++;
+						break;
+					case BOT_ROLE_ASSAULT:
+						NumAssault++;
+						break;
+					default:
+						break;
+				}
+			}
+		}
+
+		char buf[32];
+
+		sprintf(buf, "Builders: %d\n", NumBuilders);
+		UTIL_SayText(buf, theAvHPlayer);
+
+		sprintf(buf, "Cappers: %d\n", NumCappers);
+		UTIL_SayText(buf, theAvHPlayer);
+
+		sprintf(buf, "Harassers: %d\n", NumHarassers);
+		UTIL_SayText(buf, theAvHPlayer);
+
+		sprintf(buf, "Assault: %d\n", NumAssault);
+		UTIL_SayText(buf, theAvHPlayer);		
+
+		theSuccess = true;
+	}
 	else if (FStrEq(pcmd, "testresearchavailable"))
 	{
 		AvHTeam* PlayerTeam = GetGameRules()->GetTeam(theAvHPlayer->GetTeam());

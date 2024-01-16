@@ -10,6 +10,7 @@
 #include "AvHAITask.h"
 #include "AvHAICommander.h"
 #include "AvHAIPlayerManager.h"
+#include "AvHAIConfig.h"
 
 #include "../AvHGamerules.h"
 #include "../AvHMessage.h"
@@ -1612,15 +1613,8 @@ void StartNewBotFrame(AvHAIPlayer* pBot)
 
 void CustomThink(AvHAIPlayer* pBot)
 {
-	if (IsPlayerAlien(pBot->Edict))
-	{
-		if (!vIsZero(AIDEBUG_GetDebugVector1()))
-		{
-			const AvHAIHiveDefinition* Hive = AITAC_GetHiveNearestLocation(AIDEBUG_GetDebugVector1());
+	UpdateAIAlienPlayerNSRole(pBot);
 
-			BotAlienBuildHive(pBot, Hive);
-		}
-	}
 }
 
 void DroneThink(AvHAIPlayer* pBot)
@@ -1730,20 +1724,25 @@ void UpdateAIAlienPlayerNSRole(AvHAIPlayer* pBot)
 		return;
 	}
 
-	// Don't switch roles if already fade/onos or those resources are potentially wasted
-	if (IsPlayerFade(pBot->Edict) || IsPlayerOnos(pBot->Edict))
+	if (AITAC_IsAlienCapperNeeded(pBot))
 	{
-		SetNewAIPlayerRole(pBot, BOT_ROLE_ASSAULT);
+		SetNewAIPlayerRole(pBot, BOT_ROLE_FIND_RESOURCES);
 		return;
 	}
 
-	// Likewise for lerks
-	if (IsPlayerLerk(pBot->Edict))
+	if (AITAC_IsAlienBuilderNeeded(pBot))
+	{
+		SetNewAIPlayerRole(pBot, BOT_ROLE_BUILDER);
+		return;
+	}
+
+	if (AITAC_IsAlienHarasserNeeded(pBot))
 	{
 		SetNewAIPlayerRole(pBot, BOT_ROLE_HARASS);
 		return;
 	}
 
+	SetNewAIPlayerRole(pBot, BOT_ROLE_ASSAULT);
 
 }
 
@@ -1782,7 +1781,7 @@ void UpdateAIMarinePlayerNSRole(AvHAIPlayer* pBot)
 	}
 
 	// If we own less than half the res nodes in the map, then we want 2 marines to cap them. Otherwise, have 1
-	float ResNodeOwnership = AITAC_GetTeamResNodeOwnership(BotTeamNumber);
+	float ResNodeOwnership = AITAC_GetTeamResNodeOwnership(BotTeamNumber, true);
 
 	int DesiredResCappers = (ResNodeOwnership < 0.5f) ? 2 : 1;
 
@@ -2172,6 +2171,49 @@ void AIPlayerSetSecondaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 void AIPlayerNSAlienThink(AvHAIPlayer* pBot)
 {
 	UpdateAIAlienPlayerNSRole(pBot);
+
+	AvHAIHiveDefinition* HiveToBuild = nullptr;
+
+	if (AITAC_ShouldBotBuildHive(pBot, &HiveToBuild))
+	{
+		BotAlienBuildHive(pBot, HiveToBuild);
+		return;
+	}
+
+	if (pBot->BotRole == BOT_ROLE_ASSAULT)
+	{
+		BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_ONE);
+	}
+
+	if (!pBot->CurrentTask) { pBot->CurrentTask = &pBot->PrimaryBotTask; }
+
+	if (gpGlobals->time < pBot->BotNextTaskEvaluationTime)
+	{
+		if (pBot->CurrentTask && pBot->CurrentTask->TaskType != TASK_NONE)
+		{
+			BotProgressTask(pBot, pBot->CurrentTask);
+			return;
+		}
+	}
+
+	pBot->BotNextTaskEvaluationTime = gpGlobals->time + frandrange(0.2f, 0.5f);
+
+	AITASK_BotUpdateAndClearTasks(pBot);
+
+	AIPlayerSetPrimaryAlienTask(pBot, &pBot->PrimaryBotTask);
+	AIPlayerSetSecondaryAlienTask(pBot, &pBot->SecondaryBotTask);
+
+	pBot->CurrentTask = AIPlayerGetNextTask(pBot);
+
+	if (pBot->CurrentTask && pBot->CurrentTask->TaskType != TASK_NONE)
+	{
+		BotProgressTask(pBot, pBot->CurrentTask);
+	}
+
+	if (pBot->DesiredCombatWeapon == WEAPON_NONE)
+	{
+		pBot->DesiredCombatWeapon = UTIL_GetPlayerPrimaryWeapon(pBot->Player);
+	}
 }
 
 void AIPlayerCOThink(AvHAIPlayer* pBot)
@@ -2255,7 +2297,7 @@ void BotSwitchToWeapon(AvHAIPlayer* pBot, AvHAIWeapon NewWeaponSlot)
 
 bool ShouldBotThink(AvHAIPlayer* pBot)
 {
-	return (IsPlayerActiveInGame(pBot->Edict) || IsPlayerCommander(pBot->Edict)) && !IsPlayerGestating(pBot->Edict);
+	return GetGameRules()->GetGameStarted() && (IsPlayerActiveInGame(pBot->Edict) || IsPlayerCommander(pBot->Edict)) && !IsPlayerGestating(pBot->Edict);
 }
 
 void BotResumePlay(AvHAIPlayer* pBot)
@@ -2344,4 +2386,403 @@ void BotStopCommanderMode(AvHAIPlayer* pBot)
 		// Cheesy way to make sure player class change is sent to everyone
 		pBot->Player->EffectivePlayerClassChanged();
 	}
+}
+
+void AIPlayerSetPrimaryAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
+{
+	switch (pBot->BotRole)
+	{
+	case BOT_ROLE_BUILDER:
+		AIPlayerSetAlienBuilderPrimaryTask(pBot, Task);
+		return;
+	case BOT_ROLE_FIND_RESOURCES:
+		AIPlayerSetAlienCapperPrimaryTask(pBot, Task);
+		return;
+	case BOT_ROLE_ASSAULT:
+		AIPlayerSetAlienAssaultPrimaryTask(pBot, Task);
+		return;
+	case BOT_ROLE_HARASS:
+		AIPlayerSetAlienHarasserPrimaryTask(pBot, Task);
+		return;
+	default:
+		return;
+	}
+}
+
+void AIPlayerSetAlienBuilderPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
+{
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
+
+	// Do we have any missing upgrade chambers (should have 3 of each if we can build them)
+	AvHAIDeployableStructureType MissingStructure = AITAC_GetNextMissingUpgradeChamberForTeam(BotTeam);
+
+	// If we do have a missing upgrade chamber, built it at the nearest hive or resource node that we own, whichever is nearest
+	if (MissingStructure != STRUCTURE_NONE)
+	{
+		if (Task->TaskType == TASK_BUILD && Task->StructureType == MissingStructure) { return; }
+
+		vector<AvHAIHiveDefinition*> AllHives = AITAC_GetAllHives();
+		
+		DeployableSearchFilter ResNodeFilter;
+		ResNodeFilter.DeployableTeam = BotTeam;
+		ResNodeFilter.ReachabilityTeam = BotTeam;
+		ResNodeFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+
+		AvHAIResourceNode* NearestNode = AITAC_FindNearestResourceNodeToLocation(pBot->Edict->v.origin, &ResNodeFilter);
+
+		Vector BuildOrigin = ZERO_VECTOR;
+
+		float MinDist = 0.0f;
+
+		for (auto it = AllHives.begin(); it != AllHives.end(); it++)
+		{
+			AvHAIHiveDefinition* ThisHive = (*it);
+
+			if (ThisHive->OwningTeam != BotTeam) { continue; }
+
+			float ThisDist = vDist2DSq(pBot->Edict->v.origin, ThisHive->FloorLocation);
+
+			if (vIsZero(BuildOrigin) || ThisDist < MinDist)
+			{
+				BuildOrigin = ThisHive->FloorLocation;
+				MinDist = ThisDist;
+			}
+		}
+
+		if (NearestNode)
+		{
+			float ThisDist = vDist2DSq(pBot->Edict->v.origin, NearestNode->Location);
+
+			if (vIsZero(BuildOrigin) || ThisDist < MinDist)
+			{
+				BuildOrigin = NearestNode->Location;
+			}
+		}
+
+		if (vIsZero(BuildOrigin))
+		{
+			BuildOrigin = pBot->CurrentFloorPosition;
+		}
+
+		if (Task->TaskType == TASK_BUILD && vDist2DSq(Task->TaskLocation, BuildOrigin) <= UTIL_MetresToGoldSrcUnits(5.0f))
+		{
+			Task->StructureType = MissingStructure;
+			return;
+		}
+
+		Vector ActualBuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), BuildOrigin, UTIL_MetresToGoldSrcUnits(3.0f));
+
+		if (vIsZero(ActualBuildLocation))
+		{
+			ActualBuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(GORGE_BASE_NAV_PROFILE), BuildOrigin, UTIL_MetresToGoldSrcUnits(3.0f));
+		}
+
+		AITASK_SetBuildTask(pBot, Task, MissingStructure, ActualBuildLocation, false);
+		return;
+	}
+
+	// No missing upgrade chambers to drop, let's look for empty hives we can start staking a claim to, to deny to the enemy
+	vector<AvHAIHiveDefinition*> AllHives = AITAC_GetAllHives();
+
+	AvHAIHiveDefinition* HiveToSecure = nullptr;
+
+	float MaxDist = 0.0f;
+
+	for (auto it = AllHives.begin(); it != AllHives.end(); it++)
+	{
+		AvHAIHiveDefinition* ThisHive = (*it);
+
+		if (ThisHive->Status == HIVE_STATUS_UNBUILT)
+		{
+			unsigned int StructureTypes = (STRUCTURE_MARINE_PHASEGATE | STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_MARINE_ADVTURRETFACTORY);
+
+			if (AIMGR_GetTeamType(EnemyTeam) == AVH_CLASS_TYPE_ALIEN)
+			{
+				StructureTypes = STRUCTURE_ALIEN_OFFENCECHAMBER;
+			}
+
+			DeployableSearchFilter EnemyStructureFilter;
+			EnemyStructureFilter.DeployableTeam = EnemyTeam;
+			EnemyStructureFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+			EnemyStructureFilter.DeployableTypes = StructureTypes;
+			EnemyStructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(10.0f);
+
+			bool bEnemyHaveFoothold = AITAC_DeployableExistsAtLocation(ThisHive->FloorLocation, &EnemyStructureFilter);
+
+			if (bEnemyHaveFoothold) { continue; }
+
+			if (AITAC_GetNumPlayersOfTeamInArea(EnemyTeam, ThisHive->FloorLocation, UTIL_MetresToGoldSrcUnits(10.0f), false, nullptr, AVH_USER3_COMMANDER_PLAYER) > 1) { continue; }
+
+			int OtherBuilders = AITAC_GetNumPlayersOfTeamAndClassInArea(EnemyTeam, ThisHive->FloorLocation, UTIL_MetresToGoldSrcUnits(10.0f), false, nullptr, AVH_USER3_ALIEN_PLAYER2);
+
+			if (OtherBuilders >= 2) { continue; }
+
+			DeployableSearchFilter ExistingReinforcementFilter;
+			ExistingReinforcementFilter.DeployableTeam = BotTeam;
+			ExistingReinforcementFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(10.0f);
+			ExistingReinforcementFilter.DeployableTypes = SEARCH_ALL_ALIEN_STRUCTURES;
+
+			vector<AvHAIBuildableStructure*> AllReinforcingStructures = AITAC_FindAllDeployables(ThisHive->FloorLocation, &ExistingReinforcementFilter);
+
+			int NumOCs = 0;
+			int NumDCs = 0;
+			int NumMCs = 0;
+			int NumSCs = 0;
+
+			for (auto it = AllReinforcingStructures.begin(); it != AllReinforcingStructures.end(); it++)
+			{
+				switch ((*it)->StructureType)
+				{
+				case STRUCTURE_ALIEN_OFFENCECHAMBER:
+					NumOCs++;
+					break;
+				case STRUCTURE_ALIEN_DEFENCECHAMBER:
+					NumDCs++;
+					break;
+				case STRUCTURE_ALIEN_MOVEMENTCHAMBER:
+					NumMCs++;
+					break;
+				case STRUCTURE_ALIEN_SENSORYCHAMBER:
+					NumSCs++;
+					break;
+				default:
+					break;
+				}
+			}
+
+			if (NumOCs < 3
+				|| (AITAC_TeamHiveWithTechExists(BotTeam, ALIEN_BUILD_DEFENSE_CHAMBER) && NumDCs < 2)
+				|| (AITAC_TeamHiveWithTechExists(BotTeam, ALIEN_BUILD_MOVEMENT_CHAMBER) && NumMCs < 1)
+				|| (AITAC_TeamHiveWithTechExists(BotTeam, ALIEN_BUILD_SENSORY_CHAMBER) && NumSCs < 1))
+			{
+				float ThisDist = vDist2DSq(AITAC_GetTeamStartingLocation(EnemyTeam), ThisHive->FloorLocation);
+
+				if (ThisDist > MaxDist)
+				{
+					HiveToSecure = ThisHive;
+					MaxDist = ThisDist;
+				}
+			}
+			
+		}
+	}
+
+	if (HiveToSecure)
+	{
+		AITASK_SetReinforceStructureTask(pBot, Task, HiveToSecure->HiveEntity->edict(), false);
+		return;
+	}
+
+	DeployableSearchFilter ResNodeFilter;
+	ResNodeFilter.DeployableTeam = BotTeam;
+	ResNodeFilter.DeployableTypes = STRUCTURE_ALIEN_RESTOWER;
+	ResNodeFilter.ReachabilityTeam = BotTeam;
+	ResNodeFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+
+	vector<AvHAIBuildableStructure*> AllMatchingTowers = AITAC_FindAllDeployables(pBot->Edict->v.origin, &ResNodeFilter);
+
+	edict_t* TowerToReinforce = nullptr;
+	float MinDist = 0.0f;
+
+	for (auto it = AllMatchingTowers.begin(); it != AllMatchingTowers.end(); it++)
+	{
+		AvHAIBuildableStructure* ThisResTower = (*it);
+
+		DeployableSearchFilter ExistingReinforcementFilter;
+		ExistingReinforcementFilter.DeployableTeam = BotTeam;
+		ExistingReinforcementFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
+		ExistingReinforcementFilter.DeployableTypes = SEARCH_ALL_ALIEN_STRUCTURES;
+
+		vector<AvHAIBuildableStructure*> AllReinforcingStructures = AITAC_FindAllDeployables(ThisResTower->Location, &ExistingReinforcementFilter);
+
+		int NumOCs = 0;
+		int NumDCs = 0;
+		int NumMCs = 0;
+		int NumSCs = 0;
+
+		for (auto it = AllReinforcingStructures.begin(); it != AllReinforcingStructures.end(); it++)
+		{
+			switch ((*it)->StructureType)
+			{
+			case STRUCTURE_ALIEN_OFFENCECHAMBER:
+				NumOCs++;
+				break;
+			case STRUCTURE_ALIEN_DEFENCECHAMBER:
+				NumDCs++;
+				break;
+			case STRUCTURE_ALIEN_MOVEMENTCHAMBER:
+				NumMCs++;
+				break;
+			case STRUCTURE_ALIEN_SENSORYCHAMBER:
+				NumSCs++;
+				break;
+			default:
+				break;
+			}
+		}
+
+		if (NumOCs < 3
+			|| (AITAC_TeamHiveWithTechExists(BotTeam, ALIEN_BUILD_DEFENSE_CHAMBER) && NumDCs < 2)
+			|| (AITAC_TeamHiveWithTechExists(BotTeam, ALIEN_BUILD_MOVEMENT_CHAMBER) && NumMCs < 1)
+			|| (AITAC_TeamHiveWithTechExists(BotTeam, ALIEN_BUILD_SENSORY_CHAMBER) && NumSCs < 1))
+		{
+			float ThisDist = vDist2DSq(AITAC_GetTeamStartingLocation(EnemyTeam), ThisResTower->Location);
+
+			if (!TowerToReinforce || ThisDist < MinDist)
+			{
+				TowerToReinforce = ThisResTower->edict;
+				MaxDist = ThisDist;
+			}
+		}
+	}
+
+	if (!FNullEnt(TowerToReinforce))
+	{
+		AITASK_SetReinforceStructureTask(pBot, Task, TowerToReinforce, false);
+	}
+}
+
+void AIPlayerSetAlienCapperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
+{
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+
+	AvHAIResourceNode* NodeToCap = nullptr;
+
+	float ResourcesRequired = BALANCE_VAR(kResourceTowerCost);
+
+	if (!IsPlayerGorge(pBot->Edict))
+	{
+		ResourcesRequired += BALANCE_VAR(kGorgeCost);
+	}
+
+	bool bCanPlaceTower = pBot->Player->GetResources() >= (BALANCE_VAR(kResourceTowerCost) * 0.8f);
+
+	if (IsPlayerLerk(pBot->Edict) || IsPlayerFade(pBot->Edict) || IsPlayerOnos(pBot->Edict))
+	{
+		bCanPlaceTower = pBot->Player->GetResources() >= 75 && AITAC_GetTeamResNodeOwnership(BotTeam, true) >= 0.5f;
+	}
+
+	bool bCanAttackTowers = (!IsPlayerGorge(pBot->Edict) || PlayerHasWeapon(pBot->Player, WEAPON_GORGE_BILEBOMB));
+
+	// If we have enough resources to cap a node, then find an empty one we can slap one down in
+	if (bCanPlaceTower || !bCanAttackTowers)
+	{
+		DeployableSearchFilter EmptyNodeFilter;
+		EmptyNodeFilter.DeployableTeam = TEAM_IND;
+		EmptyNodeFilter.ReachabilityTeam = BotTeam;
+		EmptyNodeFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+
+		vector<AvHAIResourceNode*> EligibleNodes = AITAC_GetAllMatchingResourceNodes(pBot->Edict->v.origin, &EmptyNodeFilter);
+
+		float MinDist = 0.0f;
+
+		for (auto it = EligibleNodes.begin(); it != EligibleNodes.end(); it++)
+		{
+			AvHAIResourceNode* ThisNode = (*it);
+
+			edict_t* ExistingBuilder = AITAC_GetNearestPlayerOfClassInArea(BotTeam, ThisNode->Location, UTIL_MetresToGoldSrcUnits(5.0f), false, pBot->Edict, AVH_USER3_ALIEN_PLAYER2);
+
+			if (!FNullEnt(ExistingBuilder) && vDist2DSq(ExistingBuilder->v.origin, ThisNode->Location) < vDist2DSq(pBot->Edict->v.origin, ThisNode->Location) && GetPlayerResources(ExistingBuilder) >= (BALANCE_VAR(kResourceTowerCost) * 0.8f)) { continue; }
+
+			vector<AvHAIPlayer*> OtherAITeam = AIMGR_GetAIPlayersOnTeam(BotTeam);
+			bool bNodeClaimed = false;
+
+			for (auto BotIt = OtherAITeam.begin(); BotIt != OtherAITeam.end(); BotIt++)
+			{
+				AvHAIPlayer* OtherBot = (*BotIt);
+
+				if (OtherBot != pBot && OtherBot->PrimaryBotTask.TaskType == TASK_CAP_RESNODE && OtherBot->PrimaryBotTask.TaskTarget == ThisNode->ResourceEdict)
+				{
+					bNodeClaimed = true;
+					break;
+				}
+			}
+
+			if (bNodeClaimed) { continue; }
+
+			float ThisDist = vDist2DSq(pBot->Edict->v.origin, ThisNode->Location);
+
+			if (!NodeToCap || ThisDist < MinDist)
+			{
+				NodeToCap = ThisNode;
+				MinDist = ThisDist;
+			}
+		}
+
+		if (NodeToCap)
+		{
+			AITASK_SetCapResNodeTask(pBot, Task, NodeToCap, false);
+			return;
+		}
+	}
+
+	// Let's find an enemy tower to take out
+
+	DeployableSearchFilter EnemyNodeFilter;
+	EnemyNodeFilter.DeployableTeam = AIMGR_GetEnemyTeam(BotTeam);
+	EnemyNodeFilter.ReachabilityTeam = BotTeam;
+	EnemyNodeFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+
+	vector<AvHAIResourceNode*> EligibleNodes = AITAC_GetAllMatchingResourceNodes(pBot->Edict->v.origin, &EnemyNodeFilter);
+
+	float MinDist = 0.0f;
+
+	NodeToCap = nullptr;
+
+	for (auto it = EligibleNodes.begin(); it != EligibleNodes.end(); it++)
+	{
+		AvHAIResourceNode* ThisNode = (*it);
+
+		// Don't attack nodes which are firmly owned by the enemy (i.e. in marine base, or part of an enemy alien team's active hive)
+		if (ThisNode->bIsBaseNode)
+		{
+			AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
+			if (AIMGR_GetEnemyTeamType(BotTeam) == AVH_CLASS_TYPE_MARINE)
+			{
+				// Too close to the marine comm chair, don't touch this one
+				if (vDist2DSq(ThisNode->Location, AITAC_GetCommChairLocation(EnemyTeam)) < sqrf(UTIL_MetresToGoldSrcUnits(15.0f))) { continue; }
+			}
+			else
+			{
+				// The enemy alien team has a hive here, don't attack this res node or we'll get smooshed
+				AvHAIHiveDefinition* ParentHive = AITAC_GetHiveFromEdict(ThisNode->ParentHive);
+
+				if (ParentHive && ParentHive->OwningTeam == EnemyTeam) { continue; }
+			}
+		}
+
+		float ThisDist = vDist2DSq(ThisNode->Location, AITAC_GetTeamStartingLocation(BotTeam));
+
+		if (!NodeToCap || ThisDist < MinDist)
+		{
+			NodeToCap = ThisNode;
+			MinDist = ThisDist;
+		}
+
+	}
+
+	if (NodeToCap)
+	{
+		AITASK_SetAttackTask(pBot, Task, NodeToCap->ActiveTowerEntity, false);
+		return;
+	}
+
+	AIPlayerSetAlienAssaultPrimaryTask(pBot, Task);
+
+}
+
+void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
+{
+
+}
+
+void AIPlayerSetAlienHarasserPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
+{
+
+}
+
+void AIPlayerSetSecondaryAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
+{
+
 }

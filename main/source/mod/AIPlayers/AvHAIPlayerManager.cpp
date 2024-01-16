@@ -593,7 +593,7 @@ void AIMGR_UpdateAIPlayers()
 
 				UpdateBotChat(bot);
 
-				CustomThink(bot);
+				AIPlayerThink(bot);
 
 				BotUpdateDesiredViewRotation(bot);
 			}
@@ -615,6 +615,52 @@ void AIMGR_UpdateAIPlayers()
 
 		BotIt++;
 	}
+
+	vector<AvHAIPlayer*> AlienPlayers = AIMGR_GetAIPlayersOnTeam(TEAM_TWO);
+
+	int NumBuilders = 0;
+	int NumCappers = 0;
+	int NumHarassers = 0;
+	int NumAssault = 0;
+
+	for (auto it = AlienPlayers.begin(); it != AlienPlayers.end(); it++)
+	{
+		AvHAIPlayer* NewCapper = (*it);
+
+		if (NewCapper)
+		{
+			switch (NewCapper->BotRole)
+			{
+			case BOT_ROLE_BUILDER:
+				NumBuilders++;
+				break;
+			case BOT_ROLE_FIND_RESOURCES:
+				NumCappers++;
+				break;
+			case BOT_ROLE_HARASS:
+				NumHarassers++;
+				break;
+			case BOT_ROLE_ASSAULT:
+				NumAssault++;
+				break;
+			default:
+				break;
+			}
+		}
+	}
+
+	char buf[256];
+	char interbuf[32];
+
+	sprintf(buf, "Builders: %d\n", NumBuilders);
+	sprintf(interbuf, "Cappers: %d\n", NumCappers);
+	strcat(buf, interbuf);
+	sprintf(interbuf, "Harassers: %d\n", NumHarassers);
+	strcat(buf, interbuf);
+	sprintf(interbuf, "Assault: %d\n", NumAssault);
+	strcat(buf, interbuf);
+
+	UTIL_DrawHUDText(INDEXENT(1), 0, 0.1f, 0.1f, 255, 255, 255, buf);
 
 	PrevTime = CurrTime;
 
@@ -702,6 +748,26 @@ int AIMGR_GetNumAIPlayersWithRoleOnTeam(AvHTeamNumber Team, AvHAIBotRole Role, A
 			{
 				Result++;
 			}
+		}
+	}
+
+	return Result;
+}
+
+int AIMGR_GetNumHumansOfClassOnTeam(AvHTeamNumber Team, AvHUser3 PlayerType)
+{
+	int Result = 0;
+
+	vector<AvHPlayer*> TeamPlayers = AIMGR_GetAllPlayersOnTeam(Team);
+
+	for (auto it = TeamPlayers.begin(); it != TeamPlayers.end(); it++)
+	{
+		AvHPlayer* ThisPlayer = (*it);
+		edict_t* PlayerEdict = ThisPlayer->edict();
+
+		if (!(PlayerEdict->v.flags & FL_FAKECLIENT))
+		{
+			Result++;
 		}
 	}
 
@@ -847,6 +913,13 @@ AvHTeamNumber AIMGR_GetEnemyTeam(const AvHTeamNumber FriendlyTeam)
 	return (FriendlyTeam == TeamANumber) ? TeamBNumber : TeamANumber;
 }
 
+AvHClassType AIMGR_GetTeamType(const AvHTeamNumber Team)
+{
+	AvHTeam* TeamRef = GetGameRules()->GetTeam(Team);
+
+	return (TeamRef) ? TeamRef->GetTeamType() : AVH_CLASS_TYPE_UNDEFINED;
+}
+
 AvHClassType AIMGR_GetEnemyTeamType(const AvHTeamNumber FriendlyTeam)
 {
 	AvHTeamNumber EnemyTeamNumber = AIMGR_GetEnemyTeam(FriendlyTeam);
@@ -889,6 +962,27 @@ vector<AvHAIPlayer*> AIMGR_GetAIPlayersOnTeam(AvHTeamNumber Team)
 	}
 
 	return Result;
+}
+
+vector<AvHPlayer*> AIMGR_GetNonAIPlayersOnTeam(AvHTeamNumber Team)
+{
+	vector<AvHPlayer*> TeamPlayers = AIMGR_GetAllPlayersOnTeam(Team);
+
+	for (auto it = ActiveAIPlayers.begin(); it != ActiveAIPlayers.end(); it++)
+	{
+		AvHPlayer* ThisPlayer = it->Player;
+
+		if (!ThisPlayer) { continue; }
+
+		std::vector<AvHPlayer*>::iterator FoundPlayer = std::find(TeamPlayers.begin(), TeamPlayers.end(), ThisPlayer);
+
+		if (FoundPlayer != TeamPlayers.end())
+		{
+			TeamPlayers.erase(FoundPlayer);
+		}
+	}
+
+	return TeamPlayers;
 }
 
 void AIMGR_UpdateAIMapData()

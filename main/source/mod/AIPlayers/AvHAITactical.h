@@ -107,7 +107,7 @@ AvHAIHiveDefinition* AITAC_GetHiveFromEdict(const edict_t* Edict);
 AvHAIResourceNode* AITAC_GetResourceNodeFromEdict(const edict_t* Edict);
 
 // What percentage of all viable (can be reached by the requested team) resource nodes does the team currently own? Expressed as 0.0 - 1.0
-float AITAC_GetTeamResNodeOwnership(const AvHTeamNumber Team);
+float AITAC_GetTeamResNodeOwnership(const AvHTeamNumber Team, bool bIncludeBaseNodes);
 int	AITAC_GetNumResourceNodesNearLocation(const Vector Location, const DeployableSearchFilter* Filter);
 AvHAIResourceNode* AITAC_FindNearestResourceNodeToLocation(const Vector Location, const DeployableSearchFilter* Filter);
 AvHAIResourceNode* AITAC_GetNearestResourceNodeToLocation(const Vector Location);
@@ -119,8 +119,10 @@ AvHAIWeapon UTIL_GetWeaponTypeFromEdict(const edict_t* ItemEdict);
 
 int AITAC_GetNumActivePlayersOnTeam(const AvHTeamNumber Team);
 int AITAC_GetNumPlayersOfTeamInArea(const AvHTeamNumber Team, const Vector SearchLocation, const float SearchRadius, const bool bConsiderPhaseDist, const edict_t* IgnorePlayer, const AvHUser3 IgnoreClass);
+int AITAC_GetNumPlayersOfTeamAndClassInArea(const AvHTeamNumber Team, const Vector SearchLocation, const float SearchRadius, const bool bConsiderPhaseDist, const edict_t* IgnorePlayer, const AvHUser3 SearchClass);
 int AITAC_GetNumPlayersOnTeamOfClass(const AvHTeamNumber Team, const AvHUser3 SearchClass, const edict_t* IgnorePlayer);
 edict_t* AITAC_GetNearestPlayerOfClassInArea(const AvHTeamNumber Team, const Vector SearchLocation, const float SearchRadius, const bool bConsiderPhaseDist, const edict_t* IgnorePlayer, const AvHUser3 SearchClass);
+vector<edict_t*> AITAC_GetAllPlayersOfClassInArea(const AvHTeamNumber Team, const Vector SearchLocation, const float SearchRadius, const bool bConsiderPhaseDist, const edict_t* IgnorePlayer, const AvHUser3 SearchClass);
 
 AvHAIHiveDefinition* AITAC_GetTeamHiveWithTech(const AvHTeamNumber Team, const AvHMessageID Tech);
 bool AITAC_TeamHiveWithTechExists(const AvHTeamNumber Team, const AvHMessageID Tech);
@@ -157,5 +159,13 @@ const vector<AvHAIResourceNode*> AITAC_GetAllResourceNodes();
 const vector<AvHAIHiveDefinition*> AITAC_GetAllHives();
 
 bool AITAC_AnyPlayerOnTeamWithLOS(AvHTeamNumber Team, const Vector& Location, float SearchRadius);
+
+bool AITAC_IsAlienBuilderNeeded(AvHAIPlayer* pBot);
+bool AITAC_IsAlienCapperNeeded(AvHAIPlayer* pBot);
+bool AITAC_IsAlienHarasserNeeded(AvHAIPlayer* pBot);
+
+bool AITAC_ShouldBotBuildHive(AvHAIPlayer* pBot, AvHAIHiveDefinition** EligibleHive);
+
+AvHAIDeployableStructureType AITAC_GetNextMissingUpgradeChamberForTeam(AvHTeamNumber Team);
 
 #endif

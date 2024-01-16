@@ -449,8 +449,6 @@ void UTIL_DrawLine(edict_t* pEntity, Vector start, Vector end, int r, int g, int
 
 void UTIL_DrawHUDText(edict_t* pEntity, char channel, float x, float y, unsigned char r, unsigned char g, unsigned char b, const char* string)
 {
-
-
 	// higher level wrapper for hudtextparms TE_TEXTMESSAGEs. This function is meant to be called
 	// every frame, since the duration of the display is roughly worth the duration of a video
 	// frame. The X and Y coordinates are unary fractions which are bound to this rule:
@@ -483,7 +481,7 @@ void UTIL_DrawHUDText(edict_t* pEntity, char channel, float x, float y, unsigned
 	WRITE_BYTE(1); // effect ALPHA
 	WRITE_SHORT(0); // fade-in time in seconds * 256
 	WRITE_SHORT(0); // fade-out time in seconds * 256
-	WRITE_SHORT(1); // hold time in seconds * 256
+	WRITE_SHORT(5); // hold time in seconds * 256
 	WRITE_STRING(string);//string); // send the string
 	MESSAGE_END(); // end
 

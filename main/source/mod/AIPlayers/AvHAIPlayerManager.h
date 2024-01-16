@@ -60,15 +60,23 @@ int AIMGR_GetNumHumanPlayersOnTeam(AvHTeamNumber Team);
 
 int AIMGR_GetNumAIPlayersWithRoleOnTeam(AvHTeamNumber Team, AvHAIBotRole Role, AvHAIPlayer* IgnoreAIPlayer);
 
+int AIMGR_GetNumHumansOfClassOnTeam(AvHTeamNumber Team, AvHUser3 PlayerType);
+
 AvHAIPlayer* AIMGR_GetAICommander(AvHTeamNumber Team);
 
 
 
 AvHTeamNumber AIMGR_GetEnemyTeam(const AvHTeamNumber FriendlyTeam);
 AvHClassType AIMGR_GetEnemyTeamType(const AvHTeamNumber FriendlyTeam);
+AvHClassType AIMGR_GetTeamType(const AvHTeamNumber Team);
 
+// Returns all NS AI players. Does not include third-party bots
 vector<AvHAIPlayer*> AIMGR_GetAllAIPlayers();
+// Returns all NS AI players on the requested team. Does not include third-party bots
 vector<AvHAIPlayer*> AIMGR_GetAIPlayersOnTeam(AvHTeamNumber Team);
+
+// Returns all players on a team which are not an internal NS bot. Will still include third party bots such as Whichbot and RCBot
+vector<AvHPlayer*> AIMGR_GetNonAIPlayersOnTeam(AvHTeamNumber Team);
 
 void AIMGR_ClearBotData();
 
