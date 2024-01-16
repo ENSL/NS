@@ -220,11 +220,13 @@ typedef struct _STRUCTURE_OBSTACLE
 typedef struct _RESOURCE_NODE
 {
 	AvHFuncResource* ResourceEntity = nullptr;						// The func_resource edict reference
+	edict_t* ResourceEdict = nullptr;
 	Vector Location = g_vecZero;									// origin of the func_resource edict (not the tower itself)
 	bool bIsOccupied = false;										// True if there is any resource tower on it
 	AvHTeamNumber OwningTeam = TEAM_IND;							// The team that has currently capped this node (TEAM_IND if none)
 	edict_t* ActiveTowerEntity = nullptr;							// Reference to the resource tower edict (if capped)
 	bool bIsBaseNode = false;										// Is this a node in the marine base or active alien hive?
+	edict_t* ParentHive = nullptr;
 	unsigned int TeamAReachabilityFlags = AI_REACHABILITY_NONE;		// Is this reachable by the bots? Checks for marine reachability only
 	unsigned int TeamBReachabilityFlags = AI_REACHABILITY_NONE;		// Is this reachable by the bots? Checks for marine reachability only
 	bool bReachabilityMarkedDirty = false;							// Reachability needs to be recalculated

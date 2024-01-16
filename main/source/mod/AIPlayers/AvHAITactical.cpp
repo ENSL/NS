@@ -663,7 +663,16 @@ void AITAC_PopulateHiveData()
 		AvHAIHiveDefinition NewHive;
 		NewHive.HiveEntity = theEntity;
 		NewHive.Location = theEntity->pev->origin;
-		NewHive.HiveResNodeRef = AITAC_GetNearestResourceNodeToLocation(theEntity->pev->origin);
+
+		AvHAIResourceNode* NearestNode = AITAC_GetNearestResourceNodeToLocation(theEntity->pev->origin);
+
+		if (NearestNode)
+		{
+			NewHive.HiveResNodeRef = NearestNode;
+			NearestNode->bIsBaseNode = true;
+			NearestNode->ParentHive = NewHive.HiveEntity->edict();
+		}
+
 		NewHive.FloorLocation = UTIL_GetFloorUnderEntity(theEntity->edict()); // Some hives are suspended in the air, this is the floor location directly beneath it
 
 		Hives.push_back(NewHive);
@@ -1039,6 +1048,7 @@ void AITAC_PopulateResourceNodes()
 
 		AvHAIResourceNode NewResNode;
 		NewResNode.ResourceEntity = theEntity;
+		NewResNode.ResourceEdict = theEntity->edict();
 		NewResNode.Location = theEntity->pev->origin;
 		NewResNode.TeamAReachabilityFlags = AI_REACHABILITY_NONE;
 		NewResNode.TeamBReachabilityFlags = AI_REACHABILITY_NONE;
@@ -2291,7 +2301,7 @@ AvHAIResourceNode* AITAC_GetResourceNodeFromEdict(const edict_t* Edict)
 {
 	for (auto it = ResourceNodes.begin(); it != ResourceNodes.end(); it++)
 	{
-		if (it->ResourceEntity->edict() == Edict)
+		if (it->ResourceEdict == Edict)
 		{
 			return &(*it);
 		}
@@ -2380,10 +2390,18 @@ AvHAIResourceNode* AITAC_GetNearestResourceNodeToLocation(const Vector Location)
 	return Result;
 }
 
-float AITAC_GetTeamResNodeOwnership(const AvHTeamNumber Team)
+float AITAC_GetTeamResNodeOwnership(const AvHTeamNumber Team, bool bIncludeBaseNodes)
 {
 	int NumViableResNodes = 0;
 	int NumOwnedResNodes = 0;
+
+	AvHAIResourceNode* MarineBaseNode = nullptr;
+	bool bIsMarineType = AIMGR_GetTeamType(Team) == AVH_CLASS_TYPE_MARINE;
+
+	if (bIsMarineType)
+	{
+		MarineBaseNode = AITAC_GetNearestResourceNodeToLocation(AITAC_GetCommChairLocation(Team));
+	}
 
 	for (auto it = ResourceNodes.begin(); it != ResourceNodes.end(); it++)
 	{
@@ -2395,6 +2413,23 @@ float AITAC_GetTeamResNodeOwnership(const AvHTeamNumber Team)
 		}
 
 		if (CheckReachabilityFlags == AI_REACHABILITY_UNREACHABLE) { continue; }
+
+		if (!bIncludeBaseNodes)
+		{
+			if (it->bIsBaseNode)
+			{
+				if (bIsMarineType)
+				{
+					if (it->ResourceEntity == MarineBaseNode->ResourceEntity) { continue; }
+				}
+				else
+				{
+					const AvHAIHiveDefinition* NearestHive = AITAC_GetHiveNearestLocation(it->Location);
+
+					if (NearestHive->Status != HIVE_STATUS_UNBUILT) { continue; }
+				}
+			}
+		}
 
 		NumViableResNodes++;
 
@@ -2547,6 +2582,33 @@ int AITAC_GetNumActivePlayersOnTeam(const AvHTeamNumber Team)
 	return Result;
 }
 
+int AITAC_GetNumPlayersOfTeamAndClassInArea(const AvHTeamNumber Team, const Vector SearchLocation, const float SearchRadius, const bool bConsiderPhaseDist, const edict_t* IgnorePlayer, const AvHUser3 SearchClass)
+{
+	int Result = 0;
+	float MaxRadiusSq = sqrf(SearchRadius);
+
+	for (int i = 1; i <= gpGlobals->maxClients; i++)
+	{
+		edict_t* PlayerEdict = INDEXENT(i);
+
+		if (FNullEnt(PlayerEdict) || PlayerEdict->free || PlayerEdict == IgnorePlayer) { continue; }
+
+		AvHPlayer* PlayerRef = dynamic_cast<AvHPlayer*>(CBaseEntity::Instance(PlayerEdict));
+
+		if (PlayerRef != nullptr && GetPlayerActiveClass(PlayerRef) == SearchClass && (Team == TEAM_IND || PlayerRef->GetTeam() == Team) && IsPlayerActiveInGame(PlayerEdict))
+		{
+			float Dist = (bConsiderPhaseDist) ? sqrf(AITAC_GetPhaseDistanceBetweenPoints(PlayerEdict->v.origin, SearchLocation)) : vDist2DSq(PlayerEdict->v.origin, SearchLocation);
+
+			if (Dist <= MaxRadiusSq)
+			{
+				Result++;
+			}
+		}
+	}
+
+	return Result;
+}
+
 int AITAC_GetNumPlayersOfTeamInArea(const AvHTeamNumber Team, const Vector SearchLocation, const float SearchRadius, const bool bConsiderPhaseDist, const edict_t* IgnorePlayer, const AvHUser3 IgnoreClass)
 {
 	int Result = 0;
@@ -2625,6 +2687,35 @@ edict_t* AITAC_GetNearestPlayerOfClassInArea(const AvHTeamNumber Team, const Vec
 
 	return Result;
 
+}
+
+vector<edict_t*> AITAC_GetAllPlayersOfClassInArea(const AvHTeamNumber Team, const Vector SearchLocation, const float SearchRadius, const bool bConsiderPhaseDist, const edict_t* IgnorePlayer, const AvHUser3 SearchClass)
+{
+	vector<edict_t*> Result;
+	float MaxRadiusSq = sqrf(SearchRadius);
+	float MinDistSq = 0.0f;
+
+	for (int i = 1; i <= gpGlobals->maxClients; i++)
+	{
+		edict_t* PlayerEdict = INDEXENT(i);
+
+		if (FNullEnt(PlayerEdict) || PlayerEdict->free || PlayerEdict == IgnorePlayer) { continue; }
+
+		AvHPlayer* PlayerRef = dynamic_cast<AvHPlayer*>(CBaseEntity::Instance(PlayerEdict));
+
+		if (PlayerRef != nullptr && (SearchClass == AVH_USER3_NONE || GetPlayerActiveClass(PlayerRef) == SearchClass) && (Team == TEAM_IND || PlayerRef->GetTeam() == Team) && IsPlayerActiveInGame(PlayerEdict))
+		{
+			float Dist = (bConsiderPhaseDist) ? sqrf(AITAC_GetPhaseDistanceBetweenPoints(PlayerEdict->v.origin, SearchLocation)) : vDist2DSq(PlayerEdict->v.origin, SearchLocation);
+
+			if (Dist <= MaxRadiusSq)
+			{
+				Result.push_back(PlayerEdict);
+				MinDistSq = Dist;
+			}
+		}
+	}
+
+	return Result;
 }
 
 AvHAIHiveDefinition* AITAC_GetTeamHiveWithTech(const AvHTeamNumber Team, const AvHMessageID Tech)
@@ -3094,7 +3185,7 @@ AvHAIDeployableStructureType UTIL_GetChamberTypeForHiveTech(AvHMessageID HiveTec
 		case ALIEN_BUILD_MOVEMENT_CHAMBER:
 			return STRUCTURE_ALIEN_MOVEMENTCHAMBER;
 		case ALIEN_BUILD_SENSORY_CHAMBER:
-			return STRUCTURE_ALIEN_OFFENCECHAMBER;
+			return STRUCTURE_ALIEN_SENSORYCHAMBER;
 		default:
 			return STRUCTURE_NONE;
 	}
@@ -3302,9 +3393,196 @@ bool AITAC_AnyPlayerOnTeamWithLOS(AvHTeamNumber Team, const Vector& Location, fl
 	return false;
 }
 
-bool AITAC_IsAlienBuilderNeeded(AvHAIPlayer* pBot)
+bool AITAC_IsAlienHarasserNeeded(AvHAIPlayer* pBot)
+{
+	if (IsPlayerLerk(pBot->Edict)) { return true; }
+
+	if (pBot->Player->GetResources() < BALANCE_VAR(kLerkCost)) { return false; }
+
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+
+	int NumTeamPlayers = AIMGR_GetNumPlayersOnTeam(BotTeam);
+	int DesiredLerks = (int)ceilf((float)NumTeamPlayers * 0.1f);
+	int NumLerks = imaxi(AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER3, nullptr), AIMGR_GetNumAIPlayersWithRoleOnTeam(BotTeam, BOT_ROLE_HARASS, pBot));
+
+	return NumLerks < DesiredLerks;
+}
+
+bool AITAC_ShouldBotBuildHive(AvHAIPlayer* pBot, AvHAIHiveDefinition** EligibleHive)
+{
+	*EligibleHive = nullptr;
+
+	float HiveCost = BALANCE_VAR(kHiveCost);
+
+	if (!IsPlayerGorge(pBot->Edict))
+	{
+		HiveCost += BALANCE_VAR(kGorgeCost);
+	}
+
+	if (pBot->Player->GetResources() < HiveCost) { return false; }
+
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
+
+	// If we're a higher lifeform, ensure we can't leave this to someone else before considering losing those resources
+	// We will ignore humans and third party bots, because we don't know if they will drop the hive or not. Not everyone can be as team-spirited as us...
+	if (!IsPlayerSkulk(pBot->Edict) && !IsPlayerGorge(pBot->Edict))
+	{
+		vector<AvHAIPlayer*> OtherAITeamMates = AIMGR_GetAIPlayersOnTeam(BotTeam);
+
+		for (auto it = OtherAITeamMates.begin(); it != OtherAITeamMates.end(); it++)
+		{
+			AvHAIPlayer* OtherBot = (*it);
+
+			// If the other bot has enough resources to drop a hive, and they're a less expensive life form than us, let them do it.
+			if (OtherBot->Player->GetResources() >= BALANCE_VAR(kHiveCost) * 0.8f && OtherBot->Player->GetUser3() < pBot->Player->GetUser3()) { return false; }
+		}
+	}
+
+	AvHAIHiveDefinition* SuitableHive = nullptr;
+	float MinDist = 0.0f;
+
+	vector<AvHAIHiveDefinition*> AllHives = AITAC_GetAllHives();
+
+	for (auto it = AllHives.begin(); it != AllHives.end(); it++)
+	{
+		AvHAIHiveDefinition* ThisHive = (*it);
+
+		if (ThisHive->Status == HIVE_STATUS_BUILT) { continue; }
+
+		if (ThisHive->Status == HIVE_STATUS_BUILDING)
+		{
+			// Aliens can only build one hive at a time, so if we have one already under construction then automatic no
+			if (ThisHive->OwningTeam == BotTeam)
+			{
+				return false; 
+			}
+			else
+			{
+				// It's an enemy hive under construction, so we can't build this one but can keep searching
+				continue;
+			}
+		}
+
+		// Check to make sure someone else isn't planning to drop a hive, otherwise don't bother
+		bool bHasOtherBuilder = false;
+		vector<edict_t*> OtherBuilders = AITAC_GetAllPlayersOfClassInArea(BotTeam, ThisHive->FloorLocation, UTIL_MetresToGoldSrcUnits(10.0f), false, pBot->Edict, AVH_USER3_ALIEN_PLAYER2);
+
+		for (auto BuildIt = OtherBuilders.begin(); BuildIt != OtherBuilders.end(); BuildIt++)
+		{
+			edict_t* OtherBuilder = (*BuildIt);
+
+			if (vDist2DSq(OtherBuilder->v.origin, ThisHive->FloorLocation) && GetPlayerResources(OtherBuilder) >= BALANCE_VAR(kHiveCost) * 0.8f) { bHasOtherBuilder = true; }
+		}
+
+		if (bHasOtherBuilder) { return false; }
+
+		// Enemy are in here right now, wait until they're cleared out
+		if (AITAC_GetNumPlayersOfTeamInArea(EnemyTeam, ThisHive->FloorLocation, UTIL_MetresToGoldSrcUnits(10.0f), false, nullptr, AVH_USER3_COMMANDER_PLAYER) > 2) { continue; }
+
+		// Must be an empty hive
+		DeployableSearchFilter EnemyFortificationsFilter;
+		EnemyFortificationsFilter.DeployableTeam = EnemyTeam;
+		EnemyFortificationsFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(10.0f);
+
+		if (AIMGR_GetTeamType(EnemyTeam) == AVH_CLASS_TYPE_MARINE)
+		{
+			EnemyFortificationsFilter.DeployableTypes = (STRUCTURE_MARINE_PHASEGATE | STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_MARINE_ADVTURRETFACTORY);
+			EnemyFortificationsFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+			EnemyFortificationsFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED; // This is important to prevent exploiting the AI. Those structures have to be built first!
+		}
+		else
+		{
+			EnemyFortificationsFilter.DeployableTypes = (STRUCTURE_ALIEN_OFFENCECHAMBER);
+		}
+
+		// Enemy have built some stuff, wait until it's clear before building
+		if (AITAC_DeployableExistsAtLocation(ThisHive->FloorLocation, &EnemyFortificationsFilter)) { continue; }
+
+		// Should be clear to drop dat hive!
+
+		float ThisDist = vDist2DSq(pBot->Edict->v.origin, ThisHive->FloorLocation);
+
+		if (!SuitableHive || ThisDist < MinDist)
+		{
+			SuitableHive = ThisHive;
+			MinDist = ThisDist;
+		}
+
+	}
+
+	*EligibleHive = SuitableHive;
+
+	return (SuitableHive != nullptr);
+}
+
+bool AITAC_IsAlienCapperNeeded(AvHAIPlayer* pBot)
 {
 	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
+
+	float ResNodeOwnership = AITAC_GetTeamResNodeOwnership(BotTeam, false);
+	float EnemyNodeOwnership = AITAC_GetTeamResNodeOwnership(EnemyTeam, false);
+
+	int NumTeamPlayers = AIMGR_GetNumPlayersOnTeam(BotTeam);
+	int MaxCappers = (int)ceilf((float)NumTeamPlayers * 0.5f);
+
+	int NumCurrentCappers = AIMGR_GetNumAIPlayersWithRoleOnTeam(BotTeam, BOT_ROLE_FIND_RESOURCES, pBot);
+
+	int DesiredCappers = 0;
+
+	if (ResNodeOwnership > 0.6f) { return false; }
+
+	if (ResNodeOwnership < 0.25f)
+	{
+		DesiredCappers = MaxCappers;
+	}
+	else if (ResNodeOwnership < 0.4f)
+	{
+		DesiredCappers = imaxi(1, MaxCappers - 1);
+	}
+	else
+	{
+		DesiredCappers = imaxi(1, MaxCappers - 2);
+	}
+
+	// If we're lerk/fade/onos, only go capper if we have lots of resources and can replace them easily, otherwise we can't afford to waste resources going back to gorge
+	if (!IsPlayerSkulk(pBot->Edict) && !IsPlayerGorge(pBot->Edict))
+	{
+		if (pBot->Player->GetResources() < 75 || ResNodeOwnership < 0.4f) { return false; }
+
+		int NumSkulks = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER1, nullptr);
+		int NumGorges = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER2, nullptr);
+
+		// Don't go capping if there are other players who could do it instead and aren't higher life forms
+		if ((NumSkulks + NumGorges) > DesiredCappers) { return false; }
+	}
+
+	return NumCurrentCappers < DesiredCappers;
+}
+
+bool AITAC_IsAlienBuilderNeeded(AvHAIPlayer* pBot)
+{
+	// The basic logic here is that we have a max number of builders based on team size.
+	// We add one extra required builder for every empty hive that needs fortifications placed
+	// One for any missing upgrade chambers
+	// and one if there are any resource towers that need reinforcing which aren't part of a hive
+	// This should mean that we could have up to 3 builders at the start if the team is big enough, then that should reduce down to just 1 eventually
+
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
+
+	float ResNodeOwnership = AITAC_GetTeamResNodeOwnership(BotTeam, true);
+
+	// Don't lose all those resources!
+	if (IsPlayerLerk(pBot->Edict) || IsPlayerFade(pBot->Edict) || IsPlayerOnos(pBot->Edict))
+	{
+		// Only waste those resources if we have loads of res nodes and can easily replenish the lost resources
+		if (pBot->Player->GetResources() < 75 || ResNodeOwnership < 0.6f)
+		{
+			return false;
+		}
+	}
 
 	AvHMessageID HiveTechOne = CONFIG_GetHiveTechAtIndex(0);
 	AvHMessageID HiveTechTwo = CONFIG_GetHiveTechAtIndex(1);
@@ -3318,26 +3596,153 @@ bool AITAC_IsAlienBuilderNeeded(AvHAIPlayer* pBot)
 	StructureFilter.DeployableTeam = BotTeam;
 
 	int NumTeamPlayers = AIMGR_GetNumPlayersOnTeam(BotTeam);
-	int MaxBuilders = imini(2, (int)floorf((float)NumTeamPlayers * 0.5f));
-	int NumCurrentBuilders = AIMGR_GetNumAIPlayersWithRoleOnTeam(BotTeam, BOT_ROLE_BUILDER, pBot);
+	int MaxBuilders = (int)ceilf((float)NumTeamPlayers * 0.3f); // Max 1/3 of team can be builder at any one time
 
-	if (MaxBuilders == 0) { return false; }
-
-	// We have a hive without any associated chambers yet
-	if (AITAC_TeamHiveWithTechExists(BotTeam, MESSAGE_NULL))
+	// If we're struggling for resources, then cut back on max number of builders to have more focused on capping nodes
+	if (ResNodeOwnership < 0.25f)
 	{
-		return NumCurrentBuilders < MaxBuilders;
+		MaxBuilders = (imaxi(1, MaxBuilders - 1));
 	}
 
-	StructureFilter.DeployableTypes = ChamberTypeOne;
-	if (AITAC_TeamHiveWithTechExists(BotTeam, HiveTechOne) && AITAC_GetNumDeployablesNearLocation(pBot->Edict->v.origin, &StructureFilter) < 3) { return NumBuilders < 1; }
-	
-	StructureFilter.DeployableTypes = ChamberTypeTwo;
-	if (AITAC_TeamHiveWithTechExists(BotTeam, HiveTechTwo) && AITAC_GetNumDeployablesNearLocation(pBot->Edict->v.origin, &StructureFilter) < 3) { return NumBuilders < 1; }
-	
-	StructureFilter.DeployableTypes = ChamberTypeThree;
-	if (AITAC_TeamHiveWithTechExists(BotTeam, HiveTechThree) && AITAC_GetNumDeployablesNearLocation(pBot->Edict->v.origin, &StructureFilter) < 3) { return NumBuilders < 1; }
+	// Don't build if we're a higher lifeform and there are others who could do the job instead
+	if (!IsPlayerSkulk(pBot->Edict) && !IsPlayerGorge(pBot->Edict))
+	{
+		int NumSkulks = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER1, nullptr);
+		int NumGorges = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER2, nullptr);
+		int NumDead = AITAC_GetNumDeadPlayersOnTeam(BotTeam);
 
+		if ((NumSkulks + NumGorges + NumDead) > MaxBuilders) { return false; }
+	}
+
+
+	int NumCurrentBuilders = AIMGR_GetNumAIPlayersWithRoleOnTeam(BotTeam, BOT_ROLE_BUILDER, pBot);
+
+	vector<AvHPlayer*> NonAIPlayers = AIMGR_GetNonAIPlayersOnTeam(BotTeam);
+
+	for (auto it = NonAIPlayers.begin(); it != NonAIPlayers.end(); it++)
+	{
+		AvHPlayer* ThisPlayer = (*it);
+
+		if (GetPlayerActiveClass(ThisPlayer) == AVH_USER3_ALIEN_PLAYER2)
+		{
+			NumCurrentBuilders++;
+		}
+	}
+
+	// We already have too many gorges running around
+	if (NumCurrentBuilders >= MaxBuilders) { return false; }
+
+	int DesiredBuilders = 0;
+
+	vector<AvHAIHiveDefinition*> AllHives = AITAC_GetAllHives();
+
+	for (auto it = AllHives.begin(); it != AllHives.end(); it++)
+	{
+		const AvHAIHiveDefinition* ThisHive = (*it);
+
+		// Can't build in an enemy hive (if playing AvA)
+		if (ThisHive->OwningTeam == EnemyTeam) { continue; }
+
+		if (ThisHive->OwningTeam == BotTeam)
+		{
+			if (ThisHive->Status == HIVE_STATUS_BUILT)
+			{
+				// Hive hasn't got a chamber assigned yet, we need at least one builder for that
+				if (ThisHive->TechStatus == MESSAGE_NULL)
+				{
+					DesiredBuilders++;
+
+					if (DesiredBuilders >= MaxBuilders)
+					{
+						return NumCurrentBuilders < DesiredBuilders;
+					}
+				}
+
+				continue;
+			}
+		}
+			
+		bool bEnemyIsMarines = (AIMGR_GetEnemyTeamType(BotTeam) == AVH_CLASS_TYPE_MARINE);
+
+		DeployableSearchFilter EnemyStructures;
+		EnemyStructures.DeployableTeam = EnemyTeam;
+		EnemyStructures.ReachabilityTeam = EnemyTeam;
+		EnemyStructures.ReachabilityFlags = (bEnemyIsMarines) ? AI_REACHABILITY_MARINE : AI_REACHABILITY_SKULK;
+		EnemyStructures.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
+
+		if (bEnemyIsMarines)
+		{
+			EnemyStructures.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+			EnemyStructures.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+			EnemyStructures.DeployableTypes = STRUCTURE_MARINE_PHASEGATE | STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_MARINE_ADVTURRETFACTORY;
+		}
+		else
+		{
+			EnemyStructures.DeployableTypes = STRUCTURE_ALIEN_OFFENCECHAMBER;
+		}
+
+		// Enemy have a foothold here, don't get involved
+		if (AITAC_GetNumDeployablesNearLocation(ThisHive->Location, &EnemyStructures) > 0)
+		{
+			continue;
+		}
+
+		// The enemy don't have a proper foothold yet
+
+		DeployableSearchFilter ExistingReinforcementFilter;
+		ExistingReinforcementFilter.DeployableTeam = BotTeam;
+		ExistingReinforcementFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(10.0f);
+		ExistingReinforcementFilter.DeployableTypes = SEARCH_ALL_ALIEN_STRUCTURES;
+
+		vector<AvHAIBuildableStructure*> AllReinforcingStructures = AITAC_FindAllDeployables(ThisHive->FloorLocation, &ExistingReinforcementFilter);
+			
+		int NumOCs = 0;
+		int NumDCs = 0;
+		int NumMCs = 0;
+		int NumSCs = 0;
+
+		for (auto it = AllReinforcingStructures.begin(); it != AllReinforcingStructures.end(); it++)
+		{
+			switch ((*it)->StructureType)
+			{
+				case STRUCTURE_ALIEN_OFFENCECHAMBER:
+					NumOCs++;
+					break;
+				case STRUCTURE_ALIEN_DEFENCECHAMBER:
+					NumDCs++;
+					break;
+				case STRUCTURE_ALIEN_MOVEMENTCHAMBER:
+					NumMCs++;
+					break;
+				case STRUCTURE_ALIEN_SENSORYCHAMBER:
+					NumSCs++;
+					break;
+				default:
+					break;
+			}
+		}
+
+		if (NumOCs < 3
+			|| (AITAC_TeamHiveWithTechExists(BotTeam, ALIEN_BUILD_DEFENSE_CHAMBER) && NumDCs < 2)
+			|| (AITAC_TeamHiveWithTechExists(BotTeam, ALIEN_BUILD_MOVEMENT_CHAMBER) && NumMCs < 1)
+			|| (AITAC_TeamHiveWithTechExists(BotTeam, ALIEN_BUILD_SENSORY_CHAMBER) && NumSCs < 1))
+		{
+			DesiredBuilders++;
+
+			if (DesiredBuilders >= MaxBuilders)
+			{
+				return NumCurrentBuilders < DesiredBuilders;
+			}
+		}
+		
+	}
+
+	// We have hives to fortify and upgrades to enable. Ignore resource nodes for now. We will get a bot assigned to those once we've done everything else
+	if (DesiredBuilders > 0)
+	{
+		return NumCurrentBuilders < DesiredBuilders;
+	}
+	
 	DeployableSearchFilter ResNodeFilter;
 	ResNodeFilter.DeployableTeam = BotTeam;
 	ResNodeFilter.ReachabilityTeam = BotTeam;
@@ -3349,7 +3754,121 @@ bool AITAC_IsAlienBuilderNeeded(AvHAIPlayer* pBot)
 	{
 		AvHAIResourceNode* ThisNode = (*it);
 
-		
+		if (ThisNode->bIsBaseNode && !FNullEnt(ThisNode->ParentHive))
+		{
+			AvHAIHiveDefinition* HiveRef = AITAC_GetHiveFromEdict(ThisNode->ParentHive);
+			if (HiveRef && HiveRef->Status != HIVE_STATUS_UNBUILT)
+			{
+				continue;
+			}
+		}
+
+		DeployableSearchFilter ExistingReinforcementFilter;
+		ExistingReinforcementFilter.DeployableTeam = BotTeam;
+		ExistingReinforcementFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
+		ExistingReinforcementFilter.DeployableTypes = SEARCH_ALL_ALIEN_STRUCTURES;
+
+		vector<AvHAIBuildableStructure*> AllReinforcingStructures = AITAC_FindAllDeployables(ThisNode->Location, &ExistingReinforcementFilter);
+
+		int NumOCs = 0;
+		int NumDCs = 0;
+		int NumMCs = 0;
+		int NumSCs = 0;
+
+		for (auto it = AllReinforcingStructures.begin(); it != AllReinforcingStructures.end(); it++)
+		{
+			switch ((*it)->StructureType)
+			{
+			case STRUCTURE_ALIEN_OFFENCECHAMBER:
+				NumOCs++;
+				break;
+			case STRUCTURE_ALIEN_DEFENCECHAMBER:
+				NumDCs++;
+				break;
+			case STRUCTURE_ALIEN_MOVEMENTCHAMBER:
+				NumMCs++;
+				break;
+			case STRUCTURE_ALIEN_SENSORYCHAMBER:
+				NumSCs++;
+				break;
+			default:
+				break;
+			}
+		}
+
+		if (NumOCs < 2
+			|| (AITAC_TeamHiveWithTechExists(BotTeam, ALIEN_BUILD_DEFENSE_CHAMBER) && NumDCs < 2)
+			|| (AITAC_TeamHiveWithTechExists(BotTeam, ALIEN_BUILD_MOVEMENT_CHAMBER) && NumDCs < 1)
+			|| (AITAC_TeamHiveWithTechExists(BotTeam, ALIEN_BUILD_SENSORY_CHAMBER) && NumDCs < 1))
+		{
+			DesiredBuilders++;
+
+			if (DesiredBuilders >= MaxBuilders)
+			{
+				return NumCurrentBuilders < DesiredBuilders;
+			}
+
+			break;
+		}
+
 	}
 
+	return NumCurrentBuilders < DesiredBuilders;
+
+}
+
+AvHAIDeployableStructureType AITAC_GetNextMissingUpgradeChamberForTeam(AvHTeamNumber Team)
+{
+	if (AIMGR_GetTeamType(Team) != AVH_CLASS_TYPE_ALIEN) { return STRUCTURE_NONE; }
+
+	AvHMessageID HiveTechOne = CONFIG_GetHiveTechAtIndex(0);
+	AvHMessageID HiveTechTwo = CONFIG_GetHiveTechAtIndex(1);
+	AvHMessageID HiveTechThree = CONFIG_GetHiveTechAtIndex(2);
+
+	AvHAIDeployableStructureType ChamberTypeOne = UTIL_GetChamberTypeForHiveTech(HiveTechOne);
+	AvHAIDeployableStructureType ChamberTypeTwo = UTIL_GetChamberTypeForHiveTech(HiveTechTwo);
+	AvHAIDeployableStructureType ChamberTypeThree = UTIL_GetChamberTypeForHiveTech(HiveTechThree);
+
+	DeployableSearchFilter SearchFilter;
+	SearchFilter.DeployableTeam = Team;
+
+	bool bHasFreeHive = AITAC_TeamHiveWithTechExists(Team, MESSAGE_NULL);
+
+	if (ChamberTypeOne != STRUCTURE_NONE && (bHasFreeHive || AITAC_TeamHiveWithTechExists(Team, HiveTechOne)))
+	{
+		SearchFilter.DeployableTypes = ChamberTypeOne;
+
+		int NumChambers = AITAC_GetNumDeployablesNearLocation(AITAC_GetTeamStartingLocation(Team), &SearchFilter);
+
+		if (NumChambers < 3)
+		{
+			return ChamberTypeOne;
+		}
+	}
+
+	if (ChamberTypeTwo != STRUCTURE_NONE && (bHasFreeHive || AITAC_TeamHiveWithTechExists(Team, HiveTechTwo)))
+	{
+		SearchFilter.DeployableTypes = ChamberTypeTwo;
+
+		int NumChambers = AITAC_GetNumDeployablesNearLocation(AITAC_GetTeamStartingLocation(Team), &SearchFilter);
+
+		if (NumChambers < 3)
+		{
+			return ChamberTypeTwo;
+		}
+	}
+
+	if (ChamberTypeThree != STRUCTURE_NONE && (bHasFreeHive || AITAC_TeamHiveWithTechExists(Team, HiveTechThree)))
+	{
+		SearchFilter.DeployableTypes = ChamberTypeThree;
+
+		int NumChambers = AITAC_GetNumDeployablesNearLocation(AITAC_GetTeamStartingLocation(Team), &SearchFilter);
+
+		if (NumChambers < 3)
+		{
+			return ChamberTypeThree;
+		}
+	}
+
+	return STRUCTURE_NONE;
 }

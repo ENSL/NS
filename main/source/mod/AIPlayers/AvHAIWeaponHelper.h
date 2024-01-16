@@ -47,6 +47,7 @@ AvHAIWeapon BotAlienChooseBestWeaponForStructure(AvHAIPlayer* pBot, edict_t* tar
 
 // Helper function to pick the best weapon for any given situation and target type.
 AvHAIWeapon BotMarineChooseBestWeapon(AvHAIPlayer* pBot, edict_t* target);
+AvHAIWeapon BotAlienChooseBestWeapon(AvHAIPlayer* pBot, edict_t* target);
 
 AvHAIWeapon FadeGetBestWeaponForCombatTarget(AvHAIPlayer* pBot, edict_t* Target);
 AvHAIWeapon OnosGetBestWeaponForCombatTarget(AvHAIPlayer* pBot, edict_t* Target);

@@ -526,6 +526,16 @@ Vector UTIL_GetGrenadeThrowTarget(edict_t* Player, const Vector TargetLocation, 
 	}
 }
 
+AvHAIWeapon BotAlienChooseBestWeapon(AvHAIPlayer* pBot, edict_t* target)
+{
+	if (FNullEnt(target))
+	{
+		return UTIL_GetPlayerPrimaryWeapon(pBot->Player);
+	}
+
+	return BotAlienChooseBestWeaponForStructure(pBot, target);
+}
+
 AvHAIWeapon BotMarineChooseBestWeapon(AvHAIPlayer* pBot, edict_t* target)
 {
 
