@@ -1893,10 +1893,15 @@ void AlienProgressBuildTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		return;
 	}
 
+	if (!vIsZero(Task->TaskLocation))
+	{
+		UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, Task->TaskLocation);
+	}
+
 	// We tried and failed to place the structure
 	if (pBot->ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_FAILED)
 	{
-		Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE], Task->TaskLocation, UTIL_MetresToGoldSrcUnits(2.0f));
+		Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[GORGE_BASE_NAV_PROFILE], Task->TaskLocation, UTIL_MetresToGoldSrcUnits(2.0f));
 		pBot->ActiveBuildInfo.BuildStatus = BUILD_ATTEMPT_NONE;
 	}
 
@@ -1909,6 +1914,29 @@ void AlienProgressBuildTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (pBot->Player->GetResources() < ResRequired)
 	{
+
+		if (IsPlayerGorge(pBot->Edict))
+		{
+			AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+
+			DeployableSearchFilter UnfinishedFilter;
+			UnfinishedFilter.DeployableTeam = BotTeam;
+			UnfinishedFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
+			UnfinishedFilter.ReachabilityTeam = BotTeam;
+			UnfinishedFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+			UnfinishedFilter.ExcludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+			UnfinishedFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(10.0f);
+
+			AvHAIBuildableStructure* UnfinishedStructure = AITAC_FindClosestDeployableToLocation(Task->TaskLocation, &UnfinishedFilter);
+
+			if (UnfinishedStructure)
+			{
+				AIPlayerBuildStructure(pBot, UnfinishedStructure->edict);
+				return;
+			}
+		}
+
+
 		BotGuardLocation(pBot, Task->TaskLocation);
 		return;
 	}
@@ -2578,17 +2606,21 @@ void BotGuardLocation(AvHAIPlayer* pBot, const Vector GuardLocation)
 	if (DistFromGuardLocation > sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
 	{
 		pBot->GuardInfo.GuardLocation = g_vecZero;
+		pBot->GuardInfo.GuardStartLookTime = 0.0f;
+		pBot->GuardInfo.ThisGuardLookTime = 0.0f;
+		pBot->GuardInfo.GuardStartStandTime = 0.0f;
+		pBot->GuardInfo.ThisGuardStandTime = 0.0f;
 		MoveTo(pBot, GuardLocation, MOVESTYLE_NORMAL);
 		return;
 	}
 
-	if (!pBot->GuardInfo.GuardLocation)
+	if (vIsZero(pBot->GuardInfo.GuardLocation))
 	{
 		AITASK_GenerateGuardWatchPoints(pBot, GuardLocation);
 		pBot->GuardInfo.GuardLocation = GuardLocation;
 	}
 
-	if (gpGlobals->time - pBot->GuardInfo.GuardStartLookTime > pBot->GuardInfo.ThisGuardLookTime)
+	if (gpGlobals->time > pBot->GuardInfo.ThisGuardLookTime)
 	{
 		if (pBot->GuardInfo.NumGuardPoints > 0)
 		{
@@ -2603,35 +2635,27 @@ void BotGuardLocation(AvHAIPlayer* pBot, const Vector GuardLocation)
 			pBot->GuardInfo.GuardLookLocation.z = pBot->CurrentEyePosition.z;
 		}
 
-		Vector LookDir = UTIL_GetVectorNormal2D(pBot->GuardInfo.GuardLookLocation - GuardLocation);
+		pBot->GuardInfo.ThisGuardLookTime = gpGlobals->time + frandrange(2.0f, 5.0f);
+	}
 
-		Vector NewMoveCentre = GuardLocation - (LookDir * UTIL_MetresToGoldSrcUnits(2.0f));
+	if (gpGlobals->time > pBot->GuardInfo.ThisGuardStandTime)
+	{
+		pBot->GuardInfo.GuardStandPosition = UTIL_GetRandomPointOnNavmeshInRadius(pBot->BotNavInfo.NavProfile, GuardLocation, UTIL_MetresToGoldSrcUnits(4.0f));
 
-		Vector NewMoveLoc = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], NewMoveCentre, UTIL_MetresToGoldSrcUnits(2.0f));
+		pBot->GuardInfo.ThisGuardStandTime = gpGlobals->time + frandrange(5.0f, 10.0f);
+	}
 
-		if (NewMoveLoc != g_vecZero)
+	if (vDist2DSq(pBot->Edict->v.origin, pBot->GuardInfo.GuardStandPosition) > sqrf(32.0f))
+	{
+		if (IsPlayerLerk(pBot->Edict))
 		{
-			pBot->GuardInfo.GuardStandPosition = NewMoveLoc;
+			MoveTo(pBot, pBot->GuardInfo.GuardStandPosition, MOVESTYLE_HIDE);
 		}
 		else
 		{
-			pBot->GuardInfo.GuardStandPosition = GuardLocation;
+			MoveTo(pBot, pBot->GuardInfo.GuardStandPosition, MOVESTYLE_NORMAL);
 		}
-
-		pBot->GuardInfo.ThisGuardLookTime = frandrange(2.0f, 5.0f);
-		pBot->GuardInfo.GuardStartLookTime = gpGlobals->time;
 	}
-
-	if (IsPlayerLerk(pBot->Edict))
-	{
-		MoveTo(pBot, pBot->GuardInfo.GuardStandPosition, MOVESTYLE_HIDE);
-	}
-	else
-	{
-		MoveTo(pBot, pBot->GuardInfo.GuardStandPosition, MOVESTYLE_NORMAL);
-	}
-
-	
 
 	BotLookAt(pBot, pBot->GuardInfo.GuardLookLocation);
 
@@ -2659,15 +2683,15 @@ void AITASK_GenerateGuardWatchPoints(AvHAIPlayer* pBot, const Vector& GuardLocat
 	path.clear();
 
 	
-	for (int i = 0; i < AITAC_GetNumHives(); i++)
+	vector<AvHAIHiveDefinition*> AllHives = AITAC_GetAllHives();
+
+	for (auto it = AllHives.begin(); it != AllHives.end(); it++)
 	{
-		const AvHAIHiveDefinition* Hive = AITAC_GetHiveAtIndex(i);
+		const AvHAIHiveDefinition* ThisHive = (*it);
 
-		if (!Hive) { continue; }
+		if (UTIL_QuickTrace(pEdict, GuardLocation + Vector(0.0f, 0.0f, 10.0f), ThisHive->Location) || vDist2DSq(GuardLocation, ThisHive->Location) < sqrf(UTIL_MetresToGoldSrcUnits(10.0f))) { continue; }
 
-		if (UTIL_QuickTrace(pEdict, GuardLocation + Vector(0.0f, 0.0f, 10.0f), Hive->Location) || vDist2DSq(GuardLocation, Hive->Location) < sqrf(UTIL_MetresToGoldSrcUnits(10.0f))) { continue; }
-
-		dtStatus SearchResult = FindPathClosestToPoint(NavProfile, Hive->FloorLocation, GuardLocation, path, 500.0f);
+		dtStatus SearchResult = FindPathClosestToPoint(NavProfile, ThisHive->FloorLocation, GuardLocation, path, 500.0f);
 
 		if (dtStatusSucceed(SearchResult))
 		{
@@ -2680,21 +2704,10 @@ void AITASK_GenerateGuardWatchPoints(AvHAIPlayer* pBot, const Vector& GuardLocat
 		}
 	}
 	
-	dtStatus SearchResult = FindPathClosestToPoint(NavProfile, AITAC_GetTeamStartingLocation(EnemyTeam), GuardLocation, path, 500.0f);
-
-	if (dtStatusSucceed(SearchResult))
+	if (AIMGR_GetEnemyTeamType(pBot->Player->GetTeam()) == AVH_CLASS_TYPE_MARINE)
 	{
-		Vector FinalApproachDir = UTIL_GetVectorNormal2D(path.back().Location - prev(prev(path.end()))->Location);
-		Vector ProspectiveNewGuardLoc = GuardLocation - (FinalApproachDir * 300.0f);
 
-		ProspectiveNewGuardLoc.z = prev(prev(path.end()))->Location.z;
-
-		pBot->GuardInfo.GuardPoints[pBot->GuardInfo.NumGuardPoints++] = ProspectiveNewGuardLoc;
-	}
-
-	if (vDist2DSq(GuardLocation, AITAC_GetTeamStartingLocation(pBot->Player->GetTeam())) > sqrf(UTIL_MetresToGoldSrcUnits(15.0f)))
-	{
-		dtStatus SearchResult = FindPathClosestToPoint(NavProfile, AITAC_GetTeamStartingLocation(pBot->Player->GetTeam()), GuardLocation, path, 500.0f);
+		dtStatus SearchResult = FindPathClosestToPoint(NavProfile, AITAC_GetTeamStartingLocation(EnemyTeam), GuardLocation, path, 500.0f);
 
 		if (dtStatusSucceed(SearchResult))
 		{
@@ -2704,6 +2717,24 @@ void AITASK_GenerateGuardWatchPoints(AvHAIPlayer* pBot, const Vector& GuardLocat
 			ProspectiveNewGuardLoc.z = prev(prev(path.end()))->Location.z;
 
 			pBot->GuardInfo.GuardPoints[pBot->GuardInfo.NumGuardPoints++] = ProspectiveNewGuardLoc;
+		}
+	}
+
+	if (AIMGR_GetTeamType(pBot->Player->GetTeam()) == AVH_CLASS_TYPE_MARINE)
+	{
+		if (vDist2DSq(GuardLocation, AITAC_GetTeamStartingLocation(pBot->Player->GetTeam())) > sqrf(UTIL_MetresToGoldSrcUnits(15.0f)))
+		{
+			dtStatus SearchResult = FindPathClosestToPoint(NavProfile, AITAC_GetTeamStartingLocation(pBot->Player->GetTeam()), GuardLocation, path, 500.0f);
+
+			if (dtStatusSucceed(SearchResult))
+			{
+				Vector FinalApproachDir = UTIL_GetVectorNormal2D(path.back().Location - prev(prev(path.end()))->Location);
+				Vector ProspectiveNewGuardLoc = GuardLocation - (FinalApproachDir * 300.0f);
+
+				ProspectiveNewGuardLoc.z = prev(prev(path.end()))->Location.z;
+
+				pBot->GuardInfo.GuardPoints[pBot->GuardInfo.NumGuardPoints++] = ProspectiveNewGuardLoc;
+			}
 		}
 	}
 

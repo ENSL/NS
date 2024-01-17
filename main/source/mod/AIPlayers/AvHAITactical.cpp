@@ -18,6 +18,7 @@
 
 #include "../AvHGamerules.h"
 #include "../AvHServerUtil.h"
+#include "../AvHMarineEquipment.h"
 
 #include <float.h>
 
@@ -695,8 +696,28 @@ void AITAC_RefreshHiveData()
 
 		it->TechStatus = theEntity->GetTechnology();
 		it->bIsUnderAttack = GetGameRules()->GetIsEntityUnderAttack(theEntity->entindex());
-		it->OwningTeam = theEntity->GetTeamNumber();
-		it->Status = (theEntity->GetIsActive() ? HIVE_STATUS_BUILT : (theEntity->GetIsSpawning() ? HIVE_STATUS_BUILDING : HIVE_STATUS_UNBUILT));
+
+		AvHTeamNumber CurrentOwningTeam = theEntity->GetTeamNumber();
+		HiveStatusType CurrentStatus = (theEntity->GetIsActive() ? HIVE_STATUS_BUILT : (theEntity->GetIsSpawning() ? HIVE_STATUS_BUILDING : HIVE_STATUS_UNBUILT));
+
+		bool bHiveDestroyed = (CurrentOwningTeam != it->OwningTeam) || (it->Status == HIVE_STATUS_BUILT && CurrentStatus != it->Status);
+
+		if (bHiveDestroyed)
+		{
+			if (it->OwningTeam == GetGameRules()->GetTeamANumber())
+			{
+				TeamAStartingLocation = ZERO_VECTOR;
+			}
+			else
+			{
+				TeamBStartingLocation = ZERO_VECTOR;
+			}
+
+			AITAC_GetTeamStartingLocation(it->OwningTeam); // Force refresh
+		}
+
+		it->OwningTeam = CurrentOwningTeam;
+		it->Status = CurrentStatus;
 
 		if (it->Status != HIVE_STATUS_UNBUILT && it->ObstacleRefs[REGULAR_NAV_MESH] == 0)
 		{
@@ -718,13 +739,15 @@ void AITAC_RefreshHiveData()
 
 		NextRefresh++;
 	}
-
 }
 
 Vector AITAC_GetTeamStartingLocation(AvHTeamNumber Team)
 {
 	if (vIsZero(TeamAStartingLocation) || vIsZero(TeamBStartingLocation))
 	{
+		AvHTeamNumber TeamANum = GetGameRules()->GetTeamANumber();
+		AvHTeamNumber TeamBNum = GetGameRules()->GetTeamBNumber();
+
 		AvHTeam* AvHTeamARef = GetGameRules()->GetTeamA();
 		AvHTeam* AvHTeamBRef = GetGameRules()->GetTeamB();
 
@@ -734,13 +757,29 @@ Vector AITAC_GetTeamStartingLocation(AvHTeamNumber Team)
 
 			if (AvHTeamARef->GetTeamType() == AVH_CLASS_TYPE_MARINE)
 			{
-				TeamAStartingLocation = TeamStartLocation;
+				DeployableSearchFilter IFFilter;
+				IFFilter.DeployableTeam = TeamANum;
+				IFFilter.DeployableTypes = STRUCTURE_MARINE_INFANTRYPORTAL;
+				IFFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+				IFFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+				
+				AvHAIBuildableStructure* InfantryPortal = AITAC_FindClosestDeployableToLocation(ZERO_VECTOR, &IFFilter);
+
+				if (InfantryPortal)
+				{
+					TeamAStartingLocation = InfantryPortal->Location;
+				}
+				else
+				{
+					Vector CommChairLocation = AITAC_GetCommChairLocation(TeamANum);
+					TeamAStartingLocation = (!vIsZero(CommChairLocation)) ? CommChairLocation : TeamStartLocation;
+				}
 			}
 			else
 			{
 				TeamAStartingLocation = TeamStartLocation;
 
-				const AvHAIHiveDefinition* Hive = AITAC_GetHiveNearestLocation(TeamStartLocation);
+				const AvHAIHiveDefinition* Hive = AITAC_GetActiveHiveNearestLocation(TeamANum, TeamStartLocation);
 
 				if (Hive)
 				{
@@ -759,13 +798,29 @@ Vector AITAC_GetTeamStartingLocation(AvHTeamNumber Team)
 
 			if (AvHTeamBRef->GetTeamType() == AVH_CLASS_TYPE_MARINE)
 			{
-				TeamBStartingLocation = TeamStartLocation;
+				DeployableSearchFilter IFFilter;
+				IFFilter.DeployableTeam = TeamBNum;
+				IFFilter.DeployableTypes = STRUCTURE_MARINE_INFANTRYPORTAL;
+				IFFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+				IFFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+				AvHAIBuildableStructure* InfantryPortal = AITAC_FindClosestDeployableToLocation(ZERO_VECTOR, &IFFilter);
+
+				if (InfantryPortal)
+				{
+					TeamAStartingLocation = InfantryPortal->Location;
+				}
+				else
+				{
+					Vector CommChairLocation = AITAC_GetCommChairLocation(TeamBNum);
+					TeamAStartingLocation = (!vIsZero(CommChairLocation)) ? CommChairLocation : TeamStartLocation;
+				}
 			}
 			else
 			{
 				TeamBStartingLocation = TeamStartLocation;
 
-				const AvHAIHiveDefinition* Hive = AITAC_GetActiveHiveNearestLocation(TeamStartLocation);
+				const AvHAIHiveDefinition* Hive = AITAC_GetActiveHiveNearestLocation(TeamBNum, TeamStartLocation);
 
 				if (Hive)
 				{
@@ -777,6 +832,9 @@ Vector AITAC_GetTeamStartingLocation(AvHTeamNumber Team)
 				}
 			}
 		}
+
+		// Update reachabilities since team starting points have been modified
+		bNavMeshModified = true;
 	}
 
 	return (Team == GetGameRules()->GetTeamANumber()) ? TeamAStartingLocation : TeamBStartingLocation;
@@ -794,18 +852,11 @@ Vector AITAC_GetCommChairLocation(AvHTeamNumber Team)
 		}
 	}
 
-	DeployableSearchFilter ChairFilter;
-	ChairFilter.DeployableTypes = STRUCTURE_MARINE_COMMCHAIR;
-	ChairFilter.DeployableTeam = Team;
-	ChairFilter.ReachabilityTeam = TEAM_IND;
-	ChairFilter.bConsiderPhaseDistance = false;
-	ChairFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+	edict_t* Chair = AITAC_GetCommChair(Team);
 
-	AvHAIBuildableStructure* ChairRef = AITAC_FindClosestDeployableToLocation(ZERO_VECTOR, &ChairFilter);
-
-	if (ChairRef)
+	if (!FNullEnt(Chair))
 	{
-		return ChairRef->Location;
+		return Chair->v.origin;
 	}
 
 	return ZERO_VECTOR;
@@ -1708,10 +1759,15 @@ AvHAIBuildableStructure* AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 
 	unsigned int NewFlags = STRUCTURE_STATUS_NONE;
 
+	bool bJustCompleted = false;
+	bool bJustRecycled = false;
+	bool bJustDestroyed = false;
+
 	if (BaseBuildable->GetIsBuilt())
 	{
-		if (!(BuildingMap[EntIndex].StructureStatusFlags & STRUCTURE_STATUS_COMPLETED)) {
-			AITAC_OnStructureCompleted(&BuildingMap[EntIndex]);
+		if (!(BuildingMap[EntIndex].StructureStatusFlags & STRUCTURE_STATUS_COMPLETED))
+		{
+			bJustCompleted = true;
 		}
 		NewFlags |= STRUCTURE_STATUS_COMPLETED;
 	}
@@ -1730,7 +1786,7 @@ AvHAIBuildableStructure* AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 	{
 		if (!(BuildingMap[EntIndex].StructureStatusFlags & STRUCTURE_STATUS_RECYCLING))
 		{
-			AITAC_OnStructureBeginRecycling(&BuildingMap[EntIndex]);
+			bJustRecycled = true;
 		}
 		NewFlags |= STRUCTURE_STATUS_RECYCLING;
 	}
@@ -1756,6 +1812,16 @@ AvHAIBuildableStructure* AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 
 	BuildingMap[EntIndex].StructureStatusFlags = NewFlags;
 	BuildingMap[EntIndex].LastSeen = StructureRefreshFrame;
+
+	if (bJustCompleted)
+	{
+		AITAC_OnStructureCompleted(&BuildingMap[EntIndex]);
+	}
+
+	if (bJustRecycled)
+	{
+		AITAC_OnStructureBeginRecycling(&BuildingMap[EntIndex]);
+	}
 
 	return &BuildingMap[EntIndex];
 
@@ -1819,6 +1885,22 @@ void AITAC_OnStructureCompleted(AvHAIBuildableStructure* NewStructure)
 
 		}
 	}
+
+	if (NewStructure->StructureType == STRUCTURE_MARINE_INFANTRYPORTAL)
+	{
+		AvHTeamNumber Team = (AvHTeamNumber)NewStructure->edict->v.team;
+
+		if (Team == GetGameRules()->GetTeamANumber())
+		{
+			TeamAStartingLocation = ZERO_VECTOR;
+		}
+		else
+		{
+			TeamBStartingLocation = ZERO_VECTOR;
+		}
+
+		AITAC_GetTeamStartingLocation(Team); // Force refresh of reachabilities and team starting locations
+	}
 }
 
 void AITAC_RemovePhaseGateConnections(AvHAIBuildableStructure* SourceGate, AvHAIBuildableStructure* TargetGate)
@@ -1880,6 +1962,22 @@ void AITAC_OnStructureDestroyed(AvHAIBuildableStructure* DestroyedStructure)
 
 			AITAC_RemovePhaseGateConnections(OtherPhaseGate, DestroyedStructure);
 		}
+	}
+
+	if (DestroyedStructure->StructureType == STRUCTURE_MARINE_INFANTRYPORTAL)
+	{
+		AvHTeamNumber Team = (AvHTeamNumber)DestroyedStructure->edict->v.team;
+
+		if (Team == GetGameRules()->GetTeamANumber())
+		{
+			TeamAStartingLocation = ZERO_VECTOR;
+		}
+		else
+		{
+			TeamBStartingLocation = ZERO_VECTOR;
+		}
+
+		AITAC_GetTeamStartingLocation(Team); // Force refresh of reachabilities and team starting locations
 	}
 }
 
@@ -2329,14 +2427,14 @@ const AvHAIHiveDefinition* AITAC_GetHiveNearestLocation(const Vector SearchLocat
 	return Result;
 }
 
-const AvHAIHiveDefinition* AITAC_GetActiveHiveNearestLocation(const Vector SearchLocation)
+const AvHAIHiveDefinition* AITAC_GetActiveHiveNearestLocation(AvHTeamNumber Team, const Vector SearchLocation)
 {
 	AvHAIHiveDefinition* Result = nullptr;
 	float MinDist = 0.0f;
 
 	for (auto it = Hives.begin(); it != Hives.end(); it++)
 	{
-		if (it->Status != HIVE_STATUS_BUILT) { continue; }
+		if (it->Status != HIVE_STATUS_BUILT || it->OwningTeam != Team) { continue; }
 
 		float ThisDist = vDist3DSq(SearchLocation, it->Location);
 
@@ -3133,23 +3231,30 @@ edict_t* AITAC_GetCommChair(AvHTeamNumber Team)
 	ChairFilter.DeployableTeam = Team;
 	ChairFilter.ReachabilityTeam = TEAM_IND;
 
-	AvHAIBuildableStructure* ChairStructure = AITAC_FindClosestDeployableToLocation(ZERO_VECTOR, &ChairFilter);
+	vector<AvHAIBuildableStructure*> CommChairs = AITAC_FindAllDeployables(ZERO_VECTOR, &ChairFilter);
 
-	if (ChairStructure)
+	edict_t* MainCommChair = nullptr;
+	edict_t* BackupChair = nullptr;
+
+	// If the team has more than one comm chair, pick the one in use
+	for (auto it = CommChairs.begin(); it != CommChairs.end(); it++)
 	{
-		return ChairStructure->edict;
+		AvHCommandStation* ChairRef = dynamic_cast<AvHCommandStation*>((*it)->EntityRef);
+
+		// Idle animation will be 3 if the chair is in use (closed animation). See AvHCommandStation::GetIdleAnimation
+		if (ChairRef && ChairRef->GetIdleAnimation() == 3)
+		{
+			MainCommChair = ChairRef->edict();
+		}
+		else
+		{
+			BackupChair = ChairRef->edict();
+		}
 	}
 
-	ChairFilter.DeployableTeam = TEAM_IND;
+	if (!FNullEnt(MainCommChair)) { return MainCommChair;}
 
-	ChairStructure = AITAC_FindClosestDeployableToLocation(AITAC_GetTeamStartingLocation(Team), &ChairFilter);
-
-	if (ChairStructure)
-	{
-		return ChairStructure->edict;
-	}
-
-	return nullptr;
+	return BackupChair;
 }
 
 edict_t* AITAC_GetNearestHumanAtLocation(const AvHTeamNumber Team, const Vector Location, const float MaxSearchRadius)
@@ -3372,6 +3477,21 @@ const vector<AvHAIHiveDefinition*> AITAC_GetAllHives()
 	return Results;
 }
 
+const vector<AvHAIHiveDefinition*> AITAC_GetAllTeamHives(AvHTeamNumber Team)
+{
+	vector<AvHAIHiveDefinition*> Results;
+
+	for (auto it = Hives.begin(); it != Hives.end(); it++)
+	{
+		if (it->OwningTeam == Team)
+		{
+			Results.push_back(&(*it));
+		}
+	}
+
+	return Results;
+}
+
 bool AITAC_AnyPlayerOnTeamWithLOS(AvHTeamNumber Team, const Vector& Location, float SearchRadius)
 {
 	float distSq = sqrf(SearchRadius);
@@ -3521,17 +3641,16 @@ bool AITAC_IsAlienCapperNeeded(AvHAIPlayer* pBot)
 	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
 	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
 
-	float ResNodeOwnership = AITAC_GetTeamResNodeOwnership(BotTeam, false);
-	float EnemyNodeOwnership = AITAC_GetTeamResNodeOwnership(EnemyTeam, false);
+	float ResNodeOwnership = AITAC_GetTeamResNodeOwnership(BotTeam, true);
+
+	if (ResNodeOwnership > 0.6f) { return false; }
 
 	int NumTeamPlayers = AIMGR_GetNumPlayersOnTeam(BotTeam);
-	int MaxCappers = (int)ceilf((float)NumTeamPlayers * 0.5f);
+	int MaxCappers = (int)ceilf((float)NumTeamPlayers * 0.4f);
 
 	int NumCurrentCappers = AIMGR_GetNumAIPlayersWithRoleOnTeam(BotTeam, BOT_ROLE_FIND_RESOURCES, pBot);
 
-	int DesiredCappers = 0;
-
-	if (ResNodeOwnership > 0.6f) { return false; }
+	int DesiredCappers = 0;	
 
 	if (ResNodeOwnership < 0.25f)
 	{
@@ -3549,7 +3668,7 @@ bool AITAC_IsAlienCapperNeeded(AvHAIPlayer* pBot)
 	// If we're lerk/fade/onos, only go capper if we have lots of resources and can replace them easily, otherwise we can't afford to waste resources going back to gorge
 	if (!IsPlayerSkulk(pBot->Edict) && !IsPlayerGorge(pBot->Edict))
 	{
-		if (pBot->Player->GetResources() < 75 || ResNodeOwnership < 0.4f) { return false; }
+		if (pBot->Player->GetResources() < 75 || ResNodeOwnership >= 0.4f) { return false; }
 
 		int NumSkulks = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER1, nullptr);
 		int NumGorges = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER2, nullptr);
