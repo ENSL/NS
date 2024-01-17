@@ -289,6 +289,8 @@ typedef struct _BOT_GUARD_INFO
 	Vector GuardLookLocation = g_vecZero; // Which area are we currently watching?
 	float GuardStartLookTime = 0.0f; // When did we start watching the current area?
 	float ThisGuardLookTime = 0.0f; // How long should we watch this area for?
+	float ThisGuardStandTime = 0.0f; // How long should we watch this area for?
+	float GuardStartStandTime = 0.0f; // How long should we watch this area for?
 
 } AvHAIGuardInfo;
 

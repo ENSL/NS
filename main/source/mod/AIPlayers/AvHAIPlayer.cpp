@@ -2102,7 +2102,7 @@ void AIPlayerSetMarineAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 
 	if (AITAC_PhaseGatesAvailable(pBot->Player->GetTeam()))
 	{
-		const AvHAIHiveDefinition* ActiveHive = AITAC_GetActiveHiveNearestLocation(pBot->Edict->v.origin);
+		const AvHAIHiveDefinition* ActiveHive = AITAC_GetActiveHiveNearestLocation(AIMGR_GetEnemyTeam(pBot->Player->GetTeam()), pBot->Edict->v.origin);
 
 		if (ActiveHive)
 		{
@@ -2471,11 +2471,11 @@ void AIPlayerSetAlienBuilderPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 			return;
 		}
 
-		Vector ActualBuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), BuildOrigin, UTIL_MetresToGoldSrcUnits(3.0f));
+		Vector ActualBuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), BuildOrigin, UTIL_MetresToGoldSrcUnits(3.0f));
 
 		if (vIsZero(ActualBuildLocation))
 		{
-			ActualBuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(GORGE_BASE_NAV_PROFILE), BuildOrigin, UTIL_MetresToGoldSrcUnits(3.0f));
+			ActualBuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(GORGE_BASE_NAV_PROFILE), BuildOrigin, UTIL_MetresToGoldSrcUnits(3.0f));
 		}
 
 		AITASK_SetBuildTask(pBot, Task, MissingStructure, ActualBuildLocation, false);
@@ -2779,6 +2779,131 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 
 void AIPlayerSetAlienHarasserPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
+	// If we aren't a lerk, go evolve into one. If we can't, then act like a regular assault alien until we can
+	if (!IsPlayerLerk(pBot->Edict))
+	{
+		if (pBot->Player->GetResources() >= BALANCE_VAR(kLerkCost))
+		{
+			if (Task->TaskType == TASK_EVOLVE && Task->Evolution == ALIEN_LIFEFORM_THREE) { return; }
+
+			vector<AvHAIHiveDefinition*> AllTeamHives = AITAC_GetAllTeamHives(pBot->Player->GetTeam());
+
+			AvHAIHiveDefinition* NearestHive = nullptr;
+			float MinDist = 0.0f;
+
+			for (auto it = AllTeamHives.begin(); it != AllTeamHives.end(); it++)
+			{
+				float ThisDist = vDist2DSq(pBot->Edict->v.origin, (*it)->FloorLocation);
+
+				if (!NearestHive || ThisDist < MinDist)
+				{
+					NearestHive = (*it);
+					MinDist = ThisDist;
+				}
+			}
+
+			if (NearestHive)
+			{
+				AITASK_SetEvolveTask(pBot, Task, NearestHive->HiveEntity->edict(), ALIEN_LIFEFORM_THREE, true);
+				return;
+			}
+			else
+			{
+				AITASK_SetEvolveTask(pBot, Task, pBot->Edict->v.origin, ALIEN_LIFEFORM_THREE, true);
+				return;
+			}
+		}
+
+		if (IsPlayerGorge(pBot->Edict))
+		{
+			BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_ONE);
+			return;
+		}
+
+		AIPlayerSetAlienAssaultPrimaryTask(pBot, Task);
+
+		return;
+	}
+
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
+
+	DeployableSearchFilter EnemyStructureFilter;
+	EnemyStructureFilter.DeployableTeam = EnemyTeam;
+	EnemyStructureFilter.ReachabilityTeam = BotTeam;
+	EnemyStructureFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+
+	Vector EnemyBaseLocation = AITAC_GetTeamStartingLocation(EnemyTeam);
+
+	AvHAIBuildableStructure* EnemyStructureToAttack = nullptr;
+
+	bool bEnemyIsMarines = (AIMGR_GetTeamType(EnemyTeam) == AVH_CLASS_TYPE_MARINE);
+
+	if (bEnemyIsMarines)
+	{
+		EnemyStructureFilter.DeployableTypes = (STRUCTURE_MARINE_ARMSLAB | STRUCTURE_MARINE_OBSERVATORY | STRUCTURE_MARINE_INFANTRYPORTAL);
+		EnemyStructureToAttack = AITAC_FindFurthestDeployableFromLocation(EnemyBaseLocation, &EnemyStructureFilter);
+	}
+	else
+	{
+		EnemyStructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(20.0f);
+		EnemyStructureFilter.DeployableTypes = (STRUCTURE_ALIEN_RESTOWER | STRUCTURE_ALIEN_DEFENCECHAMBER | STRUCTURE_ALIEN_MOVEMENTCHAMBER | STRUCTURE_ALIEN_SENSORYCHAMBER);
+		EnemyStructureToAttack = AITAC_FindClosestDeployableToLocation(EnemyBaseLocation, &EnemyStructureFilter);
+	}
+
+	if (EnemyStructureToAttack)
+	{
+		AITASK_SetAttackTask(pBot, Task, EnemyStructureToAttack->edict, false);
+		return;
+	}
+
+	if (bEnemyIsMarines)
+	{
+		edict_t* CommChair = AITAC_GetCommChair(EnemyTeam);
+
+		if (!FNullEnt(CommChair))
+		{
+			AITASK_SetAttackTask(pBot, Task, CommChair, false);
+			return;
+		}
+	}
+	else
+	{
+		const AvHAIHiveDefinition* EnemyHive = AITAC_GetActiveHiveNearestLocation(EnemyTeam, pBot->Edict->v.origin);
+
+		AITASK_SetAttackTask(pBot, Task, EnemyHive->HiveEntity->edict(), false);
+		return;
+	}
+
+	vector<AvHPlayer*> AllEnemyPlayers = AIMGR_GetAllPlayersOnTeam(EnemyTeam);
+	edict_t* TargetPlayer = nullptr;
+
+	float MinDist = 0.0f;
+
+	for (auto it = AllEnemyPlayers.begin(); it != AllEnemyPlayers.end(); it++)
+	{
+		AvHPlayer* ThisPlayer = (*it);
+
+		if (!ThisPlayer) { continue; }
+
+		edict_t* PlayerEdict = ThisPlayer->edict();
+
+		if (!IsPlayerActiveInGame(PlayerEdict)) { continue; }
+
+		float ThisDist = vDist2DSq(PlayerEdict->v.origin, pBot->Edict->v.origin);
+
+		if (FNullEnt(TargetPlayer) || ThisDist < MinDist)
+		{
+			TargetPlayer = PlayerEdict;
+			MinDist = ThisDist;
+		}
+	}
+
+	if (!FNullEnt(TargetPlayer))
+	{
+		MoveTo(pBot, UTIL_GetFloorUnderEntity(TargetPlayer), MOVESTYLE_NORMAL);
+	}
+
 
 }
 

@@ -50,7 +50,7 @@ float						AITAC_GetPhaseDistanceBetweenPoints(const Vector StartPoint, const Ve
 
 const AvHAIHiveDefinition*	AITAC_GetHiveAtIndex(int Index);
 const AvHAIHiveDefinition*	AITAC_GetHiveNearestLocation(const Vector SearchLocation);
-const AvHAIHiveDefinition*	AITAC_GetActiveHiveNearestLocation(const Vector SearchLocation);
+const AvHAIHiveDefinition*	AITAC_GetActiveHiveNearestLocation(AvHTeamNumber Team, const Vector SearchLocation);
 const AvHAIHiveDefinition*	AITAC_GetNonEmptyHiveNearestLocation(const Vector SearchLocation);
 
 Vector						AITAC_GetCommChairLocation(AvHTeamNumber Team);
@@ -157,6 +157,7 @@ edict_t* AITAC_GetNearestHiddenPlayerInLocation(AvHTeamNumber Team, const Vector
 
 const vector<AvHAIResourceNode*> AITAC_GetAllResourceNodes();
 const vector<AvHAIHiveDefinition*> AITAC_GetAllHives();
+const vector<AvHAIHiveDefinition*> AITAC_GetAllTeamHives(AvHTeamNumber Team);
 
 bool AITAC_AnyPlayerOnTeamWithLOS(AvHTeamNumber Team, const Vector& Location, float SearchRadius);
 
