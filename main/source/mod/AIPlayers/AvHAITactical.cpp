@@ -670,7 +670,6 @@ void AITAC_PopulateHiveData()
 		if (NearestNode)
 		{
 			NewHive.HiveResNodeRef = NearestNode;
-			NearestNode->bIsBaseNode = true;
 			NearestNode->ParentHive = NewHive.HiveEntity->edict();
 		}
 
@@ -718,6 +717,11 @@ void AITAC_RefreshHiveData()
 
 		it->OwningTeam = CurrentOwningTeam;
 		it->Status = CurrentStatus;
+
+		if (it->HiveResNodeRef)
+		{
+			it->HiveResNodeRef->bIsBaseNode = (it->Status != HIVE_STATUS_UNBUILT);
+		}
 
 		if (it->Status != HIVE_STATUS_UNBUILT && it->ObstacleRefs[REGULAR_NAV_MESH] == 0)
 		{
@@ -835,9 +839,46 @@ Vector AITAC_GetTeamStartingLocation(AvHTeamNumber Team)
 
 		// Update reachabilities since team starting points have been modified
 		bNavMeshModified = true;
+
+		AITAC_OnTeamStartsModified();
 	}
 
 	return (Team == GetGameRules()->GetTeamANumber()) ? TeamAStartingLocation : TeamBStartingLocation;
+}
+
+void AITAC_OnTeamStartsModified()
+{
+	AvHTeamNumber TeamANum = GetGameRules()->GetTeamANumber();
+	AvHTeamNumber TeamBNum = GetGameRules()->GetTeamBNumber();
+
+	bool bTeamAIsMarine = (AIMGR_GetTeamType(TeamANum) == AVH_CLASS_TYPE_MARINE);
+	bool bTeamBIsMarine = (AIMGR_GetTeamType(TeamBNum) == AVH_CLASS_TYPE_MARINE);
+
+	if (!bTeamAIsMarine && !bTeamBIsMarine) { return; }
+		
+	AvHAIResourceNode* TeamAMarineNode = nullptr;
+	AvHAIResourceNode* TeamBMarineNode = nullptr;
+
+	if (bTeamAIsMarine)
+	{
+		TeamAMarineNode = AITAC_GetNearestResourceNodeToLocation(TeamAStartingLocation);
+	}
+
+	if (bTeamBIsMarine)
+	{
+		TeamBMarineNode = AITAC_GetNearestResourceNodeToLocation(TeamBStartingLocation);
+	}
+
+	vector<AvHAIResourceNode*> AllNodes = AITAC_GetAllResourceNodes();
+
+	for (auto it = AllNodes.begin(); it != AllNodes.end(); it++)
+	{
+		AvHAIResourceNode* ThisNode = (*it);
+
+		if (!ThisNode) { continue; }
+
+		ThisNode->bIsBaseNode = (!ThisNode->ParentHive) && (ThisNode == TeamAMarineNode || ThisNode == TeamBMarineNode);
+	}
 }
 
 Vector AITAC_GetCommChairLocation(AvHTeamNumber Team)
@@ -3451,7 +3492,22 @@ edict_t* AITAC_GetNearestHiddenPlayerInLocation(AvHTeamNumber Team, const Vector
 	return Result;
 }
 
+const vector<AvHAIResourceNode*> AITAC_GetAllReachableResourceNodes(AvHTeamNumber Team)
+{
+	vector<AvHAIResourceNode*> Results;
 
+	for (auto it = ResourceNodes.begin(); it != ResourceNodes.end(); it++)
+	{		
+		unsigned int CheckReachabilityFlags = (Team == GetGameRules()->GetTeamANumber()) ? it->TeamAReachabilityFlags : it->TeamBReachabilityFlags;
+
+		if (CheckReachabilityFlags != AI_REACHABILITY_UNREACHABLE && CheckReachabilityFlags != AI_REACHABILITY_NONE)
+		{
+			Results.push_back(&(*it));
+		}			
+	}
+
+	return Results;
+}
 
 const vector<AvHAIResourceNode*> AITAC_GetAllResourceNodes()
 {
@@ -3641,7 +3697,22 @@ bool AITAC_IsAlienCapperNeeded(AvHAIPlayer* pBot)
 	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
 	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
 
-	float ResNodeOwnership = AITAC_GetTeamResNodeOwnership(BotTeam, true);
+	int NumOwnedNodes = 0;
+	int NumEnemyNodes = 0;
+	int NumEligibleNodes = 0;
+
+	vector<AvHAIResourceNode*> AllNodes = AITAC_GetAllReachableResourceNodes(BotTeam);
+
+	for (auto it = AllNodes.begin(); it != AllNodes.end(); it++)
+	{
+		AvHAIResourceNode* ThisNode = (*it);
+
+		if (ThisNode->OwningTeam == BotTeam) { NumOwnedNodes++; }
+		if (ThisNode->OwningTeam == EnemyTeam) { NumEnemyNodes++; }
+		if (ThisNode->OwningTeam != EnemyTeam || !ThisNode->bIsBaseNode) { NumEligibleNodes++; }
+	}
+
+	float ResNodeOwnership = (float)NumOwnedNodes / (float)NumEligibleNodes;
 
 	if (ResNodeOwnership > 0.6f) { return false; }
 
