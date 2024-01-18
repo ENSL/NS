@@ -156,6 +156,7 @@ edict_t* AITAC_GetMarineEligibleToBuildSiege(AvHTeamNumber Team, const AvHAIHive
 edict_t* AITAC_GetNearestHiddenPlayerInLocation(AvHTeamNumber Team, const Vector Location, const float MaxRadius);
 
 const vector<AvHAIResourceNode*> AITAC_GetAllResourceNodes();
+const vector<AvHAIResourceNode*> AITAC_GetAllReachableResourceNodes(AvHTeamNumber Team);
 const vector<AvHAIHiveDefinition*> AITAC_GetAllHives();
 const vector<AvHAIHiveDefinition*> AITAC_GetAllTeamHives(AvHTeamNumber Team);
 
@@ -168,5 +169,7 @@ bool AITAC_IsAlienHarasserNeeded(AvHAIPlayer* pBot);
 bool AITAC_ShouldBotBuildHive(AvHAIPlayer* pBot, AvHAIHiveDefinition** EligibleHive);
 
 AvHAIDeployableStructureType AITAC_GetNextMissingUpgradeChamberForTeam(AvHTeamNumber Team);
+
+void AITAC_OnTeamStartsModified();
 
 #endif
