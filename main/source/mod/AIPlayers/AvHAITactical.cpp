@@ -3694,6 +3694,15 @@ bool AITAC_ShouldBotBuildHive(AvHAIPlayer* pBot, AvHAIHiveDefinition** EligibleH
 
 bool AITAC_IsAlienCapperNeeded(AvHAIPlayer* pBot)
 {
+	// Ok so this logic is fairly involved:
+	// A node is eligible if it is reachable, and not in the enemy base (either marine spawn or a live enemy hive)
+	// Of all eligible nodes, if we own 60% or more of them, then we only need one capper, and we will only become a capper if we're skulk/gorge
+	// Otherwise, the number of cappers is on a sliding scale based on map ownership and number of RTs held (max 40% of team capping if things really bad)
+
+	// For an individual alien, they will only go capper if:
+	// They have the resources to cap, or there is an enemy RT they could take out
+	// If they are lerk/fade/onos, then only if there isn't a lower life form (non-builder) to do the job and we are desperate (<35% ownership or less than 3 nodes)
+
 	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
 	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
 
@@ -3701,54 +3710,41 @@ bool AITAC_IsAlienCapperNeeded(AvHAIPlayer* pBot)
 	int NumEnemyNodes = 0;
 	int NumEligibleNodes = 0;
 
+	// First get ours and the enemy's ownership of all eligible nodes (we can reach them, and they're in the enemy base)
 	vector<AvHAIResourceNode*> AllNodes = AITAC_GetAllReachableResourceNodes(BotTeam);
 
 	for (auto it = AllNodes.begin(); it != AllNodes.end(); it++)
 	{
 		AvHAIResourceNode* ThisNode = (*it);
 
+		// We don't care about the node at marine spawn or enemy hives, ignore then in our calculations
+		if (ThisNode->OwningTeam == EnemyTeam && ThisNode->bIsBaseNode) { continue; }
+
+		NumEligibleNodes++;
+
 		if (ThisNode->OwningTeam == BotTeam) { NumOwnedNodes++; }
 		if (ThisNode->OwningTeam == EnemyTeam) { NumEnemyNodes++; }
-		if (ThisNode->OwningTeam != EnemyTeam || !ThisNode->bIsBaseNode) { NumEligibleNodes++; }
 	}
 
-	float ResNodeOwnership = (float)NumOwnedNodes / (float)NumEligibleNodes;
+	int NumNodesLeft = NumEligibleNodes - NumOwnedNodes;
 
-	if (ResNodeOwnership > 0.6f) { return false; }
+	if (NumNodesLeft == 0) { return false; }
+
+	float OurNodeOwnership = (float)NumOwnedNodes / (float)NumEligibleNodes;
 
 	int NumTeamPlayers = AIMGR_GetNumPlayersOnTeam(BotTeam);
-	int MaxCappers = (int)ceilf((float)NumTeamPlayers * 0.4f);
+	float MaxCapperPercent = 0.5f;
 
 	int NumCurrentCappers = AIMGR_GetNumAIPlayersWithRoleOnTeam(BotTeam, BOT_ROLE_FIND_RESOURCES, pBot);
 
-	int DesiredCappers = 0;	
+	float DesiredCapperPercent = MaxCapperPercent * (1.0f - OurNodeOwnership);
+	
+	int DesiredCappers = imini(NumNodesLeft, (int)roundf(DesiredCapperPercent * (float)NumTeamPlayers));
 
-	if (ResNodeOwnership < 0.25f)
-	{
-		DesiredCappers = MaxCappers;
-	}
-	else if (ResNodeOwnership < 0.4f)
-	{
-		DesiredCappers = imaxi(1, MaxCappers - 1);
-	}
-	else
-	{
-		DesiredCappers = imaxi(1, MaxCappers - 2);
-	}
+	if (NumCurrentCappers >= DesiredCappers) { return false; }
 
-	// If we're lerk/fade/onos, only go capper if we have lots of resources and can replace them easily, otherwise we can't afford to waste resources going back to gorge
-	if (!IsPlayerSkulk(pBot->Edict) && !IsPlayerGorge(pBot->Edict))
-	{
-		if (pBot->Player->GetResources() < 75 || ResNodeOwnership >= 0.4f) { return false; }
-
-		int NumSkulks = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER1, nullptr);
-		int NumGorges = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER2, nullptr);
-
-		// Don't go capping if there are other players who could do it instead and aren't higher life forms
-		if ((NumSkulks + NumGorges) > DesiredCappers) { return false; }
-	}
-
-	return NumCurrentCappers < DesiredCappers;
+	// TODO: Ok so we need more cappers, but more logic is needed here
+	// to decide if we should go capper or not based on what others are doing
 }
 
 bool AITAC_IsAlienBuilderNeeded(AvHAIPlayer* pBot)
