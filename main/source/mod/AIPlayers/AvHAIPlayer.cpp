@@ -2646,6 +2646,7 @@ void AIPlayerSetAlienBuilderPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 void AIPlayerSetAlienCapperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
 	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
 
 	AvHAIResourceNode* NodeToCap = nullptr;
 
@@ -2675,7 +2676,7 @@ void AIPlayerSetAlienCapperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 		vector<AvHAIResourceNode*> EligibleNodes = AITAC_GetAllMatchingResourceNodes(pBot->Edict->v.origin, &EmptyNodeFilter);
 
-		float MinDist = 0.0f;
+		float MaxDist = 0.0f;
 
 		for (auto it = EligibleNodes.begin(); it != EligibleNodes.end(); it++)
 		{
@@ -2701,12 +2702,12 @@ void AIPlayerSetAlienCapperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 			if (bNodeClaimed) { continue; }
 
-			float ThisDist = vDist2DSq(pBot->Edict->v.origin, ThisNode->Location);
+			float ThisDist = vDist2DSq(AITAC_GetTeamStartingLocation(EnemyTeam), ThisNode->Location);
 
-			if (!NodeToCap || ThisDist < MinDist)
+			if (ThisDist > MaxDist)
 			{
 				NodeToCap = ThisNode;
-				MinDist = ThisDist;
+				MaxDist = ThisDist;
 			}
 		}
 
@@ -2726,7 +2727,7 @@ void AIPlayerSetAlienCapperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	vector<AvHAIResourceNode*> EligibleNodes = AITAC_GetAllMatchingResourceNodes(pBot->Edict->v.origin, &EnemyNodeFilter);
 
-	float MinDist = 0.0f;
+	float MaxDist = 0.0f;
 
 	NodeToCap = nullptr;
 
@@ -2752,12 +2753,12 @@ void AIPlayerSetAlienCapperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 			}
 		}
 
-		float ThisDist = vDist2DSq(ThisNode->Location, AITAC_GetTeamStartingLocation(BotTeam));
+		float ThisDist = vDist2DSq(ThisNode->Location, AITAC_GetTeamStartingLocation(EnemyTeam));
 
-		if (!NodeToCap || ThisDist < MinDist)
+		if (!NodeToCap || ThisDist > MaxDist)
 		{
 			NodeToCap = ThisNode;
-			MinDist = ThisDist;
+			MaxDist = ThisDist;
 		}
 
 	}
@@ -2774,6 +2775,238 @@ void AIPlayerSetAlienCapperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
+
+	Vector EnemyBaseLocation = AITAC_GetTeamStartingLocation(EnemyTeam);
+
+	AvHAIHiveDefinition* HiveToGuard = nullptr;
+	AvHAIHiveDefinition* HiveToSecure = nullptr;
+
+	vector<AvHAIHiveDefinition*> AllHives = AITAC_GetAllHives();
+
+	float MaxGuardDist = 0.0f;
+	float MaxSecureDist = 0.0f;
+
+	bool bEnemyIsMarines = (AIMGR_GetTeamType(EnemyTeam) == AVH_CLASS_TYPE_MARINE);
+
+	DeployableSearchFilter EnemyStuffFilter;
+
+	EnemyStuffFilter.DeployableTeam = EnemyTeam;
+	EnemyStuffFilter.ReachabilityTeam = BotTeam;
+	EnemyStuffFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+	EnemyStuffFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
+
+	if (bEnemyIsMarines)
+	{
+		EnemyStuffFilter.DeployableTypes = (STRUCTURE_MARINE_PHASEGATE | STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_MARINE_ADVTURRETFACTORY | STRUCTURE_MARINE_COMMCHAIR);
+		EnemyStuffFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+	}
+	else
+	{
+		EnemyStuffFilter.DeployableTypes = STRUCTURE_ALIEN_OFFENCECHAMBER;
+	}
+
+	for (auto it = AllHives.begin(); it != AllHives.end(); it++)
+	{
+		AvHAIHiveDefinition* ThisHive = (*it);
+
+		if (ThisHive->OwningTeam != TEAM_IND) { continue; }
+
+		bool bEnemyIsSecuring = AITAC_DeployableExistsAtLocation(ThisHive->FloorLocation, &EnemyStuffFilter);
+
+		if (bEnemyIsSecuring)
+		{
+			float ThisDist = vDist2DSq(ThisHive->FloorLocation, EnemyBaseLocation);
+
+			if (ThisDist > MaxSecureDist)
+			{
+				HiveToSecure = ThisHive;
+				MaxSecureDist = ThisDist;
+			}
+		}
+		else
+		{
+			DeployableSearchFilter FriendlyStuffFilter;
+
+			FriendlyStuffFilter.DeployableTeam = BotTeam;
+			FriendlyStuffFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
+			FriendlyStuffFilter.DeployableTypes = STRUCTURE_ALIEN_OFFENCECHAMBER;
+
+			if (AITAC_DeployableExistsAtLocation(ThisHive->FloorLocation, &FriendlyStuffFilter)) { continue; }
+
+			bool bNeedsExtraGuards = true;
+			int NumGuards = 0;
+
+			vector<AvHPlayer*> HumanPlayers = AIMGR_GetNonAIPlayersOnTeam(BotTeam);
+			vector<AvHAIPlayer*> AITeamPlayers = AIMGR_GetAIPlayersOnTeam(BotTeam);
+
+			for (auto AIIt = AITeamPlayers.begin(); AIIt != AITeamPlayers.end(); AIIt++)
+			{
+				if ((*AIIt) == pBot) { continue; }
+
+				if ((*AIIt)->PrimaryBotTask.TaskType == TASK_GUARD && (*AIIt)->PrimaryBotTask.TaskTarget == ThisHive->HiveEntity->edict())
+				{
+					if ((*AIIt)->Player->GetUser3() >= AVH_USER3_ALIEN_PLAYER3) { bNeedsExtraGuards = false; }
+					NumGuards++;
+				}
+			}
+
+			for (auto GuardIt = HumanPlayers.begin(); GuardIt != HumanPlayers.end(); GuardIt++)
+			{
+				AvHPlayer* ThisGuard = (*GuardIt);
+
+				if (IsPlayerActiveInGame(ThisGuard->edict()) && vDist2DSq(ThisGuard->edict()->v.origin, ThisHive->FloorLocation) < sqrf(UTIL_MetresToGoldSrcUnits(15.0f)))
+				{
+					if (ThisGuard->GetUser3() >= AVH_USER3_ALIEN_PLAYER3) { bNeedsExtraGuards = false; }
+					NumGuards++;
+				}				
+			}
+
+			bNeedsExtraGuards = bNeedsExtraGuards && NumGuards < 2;
+
+			if (bNeedsExtraGuards)
+			{
+				float ThisDist = vDist2DSq(ThisHive->FloorLocation, EnemyBaseLocation);
+
+				if (ThisDist > MaxSecureDist)
+				{
+					HiveToGuard = ThisHive;
+					MaxGuardDist = ThisDist;
+				}
+			}
+		}
+	}
+
+	// Favour attacking an enemy outpost over guarding an empty hive if fade or onos
+	if (pBot->Player->GetUser3() > AVH_USER3_ALIEN_PLAYER3)
+	{
+		if (HiveToSecure)
+		{
+			EnemyStuffFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
+			vector<AvHAIBuildableStructure*> AllEnemyThings = AITAC_FindAllDeployables(HiveToSecure->FloorLocation, &EnemyStuffFilter);
+
+			AvHAIBuildableStructure* StructureToAttack = nullptr;
+
+			for (auto it = AllEnemyThings.begin(); it != AllEnemyThings.end(); it++)
+			{
+				AvHAIBuildableStructure* ThisStructure = (*it);
+
+				// First prioritise phase gates or alien OCs
+				if (ThisStructure->StructureType == STRUCTURE_MARINE_PHASEGATE || ThisStructure->StructureType == STRUCTURE_ALIEN_OFFENCECHAMBER)
+				{
+					if (!StructureToAttack || StructureToAttack->StructureType != ThisStructure->StructureType || vDist2DSq(pBot->Edict->v.origin, ThisStructure->Location) < vDist2DSq(pBot->Edict->v.origin, StructureToAttack->Location))
+					{
+						StructureToAttack = ThisStructure;
+						continue;
+					}
+				}
+
+				if (StructureToAttack && (StructureToAttack->StructureType == STRUCTURE_MARINE_PHASEGATE || ThisStructure->StructureType == STRUCTURE_ALIEN_OFFENCECHAMBER)) { continue; }
+
+				// Then prioritise turret factories
+				if (ThisStructure->StructureType == STRUCTURE_MARINE_TURRETFACTORY || ThisStructure->StructureType == STRUCTURE_MARINE_ADVTURRETFACTORY)
+				{
+					if (!StructureToAttack || StructureToAttack->StructureType != ThisStructure->StructureType || vDist2DSq(pBot->Edict->v.origin, ThisStructure->Location) < vDist2DSq(pBot->Edict->v.origin, StructureToAttack->Location))
+					{
+						StructureToAttack = ThisStructure;
+						continue;
+					}
+				}
+
+				if (StructureToAttack && (StructureToAttack->StructureType == STRUCTURE_MARINE_TURRETFACTORY || ThisStructure->StructureType == STRUCTURE_MARINE_ADVTURRETFACTORY)) { continue; }
+
+				// Then target any other structures
+				if (!StructureToAttack || vDist2DSq(pBot->Edict->v.origin, ThisStructure->Location) < vDist2DSq(pBot->Edict->v.origin, StructureToAttack->Location))
+				{
+					StructureToAttack = ThisStructure;
+				}
+			}
+
+			if (StructureToAttack)
+			{
+				AITASK_SetAttackTask(pBot, Task, StructureToAttack->edict, false);
+				return;
+			}
+		}
+		else if (HiveToGuard)
+		{
+			Task->TaskType = TASK_GUARD;
+			Task->TaskLocation = HiveToGuard->FloorLocation;
+			Task->TaskTarget = HiveToGuard->HiveEntity->edict();
+			return;
+		}
+	}
+	// We're a skulk
+	else
+	{
+		if (HiveToGuard)
+		{
+			Task->TaskType = TASK_GUARD;
+			Task->TaskLocation = HiveToGuard->FloorLocation;
+			Task->TaskTarget = HiveToGuard->HiveEntity->edict();
+			return;
+		}
+		else if (HiveToSecure)
+		{
+			EnemyStuffFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
+			EnemyStuffFilter.ExcludeStatusFlags = STRUCTURE_STATUS_ELECTRIFIED;
+			vector<AvHAIBuildableStructure*> AllEnemyThings = AITAC_FindAllDeployables(HiveToSecure->FloorLocation, &EnemyStuffFilter);
+
+			AvHAIBuildableStructure* StructureToAttack = nullptr;
+
+			for (auto it = AllEnemyThings.begin(); it != AllEnemyThings.end(); it++)
+			{
+				AvHAIBuildableStructure* ThisStructure = (*it);
+
+				// First prioritise phase gates or alien OCs
+				if (ThisStructure->StructureType == STRUCTURE_MARINE_PHASEGATE || ThisStructure->StructureType == STRUCTURE_ALIEN_OFFENCECHAMBER)
+				{
+					if (!StructureToAttack || StructureToAttack->StructureType != ThisStructure->StructureType || vDist2DSq(pBot->Edict->v.origin, ThisStructure->Location) < vDist2DSq(pBot->Edict->v.origin, StructureToAttack->Location))
+					{
+						StructureToAttack = ThisStructure;
+						continue;
+					}
+				}
+
+				if (StructureToAttack && (StructureToAttack->StructureType == STRUCTURE_MARINE_PHASEGATE || ThisStructure->StructureType == STRUCTURE_ALIEN_OFFENCECHAMBER)) { continue; }
+
+				// Then prioritise turret factories
+				if (ThisStructure->StructureType == STRUCTURE_MARINE_TURRETFACTORY || ThisStructure->StructureType == STRUCTURE_MARINE_ADVTURRETFACTORY)
+				{
+					if (!StructureToAttack || StructureToAttack->StructureType != ThisStructure->StructureType || vDist2DSq(pBot->Edict->v.origin, ThisStructure->Location) < vDist2DSq(pBot->Edict->v.origin, StructureToAttack->Location))
+					{
+						StructureToAttack = ThisStructure;
+						continue;
+					}
+				}
+
+				if (StructureToAttack && (StructureToAttack->StructureType == STRUCTURE_MARINE_TURRETFACTORY || ThisStructure->StructureType == STRUCTURE_MARINE_ADVTURRETFACTORY)) { continue; }
+
+				// Then target any other structures
+				if (!StructureToAttack || vDist2DSq(pBot->Edict->v.origin, ThisStructure->Location) < vDist2DSq(pBot->Edict->v.origin, StructureToAttack->Location))
+				{
+					StructureToAttack = ThisStructure;
+				}
+			}
+
+			if (StructureToAttack)
+			{
+				AITASK_SetAttackTask(pBot, Task, StructureToAttack->edict, false);
+				return;
+			}
+		}
+	}
+
+
+
+	// TODO: Attack enemy hive/base
+	edict_t* EnemyChair = AITAC_GetCommChair(EnemyTeam);
+
+	if (!FNullEnt(EnemyChair))
+	{
+		AITASK_SetAttackTask(pBot, Task, EnemyChair, false);
+	}
 
 }
 

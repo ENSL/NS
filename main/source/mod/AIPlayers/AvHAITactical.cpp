@@ -2748,6 +2748,34 @@ int AITAC_GetNumPlayersOfTeamAndClassInArea(const AvHTeamNumber Team, const Vect
 	return Result;
 }
 
+vector<AvHPlayer*> AITAC_GetAllPlayersOfTeamInArea(const AvHTeamNumber Team, const Vector SearchLocation, const float SearchRadius, const bool bConsiderPhaseDist, const edict_t* IgnorePlayer, const AvHUser3 IgnoreClass)
+{
+	vector<AvHPlayer*> Result;
+
+	float MaxRadiusSq = sqrf(SearchRadius);
+
+	for (int i = 1; i <= gpGlobals->maxClients; i++)
+	{
+		edict_t* PlayerEdict = INDEXENT(i);
+
+		if (FNullEnt(PlayerEdict) || PlayerEdict->free || PlayerEdict == IgnorePlayer) { continue; }
+
+		AvHPlayer* PlayerRef = dynamic_cast<AvHPlayer*>(CBaseEntity::Instance(PlayerEdict));
+
+		if (PlayerRef != nullptr && GetPlayerActiveClass(PlayerRef) != IgnoreClass && (Team == TEAM_IND || PlayerRef->GetTeam() == Team) && IsPlayerActiveInGame(PlayerEdict))
+		{
+			float Dist = (bConsiderPhaseDist) ? sqrf(AITAC_GetPhaseDistanceBetweenPoints(PlayerEdict->v.origin, SearchLocation)) : vDist2DSq(PlayerEdict->v.origin, SearchLocation);
+
+			if (Dist <= MaxRadiusSq)
+			{
+				Result.push_back(PlayerRef);
+			}
+		}
+	}
+
+	return Result;
+}
+
 int AITAC_GetNumPlayersOfTeamInArea(const AvHTeamNumber Team, const Vector SearchLocation, const float SearchRadius, const bool bConsiderPhaseDist, const edict_t* IgnorePlayer, const AvHUser3 IgnoreClass)
 {
 	int Result = 0;
@@ -3695,13 +3723,10 @@ bool AITAC_ShouldBotBuildHive(AvHAIPlayer* pBot, AvHAIHiveDefinition** EligibleH
 bool AITAC_IsAlienCapperNeeded(AvHAIPlayer* pBot)
 {
 	// Ok so this logic is fairly involved:
-	// A node is eligible if it is reachable, and not in the enemy base (either marine spawn or a live enemy hive)
-	// Of all eligible nodes, if we own 60% or more of them, then we only need one capper, and we will only become a capper if we're skulk/gorge
-	// Otherwise, the number of cappers is on a sliding scale based on map ownership and number of RTs held (max 40% of team capping if things really bad)
-
-	// For an individual alien, they will only go capper if:
-	// They have the resources to cap, or there is an enemy RT they could take out
-	// If they are lerk/fade/onos, then only if there isn't a lower life form (non-builder) to do the job and we are desperate (<35% ownership or less than 3 nodes)
+	// A node is eligible if it is reachable, and not in the enemy base (either marine spawn or a live enemy hive).
+	// We set a max acceptable % of team allowed to be capping nodes at one time (default 50%).
+	// The number of desired cappers is expressed as an inverse function of how many nodes we own, so the more nodes we own = the smaller % of team should be capping
+	// Max desired cappers is also limited by how many available nodes there are so we can't end up with more cappers than available nodes
 
 	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
 	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
@@ -3731,6 +3756,7 @@ bool AITAC_IsAlienCapperNeeded(AvHAIPlayer* pBot)
 	if (NumNodesLeft == 0) { return false; }
 
 	float OurNodeOwnership = (float)NumOwnedNodes / (float)NumEligibleNodes;
+	float EnemyNodeOwnership = (float)NumEnemyNodes / (float)NumEligibleNodes;
 
 	int NumTeamPlayers = AIMGR_GetNumPlayersOnTeam(BotTeam);
 	float MaxCapperPercent = 0.5f;
@@ -3743,8 +3769,64 @@ bool AITAC_IsAlienCapperNeeded(AvHAIPlayer* pBot)
 
 	if (NumCurrentCappers >= DesiredCappers) { return false; }
 
-	// TODO: Ok so we need more cappers, but more logic is needed here
-	// to decide if we should go capper or not based on what others are doing
+	int CapperDeficit = DesiredCappers - NumCurrentCappers;
+
+	// Ok, we have established that we need cappers, but let's see if WE should be capping
+
+	float ResourcesNeeded = BALANCE_VAR(kResourceTowerCost);
+
+	if (!IsPlayerGorge(pBot->Edict))
+	{
+		ResourcesNeeded += BALANCE_VAR(kGorgeCost);
+	}
+
+	if (pBot->Player->GetResources() < ResourcesNeeded)
+	{
+		if (EnemyNodeOwnership < 0.35f) { return false; }
+	}
+
+	bool bIsHigherLifeform = (!IsPlayerSkulk(pBot->Edict) && !IsPlayerGorge(pBot->Edict));
+	bool bIsBuilder = (IsPlayerGorge(pBot->Edict) && pBot->BotRole == BOT_ROLE_BUILDER);
+
+	if (bIsHigherLifeform || bIsBuilder)
+	{
+		if (OurNodeOwnership > 0.35f) { return false; }
+
+		int NumAlternativeCandidates = 0;
+
+		vector<AvHPlayer*> CandidateTeamMates = AIMGR_GetNonAIPlayersOnTeam(BotTeam);
+		vector<AvHAIPlayer*> AITeamMates = AIMGR_GetAIPlayersOnTeam(BotTeam);
+
+		for (auto it = AITeamMates.begin(); it != AITeamMates.end(); it++)
+		{
+			AvHAIPlayer* ThisBot = (*it);
+
+			if (ThisBot == pBot) { continue; }
+
+			if (ThisBot->BotRole != BOT_ROLE_FIND_RESOURCES)
+			{
+				CandidateTeamMates.push_back(ThisBot->Player);
+			}
+		}
+
+		for (auto it = CandidateTeamMates.begin(); it != CandidateTeamMates.end(); it++)
+		{
+			AvHPlayer* ThisPlayer = (*it);
+
+			if (ThisPlayer == pBot->Player) { continue; }
+
+			if (ThisPlayer->GetUser3() < pBot->Player->GetUser3() || (ThisPlayer->GetUser3() == pBot->Player->GetUser3() && ThisPlayer->GetResources() > pBot->Player->GetResources()))
+			{
+				NumAlternativeCandidates++;
+			}
+
+			if (NumAlternativeCandidates >= CapperDeficit) { return false; }
+
+		}
+	}
+
+	// Nobody better to do the job
+	return true;
 }
 
 bool AITAC_IsAlienBuilderNeeded(AvHAIPlayer* pBot)
