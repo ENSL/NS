@@ -1995,7 +1995,7 @@ bool HasBotReachedPathPoint(const AvHAIPlayer* pBot)
 
 			if (DirectionDot >= -0.5f)
 			{
-				return bAtOrPastDestination && UTIL_PointIsDirectlyReachable(pBot, pBot->CurrentFloorPosition, NextPathPoint->Location) && UTIL_QuickHullTrace(pBot->Edict, pBot->Edict->v.origin, NextPathPoint->Location + Vector(0.0f, 0.0f, 10.0f), head_hull);
+				return bAtOrPastDestination && UTIL_PointIsDirectlyReachable(pBot, pBot->CurrentFloorPosition, NextPathPoint->Location) && UTIL_QuickTrace(pBot->Edict, pBot->Edict->v.origin, NextPathPoint->Location);
 			}
 			else
 			{
@@ -2007,7 +2007,7 @@ bool HasBotReachedPathPoint(const AvHAIPlayer* pBot)
 			return (vDist2D(pEdict->v.origin, MoveTo) <= playerRadius && (pEdict->v.origin.z - MoveTo.z) < 50.0f && pBot->BotNavInfo.IsOnGround);
 		}
 	case SAMPLE_POLYFLAGS_WALLCLIMB:
-		return (bAtOrPastDestination && pBot->CollisionHullTopLocation.z > MoveTo.z);
+		return (bAtOrPastDestination && fabs(pBot->CollisionHullTopLocation.z - MoveTo.z) < fabs(MoveFrom.z - MoveTo.z));
 	case SAMPLE_POLYFLAGS_LADDER:
 		if (MoveTo.z > MoveFrom.z)
 		{
@@ -3836,7 +3836,7 @@ bool IsBotOffPath(const AvHAIPlayer* pBot)
 {
 
 	// Can't be off the path if we don't have one...
-	if (pBot->BotNavInfo.CurrentPath.size() == 0) { return false; }
+	if (pBot->BotNavInfo.CurrentPath.size() == 0 || pBot->BotNavInfo.CurrentPathPoint == pBot->BotNavInfo.CurrentPath.end()) { return false; }
 
 	if (pBot->BotNavInfo.CurrentPathPoint->flag == SAMPLE_POLYFLAGS_LIFT) { return false; }
 
@@ -3847,15 +3847,16 @@ bool IsBotOffPath(const AvHAIPlayer* pBot)
 		PGFilter.DeployableTypes = STRUCTURE_MARINE_PHASEGATE;
 		PGFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(2.0f);
 		PGFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+		PGFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
 		PGFilter.DeployableTeam = (AvHTeamNumber)pBot->Edict->v.team;
 		
-
+		// The phase gate we're meant to be using isn't here any more!
 		if (!AITAC_DeployableExistsAtLocation(pBot->Edict->v.origin, &PGFilter))
 		{
 			return true;
 		}
 
-		// This checks to ensure the target phase gate hasn't been destroyed since the bot initially calculated its path. If so, then this will force it to calculate a new path
+		// The phase gate we're meant to be warping to isn't there any more!
 		if (!AITAC_DeployableExistsAtLocation(pBot->BotNavInfo.CurrentPathPoint->Location, &PGFilter))
 		{
 			return true;
@@ -3867,9 +3868,7 @@ bool IsBotOffPath(const AvHAIPlayer* pBot)
 	edict_t* pEdict = pBot->Edict;
 
 	Vector MoveTo = pBot->BotNavInfo.CurrentPathPoint->Location;
-
 	Vector MoveFrom = pBot->CurrentFloorPosition;
-
 
 	float PlayerRadiusSq = sqrf(GetPlayerRadius(pBot->Player));
 	float PlayerHeight = GetPlayerHeight(pBot->Edict, false);
@@ -3891,7 +3890,13 @@ bool IsBotOffPath(const AvHAIPlayer* pBot)
 
 		if (!UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, MoveTo))
 		{
-			return true;
+			Vector TraceEnd = MoveTo;
+			TraceEnd.z = pBot->Edict->v.origin.z;
+
+			if (!UTIL_QuickHullTrace(pBot->Edict, pBot->Edict->v.origin, TraceEnd, GetPlayerHullIndex(pBot->Edict)))
+			{
+				return true;
+			}
 		}
 
 		bool bAtMoveStart = vEquals(PointOnPath, MoveFrom, 2.0f);
@@ -4158,6 +4163,8 @@ void MoveToWithoutNav(AvHAIPlayer* pBot, const Vector Destination)
 
 void MoveDirectlyTo(AvHAIPlayer* pBot, const Vector Destination)
 {
+	if (vIsZero(Destination)) { return; }
+
 	Vector CurrentPos = (pBot->BotNavInfo.IsOnGround) ? pBot->Edict->v.origin : pBot->CurrentFloorPosition;
 
 	const Vector vForward = UTIL_GetVectorNormal2D(Destination - CurrentPos);
@@ -5203,10 +5210,10 @@ void SkulkUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
 {
 	if (MoveStyle == pBot->BotNavInfo.PreviousMoveStyle) { return; }
 
+	pBot->BotNavInfo.MoveStyle = MoveStyle;
 	pBot->BotNavInfo.PreviousMoveStyle = MoveStyle;
 
-	pBot->BotNavInfo.bNavProfileChanged = true;
-	pBot->BotNavInfo.MoveStyle = MoveStyle;
+	pBot->BotNavInfo.bNavProfileChanged = true;	
 
 	nav_profile* NavProfile = &pBot->BotNavInfo.NavProfile;
 
@@ -5313,6 +5320,135 @@ void OnosUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
 }
 
 bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle MoveStyle, const float MaxAcceptableDist)
+{
+	if (vIsZero(Destination) || (vDist2D(pBot->Edict->v.origin, Destination) <= 8.0f && (fabs(pBot->CollisionHullBottomLocation.z - Destination.z) < 50.0f)))
+	{
+		ClearBotMovement(pBot);
+		return true; 
+	}
+
+	nav_status* BotNavInfo = &pBot->BotNavInfo;
+
+	pBot->BotNavInfo.MoveStyle = MoveStyle;
+	UTIL_UpdateBotMovementStatus(pBot);
+
+	UpdateBotMoveProfile(pBot, MoveStyle);
+
+	bool bIsFlyingProfile = pBot->BotNavInfo.NavProfile.bFlyingProfile;
+	bool bNavProfileChanged = pBot->BotNavInfo.bNavProfileChanged;
+	bool bForceRecalculation = (pBot->BotNavInfo.NextForceRecalc > 0.0f && gpGlobals->time >= pBot->BotNavInfo.NextForceRecalc);
+
+	// Only recalculate the path if there isn't a path, or something has changed and enough time has elapsed since the last path calculation
+	bool bShouldCalculatePath = (bNavProfileChanged || bForceRecalculation || BotNavInfo->CurrentPath.size() == 0 || !vEquals(Destination, BotNavInfo->TargetDestination, GetPlayerRadius(pBot->Player)));
+
+	if (bShouldCalculatePath)
+	{
+		if (!AbortCurrentMove(pBot, Destination)) { return true; }
+
+		if (!bIsFlyingProfile && !pBot->BotNavInfo.IsOnGround) { return true; }
+
+		dtStatus PathFindingStatus = DT_FAILURE;
+
+		if (bIsFlyingProfile)
+		{
+			PathFindingStatus = FindFlightPathToPoint(pBot->BotNavInfo.NavProfile, pBot->Edict->v.origin, Destination, BotNavInfo->CurrentPath, MaxAcceptableDist);
+		}
+		else
+		{
+			Vector NavAdjustedDestination = AdjustPointForPathfinding(Destination);
+			if (vIsZero(NavAdjustedDestination)) { return false; }
+
+			PathFindingStatus = FindPathClosestToPoint(pBot, pBot->BotNavInfo.MoveStyle, pBot->CollisionHullBottomLocation, NavAdjustedDestination, BotNavInfo->CurrentPath, MaxAcceptableDist);
+		}		
+
+		pBot->BotNavInfo.NextForceRecalc = 0.0f;
+		pBot->BotNavInfo.bNavProfileChanged = false;
+
+		if (dtStatusSucceed(PathFindingStatus))
+		{
+			BotNavInfo->PathDestination = BotNavInfo->CurrentPath.back().Location;
+			ClearBotStuckMovement(pBot);
+			pBot->BotNavInfo.TotalStuckTime = 0.0f;
+			BotNavInfo->TargetDestination = Destination;
+			BotNavInfo->CurrentPathPoint = BotNavInfo->CurrentPath.begin();
+		}
+		else
+		{
+			if (!vIsZero(BotNavInfo->LastNavMeshPosition))
+			{
+				MoveDirectlyTo(pBot, BotNavInfo->LastNavMeshPosition);
+
+				if (vDist2DSq(pBot->CurrentFloorPosition, BotNavInfo->LastNavMeshPosition) < sqrf(8.0f))
+				{
+					BotNavInfo->LastNavMeshPosition = g_vecZero;
+				}
+
+				return true;
+			}
+			else
+			{
+				if (vIsZero(BotNavInfo->UnstuckMoveLocation))
+				{
+					BotNavInfo->UnstuckMoveLocation = FindClosestPointBackOnPath(pBot);
+				}
+
+				if (!vIsZero(BotNavInfo->UnstuckMoveLocation))
+				{
+					MoveDirectlyTo(pBot, BotNavInfo->UnstuckMoveLocation);
+					return true;
+				}
+			}
+
+			if (IsBotPermaStuck(pBot))
+			{
+				BotSuicide(pBot);
+				return false;
+			}
+
+			ClearBotPath(pBot);
+			return false;
+		}
+	}
+
+	if (BotNavInfo->CurrentPath.size() > 0)
+	{
+		if (IsBotPermaStuck(pBot))
+		{
+			BotSuicide(pBot);
+			return false;
+		}
+
+		if (pBot->Edict->v.flags & FL_INWATER)
+		{
+			BotFollowSwimPath(pBot);
+		}
+		else
+		{
+			if (bIsFlyingProfile)
+			{
+				BotFollowFlightPath(pBot);
+			}
+			else
+			{
+				BotFollowPath(pBot);
+			}
+		}
+
+		// Check to ensure BotFollowFlightPath or BotFollowPath haven't cleared the path (will happen if reached end of path)
+		if (BotNavInfo->CurrentPathPoint != BotNavInfo->CurrentPath.end())
+		{
+			HandlePlayerAvoidance(pBot, BotNavInfo->CurrentPathPoint->Location);
+			BotMovementInputs(pBot);
+		}
+
+		return true;
+	}
+
+	return false;
+
+}
+
+bool MoveTo_OLD(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle MoveStyle, const float MaxAcceptableDist)
 {
 	nav_status* BotNavInfo = &pBot->BotNavInfo;
 
@@ -5563,9 +5699,12 @@ Vector FindClosestPointBackOnPath(AvHAIPlayer* pBot)
 
 	AvHAIResourceNode* NearestResNode = AITAC_FindNearestResourceNodeToLocation(pBot->Edict->v.origin, &ResNodeFilter);
 
-	if (!NearestResNode) { return g_vecZero; }
+	Vector ValidNavmeshPoint = AITAC_GetTeamStartingLocation(pBot->Player->GetTeam());
 
-	Vector ValidNavmeshPoint = NearestResNode->Location;
+	if (NearestResNode && vDist2D(pBot->Edict->v.origin, NearestResNode->Location) < vDist2D(pBot->Edict->v.origin, ValidNavmeshPoint))
+	{
+		ValidNavmeshPoint = NearestResNode->Location;
+	}
 
 	ValidNavmeshPoint = UTIL_ProjectPointToNavmesh(ValidNavmeshPoint, pBot->BotNavInfo.NavProfile);
 
@@ -6392,8 +6531,6 @@ void ClearBotMovement(AvHAIPlayer* pBot)
 	ClearBotPath(pBot);
 	ClearBotStuck(pBot);
 	ClearBotStuckMovement(pBot);
-
-	AITASK_ClearBotTask(pBot, &pBot->BotNavInfo.MovementTask);
 
 	pBot->LastPosition = pBot->Edict->v.origin;
 	pBot->TimeSinceLastMovement = 0.0f;

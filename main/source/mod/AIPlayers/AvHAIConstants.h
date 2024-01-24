@@ -201,6 +201,15 @@ typedef enum _AVHAIBOTROLE
 	BOT_ROLE_HARASS		 // Focuses on taking down enemy resource nodes and hunting the enemy
 } AvHAIBotRole;
 
+typedef enum _AVHAICOMBATSTRATEGY
+{
+	COMBAT_STRATEGY_IGNORE = 0, // Don't engage this enemy
+	COMBAT_STRATEGY_AMBUSH,		// Set up an ambush for this enemy
+	COMBAT_STRATEGY_RETREAT,	// Retreat and find health
+	COMBAT_STRATEGY_SKIRMISH,	// Maintain distance, whittle down their health from range and generally be a pain the arse
+	COMBAT_STRATEGY_ATTACK		// Attack the enemy
+} AvHAICombatStrategy;
+
 typedef struct _OFF_MESH_CONN
 {
 	unsigned int ConnectionRefs[2];
@@ -406,6 +415,7 @@ typedef struct _BOT_PATH_NODE
 // Represents a bot's current understanding of an enemy player's status
 typedef struct _ENEMY_STATUS
 {
+	AvHPlayer* EnemyPlayer = nullptr;
 	edict_t* EnemyEdict = nullptr; // Reference to the enemy player edict
 	Vector LastSeenLocation = g_vecZero; // The last visibly-confirmed location of the player
 	Vector LastFloorPosition = g_vecZero; // Nearest point on the floor where the enemy was (for moving towards it)
@@ -634,6 +644,7 @@ typedef struct AVH_AI_PLAYER
 
 	enemy_status TrackedEnemies[32];
 	int CurrentEnemy = -1;
+	AvHAICombatStrategy CurrentCombatStrategy = COMBAT_STRATEGY_ATTACK;
 	edict_t* CurrentEnemyRef = nullptr;
 
 	AvHAIPlayerTask* CurrentTask = nullptr; // Bot's current task they're performing

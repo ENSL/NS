@@ -64,8 +64,11 @@ bool CanInterruptWeaponReload(AvHAIWeapon Weapon);
 void InterruptReload(AvHAIPlayer* pBot);
 
 bool IsHitscanWeapon(AvHAIWeapon Weapon);
+float GetTimeUntilPlayerNextRefire(const AvHPlayer* Player);
 
 BotAttackResult PerformAttackLOSCheck(AvHAIPlayer* pBot, const AvHAIWeapon Weapon, const edict_t* Target);
+BotAttackResult PerformAttackLOSCheck(AvHAIPlayer* pBot, const AvHAIWeapon Weapon, const Vector TargetLocation, const edict_t* Target);
+BotAttackResult PerformAttackLOSCheck(const Vector Location, const AvHAIWeapon Weapon, const edict_t* Target);
 
 float UTIL_GetProjectileVelocityForWeapon(const AvHAIWeapon Weapon);
 bool IsAreaAffectedBySpores(const Vector Location);

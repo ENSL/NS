@@ -111,49 +111,49 @@ float GetEnergyCostForWeapon(const AvHAIWeapon Weapon)
 	switch (Weapon)
 	{
 	case WEAPON_SKULK_BITE:
-		return kBiteEnergyCost;
+		return BALANCE_VAR(kBiteEnergyCost);
 	case WEAPON_SKULK_PARASITE:
-		return kParasiteEnergyCost;
+		return BALANCE_VAR(kParasiteEnergyCost);
 	case WEAPON_SKULK_LEAP:
-		return kLeapEnergyCost;
+		return BALANCE_VAR(kLeapEnergyCost);
 	case WEAPON_SKULK_XENOCIDE:
-		return kDivineWindEnergyCost;
+		return BALANCE_VAR(kDivineWindEnergyCost);
 
 	case WEAPON_GORGE_SPIT:
-		return kSpitEnergyCost;
+		return BALANCE_VAR(kSpitEnergyCost);
 	case WEAPON_GORGE_HEALINGSPRAY:
-		return kHealingSprayEnergyCost;
+		return BALANCE_VAR(kHealingSprayEnergyCost);
 	case WEAPON_GORGE_BILEBOMB:
-		return kBileBombEnergyCost;
+		return BALANCE_VAR(kBileBombEnergyCost);
 	case WEAPON_GORGE_WEB:
-		return kWebEnergyCost;
+		return BALANCE_VAR(kWebEnergyCost);
 
 	case WEAPON_LERK_BITE:
-		return kBite2EnergyCost;
+		return BALANCE_VAR(kBite2EnergyCost);
 	case WEAPON_LERK_SPORES:
-		return kSporesEnergyCost;
+		return BALANCE_VAR(kSporesEnergyCost);
 	case WEAPON_LERK_UMBRA:
-		return kUmbraEnergyCost;
+		return BALANCE_VAR(kUmbraEnergyCost);
 	case WEAPON_LERK_PRIMALSCREAM:
-		return kPrimalScreamEnergyCost;
+		return BALANCE_VAR(kPrimalScreamEnergyCost);
 
 	case WEAPON_FADE_SWIPE:
-		return kSwipeEnergyCost;
+		return BALANCE_VAR(kSwipeEnergyCost);
 	case WEAPON_FADE_BLINK:
-		return kBlinkEnergyCost;
+		return BALANCE_VAR(kBlinkEnergyCost);
 	case WEAPON_FADE_METABOLIZE:
-		return kMetabolizeEnergyCost;
+		return BALANCE_VAR(kMetabolizeEnergyCost);
 	case WEAPON_FADE_ACIDROCKET:
-		return kAcidRocketEnergyCost;
+		return BALANCE_VAR(kAcidRocketEnergyCost);
 
 	case WEAPON_ONOS_GORE:
-		return kClawsEnergyCost;
+		return BALANCE_VAR(kClawsEnergyCost);
 	case WEAPON_ONOS_DEVOUR:
-		return kDevourEnergyCost;
+		return BALANCE_VAR(kDevourEnergyCost);
 	case WEAPON_ONOS_STOMP:
-		return kStompEnergyCost;
+		return BALANCE_VAR(kStompEnergyCost);
 	case WEAPON_ONOS_CHARGE:
-		return kChargeEnergyCost;
+		return BALANCE_VAR(kChargeEnergyCost);
 
 	default:
 		return 0.0f;
@@ -207,6 +207,14 @@ bool IsHitscanWeapon(AvHAIWeapon Weapon)
 	return false;
 }
 
+float GetTimeUntilPlayerNextRefire(const AvHPlayer* Player)
+{
+	AvHBasePlayerWeapon* WeaponRef = dynamic_cast<AvHBasePlayerWeapon*>(Player->m_pActiveItem);
+
+	if (!WeaponRef) { return 0.0f; }
+
+	return WeaponRef->m_flNextPrimaryAttack;
+}
 
 AvHAIWeapon GetBotMarineSecondaryWeapon(const AvHAIPlayer* pBot)
 {
@@ -387,21 +395,21 @@ float GetMaxIdealWeaponRange(const AvHAIWeapon Weapon)
 	case WEAPON_ONOS_STOMP:
 		return UTIL_MetresToGoldSrcUnits(8.0f);
 	case WEAPON_SKULK_XENOCIDE:
-		return UTIL_MetresToGoldSrcUnits(5.0f);
+		return (float)BALANCE_VAR(kDivineWindRadius) * 0.8f;
 	case WEAPON_ONOS_GORE:
-		return BALANCE_VAR(kClawsRange);
+		return (float)BALANCE_VAR(kClawsRange);
 	case WEAPON_ONOS_DEVOUR:
-		return BALANCE_VAR(kDevourRange);
+		return (float)BALANCE_VAR(kDevourRange);
 	case WEAPON_FADE_SWIPE:
-		return BALANCE_VAR(kSwipeRange);
+		return (float)BALANCE_VAR(kSwipeRange);
 	case WEAPON_SKULK_BITE:
-		return BALANCE_VAR(kBiteRange);
+		return (float)BALANCE_VAR(kBiteRange);
 	case WEAPON_LERK_BITE:
-		return BALANCE_VAR(kBite2Range);
+		return (float)BALANCE_VAR(kBite2Range);
 	case WEAPON_GORGE_HEALINGSPRAY:
-		return BALANCE_VAR(kHealingSprayRange) * 0.5f;
+		return (float)BALANCE_VAR(kHealingSprayRange) * 0.5f;
 	case WEAPON_MARINE_WELDER:
-		return BALANCE_VAR(kWelderRange);
+		return (float)BALANCE_VAR(kWelderRange);
 	default:
 		return max_player_use_reach;
 	}
@@ -692,7 +700,7 @@ AvHAIWeapon BotAlienChooseBestWeaponForStructure(AvHAIPlayer* pBot, edict_t* tar
 		return WEAPON_GORGE_BILEBOMB;
 	}
 
-	if (PlayerHasWeapon(pBot->Player, WEAPON_FADE_ACIDROCKET) && StructureType == STRUCTURE_ALIEN_HIVE || IsDamagingStructure(StructureType))
+	if (PlayerHasWeapon(pBot->Player, WEAPON_FADE_ACIDROCKET) && (StructureType == STRUCTURE_ALIEN_HIVE || IsDamagingStructure(StructureType)))
 	{
 		return WEAPON_FADE_ACIDROCKET;
 	}
@@ -781,21 +789,27 @@ AvHAIWeapon SkulkGetBestWeaponForCombatTarget(AvHAIPlayer* pBot, edict_t* Target
 	if (PlayerHasWeapon(pBot->Player, WEAPON_SKULK_XENOCIDE))
 	{
 		AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(pBot->Player->GetTeam());
+		float XenocideRadius = GetMaxIdealWeaponRange(WEAPON_SKULK_XENOCIDE);
 
-		int NumEnemyTargetsInArea = AITAC_GetNumPlayersOfTeamInArea(EnemyTeam, Target->v.origin, UTIL_MetresToGoldSrcUnits(5.0f), false, nullptr, AVH_USER3_NONE);
+		// Add one to include the target themselves
+		int NumEnemyTargetsInArea = AITAC_GetNumPlayersOnTeamWithLOS(EnemyTeam, Target->v.origin, XenocideRadius, Target) + 1;
 
-		AvHTeam* EnemyTeamRef = GetGameRules()->GetTeam(EnemyTeam);
-
-		if (EnemyTeamRef)
+		if (NumEnemyTargetsInArea <= 2)
 		{
-			AvHAIDeployableStructureType StructureSearchType = (EnemyTeamRef->GetTeamType() == AVH_CLASS_TYPE_MARINE) ? SEARCH_ALL_MARINE_STRUCTURES : SEARCH_ALL_ALIEN_STRUCTURES;
 
-			DeployableSearchFilter SearchFilter;
-			SearchFilter.DeployableTypes = StructureSearchType;
-			SearchFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
-			SearchFilter.DeployableTeam = EnemyTeam;
+			AvHTeam* EnemyTeamRef = GetGameRules()->GetTeam(EnemyTeam);
 
-			NumEnemyTargetsInArea += AITAC_GetNumDeployablesNearLocation(Target->v.origin, &SearchFilter);
+			if (EnemyTeamRef)
+			{
+				AvHAIDeployableStructureType StructureSearchType = (EnemyTeamRef->GetTeamType() == AVH_CLASS_TYPE_MARINE) ? SEARCH_ALL_MARINE_STRUCTURES : SEARCH_ALL_ALIEN_STRUCTURES;
+
+				DeployableSearchFilter SearchFilter;
+				SearchFilter.DeployableTypes = StructureSearchType;
+				SearchFilter.MaxSearchRadius = XenocideRadius;
+				SearchFilter.DeployableTeam = EnemyTeam;
+
+				NumEnemyTargetsInArea += AITAC_GetNumDeployablesNearLocation(Target->v.origin, &SearchFilter);
+			}
 		}
 
 		if (NumEnemyTargetsInArea > 2)
@@ -883,12 +897,23 @@ AvHAIWeapon OnosGetBestWeaponForCombatTarget(AvHAIPlayer* pBot, edict_t* Target)
 		return WEAPON_ONOS_STOMP;
 	}
 
-	if (!IsPlayerDigesting(pBot->Edict) && DistFromTarget < sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
+	AvHAIWeapon AttackWeapon = WEAPON_ONOS_GORE;
+
+	if (!IsPlayerDigesting(pBot->Edict))
 	{
-		return WEAPON_ONOS_DEVOUR;
+		AttackWeapon = WEAPON_ONOS_DEVOUR;
 	}
 
-	return WEAPON_ONOS_GORE;
+	float AttackWeaponRange = GetMaxIdealWeaponRange(AttackWeapon);
+
+	BotAttackResult WeaponAttackResult = PerformAttackLOSCheck(pBot, AttackWeapon, Target);
+
+	if (PlayerHasWeapon(pBot->Player, WEAPON_ONOS_CHARGE) && UTIL_PointIsDirectlyReachable(pBot->Edict->v.origin, Target->v.origin) && WeaponAttackResult == ATTACK_OUTOFRANGE)
+	{
+		return WEAPON_ONOS_CHARGE;
+	}
+
+	return AttackWeapon;
 }
 
 AvHAIWeapon FadeGetBestWeaponForCombatTarget(AvHAIPlayer* pBot, edict_t* Target)
@@ -1008,6 +1033,132 @@ BotAttackResult PerformAttackLOSCheck(AvHAIPlayer* pBot, const AvHAIWeapon Weapo
 
 	return ATTACK_SUCCESS;
 }
+
+BotAttackResult PerformAttackLOSCheck(AvHAIPlayer* pBot, const AvHAIWeapon Weapon, const Vector TargetLocation, const edict_t* Target)
+{
+	if (!TargetLocation) { return ATTACK_INVALIDTARGET; }
+
+	if (Weapon == WEAPON_NONE) { return ATTACK_NOWEAPON; }
+
+	// Don't need aiming or special LOS checks for primal scream as it's AoE buff
+	if (Weapon == WEAPON_LERK_PRIMALSCREAM)
+	{
+		return ATTACK_SUCCESS;
+	}
+
+	// Add a LITTLE bit of give to avoid edge cases where the bot is a smidge out of range
+	float MaxWeaponRange = GetMaxIdealWeaponRange(Weapon) - 5.0f;
+
+	// Don't need aiming or special LOS checks for Xenocide as it's an AOE attack, just make sure we're close enough and don't have a wall in the way
+	if (Weapon == WEAPON_SKULK_XENOCIDE)
+	{
+		if (vDist3DSq(pBot->Edict->v.origin, TargetLocation) <= sqrf(MaxWeaponRange) && UTIL_QuickTrace(pBot->Edict, pBot->Edict->v.origin, TargetLocation))
+		{
+			return ATTACK_SUCCESS;
+		}
+		else
+		{
+			return ATTACK_OUTOFRANGE;
+		}
+	}
+
+	// For charge and stomp, we can go through stuff so don't need to check for being blocked
+	if (Weapon == WEAPON_ONOS_CHARGE || Weapon == WEAPON_ONOS_STOMP)
+	{
+		if (vDist3DSq(pBot->Edict->v.origin, TargetLocation) > sqrf(MaxWeaponRange)) { return ATTACK_OUTOFRANGE; }
+
+		if (!UTIL_QuickTrace(pBot->Edict, pBot->Edict->v.origin, TargetLocation) || fabsf(TargetLocation.z - TargetLocation.z) > 50.0f) { return ATTACK_OUTOFRANGE; }
+
+		return ATTACK_SUCCESS;
+	}
+
+	TraceResult hit;
+
+	Vector StartTrace = pBot->CurrentEyePosition;
+
+	Vector AttackDir = UTIL_GetVectorNormal(TargetLocation - StartTrace);
+
+	Vector EndTrace = pBot->CurrentEyePosition + (AttackDir * MaxWeaponRange);
+
+	UTIL_TraceLine(StartTrace, EndTrace, dont_ignore_monsters, dont_ignore_glass, pBot->Edict->v.pContainingEntity, &hit);
+
+	if (FNullEnt(hit.pHit)) { return ATTACK_OUTOFRANGE; }
+
+	if (hit.pHit != Target)
+	{
+		if (vDist3DSq(pBot->CurrentEyePosition, TargetLocation) > sqrf(MaxWeaponRange))
+		{
+			return ATTACK_OUTOFRANGE;
+		}
+		else
+		{
+			return ATTACK_BLOCKED;
+		}
+	}
+
+	return ATTACK_SUCCESS;
+}
+
+BotAttackResult PerformAttackLOSCheck(const Vector Location, const AvHAIWeapon Weapon, const edict_t* Target)
+{
+	if (FNullEnt(Target) || (Target->v.deadflag != DEAD_NO)) { return ATTACK_INVALIDTARGET; }
+
+	if (Weapon == WEAPON_NONE) { return ATTACK_NOWEAPON; }
+
+	float MaxWeaponRange = GetMaxIdealWeaponRange(Weapon);
+
+	// Don't need aiming or special LOS checks for Xenocide as it's an AOE attack, just make sure we're close enough and don't have a wall in the way
+	if (Weapon == WEAPON_SKULK_XENOCIDE)
+	{
+		if (vDist3DSq(Location, Target->v.origin) <= sqrf(MaxWeaponRange) && UTIL_QuickTrace(nullptr, Location, Target->v.origin))
+		{
+			return ATTACK_SUCCESS;
+		}
+		else
+		{
+			return ATTACK_OUTOFRANGE;
+		}
+	}
+
+	// For charge and stomp, we can go through stuff so don't need to check for being blocked
+	if (Weapon == WEAPON_ONOS_CHARGE || Weapon == WEAPON_ONOS_STOMP)
+	{
+		if (vDist3DSq(Location, Target->v.origin) > sqrf(MaxWeaponRange)) { return ATTACK_OUTOFRANGE; }
+
+		if (!UTIL_QuickTrace(nullptr, Location, Target->v.origin) || fabsf(Target->v.origin.z - Target->v.origin.z) > 50.0f) { return ATTACK_OUTOFRANGE; }
+
+		return ATTACK_SUCCESS;
+	}
+
+	bool bIsMeleeWeapon = IsMeleeWeapon(Weapon);
+
+	TraceResult hit;
+
+	Vector StartTrace = Location;
+
+	Vector AttackDir = UTIL_GetVectorNormal(UTIL_GetCentreOfEntity(Target) - StartTrace);
+
+	Vector EndTrace = Location + (AttackDir * MaxWeaponRange);
+
+	UTIL_TraceLine(StartTrace, EndTrace, dont_ignore_monsters, dont_ignore_glass, nullptr, &hit);
+
+	if (FNullEnt(hit.pHit)) { return ATTACK_OUTOFRANGE; }
+
+	if (hit.pHit != Target)
+	{
+		if (vDist3DSq(Location, Target->v.origin) > sqrf(MaxWeaponRange))
+		{
+			return ATTACK_OUTOFRANGE;
+		}
+		else
+		{
+			return ATTACK_BLOCKED;
+		}
+	}
+
+	return ATTACK_SUCCESS;
+}
+
 
 bool IsAreaAffectedBySpores(const Vector Location)
 {
