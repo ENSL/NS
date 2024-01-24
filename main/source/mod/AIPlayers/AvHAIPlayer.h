@@ -104,4 +104,26 @@ void UpdateAIPlayerDMRole(AvHAIPlayer* pBot);
 
 bool ShouldAIPlayerTakeCommand(AvHAIPlayer* pBot);
 
+int BotGetNextEnemyTarget(AvHAIPlayer* pBot);
+
+AvHAICombatStrategy GetBotCombatStrategyForTarget(AvHAIPlayer* pBot, enemy_status* CurrentEnemy);
+AvHAICombatStrategy GetAlienCombatStrategyForTarget(AvHAIPlayer* pBot, enemy_status* CurrentEnemy);
+AvHAICombatStrategy GetSkulkCombatStrategyForTarget(AvHAIPlayer* pBot, enemy_status* CurrentEnemy);
+AvHAICombatStrategy GetGorgeCombatStrategyForTarget(AvHAIPlayer* pBot, enemy_status* CurrentEnemy);
+AvHAICombatStrategy GetLerkCombatStrategyForTarget(AvHAIPlayer* pBot, enemy_status* CurrentEnemy);
+AvHAICombatStrategy GetFadeCombatStrategyForTarget(AvHAIPlayer* pBot, enemy_status* CurrentEnemy);
+AvHAICombatStrategy GetOnosCombatStrategyForTarget(AvHAIPlayer* pBot, enemy_status* CurrentEnemy);
+AvHAICombatStrategy GetMarineCombatStrategyForTarget(AvHAIPlayer* pBot, enemy_status* CurrentEnemy);
+
+bool MarineCombatThink(AvHAIPlayer* pBot);
+void MarineHuntEnemy(AvHAIPlayer* pBot, enemy_status* TrackedEnemy);
+void BotThrowGrenadeAtTarget(AvHAIPlayer* pBot, const Vector TargetPoint);
+
+bool AlienCombatThink(AvHAIPlayer* pBot);
+bool SkulkCombatThink(AvHAIPlayer* pBot);
+bool GorgeCombatThink(AvHAIPlayer* pBot);
+bool LerkCombatThink(AvHAIPlayer* pBot);
+bool FadeCombatThink(AvHAIPlayer* pBot);
+bool OnosCombatThink(AvHAIPlayer* pBot);
+
 #endif

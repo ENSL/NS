@@ -159,7 +159,7 @@ edict_t* AITAC_GetNearestHiddenPlayerInLocation(AvHTeamNumber Team, const Vector
 const vector<AvHAIResourceNode*> AITAC_GetAllResourceNodes();
 const vector<AvHAIResourceNode*> AITAC_GetAllReachableResourceNodes(AvHTeamNumber Team);
 const vector<AvHAIHiveDefinition*> AITAC_GetAllHives();
-const vector<AvHAIHiveDefinition*> AITAC_GetAllTeamHives(AvHTeamNumber Team);
+const vector<AvHAIHiveDefinition*> AITAC_GetAllTeamHives(AvHTeamNumber Team, bool bFullyBuiltOnly);
 
 bool AITAC_AnyPlayerOnTeamWithLOS(AvHTeamNumber Team, const Vector& Location, float SearchRadius);
 
@@ -172,5 +172,7 @@ bool AITAC_ShouldBotBuildHive(AvHAIPlayer* pBot, AvHAIHiveDefinition** EligibleH
 AvHAIDeployableStructureType AITAC_GetNextMissingUpgradeChamberForTeam(AvHTeamNumber Team);
 
 void AITAC_OnTeamStartsModified();
+
+edict_t* AITAC_AlienFindNearestHealingSource(AvHTeamNumber Team, Vector SearchLocation, edict_t* SearchingPlayer, bool bIncludeGorges);
 
 #endif

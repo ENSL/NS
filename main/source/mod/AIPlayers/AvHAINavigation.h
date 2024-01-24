@@ -21,7 +21,7 @@
 */
 
 constexpr auto MIN_PATH_RECALC_TIME = 0.33f; // How frequently can a bot recalculate its path? Default to max 3 times per second
-constexpr auto MAX_BOT_STUCK_TIME = 0.0f; // How long a bot can be stuck, unable to move, before giving up and suiciding
+constexpr auto MAX_BOT_STUCK_TIME = 30.0f; // How long a bot can be stuck, unable to move, before giving up and suiciding
 
 constexpr auto MARINE_BASE_NAV_PROFILE = 0;
 constexpr auto SKULK_BASE_NAV_PROFILE = 1;

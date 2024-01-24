@@ -3561,13 +3561,13 @@ const vector<AvHAIHiveDefinition*> AITAC_GetAllHives()
 	return Results;
 }
 
-const vector<AvHAIHiveDefinition*> AITAC_GetAllTeamHives(AvHTeamNumber Team)
+const vector<AvHAIHiveDefinition*> AITAC_GetAllTeamHives(AvHTeamNumber Team, bool bFullyBuiltOnly)
 {
 	vector<AvHAIHiveDefinition*> Results;
 
 	for (auto it = Hives.begin(); it != Hives.end(); it++)
 	{
-		if (it->OwningTeam == Team)
+		if (it->OwningTeam == Team && (!bFullyBuiltOnly || it->Status == HIVE_STATUS_BUILT))
 		{
 			Results.push_back(&(*it));
 		}
@@ -4139,4 +4139,64 @@ AvHAIDeployableStructureType AITAC_GetNextMissingUpgradeChamberForTeam(AvHTeamNu
 	}
 
 	return STRUCTURE_NONE;
+}
+
+edict_t* AITAC_AlienFindNearestHealingSource(AvHTeamNumber Team, Vector SearchLocation, edict_t* SearchingPlayer, bool bIncludeGorges)
+{
+	edict_t* Result = nullptr;
+	float MinDist = 0.0f;
+
+	vector<AvHAIHiveDefinition*> AllTeamHives = AITAC_GetAllTeamHives(Team, true);
+
+	for (auto it = AllTeamHives.begin(); it != AllTeamHives.end(); it++)
+	{
+		float ThisDist = vDist2DSq((*it)->Location, SearchLocation);
+		// Factor healing radius into the distance checks, we don't have to be right at the hive to heal
+		ThisDist -= BALANCE_VAR(kHiveHealRadius) * 0.75f;
+		
+		// We're already in healing distance of a hive, that's our healing source
+		if (ThisDist <= 0.0f) { return (*it)->HiveEntity->edict(); }
+
+		if (FNullEnt(Result) || ThisDist < MinDist)
+		{
+			Result = (*it)->HiveEntity->edict();
+			MinDist = ThisDist;
+		}
+	}
+
+	DeployableSearchFilter DCFilter;
+	DCFilter.DeployableTeam = Team;
+	DCFilter.DeployableTypes = STRUCTURE_ALIEN_DEFENCECHAMBER;
+	DCFilter.MaxSearchRadius = (!FNullEnt(Result)) ? MinDist : 0.0f; // We should always have a result, unless we have no hives left. That's our benchmark: only look for DCs closer than the hive
+
+	vector<AvHAIBuildableStructure*> AllDCs = AITAC_FindAllDeployables(SearchLocation, &DCFilter);
+
+	for (auto it = AllDCs.begin(); it != AllDCs.end(); it++)
+	{
+		AvHAIBuildableStructure* ThisDC = (*it);
+
+		float ThisDist = vDist2DSq(ThisDC->Location, SearchLocation);
+		// Factor healing radius into the distance checks, we don't have to be sat on top of the DC to heal
+		ThisDist -= BALANCE_VAR(kHiveHealRadius) * 0.75f;
+
+		// We're already in healing distance of a DC, that's our healing source
+		if (ThisDist <= 0.0f) { return ThisDC->edict; }
+
+		if (FNullEnt(Result) || ThisDist < MinDist)
+		{
+			Result = ThisDC->edict;
+			MinDist = ThisDist;
+		}
+	}
+
+	edict_t* FriendlyGorge = nullptr;
+
+	if (bIncludeGorges)
+	{
+		float PlayerSearchDist = (!FNullEnt(Result)) ? MinDist : 0.0f; // As before, we only want players closer than our current "winner"
+		FriendlyGorge = AITAC_GetNearestPlayerOfClassInArea(Team, SearchLocation, PlayerSearchDist, false, SearchingPlayer, AVH_USER3_ALIEN_PLAYER2);
+	}
+
+	return (!FNullEnt(FriendlyGorge) ? FriendlyGorge : Result);
+
 }
