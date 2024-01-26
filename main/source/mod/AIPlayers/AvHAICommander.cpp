@@ -791,10 +791,8 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 
 	if (NumInfantryPortals < 2)
 	{
-		if (AICOMM_BuildInfantryPortal(pBot, CommChair))
-		{
-			return true;
-		}
+		AICOMM_BuildInfantryPortal(pBot, CommChair);
+		return true;
 	}
 
 	StructureFilter.DeployableTypes = STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY;
@@ -823,10 +821,8 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 
 		if (!vIsZero(BuildLocation))
 		{
-			if (AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_ARMOURY, BuildLocation))
-			{
-				return true;
-			}
+			AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_ARMOURY, BuildLocation);
+			return true;
 		}
 	}
 
@@ -858,8 +854,9 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 		{
 			Vector BuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), CommChair->v.origin, UTIL_MetresToGoldSrcUnits(10.0f));
 
-			if (AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_PHASEGATE, BuildLocation))
+			if (!vIsZero(BuildLocation))
 			{
+				AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_PHASEGATE, BuildLocation);
 				return true;
 			}
 		}
@@ -869,10 +866,8 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 
 	if (CappableNode)
 	{
-		if (AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_RESTOWER, CappableNode->Location))
-		{
-			return true;
-		}
+		AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_RESTOWER, CappableNode->Location);
+		return true;
 	}
 
 	const AvHAIHiveDefinition* HiveToSecure = AICOMM_GetEmptyHiveOpportunityNearestLocation(pBot, AITAC_GetCommChairLocation(TeamNumber));
@@ -1973,6 +1968,7 @@ bool AICOMM_ShouldCommanderLeaveChair(AvHAIPlayer* pBot)
 const AvHAIHiveDefinition* AICOMM_GetEmptyHiveOpportunityNearestLocation(AvHAIPlayer* CommanderBot, const Vector SearchLocation)
 {
 	AvHTeamNumber CommanderTeam = CommanderBot->Player->GetTeam();
+	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(CommanderTeam);
 
 	const AvHAIHiveDefinition* Result = nullptr;
 	float MinDist = 0.0f;
@@ -2008,6 +2004,27 @@ const AvHAIHiveDefinition* AICOMM_GetEmptyHiveOpportunityNearestLocation(AvHAIPl
 		float MarineDist = (ExistingStructure) ? UTIL_MetresToGoldSrcUnits(5.0f) : UTIL_MetresToGoldSrcUnits(10.0f);
 
 		if (AITAC_GetNearestHiddenPlayerInLocation(CommanderTeam, SecureLocation, MarineDist) == nullptr) { continue; }
+
+		int NumEnemiesNearby = AITAC_GetNumPlayersOnTeamWithLOS(EnemyTeam, SecureLocation + Vector(0.0f, 0.0f, 10.0f), UTIL_MetresToGoldSrcUnits(15.0f), nullptr);
+
+		if (NumEnemiesNearby > 0) { continue; }
+
+		DeployableSearchFilter EnemyStuff;
+		EnemyStuff.DeployableTeam = EnemyTeam;
+		EnemyStuff.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+		EnemyStuff.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+		EnemyStuff.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(10.0f);
+
+		if (AIMGR_GetTeamType(EnemyTeam) == AVH_CLASS_TYPE_MARINE)
+		{
+			EnemyStuff.DeployableTypes = (STRUCTURE_MARINE_PHASEGATE | STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_MARINE_ADVTURRETFACTORY);
+		}
+		else
+		{
+			EnemyStuff.DeployableTypes = STRUCTURE_ALIEN_OFFENCECHAMBER;
+		}
+
+		if (AITAC_DeployableExistsAtLocation(SecureLocation, &EnemyStuff)) { continue; }
 
 		float ThisDist = vDist2DSq(Hive->FloorLocation, SearchLocation);
 

@@ -37,6 +37,7 @@ void BotShootLocation(AvHAIPlayer* pBot, AvHAIWeapon AttackWeapon, const Vector 
 void BombardierAttackTarget(AvHAIPlayer* pBot, edict_t* Target);
 
 void BotEvolveLifeform(AvHAIPlayer* pBot, Vector DesiredEvolveLocation, AvHMessageID TargetLifeform);
+void BotEvolveUpgrade(AvHAIPlayer* pBot, Vector DesiredEvolveLocation, AvHMessageID TargetUpgrade);
 
 enemy_status* GetTrackedEnemyRefForTarget(AvHAIPlayer* pBot, edict_t* Target);
 
@@ -105,6 +106,8 @@ void UpdateAIPlayerDMRole(AvHAIPlayer* pBot);
 bool ShouldAIPlayerTakeCommand(AvHAIPlayer* pBot);
 
 int BotGetNextEnemyTarget(AvHAIPlayer* pBot);
+
+AvHMessageID AlienGetDesiredUpgrade(AvHAIPlayer* pBot, HiveTechStatus DesiredTech);
 
 AvHAICombatStrategy GetBotCombatStrategyForTarget(AvHAIPlayer* pBot, enemy_status* CurrentEnemy);
 AvHAICombatStrategy GetAlienCombatStrategyForTarget(AvHAIPlayer* pBot, enemy_status* CurrentEnemy);

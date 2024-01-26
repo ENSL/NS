@@ -4200,3 +4200,30 @@ edict_t* AITAC_AlienFindNearestHealingSource(AvHTeamNumber Team, Vector SearchLo
 	return (!FNullEnt(FriendlyGorge) ? FriendlyGorge : Result);
 
 }
+
+bool AITAC_IsAlienUpgradeAvailableForTeam(AvHTeamNumber Team, HiveTechStatus DesiredTech)
+{
+	AvHAIDeployableStructureType SearchType;
+
+	switch (DesiredTech)
+	{
+		case HIVE_TECH_DEFENCE:
+			SearchType = STRUCTURE_ALIEN_DEFENCECHAMBER;
+			break;
+		case HIVE_TECH_MOVEMENT:
+			SearchType = STRUCTURE_ALIEN_MOVEMENTCHAMBER;
+			break;
+		case HIVE_TECH_SENSORY:
+			SearchType = STRUCTURE_ALIEN_SENSORYCHAMBER;
+			break;
+		default:
+			return false;
+	}
+
+	DeployableSearchFilter ChamberFilter;
+	ChamberFilter.DeployableTeam = Team;
+	ChamberFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+	ChamberFilter.DeployableTypes = SearchType;
+
+	return (AITAC_DeployableExistsAtLocation(ZERO_VECTOR, &ChamberFilter));
+}
