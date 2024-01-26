@@ -641,6 +641,13 @@ bool PlayerHasWeapon(const AvHPlayer* Player, const AvHAIWeapon DesiredCombatWea
 	// Marines don't have a fixed inventory, so we can just do a simple check for them. Same goes to confirm the alien has the weapon in their inventory
 	if (IsPlayerMarine(Player) || !HasWeaponInInventory)
 	{
+		if (DesiredCombatWeapon == WEAPON_MARINE_GRENADE && HasWeaponInInventory)
+		{
+			AvHBasePlayerWeapon* Weapon = dynamic_cast<AvHBasePlayerWeapon*>(Player->m_rgpPlayerItems[5]);
+
+			return Weapon->m_iClip > 0;
+		}
+
 		return HasWeaponInInventory;
 	}
 

@@ -593,7 +593,7 @@ void AIMGR_UpdateAIPlayers()
 
 				UpdateBotChat(bot);
 
-				AIPlayerThink(bot);
+				CustomThink(bot);
 
 				BotUpdateDesiredViewRotation(bot);
 			}

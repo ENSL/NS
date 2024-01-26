@@ -182,7 +182,7 @@ typedef enum
 	ALIEN_EVOLUTION_EIGHT = 108,	// Adrenaline
 	ALIEN_EVOLUTION_NINE = 109,		// Silence
 	ALIEN_EVOLUTION_TEN = 110,		// Cloaking
-	ALIEN_EVOLUTION_ELEVEN = 111,	// Pheromones
+	ALIEN_EVOLUTION_ELEVEN = 111,	// Focus
 	ALIEN_EVOLUTION_TWELVE = 112,	// Scent of fear
 
 	// Alien lifeforms

@@ -175,4 +175,6 @@ void AITAC_OnTeamStartsModified();
 
 edict_t* AITAC_AlienFindNearestHealingSource(AvHTeamNumber Team, Vector SearchLocation, edict_t* SearchingPlayer, bool bIncludeGorges);
 
+bool AITAC_IsAlienUpgradeAvailableForTeam(AvHTeamNumber Team, HiveTechStatus DesiredTech);
+
 #endif

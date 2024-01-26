@@ -4933,7 +4933,7 @@ void UTIL_UpdateBotMovementStatus(AvHAIPlayer* pBot)
 
 bool AbortCurrentMove(AvHAIPlayer* pBot, const Vector NewDestination)
 {
-	if (pBot->BotNavInfo.CurrentPath.size() == 0) { return true; }
+	if (pBot->BotNavInfo.CurrentPath.size() == 0 || pBot->BotNavInfo.NavProfile.bFlyingProfile) { return true; }
 
 	if (IsBotPermaStuck(pBot))
 	{
@@ -5764,8 +5764,6 @@ void SkipAheadInFlightPath(AvHAIPlayer* pBot)
 	// Early exit if we don't have a path, or we're already on the last path point
 	if (BotNavInfo->CurrentPath.size() == 0 || BotNavInfo->CurrentPathPoint == prev(BotNavInfo->CurrentPath.end())) { return; }
 
-
-
 	if (UTIL_QuickHullTrace(pBot->Edict, pBot->Edict->v.origin, prev(BotNavInfo->CurrentPath.end())->Location, head_hull))
 	{
 		pBot->BotNavInfo.CurrentPathPoint = prev(BotNavInfo->CurrentPath.end());
@@ -5897,7 +5895,14 @@ void BotFollowFlightPath(AvHAIPlayer* pBot)
 		}
 	}	
 
-	BotMoveLookAt(pBot, CurrentMoveDest);
+	Vector LookLocation = CurrentMoveDest;
+	
+	if (pEdict->v.origin.z < BotNavInfo->CurrentPathPoint->requiredZ)
+	{
+		LookLocation.z += 32.0f;
+	}
+
+	BotMoveLookAt(pBot, LookLocation);
 
 	pBot->desiredMovementDir = UTIL_GetForwardVector2D(pEdict->v.v_angle);
 

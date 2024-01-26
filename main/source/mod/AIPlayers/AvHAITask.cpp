@@ -634,18 +634,50 @@ bool AITASK_IsAlienCapResNodeTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* 
 	}
 
 	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
 
+	if (ResNodeIndex->bIsBaseNode)
+	{
+		if (FNullEnt(ResNodeIndex->ParentHive)) { return false; } // This is the marine base res node, leave it alone
+
+		AvHAIHiveDefinition* ParentHive = AITAC_GetHiveFromEdict(ResNodeIndex->ParentHive);
+
+		// An enemy is now building the hive that this res node belongs to, abort
+		if (ParentHive && ParentHive->OwningTeam == EnemyTeam) { return false; }
+	}
+	
 	// Don't waste resources switching down to gorge if we're a lerk, fade or onos
 	// but we can still clear the area of enemy structures
 	if (!IsPlayerSkulk(pBot->Edict) && !IsPlayerGorge(pBot->Edict))
 	{
 		DeployableSearchFilter EnemyStructuresFilter;
-		EnemyStructuresFilter.DeployableTeam = AIMGR_GetEnemyTeam(BotTeam);
+		EnemyStructuresFilter.DeployableTeam = EnemyTeam;
 		EnemyStructuresFilter.ReachabilityTeam = BotTeam;
 		EnemyStructuresFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
 		EnemyStructuresFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
 
 		return AITAC_DeployableExistsAtLocation(ResNodeIndex->Location, &EnemyStructuresFilter); 
+	}
+
+	if (!FNullEnt(ResNodeIndex->ParentHive))
+	{
+		DeployableSearchFilter EnemyStructuresFilter;
+		EnemyStructuresFilter.DeployableTeam = EnemyTeam;
+		EnemyStructuresFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+		EnemyStructuresFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+		EnemyStructuresFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
+
+		if (AIMGR_GetTeamType(EnemyTeam) == AVH_CLASS_TYPE_MARINE)
+		{
+			EnemyStructuresFilter.DeployableTypes = (STRUCTURE_MARINE_PHASEGATE | STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_MARINE_ADVTURRETFACTORY);
+		}
+		else
+		{
+			EnemyStructuresFilter.DeployableTypes = (STRUCTURE_ALIEN_OFFENCECHAMBER);
+		}
+		
+		// Enemy has started fortifying the hive we want to build a RT in, abort
+		if (AITAC_DeployableExistsAtLocation(ResNodeIndex->Location, &EnemyStructuresFilter)) { return false; }
 	}
 
 	// We can attack structures basically if we aren't stuck with Gorge's spit attack
@@ -962,7 +994,7 @@ bool AITASK_IsAlienHealTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	// If our target is a player, give up if they are too far away. I'm not going to waste time chasing you around the map!
 	float MaxHealRelevant = sqrf(UTIL_MetresToGoldSrcUnits(5.0f));
 
-	return (vDist2DSq(pBot->CurrentFloorPosition, Task->TaskTarget->v.origin) <= MaxHealRelevant);
+	return (IsPlayerActiveInGame(Task->TaskTarget) && vDist2DSq(pBot->CurrentFloorPosition, Task->TaskTarget->v.origin) <= MaxHealRelevant);
 }
 
 bool AITASK_IsUseTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
