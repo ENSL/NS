@@ -129,4 +129,7 @@ bool LerkCombatThink(AvHAIPlayer* pBot);
 bool FadeCombatThink(AvHAIPlayer* pBot);
 bool OnosCombatThink(AvHAIPlayer* pBot);
 
+bool BombardierCombatThink(AvHAIPlayer* pBot);
+bool RegularMarineCombatThink(AvHAIPlayer* pBot);
+
 #endif
