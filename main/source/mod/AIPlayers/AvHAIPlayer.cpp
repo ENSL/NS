@@ -2340,6 +2340,40 @@ AvHAICombatStrategy GetOnosCombatStrategyForTarget(AvHAIPlayer* pBot, enemy_stat
 
 AvHAICombatStrategy GetMarineCombatStrategyForTarget(AvHAIPlayer* pBot, enemy_status* CurrentEnemy)
 {
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
+
+	edict_t* EnemyEdict = CurrentEnemy->EnemyEdict;
+
+	float CurrentHealthPercent = (pBot->Edict->v.health / pBot->Edict->v.max_health);
+
+	if (pBot->CurrentCombatStrategy == COMBAT_STRATEGY_RETREAT)
+	{
+		int MinDesiredAmmo = imini(UTIL_GetPlayerPrimaryMaxAmmoReserve(pBot->Player), UTIL_GetPlayerPrimaryWeaponMaxClipSize(pBot->Player) * 2);
+
+		if (CurrentHealthPercent < 0.5f || UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) < MinDesiredAmmo)
+		{
+			return COMBAT_STRATEGY_RETREAT;
+		}
+	}
+
+	int NumEnemyAllies = AITAC_GetNumPlayersOnTeamWithLOS(EnemyTeam, EnemyEdict->v.origin, UTIL_MetresToGoldSrcUnits(10.0f), EnemyEdict);
+
+	if (CurrentHealthPercent < 0.3f || (CurrentHealthPercent < 0.5f && NumEnemyAllies > 0) || UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) < UTIL_GetPlayerPrimaryWeaponMaxClipSize(pBot->Player))
+	{
+		return COMBAT_STRATEGY_RETREAT;
+	}
+
+	if (PlayerHasWeapon(pBot->Player, WEAPON_MARINE_GL))
+	{
+		return COMBAT_STRATEGY_SKIRMISH;
+	}
+
+	if (!PlayerHasHeavyArmour(pBot->Edict) && (CurrentEnemy->EnemyPlayer->GetUser3() > AVH_USER3_ALIEN_PLAYER3 || NumEnemyAllies > 0))
+	{
+		return COMBAT_STRATEGY_SKIRMISH;
+	}
+
 	return COMBAT_STRATEGY_ATTACK;
 }
 
@@ -2502,9 +2536,114 @@ void BotThrowGrenadeAtTarget(AvHAIPlayer* pBot, const Vector TargetPoint)
 
 	BotShootLocation(pBot, GetPlayerCurrentWeapon(pBot->Player), ThrowTargetLocation);
 }
+bool BombardierCombatThink(AvHAIPlayer* pBot)
+{
+	return false;
+}
+
+bool RegularMarineCombatThink(AvHAIPlayer* pBot)
+{
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
+
+	edict_t* pEdict = pBot->Edict;
+
+	edict_t* CurrentEnemy = pBot->TrackedEnemies[pBot->CurrentEnemy].EnemyEdict;
+	enemy_status* TrackedEnemyRef = &pBot->TrackedEnemies[pBot->CurrentEnemy];
+
+	AvHAIDroppedItem* NearestHealthPack = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_HEALTHPACK, BotTeam, pBot->BotNavInfo.NavProfile.ReachabilityFlag, 0.0f, UTIL_MetresToGoldSrcUnits(10.0f), true);
+	AvHAIDroppedItem* NearestAmmoPack = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_AMMO, BotTeam, pBot->BotNavInfo.NavProfile.ReachabilityFlag, 0.0f, UTIL_MetresToGoldSrcUnits(10.0f), true);
+
+	AvHAIWeapon DesiredCombatWeapon = BotMarineChooseBestWeapon(pBot, CurrentEnemy);
+
+	if (pBot->CurrentCombatStrategy == COMBAT_STRATEGY_RETREAT)
+	{
+		if (NearestHealthPack && (pBot->Edict->v.health < pBot->Edict->v.max_health * 0.7f))
+		{
+			MoveTo(pBot, NearestHealthPack->Location, MOVESTYLE_NORMAL);
+		}
+		else if (NearestAmmoPack && UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) < UTIL_GetPlayerPrimaryMaxAmmoReserve(pBot->Player))
+		{
+			MoveTo(pBot, NearestAmmoPack->Location, MOVESTYLE_NORMAL);
+		}
+		else
+		{
+			DeployableSearchFilter NearestArmoury;
+			NearestArmoury.DeployableTypes = (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY);
+			NearestArmoury.DeployableTeam = BotTeam;
+			NearestArmoury.ReachabilityTeam = BotTeam;
+			NearestArmoury.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+			NearestArmoury.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+			NearestArmoury.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+			AvHAIBuildableStructure* NearestArmouryRef = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &NearestArmoury);
+
+			if (NearestArmouryRef && !IsAreaAffectedBySpores(NearestArmouryRef->Location))
+			{
+				if (!TrackedEnemyRef->bHasLOS || (IsPlayerAlien(pBot->Edict) && vDist2DSq(NearestArmouryRef->Location, CurrentEnemy->v.origin) > sqrf(UTIL_MetresToGoldSrcUnits(10.0f))))
+				{
+					if (IsPlayerInUseRange(pBot->Edict, NearestArmouryRef->edict))
+					{
+						BotUseObject(pBot, NearestArmouryRef->edict, true);
+						return;
+					}
+				}
+
+				MoveTo(pBot, NearestArmouryRef->Location, MOVESTYLE_NORMAL);
+
+			}
+			else
+			{
+				MoveTo(pBot, AITAC_GetTeamStartingLocation(BotTeam), MOVESTYLE_NORMAL);
+			}
+		}
+
+		if (TrackedEnemyRef->bHasLOS)
+		{
+			BotAttackResult LOSCheck = PerformAttackLOSCheck(pBot, DesiredCombatWeapon, CurrentEnemy);
+
+			if (LOSCheck == ATTACK_SUCCESS)
+			{
+				BotShootTarget(pBot, DesiredCombatWeapon, CurrentEnemy);
+				return true;
+			}
+		}
+		
+		if (UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) == 0 && vDist2DSq(pBot->Edict->v.origin, CurrentEnemy->v.origin) > sqrf(UTIL_MetresToGoldSrcUnits(3.0f)))
+		{
+			BotReloadWeapons(pBot);
+		}
+		
+		return true;
+	}
+}
+
 
 bool MarineCombatThink(AvHAIPlayer* pBot)
 {
+	if (pBot->CurrentEnemy > -1)
+	{
+		edict_t* CurrentEnemy = pBot->TrackedEnemies[pBot->CurrentEnemy].EnemyEdict;
+
+		pBot->CurrentCombatStrategy = GetBotCombatStrategyForTarget(pBot, &pBot->TrackedEnemies[pBot->CurrentEnemy]);
+
+		if (pBot->CurrentCombatStrategy == COMBAT_STRATEGY_IGNORE) { return false; }
+
+		pBot->LastCombatTime = gpGlobals->time;
+
+		if (PlayerHasWeapon(pBot->Player, WEAPON_MARINE_GL))
+		{
+			return BombardierCombatThink(pBot);
+		}
+		else
+		{
+			return RegularMarineCombatThink(pBot);
+		}
+	}
+
+	return false;
+
+
 	edict_t* pEdict = pBot->Edict;
 
 	edict_t* CurrentEnemy = pBot->TrackedEnemies[pBot->CurrentEnemy].EnemyEdict;
