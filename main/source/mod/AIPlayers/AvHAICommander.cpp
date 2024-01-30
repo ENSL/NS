@@ -381,6 +381,37 @@ bool AICOMM_DoesPlayerOrderNeedReminder(AvHAIPlayer* pBot, ai_commander_order* O
 	return NewDist >= OldDist;
 }
 
+bool AICOMM_ShouldCommanderPrioritiseNodes(AvHAIPlayer* pBot)
+{
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
+
+	int NumOwnedNodes = 0;
+	int NumEligibleNodes = 0;
+
+	// First get ours and the enemy's ownership of all eligible nodes (we can reach them, and they're in the enemy base)
+	vector<AvHAIResourceNode*> AllNodes = AITAC_GetAllReachableResourceNodes(BotTeam);
+
+	for (auto it = AllNodes.begin(); it != AllNodes.end(); it++)
+	{
+		AvHAIResourceNode* ThisNode = (*it);
+
+		// We don't care about the node at marine spawn or enemy hives, ignore then in our calculations
+		if (ThisNode->OwningTeam == EnemyTeam && ThisNode->bIsBaseNode) { continue; }
+
+		NumEligibleNodes++;
+
+		if (ThisNode->OwningTeam == BotTeam) { NumOwnedNodes++; }
+	}
+
+	int NumNodesLeft = NumEligibleNodes - NumOwnedNodes;
+
+	if (NumNodesLeft == 0) { return false; }
+
+	return NumOwnedNodes < 3 || NumNodesLeft > 3;
+
+}
+
 void AICOMM_UpdatePlayerOrders(AvHAIPlayer* pBot)
 {
 	// Clear out any orders which aren't relevant any more
@@ -423,6 +454,61 @@ void AICOMM_UpdatePlayerOrders(AvHAIPlayer* pBot)
 				}
 			}
 		}
+	}
+
+	if (AICOMM_ShouldCommanderPrioritiseNodes(pBot))
+	{
+		AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+		AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
+
+		Vector TeamStartingLocation = AITAC_GetTeamStartingLocation(BotTeam);
+
+		DeployableSearchFilter ResNodeFilter;
+		ResNodeFilter.ReachabilityTeam = pBot->Player->GetTeam();
+		ResNodeFilter.ReachabilityFlags = AI_REACHABILITY_MARINE;
+
+		vector<AvHAIResourceNode*> EligibleResNodes = AITAC_GetAllMatchingResourceNodes(ZERO_VECTOR, &ResNodeFilter);
+
+		AvHAIResourceNode* NearestNode = nullptr;
+		float MinDist = 0.0f;
+
+		for (auto it = EligibleResNodes.begin(); it != EligibleResNodes.end(); it++)
+		{
+			AvHAIResourceNode* ThisNode = (*it);
+
+			if (!ThisNode || ThisNode->OwningTeam == BotTeam) { continue; }
+
+			int NumDesiredPlayers = (ThisNode->OwningTeam == EnemyTeam) ? 2 : 1;
+			int NumAssignedPlayers = AICOMM_GetNumPlayersAssignedToOrder(pBot, ThisNode->ResourceEntity->edict(), ORDERPURPOSE_SECURE_RESNODE);
+
+			if (NumAssignedPlayers >= NumDesiredPlayers) { continue; }
+
+			float ThisDist = vDist2DSq(TeamStartingLocation, ThisNode->Location);
+
+			if (ThisNode->OwningTeam == EnemyTeam)
+			{
+				ThisDist *= 2.0f;
+			}
+
+			if (!NearestNode || ThisDist < MinDist)
+			{
+				NearestNode = ThisNode;
+				MinDist = ThisDist;
+			}
+			
+		}
+
+		if (NearestNode)
+		{
+			edict_t* NewAssignee = AICOMM_GetPlayerWithNoOrderNearestLocation(pBot, NearestNode->Location);
+
+			if (!FNullEnt(NewAssignee))
+			{
+				AICOMM_AssignNewPlayerOrder(pBot, NewAssignee, NearestNode->ResourceEntity->edict(), ORDERPURPOSE_SECURE_RESNODE);
+			}
+		}
+
+		return;
 	}
 
 	vector<AvHAIHiveDefinition*> Hives = AITAC_GetAllHives();
@@ -1456,6 +1542,12 @@ bool AICOMM_PerformNextSecureHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefini
 
 	Vector OutpostLocation = (ExistingStructure) ? ExistingStructure->Location : HiveToSecure->FloorLocation;
 
+	if (HiveToSecure->HiveResNodeRef && HiveToSecure->HiveResNodeRef->OwningTeam == TEAM_IND)
+	{
+		AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_RESTOWER, HiveToSecure->HiveResNodeRef->Location);
+		return true;
+	}
+
 	if (ExistingStructure)
 	{
 		if (ExistingStructure->StructureType == STRUCTURE_MARINE_PHASEGATE)
@@ -1653,6 +1745,8 @@ bool AICOMM_CheckForNextRecycleAction(AvHAIPlayer* pBot)
 
 bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 {
+	AvHTeamNumber CommanderTeam = pBot->Player->GetTeam();
+
 	AICOMM_CheckNewRequests(pBot);
 
 	ai_commander_request* NextRequest = nullptr;
@@ -1682,8 +1776,66 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 
 	}
 
-	// We didn't find any requests outstanding
-	if (!NextRequest) { return false; }
+	// We didn't find any requests outstanding, see if we want to pro-actively drop stuff for our team
+	if (!NextRequest)
+	{
+		int NumDesiredWelders = 1;
+		int NumTeamWelders = AITAC_GetNumWeaponsInPlay(CommanderTeam, WEAPON_MARINE_WELDER);
+
+		vector<AvHAIResourceNode*> AllNodes = AITAC_GetAllResourceNodes();
+
+		for (auto it = AllNodes.begin(); it != AllNodes.end(); it++)
+		{
+			AvHAIResourceNode* ThisNode = (*it);
+
+			unsigned int TeamReachabilityFlags = (CommanderTeam == AIMGR_GetTeamANumber()) ? ThisNode->TeamAReachabilityFlags : ThisNode->TeamBReachabilityFlags;
+
+			if ((TeamReachabilityFlags & AI_REACHABILITY_WELDER) && !(TeamReachabilityFlags & AI_REACHABILITY_MARINE))
+			{
+				NumDesiredWelders++;
+				break;
+			}
+
+		}
+
+		vector<AvHAIHiveDefinition*> AllHives = AITAC_GetAllHives();
+
+		for (auto it = AllHives.begin(); it != AllHives.end(); it++)
+		{
+			AvHAIHiveDefinition* ThisHive = (*it);
+
+			unsigned int TeamReachabilityFlags = (CommanderTeam == AIMGR_GetTeamANumber()) ? ThisHive->TeamAReachabilityFlags : ThisHive->TeamBReachabilityFlags;
+
+			if ((TeamReachabilityFlags & AI_REACHABILITY_WELDER) && !(TeamReachabilityFlags & AI_REACHABILITY_MARINE))
+			{
+				NumDesiredWelders++;
+				break;
+			}
+		}
+
+		NumDesiredWelders = imini(NumDesiredWelders, (AIMGR_GetNumPlayersOnTeam(CommanderTeam) / 2));
+
+		if (NumTeamWelders < NumDesiredWelders)
+		{
+			DeployableSearchFilter ArmouryFilter;
+			ArmouryFilter.DeployableTypes = (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY);
+			ArmouryFilter.DeployableTeam = CommanderTeam;
+			ArmouryFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+			ArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+			AvHAIBuildableStructure* NearestArmoury = AITAC_FindClosestDeployableToLocation(AITAC_GetTeamStartingLocation(CommanderTeam), &ArmouryFilter);
+
+			if (NearestArmoury)
+			{
+				Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(3.0f));
+				bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_WELDER, DeployLocation);
+
+				return bSuccess;
+			}
+		}
+
+		return false;
+	}
 	
 	edict_t* Requestor = NextRequest->Requestor;
 
@@ -1740,12 +1892,14 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 
 		AvHAIWeapon WeaponType = UTIL_GetPlayerPrimaryWeapon(thePlayer);
 
+		// Requesting player doesn't have a primary weapon, check if they have a pistol
 		if (WeaponType == WEAPON_INVALID)
 		{
 			bFillPrimaryWeapon = false;
 			WeaponType = UTIL_GetPlayerSecondaryWeapon(thePlayer);
 		}
 
+		// They've only got a knife, don't bother dropping ammo
 		if (WeaponType == WEAPON_INVALID)
 		{
 			NextRequest->bResponded = true;
@@ -1755,6 +1909,7 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 		int AmmoDeficit = (bFillPrimaryWeapon) ? (UTIL_GetPlayerPrimaryMaxAmmoReserve(thePlayer) - UTIL_GetPlayerPrimaryAmmoReserve(thePlayer)) : (UTIL_GetPlayerSecondaryMaxAmmoReserve(thePlayer) - UTIL_GetPlayerSecondaryAmmoReserve(thePlayer));
 		int WeaponClipSize = (bFillPrimaryWeapon) ? UTIL_GetPlayerPrimaryWeaponMaxClipSize(thePlayer) : UTIL_GetPlayerSecondaryWeaponMaxClipSize(thePlayer);
 
+		// Player already has full ammo, they're yanking our chain
 		if (AmmoDeficit == 0)
 		{
 			NextRequest->bResponded = true;
@@ -1762,11 +1917,13 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 		}
 
 		int DesiredNumAmmoPacks = (int)(ceilf((float)AmmoDeficit / (float)WeaponClipSize));
+		// Don't drop more than 5 at any one time
 		DesiredNumAmmoPacks = clampi(DesiredNumAmmoPacks, 0, 5);
 
 		int NumAmmoPacksPresent = AITAC_GetNumItemsInLocation(Requestor->v.origin, DEPLOYABLE_ITEM_AMMO, (AvHTeamNumber)Requestor->v.team, AI_REACHABILITY_MARINE, 0.0f, UTIL_MetresToGoldSrcUnits(5.0f), false);
 		DesiredNumAmmoPacks -= NumAmmoPacksPresent;
 
+		// Do we need to drop any ammo, or has the player got enough surrounding them already?
 		if (DesiredNumAmmoPacks > 0)
 		{
 			Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), Requestor->v.origin, UTIL_MetresToGoldSrcUnits(2.0f));
@@ -1774,6 +1931,7 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 
 			if (bSuccess)
 			{
+				// We've dropped enough that the player has enough to fill their boots. Mission accomplished
 				if (DesiredNumAmmoPacks <= 1)
 				{
 					NextRequest->bResponded = true;
@@ -1784,6 +1942,7 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 		}
 		else
 		{
+			// Player already has enough ammo packs deployed by them to satisfy. Don't drop any more
 			NextRequest->bResponded = true;
 		}
 
@@ -1792,9 +1951,9 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 
 	if (NextRequest->RequestType == COMMANDER_NEXTIDLE)
 	{
+		// TODO: Have the commander prioritise this player when looking for people to give orders to
 		NextRequest->bResponded = true;
 	}
-
 
 	return false;
 }

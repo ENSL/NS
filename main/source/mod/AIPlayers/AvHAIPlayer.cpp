@@ -365,40 +365,39 @@ void BotSay(AvHAIPlayer* pBot, bool bTeamSay, float Delay, char* textToSay)
 	}
 }
 
-void BotReloadWeapons(AvHAIPlayer* pBot)
+bool BotReloadWeapons(AvHAIPlayer* pBot)
 {
 	// Aliens and commander don't reload
-	if (!IsPlayerMarine(pBot->Edict) || !IsPlayerActiveInGame(pBot->Edict)) { return; }
+	if (!IsPlayerMarine(pBot->Edict) || !IsPlayerActiveInGame(pBot->Edict)) { return false; }
 
-	if (gpGlobals->time - pBot->LastCombatTime > 5.0f)
+	AvHAIWeapon PrimaryWeapon = UTIL_GetPlayerPrimaryWeapon(pBot->Player);
+	AvHAIWeapon SecondaryWeapon = GetBotMarineSecondaryWeapon(pBot);
+	AvHAIWeapon CurrentWeapon = GetPlayerCurrentWeapon(pBot->Player);
+
+	if (WeaponCanBeReloaded(PrimaryWeapon) && UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) < UTIL_GetPlayerPrimaryWeaponMaxClipSize(pBot->Player) && UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) > 0)
 	{
-		AvHAIWeapon PrimaryWeapon = UTIL_GetPlayerPrimaryWeapon(pBot->Player);
-		AvHAIWeapon SecondaryWeapon = GetBotMarineSecondaryWeapon(pBot);
-		AvHAIWeapon CurrentWeapon = GetPlayerCurrentWeapon(pBot->Player);
+		pBot->DesiredCombatWeapon = PrimaryWeapon;
 
-		if (WeaponCanBeReloaded(PrimaryWeapon) && UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) < UTIL_GetPlayerPrimaryWeaponMaxClipSize(pBot->Player) && UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) > 0)
+		if (CurrentWeapon == PrimaryWeapon)
 		{
-			pBot->DesiredCombatWeapon = PrimaryWeapon;
-
-			if (CurrentWeapon == PrimaryWeapon)
-			{
-				BotReloadCurrentWeapon(pBot);
-			}
-
-			return;
+			BotReloadCurrentWeapon(pBot);
 		}
 
-		if (WeaponCanBeReloaded(SecondaryWeapon) && BotGetSecondaryWeaponClipAmmo(pBot) < BotGetSecondaryWeaponMaxClipSize(pBot) && BotGetSecondaryWeaponAmmoReserve(pBot) > 0)
-		{
-			pBot->DesiredCombatWeapon = SecondaryWeapon;
-
-			if (CurrentWeapon == SecondaryWeapon)
-			{
-				BotReloadCurrentWeapon(pBot);
-			}
-			return;
-		}
+		return true;
 	}
+
+	if (WeaponCanBeReloaded(SecondaryWeapon) && BotGetSecondaryWeaponClipAmmo(pBot) < BotGetSecondaryWeaponMaxClipSize(pBot) && BotGetSecondaryWeaponAmmoReserve(pBot) > 0)
+	{
+		pBot->DesiredCombatWeapon = SecondaryWeapon;
+
+		if (CurrentWeapon == SecondaryWeapon)
+		{
+			BotReloadCurrentWeapon(pBot);
+		}
+		return true;
+	}
+
+	return false;
 }
 
 void BotDropWeapon(AvHAIPlayer* pBot)
@@ -661,7 +660,7 @@ void BotShootTarget(AvHAIPlayer* pBot, AvHAIWeapon AttackWeapon, edict_t* Target
 		return;
 	}
 
-	if (CurrentWeapon == WEAPON_NONE) { return; }
+	if (CurrentWeapon == WEAPON_INVALID) { return; }
 
 
 	if (CurrentWeapon == WEAPON_SKULK_XENOCIDE || CurrentWeapon == WEAPON_LERK_PRIMALSCREAM)
@@ -1410,6 +1409,12 @@ void BotUpdateView(AvHAIPlayer* pBot)
 
 			TrackingInfo->bIsAwareOfPlayer = true;
 			TrackingInfo->LastSeenLocation = (bHasLOS) ? VisiblePoint : Enemy->v.origin;
+			
+			if (bHasLOS)
+			{
+				TrackingInfo->LastVisibleLocation = Enemy->v.origin;
+			}
+
 			TrackingInfo->LastFloorPosition = FloorLocation;
 
 			if (bHasLOS)
@@ -1666,21 +1671,20 @@ void CustomThink(AvHAIPlayer* pBot)
 {
 	if (IsPlayerMarine(pBot->Player)) 
 	{
-		if (PlayerHasWeapon(pBot->Player, WEAPON_MARINE_GRENADE))
+		pBot->CurrentEnemy = BotGetNextEnemyTarget(pBot);
+
+		if (pBot->CurrentEnemy < 0)
 		{
-			if (!vIsZero(AIDEBUG_GetDebugVector1()))
-			{
-				BotThrowGrenadeAtTarget(pBot, AIDEBUG_GetDebugVector1());
-			}
+			MoveTo(pBot, AITAC_GetTeamStartingLocation(AIMGR_GetEnemyTeam(pBot->Player->GetTeam())), MOVESTYLE_NORMAL);
 		}
 		else
 		{
-			pBot->DesiredCombatWeapon = UTIL_GetPlayerPrimaryWeapon(pBot->Player);
+			MarineCombatThink(pBot);
 		}
 
 		AvHAIWeapon DesiredWeapon = (pBot->DesiredMoveWeapon != WEAPON_NONE) ? pBot->DesiredMoveWeapon : pBot->DesiredCombatWeapon;
 
-		if (DesiredWeapon != WEAPON_NONE && GetPlayerCurrentWeapon(pBot->Player) != DesiredWeapon)
+		if (DesiredWeapon != WEAPON_INVALID && GetPlayerCurrentWeapon(pBot->Player) != DesiredWeapon)
 		{
 			BotSwitchToWeapon(pBot, DesiredWeapon);
 		}
@@ -1688,14 +1692,14 @@ void CustomThink(AvHAIPlayer* pBot)
 		return;
 	}
 
-	if (!IsPlayerFade(pBot->Edict))
+	if (!IsPlayerLerk(pBot->Edict))
 	{
-		if (pBot->Player->GetResources() < BALANCE_VAR(kFadeCost))
+		if (pBot->Player->GetResources() < BALANCE_VAR(kLerkCost))
 		{
-			pBot->Player->GiveResources(50.0f);
+			pBot->Player->GiveResources(30.0f);
 		}
 
-		BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_FOUR);
+		BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_THREE);
 
 		return;
 	}
@@ -1767,6 +1771,31 @@ void UpdateAIPlayerCORole(AvHAIPlayer* pBot)
 void UpdateAIPlayerDMRole(AvHAIPlayer* pBot)
 {
 
+}
+
+void AIPlayerTakeDamage(AvHAIPlayer* pBot, int damageTaken, edict_t* aggressor)
+{
+	int aggressorIndex = ENTINDEX(aggressor) - 1;
+
+	if (aggressorIndex > -1 && aggressor->v.team != pBot->Edict->v.team && IsPlayerActiveInGame(aggressor))
+	{
+		pBot->TrackedEnemies[aggressorIndex].LastSeenTime = gpGlobals->time;
+
+		// If the bot can't see the enemy (bCurrentlyVisible is false) then set the last seen location to a random point in the vicinity so the bot doesn't immediately know where they are
+		if (pBot->TrackedEnemies[aggressorIndex].bIsVisible || vDist2DSq(pBot->TrackedEnemies[aggressorIndex].EnemyEdict->v.origin, pBot->Edict->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(3.0f)))
+		{
+			pBot->TrackedEnemies[aggressorIndex].LastSeenLocation = aggressor->v.origin;
+		}
+		else
+		{
+			// The further the enemy is, the more inaccurate the bot's guess will be where they are
+			pBot->TrackedEnemies[aggressorIndex].LastSeenLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(SKULK_BASE_NAV_PROFILE), aggressor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+		}
+
+		pBot->TrackedEnemies[aggressorIndex].LastSeenVelocity = aggressor->v.velocity;
+		pBot->TrackedEnemies[aggressorIndex].bIsAwareOfPlayer = true;
+		pBot->TrackedEnemies[aggressorIndex].bHasLOS = true;
+	}
 }
 
 bool ShouldAIPlayerTakeCommand(AvHAIPlayer* pBot)
@@ -2160,7 +2189,7 @@ AvHAICombatStrategy GetLerkCombatStrategyForTarget(AvHAIPlayer* pBot, enemy_stat
 	{
 		return COMBAT_STRATEGY_SKIRMISH;
 	}
-	}
+}
 
 AvHAICombatStrategy GetFadeCombatStrategyForTarget(AvHAIPlayer* pBot, enemy_status* CurrentEnemy)
 {
@@ -2347,6 +2376,17 @@ AvHAICombatStrategy GetMarineCombatStrategyForTarget(AvHAIPlayer* pBot, enemy_st
 
 	float CurrentHealthPercent = (pBot->Edict->v.health / pBot->Edict->v.max_health);
 
+	float DistToEnemy = vDist2DSq(pBot->Edict->v.origin, CurrentEnemy->LastSeenLocation);
+
+	// If we are doing something important, don't get distracted by enemies that aren't an immediate threat
+	if (pBot->CurrentTask && pBot->CurrentTask->TaskType == TASK_DEFEND || pBot->CommanderTask.TaskType != TASK_NONE)
+	{
+		if ((!CurrentEnemy->bHasLOS || DistToEnemy > sqrf(UTIL_MetresToGoldSrcUnits(10.0f))) && (!vIsZero(pBot->CurrentTask->TaskLocation) && !UTIL_PlayerHasLOSToLocation(CurrentEnemy->EnemyEdict, pBot->CurrentTask->TaskLocation, UTIL_MetresToGoldSrcUnits(30.0f))))
+		{
+			return COMBAT_STRATEGY_IGNORE;
+		}
+	}
+
 	if (pBot->CurrentCombatStrategy == COMBAT_STRATEGY_RETREAT)
 	{
 		int MinDesiredAmmo = imini(UTIL_GetPlayerPrimaryMaxAmmoReserve(pBot->Player), UTIL_GetPlayerPrimaryWeaponMaxClipSize(pBot->Player) * 2);
@@ -2358,18 +2398,28 @@ AvHAICombatStrategy GetMarineCombatStrategyForTarget(AvHAIPlayer* pBot, enemy_st
 	}
 
 	int NumEnemyAllies = AITAC_GetNumPlayersOnTeamWithLOS(EnemyTeam, EnemyEdict->v.origin, UTIL_MetresToGoldSrcUnits(10.0f), EnemyEdict);
+	int NumFriendlies = AITAC_GetNumPlayersOnTeamWithLOS(BotTeam, pBot->Edict->v.origin, UTIL_MetresToGoldSrcUnits(10.0f), pBot->Edict);
 
 	if (CurrentHealthPercent < 0.3f || (CurrentHealthPercent < 0.5f && NumEnemyAllies > 0) || UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) < UTIL_GetPlayerPrimaryWeaponMaxClipSize(pBot->Player))
 	{
 		return COMBAT_STRATEGY_RETREAT;
 	}
 
-	if (PlayerHasWeapon(pBot->Player, WEAPON_MARINE_GL))
+	// Shotty users should attack, can't really skirmish with a shotgun
+	if (PlayerHasWeapon(pBot->Player, WEAPON_MARINE_SHOTGUN) && (UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) > 0 || UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) > 0))
+	{
+		return COMBAT_STRATEGY_ATTACK;
+	}
+
+	bool bIsEnemyRanged = IsPlayerMarine(CurrentEnemy->EnemyPlayer);
+
+	if (bIsEnemyRanged || PlayerHasWeapon(pBot->Player, WEAPON_MARINE_GL))
 	{
 		return COMBAT_STRATEGY_SKIRMISH;
 	}
 
-	if (!PlayerHasHeavyArmour(pBot->Edict) && (CurrentEnemy->EnemyPlayer->GetUser3() > AVH_USER3_ALIEN_PLAYER3 || NumEnemyAllies > 0))
+	// If we're up against a stronger enemy than us, skirmish instead to avoid getting wiped out
+	if (!PlayerHasHeavyArmour(pBot->Edict) && (CurrentEnemy->EnemyPlayer->GetUser3() > AVH_USER3_ALIEN_PLAYER3 || NumEnemyAllies > 0 || PlayerHasHeavyArmour(EnemyEdict)))
 	{
 		return COMBAT_STRATEGY_SKIRMISH;
 	}
@@ -2556,6 +2606,16 @@ bool RegularMarineCombatThink(AvHAIPlayer* pBot)
 
 	AvHAIWeapon DesiredCombatWeapon = BotMarineChooseBestWeapon(pBot, CurrentEnemy);
 
+	bool bBotIsGrenadier = (DesiredCombatWeapon == WEAPON_MARINE_GL);
+
+	float DistToEnemy = vDist2DSq(pBot->Edict->v.origin, CurrentEnemy->v.origin);
+
+	bool bEnemyIsRanged = IsPlayerMarine(TrackedEnemyRef->EnemyPlayer) || ((GetPlayerCurrentWeapon(TrackedEnemyRef->EnemyPlayer) == WEAPON_FADE_ACIDROCKET) && DistToEnemy > sqrf(UTIL_MetresToGoldSrcUnits(5.0f)));
+
+	float LastEnemySeenTime = (TrackedEnemyRef->LastTrackedTime > 0.0f) ? TrackedEnemyRef->LastTrackedTime : TrackedEnemyRef->LastSeenTime;
+	Vector LastEnemySeenLocation = TrackedEnemyRef->LastSeenLocation;
+
+	// Run away and restock
 	if (pBot->CurrentCombatStrategy == COMBAT_STRATEGY_RETREAT)
 	{
 		if (NearestHealthPack && (pBot->Edict->v.health < pBot->Edict->v.max_health * 0.7f))
@@ -2585,7 +2645,7 @@ bool RegularMarineCombatThink(AvHAIPlayer* pBot)
 					if (IsPlayerInUseRange(pBot->Edict, NearestArmouryRef->edict))
 					{
 						BotUseObject(pBot, NearestArmouryRef->edict, true);
-						return;
+						return true;
 					}
 				}
 
@@ -2602,20 +2662,263 @@ bool RegularMarineCombatThink(AvHAIPlayer* pBot)
 		{
 			BotAttackResult LOSCheck = PerformAttackLOSCheck(pBot, DesiredCombatWeapon, CurrentEnemy);
 
+			if (DesiredCombatWeapon != WEAPON_MARINE_KNIFE)
+			{
+				if (DistToEnemy < sqrf(100.0f))
+				{
+					if (IsPlayerReloading(pBot->Player) && CanInterruptWeaponReload(GetPlayerCurrentWeapon(pBot->Player)) && GetPlayerCurrentWeaponClipAmmo(pBot->Player) > 0)
+					{
+						InterruptReload(pBot);
+					}
+					BotJump(pBot);
+				}
+			}
+
 			if (LOSCheck == ATTACK_SUCCESS)
 			{
-				BotShootTarget(pBot, DesiredCombatWeapon, CurrentEnemy);
-				return true;
+				if (!bBotIsGrenadier || DistToEnemy > sqrf(BALANCE_VAR(kGrenadeRadius)))
+				{
+					BotShootTarget(pBot, DesiredCombatWeapon, CurrentEnemy);
+					return true;
+				}
 			}
 		}
 		
-		if (UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) == 0 && vDist2DSq(pBot->Edict->v.origin, CurrentEnemy->v.origin) > sqrf(UTIL_MetresToGoldSrcUnits(3.0f)))
+		if (UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) == 0 && DistToEnemy > sqrf(UTIL_MetresToGoldSrcUnits(3.0f)))
 		{
-			BotReloadWeapons(pBot);
+			BotAttackResult LOSCheck = PerformAttackLOSCheck(pBot, DesiredCombatWeapon, CurrentEnemy);
+
+			if (LOSCheck == ATTACK_SUCCESS)
+			{
+				BotShootTarget(pBot, DesiredCombatWeapon, CurrentEnemy);
+			}
+			else
+			{
+				BotReloadWeapons(pBot);
+			}
 		}
 		
 		return true;
 	}
+
+	// Maintain distance, pop and shoot
+	if (pBot->CurrentCombatStrategy == COMBAT_STRATEGY_SKIRMISH || pBot->CurrentCombatStrategy == COMBAT_STRATEGY_AMBUSH)
+	{
+		if (vIsZero(pBot->LastSafeLocation))
+		{
+			pBot->LastSafeLocation = AITAC_GetTeamStartingLocation(BotTeam);
+		}
+
+		if (TrackedEnemyRef->bHasLOS)
+		{
+			if (GetPlayerCurrentWeaponClipAmmo(pBot->Player) == 0)
+			{
+				MoveTo(pBot, pBot->LastSafeLocation, MOVESTYLE_NORMAL);
+				BotReloadWeapons(pBot);
+				return true;
+			}
+
+			if (vDist2DSq(pBot->Edict->v.origin, pBot->LastSafeLocation) > sqrf(UTIL_MetresToGoldSrcUnits(3.0f)))
+			{
+				MoveTo(pBot, pBot->LastSafeLocation, MOVESTYLE_NORMAL);
+			}
+			else
+			{
+				if (PlayerHasWeapon(pBot->Player, WEAPON_MARINE_GRENADE) && DesiredCombatWeapon != WEAPON_MARINE_GL)
+				{
+					// Plus 1 to include the target themselves
+					int NumTargets = AITAC_GetNumPlayersOnTeamWithLOS(EnemyTeam, CurrentEnemy->v.origin, BALANCE_VAR(kGrenadeRadius), nullptr);
+
+					if (NumTargets > 1)
+					{
+						BotThrowGrenadeAtTarget(pBot, CurrentEnemy->v.origin);
+						return true;
+					}
+				}
+
+				if (bEnemyIsRanged)
+				{
+					Vector EnemyOrientation = UTIL_GetVectorNormal2D(CurrentEnemy->v.origin - pBot->Edict->v.origin);
+
+					Vector RightDir = UTIL_GetCrossProduct(EnemyOrientation, UP_VECTOR);
+
+					pBot->desiredMovementDir = (pBot->BotNavInfo.bZig) ? UTIL_GetVectorNormal2D(RightDir) : UTIL_GetVectorNormal2D(-RightDir);
+
+					// Let's get ziggy with it
+					if (gpGlobals->time > pBot->BotNavInfo.NextZigTime)
+					{
+						pBot->BotNavInfo.bZig = !pBot->BotNavInfo.bZig;
+						pBot->BotNavInfo.NextZigTime = gpGlobals->time + frandrange(0.5f, 1.0f);
+					}
+
+					BotMovementInputs(pBot);
+				}
+				else
+				{
+					if (DesiredCombatWeapon != WEAPON_MARINE_KNIFE)
+					{
+						if (DistToEnemy < sqrf(100.0f))
+						{
+							if (IsPlayerReloading(pBot->Player) && CanInterruptWeaponReload(GetPlayerCurrentWeapon(pBot->Player)) && GetPlayerCurrentWeaponClipAmmo(pBot->Player) > 0)
+							{
+								InterruptReload(pBot);
+							}
+							BotJump(pBot);
+						}
+					}
+				}
+			}
+
+			BotShootTarget(pBot, DesiredCombatWeapon, CurrentEnemy);
+		}
+		else
+		{
+			if (PlayerHasWeapon(pBot->Player, WEAPON_MARINE_GRENADE) || (PlayerHasWeapon(pBot->Player, WEAPON_MARINE_GL) && UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) > 0))
+			{
+				Vector GrenadeTarget = UTIL_GetGrenadeThrowTarget(pBot->Edict, LastEnemySeenLocation, BALANCE_VAR(kGrenadeRadius), true);
+
+				if (!vIsZero(GrenadeTarget))
+				{
+					BotThrowGrenadeAtTarget(pBot, GrenadeTarget);
+					return true;
+				}
+			}
+
+			if (BotReloadWeapons(pBot)) { return true; }
+
+			MoveTo(pBot, LastEnemySeenLocation, MOVESTYLE_NORMAL);
+		}
+
+		return true;
+	}
+
+	// Go for the kill. Maintain desired distance and pursue when needed
+	if (pBot->CurrentCombatStrategy == COMBAT_STRATEGY_ATTACK)
+	{
+		AvHAIWeapon IdealAttackWeapon = (UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) > 0 || UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) > 0) ? UTIL_GetPlayerPrimaryWeapon(pBot->Player) : DesiredCombatWeapon;
+
+		float DesiredDistance = GetMinIdealWeaponRange(IdealAttackWeapon) + ((GetMaxIdealWeaponRange(IdealAttackWeapon) - GetMinIdealWeaponRange(IdealAttackWeapon)) * 0.5f);
+
+		bool bCanReloadCurrentWeapon = (WeaponCanBeReloaded(DesiredCombatWeapon) && GetPlayerCurrentWeaponClipAmmo(pBot->Player) < GetPlayerCurrentWeaponMaxClipAmmo(pBot->Player) && GetPlayerCurrentWeaponReserveAmmo(pBot->Player) > 0);
+		bool bMustReloadCurrentWeapon = bCanReloadCurrentWeapon && GetPlayerCurrentWeaponClipAmmo(pBot->Player) == 0;
+
+		if (vIsZero(pBot->LastSafeLocation))
+		{
+			pBot->LastSafeLocation = AITAC_GetTeamStartingLocation(BotTeam);
+		}
+
+		if (!TrackedEnemyRef->bHasLOS)
+		{
+			if (PlayerHasWeapon(pBot->Player, WEAPON_MARINE_GRENADE) || (PlayerHasWeapon(pBot->Player, WEAPON_MARINE_GL) && UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) > 0))
+			{
+				Vector GrenadeTarget = UTIL_GetGrenadeThrowTarget(pBot->Edict, LastEnemySeenLocation, BALANCE_VAR(kGrenadeRadius), true);
+
+				if (!vIsZero(GrenadeTarget))
+				{
+					BotThrowGrenadeAtTarget(pBot, GrenadeTarget);
+					return true;
+				}
+			}
+
+			if ((IdealAttackWeapon != DesiredCombatWeapon || bCanReloadCurrentWeapon) && gpGlobals->time - TrackedEnemyRef->LastSeenTime > 3.0f)
+			{
+				BotReloadWeapons(pBot);
+				if (vDist2DSq(pBot->Edict->v.origin, TrackedEnemyRef->LastVisibleLocation) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
+				{
+					MoveTo(pBot, AITAC_GetTeamStartingLocation(BotTeam), MOVESTYLE_NORMAL);
+				}
+				return true;
+			}
+
+			MoveTo(pBot, TrackedEnemyRef->LastSeenLocation, MOVESTYLE_NORMAL);
+
+			return true;
+		}
+
+		BotAttackResult LOSCheck = PerformAttackLOSCheck(pBot, DesiredCombatWeapon, CurrentEnemy);
+
+		if (bMustReloadCurrentWeapon)
+		{
+			MoveTo(pBot, pBot->LastSafeLocation, MOVESTYLE_NORMAL);
+			BotReloadWeapons(pBot);
+			return true;
+		}
+
+		if (DistToEnemy > sqrf(DesiredDistance))
+		{
+			if (IdealAttackWeapon != DesiredCombatWeapon)
+			{
+				BotReloadWeapons(pBot);
+				MoveTo(pBot, pBot->LastSafeLocation, MOVESTYLE_NORMAL);
+				return true;
+			}
+
+			MoveTo(pBot, LastEnemySeenLocation, MOVESTYLE_NORMAL);
+
+		}
+		else
+		{
+
+			if (bEnemyIsRanged)
+			{
+				Vector EnemyOrientation = UTIL_GetVectorNormal2D(CurrentEnemy->v.origin - pBot->Edict->v.origin);
+
+				Vector RightDir = UTIL_GetCrossProduct(EnemyOrientation, UP_VECTOR);
+
+				pBot->desiredMovementDir = (pBot->BotNavInfo.bZig) ? UTIL_GetVectorNormal2D(RightDir) : UTIL_GetVectorNormal2D(-RightDir);
+
+				// Let's get ziggy with it
+				if (gpGlobals->time > pBot->BotNavInfo.NextZigTime)
+				{
+					pBot->BotNavInfo.bZig = !pBot->BotNavInfo.bZig;
+					pBot->BotNavInfo.NextZigTime = gpGlobals->time + frandrange(0.5f, 1.0f);
+				}
+
+				BotMovementInputs(pBot);
+			}
+			else
+			{
+
+				float MinDesiredDist = GetMinIdealWeaponRange(DesiredCombatWeapon);
+				Vector Orientation = UTIL_GetVectorNormal2D(CurrentEnemy->v.origin - pBot->Edict->v.origin);
+
+				float EnemyMoveDot = UTIL_GetDotProduct2D(UTIL_GetVectorNormal2D(CurrentEnemy->v.velocity), -Orientation);
+
+				// Enemy is too close for comfort, or is moving towards us. Back up
+				if (DistToEnemy < MinDesiredDist || EnemyMoveDot > 0.7f)
+				{
+					Vector RetreatLocation = pBot->CurrentFloorPosition - (Orientation * 50.0f);
+
+					if (UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, RetreatLocation))
+					{
+						MoveDirectlyTo(pBot, RetreatLocation);
+					}
+
+					if (DesiredCombatWeapon != WEAPON_MARINE_KNIFE)
+					{
+						if (DistToEnemy < sqrf(100.0f))
+						{
+							if (IsPlayerReloading(pBot->Player) && CanInterruptWeaponReload(GetPlayerCurrentWeapon(pBot->Player)) && GetPlayerCurrentWeaponClipAmmo(pBot->Player) > 0)
+							{
+								InterruptReload(pBot);
+								return true;
+							}
+							BotJump(pBot);
+						}
+					}
+
+				}
+				else
+				{
+					MoveTo(pBot, TrackedEnemyRef->LastSeenLocation, MOVESTYLE_NORMAL);
+				}
+			}
+
+			BotShootTarget(pBot, DesiredCombatWeapon, CurrentEnemy);
+		}
+	}
+
+	return false;
 }
 
 
@@ -2631,136 +2934,10 @@ bool MarineCombatThink(AvHAIPlayer* pBot)
 
 		pBot->LastCombatTime = gpGlobals->time;
 
-		if (PlayerHasWeapon(pBot->Player, WEAPON_MARINE_GL))
-		{
-			return BombardierCombatThink(pBot);
-		}
-		else
-		{
-			return RegularMarineCombatThink(pBot);
-		}
+		return RegularMarineCombatThink(pBot);
 	}
 
 	return false;
-
-
-	edict_t* pEdict = pBot->Edict;
-
-	edict_t* CurrentEnemy = pBot->TrackedEnemies[pBot->CurrentEnemy].EnemyEdict;
-	enemy_status* TrackedEnemyRef = &pBot->TrackedEnemies[pBot->CurrentEnemy];
-
-	pBot->LastCombatTime = gpGlobals->time;
-
-	// ENEMY IS OUT OF SIGHT
-
-	if (!TrackedEnemyRef->bHasLOS)
-	{
-		MarineHuntEnemy(pBot, TrackedEnemyRef);
-		return true;
-	}
-
-	// ENEMY IS VISIBLE
-
-	AvHAIWeapon DesiredCombatWeapon = BotMarineChooseBestWeapon(pBot, CurrentEnemy);
-	AvHAIWeapon PrimaryWeapon = UTIL_GetPlayerPrimaryWeapon(pBot->Player);
-
-	BotAttackResult LOSCheck = PerformAttackLOSCheck(pBot, DesiredCombatWeapon, TrackedEnemyRef->LastSeenLocation, CurrentEnemy);
-
-	if (LOSCheck == ATTACK_SUCCESS)
-	{
-		BotShootLocation(pBot, DesiredCombatWeapon, TrackedEnemyRef->LastSeenLocation);
-	}
-
-	float DistFromEnemy = vDist2DSq(pBot->Edict->v.origin, CurrentEnemy->v.origin);
-
-	if (DesiredCombatWeapon != WEAPON_MARINE_KNIFE)
-	{
-		if (DistFromEnemy < sqrf(100.0f))
-		{
-			if (IsPlayerReloading(pBot->Player) && CanInterruptWeaponReload(GetPlayerCurrentWeapon(pBot->Player)) && GetPlayerCurrentWeaponClipAmmo(pBot->Player) > 0)
-			{
-				InterruptReload(pBot);
-			}
-			BotJump(pBot);
-		}
-	}
-
-	// We're going to have the marine always try and use their primary weapon, which means
-	// that they will try and put enough distance between themselves and the enemy to use it effectively,
-	// and retreat if they need to reload or are out of ammo
-
-
-	// We are using our primary weapon right now (has ammo left in the clip)
-	if (DesiredCombatWeapon == PrimaryWeapon)
-	{
-		BotLookAt(pBot, CurrentEnemy);
-		if (LOSCheck == ATTACK_OUTOFRANGE)
-		{
-			MoveTo(pBot, TrackedEnemyRef->LastFloorPosition, MOVESTYLE_NORMAL);
-			if (gpGlobals->time - TrackedEnemyRef->LastSeenTime > 5.0f)
-			{
-				BotReloadWeapons(pBot);
-			}
-			return true;
-		}
-
-		// Note that we already do visibility checks above, so blocked here means there is another player or structure in the way
-		if (LOSCheck == ATTACK_BLOCKED)
-		{
-			edict_t* TracedEntity = UTIL_TraceEntity(pEdict, pBot->CurrentEyePosition, UTIL_GetCentreOfEntity(CurrentEnemy));
-
-			// Just blast through an alien structure if it's in the way
-			if (!FNullEnt(TracedEntity) && TracedEntity != CurrentEnemy)
-			{
-				if (TracedEntity->v.team != 0 && TracedEntity->v.team != pEdict->v.team)
-				{
-					BotShootTarget(pBot, DesiredCombatWeapon, TracedEntity);
-				}
-			}
-
-			float MinDesiredDist = GetMinIdealWeaponRange(DesiredCombatWeapon);
-
-			Vector EngagementLocation = pBot->BotNavInfo.TargetDestination;
-
-			float EngagementLocationDist = vDist2DSq(EngagementLocation, CurrentEnemy->v.origin);
-
-			if (!EngagementLocation || EngagementLocationDist < sqrf(MinDesiredDist) || PerformAttackLOSCheck(EngagementLocation + Vector(0.0f, 0.0f, 50.0f), DesiredCombatWeapon, CurrentEnemy) != ATTACK_SUCCESS)
-			{
-				EngagementLocation = UTIL_GetRandomPointOnNavmeshInRadius(pBot->BotNavInfo.NavProfile, CurrentEnemy->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
-
-				if (EngagementLocation != ZERO_VECTOR && PerformAttackLOSCheck(EngagementLocation + Vector(0.0f, 0.0f, 50.0f), DesiredCombatWeapon, CurrentEnemy) != ATTACK_SUCCESS)
-				{
-					EngagementLocation = ZERO_VECTOR;
-				}
-			}
-
-			MoveTo(pBot, EngagementLocation, MOVESTYLE_NORMAL);
-			return true;
-		}
-
-		if (LOSCheck == ATTACK_SUCCESS)
-		{
-			float MinDesiredDist = GetMinIdealWeaponRange(DesiredCombatWeapon);
-			Vector Orientation = UTIL_GetVectorNormal2D(CurrentEnemy->v.origin - pBot->Edict->v.origin);
-
-			float EnemyMoveDot = UTIL_GetDotProduct2D(UTIL_GetVectorNormal2D(CurrentEnemy->v.velocity), -Orientation);
-
-			// Enemy is too close for comfort, or is moving towards us. Back up
-			if (DistFromEnemy < MinDesiredDist || EnemyMoveDot > 0.7f)
-			{
-				Vector RetreatLocation = pBot->CurrentFloorPosition - (Orientation * 50.0f);
-
-				if (UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, RetreatLocation))
-				{
-					MoveDirectlyTo(pBot, RetreatLocation);
-				}
-			}
-		}
-
-		return true;
-	}
-
-	return true;
 }
 
 void AIPlayerSetPrimaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
@@ -4703,23 +4880,23 @@ bool LerkCombatThink(AvHAIPlayer* pBot)
 
 	if (pBot->CurrentCombatStrategy == COMBAT_STRATEGY_ATTACK)
 	{
-		pBot->DesiredCombatWeapon = WEAPON_LERK_BITE;
+		AvHAIWeapon DesiredWeapon = WEAPON_LERK_BITE;
 
 		if (vDist2DSq(pBot->Edict->v.origin, CurrentEnemy->v.origin) > sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
 		{
 			if (!IsAreaAffectedBySpores(CurrentEnemy->v.origin))
 			{
-				pBot->DesiredCombatWeapon = WEAPON_LERK_SPORES;
+				DesiredWeapon = WEAPON_LERK_SPORES;
 			}
 		}
 
 		MoveTo(pBot, CurrentEnemy->v.origin, MOVESTYLE_NORMAL);
 
-		BotAttackResult LOSCheck = PerformAttackLOSCheck(pBot, pBot->DesiredCombatWeapon, CurrentEnemy);
+		BotAttackResult LOSCheck = PerformAttackLOSCheck(pBot, DesiredWeapon, CurrentEnemy);
 
 		if (LOSCheck == ATTACK_SUCCESS)
 		{
-			BotShootTarget(pBot, pBot->DesiredCombatWeapon, CurrentEnemy);
+			BotShootTarget(pBot, DesiredWeapon, CurrentEnemy);
 		}
 
 		return true;		

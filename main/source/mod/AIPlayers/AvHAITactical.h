@@ -37,6 +37,7 @@ void						AITAC_RefreshBuildableStructures();
 AvHAIBuildableStructure*	AITAC_UpdateBuildableStructure(CBaseEntity* Structure);
 void						AITAC_RefreshReachabilityForStructure(AvHAIBuildableStructure* Structure);
 void						AITAC_RefreshReachabilityForResNode(AvHAIResourceNode* ResNode);
+void						AITAC_RefreshReachabilityForHive(AvHAIHiveDefinition* Hive);
 void						AITAC_RefreshAllResNodeReachability();
 void						AITAC_RefreshReachabilityForItem(AvHAIDroppedItem* Item);
 void						AITAC_OnStructureCreated(AvHAIBuildableStructure* NewStructure);
@@ -131,6 +132,8 @@ bool AITAC_TeamHiveWithTechExists(const AvHTeamNumber Team, const AvHMessageID T
 AvHAIDeployableItemType UTIL_GetItemTypeFromEdict(const edict_t* ItemEdict);
 bool UTIL_DroppedItemIsPrimaryWeapon(const AvHAIDeployableItemType ItemType);
 
+AvHAIWeapon UTIL_GetWeaponTypeFromDroppedItem(const AvHAIDeployableItemType ItemType);
+
 bool UTIL_StructureIsResearching(edict_t* Structure);
 bool UTIL_StructureIsResearching(edict_t* Structure, const AvHMessageID Research);
 bool UTIL_StructureIsUpgrading(edict_t* Structure);
@@ -176,5 +179,7 @@ void AITAC_OnTeamStartsModified();
 edict_t* AITAC_AlienFindNearestHealingSource(AvHTeamNumber Team, Vector SearchLocation, edict_t* SearchingPlayer, bool bIncludeGorges);
 
 bool AITAC_IsAlienUpgradeAvailableForTeam(AvHTeamNumber Team, HiveTechStatus DesiredTech);
+
+int AITAC_GetNumWeaponsInPlay(AvHTeamNumber Team, AvHAIWeapon WeaponType);
 
 #endif

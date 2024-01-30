@@ -739,6 +739,8 @@ void AITAC_RefreshHiveData()
 			it->FloorLocation = AITAC_GetFloorLocationForHive(&(*it));
 
 			it->NextFloorLocationCheck = gpGlobals->time + (5.0f + (0.1f * NextRefresh));
+
+			AITAC_RefreshReachabilityForHive(&(*it));
 		}
 
 		NextRefresh++;
@@ -991,6 +993,139 @@ void AITAC_RefreshAllResNodeReachability()
 	}
 }
 
+void AITAC_RefreshReachabilityForHive(AvHAIHiveDefinition* Hive)
+{
+
+	if (!bTileCacheUpToDate) { return; }
+
+	Hive->TeamAReachabilityFlags = AI_REACHABILITY_NONE;
+	Hive->TeamBReachabilityFlags = AI_REACHABILITY_NONE;
+
+	Vector HiveLocation = Hive->FloorLocation;
+
+	bool bOnNavMesh = UTIL_PointIsOnNavmesh(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), HiveLocation, Vector(max_player_use_reach, max_player_use_reach, max_player_use_reach));
+
+	if (!bOnNavMesh)
+	{
+		Hive->TeamAReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
+		Hive->TeamBReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
+		return;
+	}
+
+	Vector TeamAStart = AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber());
+	Vector TeamBStart = AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamBNumber());
+
+	if (GetGameRules()->GetTeamA()->GetTeamType() == AVH_CLASS_TYPE_MARINE)
+	{
+		bool bIsReachableMarine = UTIL_PointIsReachable(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), TeamAStart, HiveLocation, max_player_use_reach);
+
+		if (bIsReachableMarine)
+		{
+			Hive->TeamAReachabilityFlags |= AI_REACHABILITY_MARINE;
+			Hive->TeamAReachabilityFlags |= AI_REACHABILITY_WELDER;
+		}
+		else
+		{
+			nav_profile WelderProfile;
+			memcpy(&WelderProfile, &BaseNavProfiles[MARINE_BASE_NAV_PROFILE], sizeof(nav_profile));
+
+			WelderProfile.Filters.addIncludeFlags(SAMPLE_POLYFLAGS_WELD);
+
+			bool bIsReachableWelder = UTIL_PointIsReachable(WelderProfile, TeamAStart, HiveLocation, max_player_use_reach);
+
+			if (bIsReachableWelder)
+			{
+				Hive->TeamAReachabilityFlags |= AI_REACHABILITY_WELDER;
+			}
+			else
+			{
+				Hive->TeamAReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
+			}
+		}
+	}
+	else
+	{
+		bool bIsReachableSkulk = UTIL_PointIsReachable(GetBaseNavProfile(SKULK_BASE_NAV_PROFILE), TeamAStart, HiveLocation, max_player_use_reach);
+		bool bIsReachableGorge = UTIL_PointIsReachable(GetBaseNavProfile(GORGE_BASE_NAV_PROFILE), TeamAStart, HiveLocation, max_player_use_reach);
+		bool bIsReachableOnos = UTIL_PointIsReachable(GetBaseNavProfile(ONOS_BASE_NAV_PROFILE), TeamAStart, HiveLocation, max_player_use_reach);
+
+		if (bIsReachableSkulk)
+		{
+			Hive->TeamAReachabilityFlags |= AI_REACHABILITY_SKULK;
+		}
+
+		if (bIsReachableGorge)
+		{
+			Hive->TeamAReachabilityFlags |= AI_REACHABILITY_GORGE;
+		}
+
+		if (bIsReachableOnos)
+		{
+			Hive->TeamAReachabilityFlags |= AI_REACHABILITY_ONOS;
+		}
+
+		if (Hive->TeamAReachabilityFlags == AI_REACHABILITY_NONE)
+		{
+			Hive->TeamAReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
+		}
+	}
+
+	if (GetGameRules()->GetTeamB()->GetTeamType() == AVH_CLASS_TYPE_MARINE)
+	{
+		bool bIsReachableMarine = UTIL_PointIsReachable(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), TeamBStart, HiveLocation, max_player_use_reach);
+
+		if (bIsReachableMarine)
+		{
+			Hive->TeamBReachabilityFlags |= AI_REACHABILITY_MARINE;
+			Hive->TeamBReachabilityFlags |= AI_REACHABILITY_WELDER;
+		}
+		else
+		{
+			nav_profile WelderProfile;
+			memcpy(&WelderProfile, &BaseNavProfiles[MARINE_BASE_NAV_PROFILE], sizeof(nav_profile));
+
+			WelderProfile.Filters.addIncludeFlags(SAMPLE_POLYFLAGS_WELD);
+
+			bool bIsReachableWelder = UTIL_PointIsReachable(WelderProfile, TeamBStart, HiveLocation, max_player_use_reach);
+
+			if (bIsReachableWelder)
+			{
+				Hive->TeamBReachabilityFlags |= AI_REACHABILITY_WELDER;
+			}
+			else
+			{
+				Hive->TeamBReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
+			}
+		}
+	}
+	else
+	{
+		bool bIsReachableSkulk = UTIL_PointIsReachable(GetBaseNavProfile(SKULK_BASE_NAV_PROFILE), TeamBStart, HiveLocation, max_player_use_reach);
+		bool bIsReachableGorge = UTIL_PointIsReachable(GetBaseNavProfile(GORGE_BASE_NAV_PROFILE), TeamBStart, HiveLocation, max_player_use_reach);
+		bool bIsReachableOnos = UTIL_PointIsReachable(GetBaseNavProfile(ONOS_BASE_NAV_PROFILE), TeamBStart, HiveLocation, max_player_use_reach);
+
+		if (bIsReachableSkulk)
+		{
+			Hive->TeamBReachabilityFlags |= AI_REACHABILITY_SKULK;
+		}
+
+		if (bIsReachableGorge)
+		{
+			Hive->TeamBReachabilityFlags |= AI_REACHABILITY_GORGE;
+		}
+
+		if (bIsReachableOnos)
+		{
+			Hive->TeamBReachabilityFlags |= AI_REACHABILITY_ONOS;
+		}
+
+		if (Hive->TeamBReachabilityFlags == AI_REACHABILITY_NONE)
+		{
+			Hive->TeamBReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
+		}
+	}
+}
+
 void AITAC_RefreshReachabilityForResNode(AvHAIResourceNode* ResNode)
 {
 	if (Hives.size() == 0)
@@ -1129,7 +1264,6 @@ void AITAC_RefreshReachabilityForResNode(AvHAIResourceNode* ResNode)
 			ResNode->TeamBReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
 		}
 	}
-
 }
 
 void AITAC_PopulateResourceNodes()
@@ -2951,6 +3085,27 @@ bool UTIL_DroppedItemIsPrimaryWeapon(const AvHAIDeployableItemType ItemType)
 	return false;
 }
 
+AvHAIWeapon UTIL_GetWeaponTypeFromDroppedItem(const AvHAIDeployableItemType ItemType)
+{
+	switch (ItemType)
+	{
+	case DEPLOYABLE_ITEM_GRENADELAUNCHER:
+		return WEAPON_MARINE_GL;
+	case DEPLOYABLE_ITEM_HMG:
+		return WEAPON_MARINE_HMG;
+	case DEPLOYABLE_ITEM_SHOTGUN:
+		return WEAPON_MARINE_SHOTGUN;
+	case DEPLOYABLE_ITEM_WELDER:
+		return WEAPON_MARINE_WELDER;
+	case DEPLOYABLE_ITEM_MINES:
+		return WEAPON_MARINE_MINES;
+	default:
+		return WEAPON_INVALID;
+	}
+
+	return WEAPON_INVALID;
+}
+
 Vector UTIL_GetNextMinePosition(edict_t* StructureToMine)
 {
 	if (FNullEnt(StructureToMine)) { return ZERO_VECTOR; }
@@ -4226,4 +4381,50 @@ bool AITAC_IsAlienUpgradeAvailableForTeam(AvHTeamNumber Team, HiveTechStatus Des
 	ChamberFilter.DeployableTypes = SearchType;
 
 	return (AITAC_DeployableExistsAtLocation(ZERO_VECTOR, &ChamberFilter));
+}
+
+int AITAC_GetNumWeaponsInPlay(AvHTeamNumber Team, AvHAIWeapon WeaponType)
+{
+	int Result = 0;
+
+	vector<AvHPlayer*> PlayerList = AIMGR_GetAllPlayersOnTeam(Team);
+
+	for (auto it = PlayerList.begin(); it != PlayerList.end(); it++)
+	{
+		AvHPlayer* PlayerRef = (*it);
+
+		if (!PlayerRef) { continue; }
+
+		edict_t* PlayerEdict = PlayerRef->edict();
+
+		if (PlayerRef && !FNullEnt(PlayerEdict) && IsPlayerActiveInGame(PlayerEdict) && PlayerHasWeapon(PlayerRef, WeaponType))
+		{
+			Result++;
+		}
+	}
+
+
+	for (auto it = MarineDroppedItemMap.begin(); it != MarineDroppedItemMap.end(); it++)
+	{
+		AvHAIWeapon ThisWeaponType = UTIL_GetWeaponTypeFromDroppedItem(it->second.ItemType);
+
+		if (ThisWeaponType != WeaponType) { continue; }
+
+		unsigned int ReachabilityFlags = (Team == TEAM_IND) ? (it->second.TeamAReachabilityFlags | it->second.TeamBReachabilityFlags) : ((Team == GetGameRules()->GetTeamANumber()) ? it->second.TeamAReachabilityFlags : it->second.TeamBReachabilityFlags);
+
+		if (ReachabilityFlags != AI_REACHABILITY_UNREACHABLE)
+		{
+			DeployableSearchFilter ArmouryFilter;
+			ArmouryFilter.DeployableTypes = (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY);
+			ArmouryFilter.DeployableTeam = Team;
+			ArmouryFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(10.0f);
+			
+			if (AITAC_DeployableExistsAtLocation(it->second.Location, &ArmouryFilter))
+			{
+				Result++;
+			}
+		}
+	}
+
+	return Result;
 }

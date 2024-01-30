@@ -255,6 +255,8 @@
 #include "AvHNetworkMessages.h"
 #include "AvHNexusServer.h"
 
+#include "AIPlayers/AvHAIPlayerManager.h"
+
 std::string GetLogStringForPlayer( edict_t *pEntity );
 
 extern int gJetpackEventID;
@@ -9162,6 +9164,17 @@ int AvHPlayer::TakeDamage( entvars_t* pevInflictor, entvars_t* pevAttacker, floa
                 if(pevAttacker)
                 {
                     CBasePlayer* inAttackingPlayer = dynamic_cast<CBasePlayer*>(CBaseEntity::Instance(ENT(pevAttacker)));
+
+                    if (inAttackingPlayer)
+                    {
+                        AvHAIPlayer* VictimBot = AIMGR_GetBotRefFromPlayer(this);
+
+                        if (VictimBot)
+                        {
+                            AIPlayerTakeDamage(VictimBot, flDamage, inAttackingPlayer->edict());
+                        }
+                    }
+
                     const char* inWeaponName = STRING(pevInflictor->classname);
                     if(inAttackingPlayer && inWeaponName)
                     {

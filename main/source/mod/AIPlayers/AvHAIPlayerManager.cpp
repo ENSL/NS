@@ -234,7 +234,7 @@ void AIMGR_UpdateFillTeams()
 		}
 	}
 	
-	if (TeamSizeA < NumDesiredTeamA)
+	if (TeamSizeA < NumDesiredTeamA && TeamSizeA <= TeamSizeB)
 	{
 		AIMGR_AddAIPlayerToTeam(1);
 		return;
@@ -249,7 +249,7 @@ void AIMGR_UpdateFillTeams()
 		}
 	}
 
-	if (TeamSizeB < NumDesiredTeamB)
+	if (TeamSizeB < NumDesiredTeamB && TeamSizeB <= TeamSizeA)
 	{
 		AIMGR_AddAIPlayerToTeam(2);
 		return;
@@ -616,51 +616,20 @@ void AIMGR_UpdateAIPlayers()
 		BotIt++;
 	}
 
-	vector<AvHAIPlayer*> AlienPlayers = AIMGR_GetAIPlayersOnTeam(TEAM_TWO);
-
-	int NumBuilders = 0;
-	int NumCappers = 0;
-	int NumHarassers = 0;
-	int NumAssault = 0;
-
-	for (auto it = AlienPlayers.begin(); it != AlienPlayers.end(); it++)
+	if (!vIsZero(DebugVector1) && !vIsZero(DebugVector2))
 	{
-		AvHAIPlayer* NewCapper = (*it);
+		vector<bot_path_node> path;
 
-		if (NewCapper)
+		nav_profile NavProfile = GetBaseNavProfile(MARINE_BASE_NAV_PROFILE);
+		NavProfile.Filters.addIncludeFlags(SAMPLE_POLYFLAGS_WELD);
+
+		dtStatus PathStatus = FindPathClosestToPoint(NavProfile, DebugVector1, DebugVector2, path, 100.0f);
+
+		if (dtStatusSucceed(PathStatus))
 		{
-			switch (NewCapper->BotRole)
-			{
-			case BOT_ROLE_BUILDER:
-				NumBuilders++;
-				break;
-			case BOT_ROLE_FIND_RESOURCES:
-				NumCappers++;
-				break;
-			case BOT_ROLE_HARASS:
-				NumHarassers++;
-				break;
-			case BOT_ROLE_ASSAULT:
-				NumAssault++;
-				break;
-			default:
-				break;
-			}
+			AIDEBUG_DrawPath(path, 0.1f);
 		}
 	}
-
-	char buf[256];
-	char interbuf[32];
-
-	sprintf(buf, "Builders: %d\n", NumBuilders);
-	sprintf(interbuf, "Cappers: %d\n", NumCappers);
-	strcat(buf, interbuf);
-	sprintf(interbuf, "Harassers: %d\n", NumHarassers);
-	strcat(buf, interbuf);
-	sprintf(interbuf, "Assault: %d\n", NumAssault);
-	strcat(buf, interbuf);
-
-	UTIL_DrawHUDText(INDEXENT(1), 0, 0.1f, 0.1f, 255, 255, 255, buf);
 
 	PrevTime = CurrTime;
 
@@ -676,6 +645,16 @@ int AIMGR_GetNumAIPlayers()
 	return ActiveAIPlayers.size();
 }
 
+AvHTeamNumber AIMGR_GetTeamANumber()
+{
+	return GetGameRules()->GetTeamANumber();
+}
+
+AvHTeamNumber AIMGR_GetTeamBNumber()
+{
+	return GetGameRules()->GetTeamANumber();
+}
+
 vector<AvHPlayer*> AIMGR_GetAllPlayersOnTeam(AvHTeamNumber Team)
 {
 	vector<AvHPlayer*> Result;
@@ -684,7 +663,7 @@ vector<AvHPlayer*> AIMGR_GetAllPlayersOnTeam(AvHTeamNumber Team)
 	{
 		edict_t* PlayerEdict = INDEXENT(i);
 
-		if (!FNullEnt(PlayerEdict) && PlayerEdict->v.team == Team)
+		if (!FNullEnt(PlayerEdict) && (Team == TEAM_IND || PlayerEdict->v.team == Team))
 		{
 			AvHPlayer* PlayerRef = dynamic_cast<AvHPlayer*>(CBaseEntity::Instance(PlayerEdict));
 
@@ -832,6 +811,8 @@ void AIMGR_RoundStarted()
 
 	AITAC_RefreshHiveData();
 
+	UTIL_UpdateDoors(true);
+
 	UTIL_UpdateTileCache();
 	
 }
@@ -900,6 +881,16 @@ AvHAIPlayer* AIMGR_GetAICommander(AvHTeamNumber Team)
 		{
 			return &(*it);
 		}
+	}
+
+	return nullptr;
+}
+
+AvHAIPlayer* AIMGR_GetBotRefFromPlayer(AvHPlayer* PlayerRef)
+{
+	for (auto BotIt = ActiveAIPlayers.begin(); BotIt != ActiveAIPlayers.end(); BotIt++)
+	{
+		if (BotIt->Player == PlayerRef) { return &(*BotIt); }
 	}
 
 	return nullptr;

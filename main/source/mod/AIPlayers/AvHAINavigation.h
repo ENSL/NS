@@ -71,40 +71,6 @@ enum SamplePolyFlags
 	SAMPLE_POLYFLAGS_ALL			= -1	// All abilities.
 };
 
-// Door type. Not currently used, future feature so bots know how to open a door
-enum DoorActivationType
-{
-	DOOR_NONE,   // No type, cannot be activated (permanently open/shut)
-	DOOR_USE,    // Door activated by using it directly
-	DOOR_TRIGGER,// Door activated by touching a trigger_once or trigger_multiple
-	DOOR_BUTTON, // Door activated by pressing a button
-	DOOR_WELD,   // Door activated by welding something
-	DOOR_SHOOT,  // Door activated by being shot
-	DOOR_BREAK	 // Door activated by breaking something
-};
-
-// Door type. Not currently used, future feature so bots know how to open a door
-enum NavDoorType
-{
-	DOORTYPE_DOOR,   // No type, cannot be activated (permanently open/shut)
-	DOORTYPE_PLAT,    // Door activated by using it directly
-	DOORTYPE_TRAIN	// Door activated by touching a trigger_once or trigger_multiple
-};
-
-typedef struct _DOOR_TRIGGER
-{
-	CBaseEntity* Entity = nullptr;
-	CBaseToggle* ToggleEnt = nullptr;
-	edict_t* Edict = nullptr;
-	DoorActivationType TriggerType = DOOR_NONE;
-	bool bIsActivated = false;
-	CBaseEntity* TriggerChangeTargetRef = nullptr;
-	float ActivationDelay = 0.0f;
-	float LastActivatedTime = 0.0f;
-	TOGGLE_STATE LastToggleState = TS_AT_BOTTOM;
-	float LastNextThink = 0.0f;
-	float NextActivationTime = 0.0f;
-} DoorTrigger;
 
 // Door reference. Not used, but is a future feature to allow bots to track if a door is open or not, and how to open it etc.
 typedef struct _NAV_DOOR
@@ -504,6 +470,18 @@ void UTIL_PopulateBaseNavProfiles();
 void OnOffMeshConnectionAdded(dtOffMeshConnection* NewConnection);
 
 const dtOffMeshConnection* DEBUG_FindNearestOffMeshConnectionToPoint(const Vector Point, unsigned int FilterFlags);
+
+void NAV_SetPickupMovementTask(AvHAIPlayer* pBot, edict_t* ThingToPickup, DoorTrigger* TriggerToActivate);
+void NAV_SetMoveMovementTask(AvHAIPlayer* pBot, Vector MoveLocation, DoorTrigger* TriggerToActivate);
+void NAV_SetTouchMovementTask(AvHAIPlayer* pBot, edict_t* EntityToTouch, DoorTrigger* TriggerToActivate);
+void NAV_SetUseMovementTask(AvHAIPlayer* pBot, edict_t* EntityToUse, DoorTrigger* TriggerToActivate);
+void NAV_SetBreakMovementTask(AvHAIPlayer* pBot, edict_t* EntityToBreak, DoorTrigger* TriggerToActivate);
+void NAV_SetWeldMovementTask(AvHAIPlayer* pBot, edict_t* EntityToWeld, DoorTrigger* TriggerToActivate);
+
+void NAV_ClearMovementTask(AvHAIPlayer* pBot);
+
+void NAV_ProgressMovementTask(AvHAIPlayer* pBot);
+bool NAV_IsMovementTaskStillValid(AvHAIPlayer* pBot);
 
 #endif // BOT_NAVIGATION_H
 
