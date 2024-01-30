@@ -20,7 +20,8 @@ bool CanBotLeap(AvHAIPlayer* pBot);
 void BotLeap(AvHAIPlayer* pBot, const Vector TargetLocation);
 float GetLeapCost(AvHAIPlayer* pBot);
 
-void BotReloadWeapons(AvHAIPlayer* pBot);
+// Returns true if the bot needs to reload
+bool BotReloadWeapons(AvHAIPlayer* pBot);
 
 // Make the bot type something in either global or team chat
 void BotSay(AvHAIPlayer* pBot, bool bTeamSay, float Delay, char* textToSay);
@@ -104,6 +105,8 @@ void UpdateAIPlayerCORole(AvHAIPlayer* pBot);
 void UpdateAIPlayerDMRole(AvHAIPlayer* pBot);
 
 bool ShouldAIPlayerTakeCommand(AvHAIPlayer* pBot);
+
+void AIPlayerTakeDamage(AvHAIPlayer* pBot, int damageTaken, edict_t* aggressor);
 
 int BotGetNextEnemyTarget(AvHAIPlayer* pBot);
 

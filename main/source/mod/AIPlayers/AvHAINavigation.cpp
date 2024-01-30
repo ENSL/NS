@@ -511,7 +511,6 @@ void UTIL_RemoveStructureTemporaryObstacles(AvHAIBuildableStructure* Structure)
 
 void UTIL_AddTemporaryObstacles(const Vector Location, float Radius, float Height, int area, unsigned int* ObstacleRefArray)
 {
-	unsigned int ObstacleNum = 0;
 
 	float Pos[3] = { Location.x, Location.z - (Height * 0.5f), -Location.y };
 
@@ -526,7 +525,7 @@ void UTIL_AddTemporaryObstacles(const Vector Location, float Radius, float Heigh
 
 			ObstacleRefArray[i] = (unsigned int)ObsRef;
 
-			if (ObstacleNum > 0)
+			if ((unsigned int)ObsRef > 0)
 			{
 				bNavMeshModified = true;
 			}
@@ -1822,6 +1821,11 @@ dtStatus FindPathClosestToPoint(AvHAIPlayer* pBot, const BotMoveStyle MoveStyle,
 
 		pBot->BotNavInfo.SpecialMovementFlags |= CurrFlags;
 
+		if (pBot->BotNavInfo.SpecialMovementFlags & SAMPLE_POLYFLAGS_WELD)
+		{
+			bool bPing = true;
+		}
+
 		// End alignment to floor
 
 		// For ladders and wall climbing, calculate the climb height needed to complete the move.
@@ -2063,7 +2067,7 @@ void CheckAndHandleDoorObstruction(AvHAIPlayer* pBot)
 			return;
 		}
 
-		AITASK_SetWeldTask(pBot, &pBot->BotNavInfo.MovementTask, BlockingDoorEdict, true);
+		NAV_SetWeldMovementTask(pBot, BlockingDoorEdict, nullptr);
 
 		return;
 	}
@@ -2126,7 +2130,7 @@ void CheckAndHandleDoorObstruction(AvHAIPlayer* pBot)
 		// Door must be shot to open
 		if (Door->ActivationType == DOOR_SHOOT)
 		{
-			BotAttackNonPlayerTarget(pBot, Door->DoorEdict);
+			BotShootTarget(pBot, GetPlayerCurrentWeapon(pBot->Player), Door->DoorEdict);
 			return;
 		}
 
@@ -2139,19 +2143,19 @@ void CheckAndHandleDoorObstruction(AvHAIPlayer* pBot)
 			{
 				Vector UseLocation = UTIL_GetButtonFloorLocation(pBot->Edict->v.origin, Trigger->Edict);
 
-				AITASK_SetUseTask(pBot, &pBot->BotNavInfo.MovementTask, Trigger->Edict, UseLocation, true);
+				NAV_SetUseMovementTask(pBot, Trigger->Edict, Trigger);
 			}
 			else if (Trigger->TriggerType == DOOR_TRIGGER)
 			{
-				AITASK_SetTouchTask(pBot, &pBot->BotNavInfo.MovementTask, Trigger->Edict, true);	
+				NAV_SetTouchMovementTask(pBot, Trigger->Edict, Trigger);
 			}
 			else if (Trigger->TriggerType == DOOR_WELD)
 			{
-				AITASK_SetWeldTask(pBot, &pBot->BotNavInfo.MovementTask, Trigger->Edict, true);
+				NAV_SetWeldMovementTask(pBot, Trigger->Edict, Trigger);
 			}
 			else if (Trigger->TriggerType == DOOR_BREAK)
 			{
-				AITASK_SetAttackTask(pBot, &pBot->BotNavInfo.MovementTask, Trigger->Edict, true);
+				NAV_SetBreakMovementTask(pBot, Trigger->Edict, Trigger);
 			}
 
 			return;
@@ -3623,7 +3627,7 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 	{
 		if (vDist2DSq(pBot->Edict->v.origin, StartPoint) > sqrf(50.0f))
 		{
-			AITASK_SetMoveTask(pBot, &pBot->BotNavInfo.MovementTask, StartPoint, true);
+			NAV_SetMoveMovementTask(pBot, StartPoint, nullptr);
 		}
 		return;
 	}
@@ -3634,7 +3638,7 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 		{
 			if (vDist2DSq(pBot->Edict->v.origin, StartPoint) > sqrf(50.0f))
 			{
-				AITASK_SetMoveTask(pBot, &pBot->BotNavInfo.MovementTask, StartPoint, true);
+				NAV_SetMoveMovementTask(pBot, StartPoint, nullptr);
 				return;
 			}
 
@@ -3700,7 +3704,7 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 					{
 						if (vDist2DSq(pBot->Edict->v.origin, StartPoint) > sqrf(32.0f))
 						{
-							AITASK_SetMoveTask(pBot, &pBot->BotNavInfo.MovementTask, StartPoint, true);
+							NAV_SetMoveMovementTask(pBot, StartPoint, nullptr);
 						}
 					}
 					
@@ -3764,19 +3768,19 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 			{
 				Vector UseLocation = UTIL_GetButtonFloorLocation(pBot->Edict->v.origin, NearestLiftTrigger->Edict);
 
-				AITASK_SetUseTask(pBot, &pBot->BotNavInfo.MovementTask, NearestLiftTrigger->Edict, UseLocation, true);
+				NAV_SetUseMovementTask(pBot, NearestLiftTrigger->Edict, NearestLiftTrigger);
 			}
 			else if (NearestLiftTrigger->TriggerType == DOOR_TRIGGER)
 			{
-				AITASK_SetTouchTask(pBot, &pBot->BotNavInfo.MovementTask, NearestLiftTrigger->Edict, true);
+				NAV_SetTouchMovementTask(pBot, NearestLiftTrigger->Edict, NearestLiftTrigger);
 			}
 			else if (NearestLiftTrigger->TriggerType == DOOR_WELD)
 			{
-				AITASK_SetWeldTask(pBot, &pBot->BotNavInfo.MovementTask, NearestLiftTrigger->Edict, true);
+				NAV_SetWeldMovementTask(pBot, NearestLiftTrigger->Edict, NearestLiftTrigger);
 			}
 			else if (NearestLiftTrigger->TriggerType == DOOR_BREAK)
 			{
-				AITASK_SetAttackTask(pBot, &pBot->BotNavInfo.MovementTask, NearestLiftTrigger->Edict, true);
+				NAV_SetBreakMovementTask(pBot, NearestLiftTrigger->Edict, NearestLiftTrigger);
 			}
 
 			return;
@@ -3785,7 +3789,7 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 		{
 			if (!bIsOnLift && vDist2DSq(pBot->Edict->v.origin, StartPoint) > sqrf(50.0f) && !bIsLiftAtOrNearStart)
 			{
-				AITASK_SetMoveTask(pBot, &pBot->BotNavInfo.MovementTask, StartPoint, true);
+				NAV_SetMoveMovementTask(pBot, StartPoint, nullptr);
 			}
 			else
 			{
@@ -4958,6 +4962,23 @@ bool AbortCurrentMove(AvHAIPlayer* pBot, const Vector NewDestination)
 
 	bool bReverseCourse = (vDist3DSq(DestinationPointOnLine, MoveFrom) < vDist3DSq(DestinationPointOnLine, MoveTo));
 
+	if (flag == SAMPLE_POLYFLAGS_LIFT)
+	{
+		if (UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, MoveFrom) || UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, MoveTo))
+		{
+			return true;
+		}
+
+		if (bReverseCourse)
+		{
+			LiftMove(pBot, MoveTo, MoveFrom);
+		}
+		else
+		{
+			LiftMove(pBot, MoveFrom, MoveTo);
+		}
+	}
+
 	if (flag == SAMPLE_POLYFLAGS_WALK)
 	{
 		if (UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, MoveFrom) || UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, MoveTo))
@@ -5337,9 +5358,13 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 	bool bIsFlyingProfile = pBot->BotNavInfo.NavProfile.bFlyingProfile;
 	bool bNavProfileChanged = pBot->BotNavInfo.bNavProfileChanged;
 	bool bForceRecalculation = (pBot->BotNavInfo.NextForceRecalc > 0.0f && gpGlobals->time >= pBot->BotNavInfo.NextForceRecalc);
+	bool bIsPerformingMoveTask = (BotNavInfo->MovementTask.TaskType != MOVE_TASK_NONE && vEquals(Destination, BotNavInfo->MovementTask.TaskLocation, GetPlayerRadius(pBot->Player)));
+	bool bEndGoalChanged = (!vEquals(Destination, BotNavInfo->TargetDestination, GetPlayerRadius(pBot->Player)) && !bIsPerformingMoveTask);
+	bool bMoveTaskGenerated = (BotNavInfo->MovementTask.TaskType == MOVE_TASK_NONE || (vEquals(BotNavInfo->PathDestination, BotNavInfo->MovementTask.TaskLocation, GetPlayerRadius(pBot->Player))));
+
 
 	// Only recalculate the path if there isn't a path, or something has changed and enough time has elapsed since the last path calculation
-	bool bShouldCalculatePath = (bNavProfileChanged || bForceRecalculation || BotNavInfo->CurrentPath.size() == 0 || !vEquals(Destination, BotNavInfo->TargetDestination, GetPlayerRadius(pBot->Player)));
+	bool bShouldCalculatePath = (bNavProfileChanged || bForceRecalculation || BotNavInfo->CurrentPath.size() == 0 || bEndGoalChanged || !bMoveTaskGenerated);
 
 	if (bShouldCalculatePath)
 	{
@@ -5348,6 +5373,12 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 		if (!bIsFlyingProfile && !pBot->BotNavInfo.IsOnGround) { return true; }
 
 		dtStatus PathFindingStatus = DT_FAILURE;
+		
+		if (bEndGoalChanged)
+		{
+			ClearBotPath(pBot);
+			NAV_ClearMovementTask(pBot);
+		}
 
 		if (bIsFlyingProfile)
 		{
@@ -5365,11 +5396,17 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 		pBot->BotNavInfo.bNavProfileChanged = false;
 
 		if (dtStatusSucceed(PathFindingStatus))
-		{
-			BotNavInfo->PathDestination = BotNavInfo->CurrentPath.back().Location;
+		{		
 			ClearBotStuckMovement(pBot);
 			pBot->BotNavInfo.TotalStuckTime = 0.0f;
-			BotNavInfo->TargetDestination = Destination;
+			BotNavInfo->PathDestination = Destination;
+
+			if (!bIsPerformingMoveTask)
+			{
+				BotNavInfo->ActualMoveDestination = BotNavInfo->CurrentPath.back().Location;
+				BotNavInfo->TargetDestination = Destination;
+			}
+
 			BotNavInfo->CurrentPathPoint = BotNavInfo->CurrentPath.begin();
 		}
 		else
@@ -5410,252 +5447,40 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 		}
 	}
 
-	if (BotNavInfo->CurrentPath.size() > 0)
+	if (!bIsPerformingMoveTask && BotNavInfo->MovementTask.TaskType != MOVE_TASK_NONE)
 	{
-		if (IsBotPermaStuck(pBot))
+		if (NAV_IsMovementTaskStillValid(pBot))
 		{
-			BotSuicide(pBot);
-			return false;
-		}
-
-		if (pBot->Edict->v.flags & FL_INWATER)
-		{
-			BotFollowSwimPath(pBot);
-		}
-		else
-		{
-			if (bIsFlyingProfile)
-			{
-				BotFollowFlightPath(pBot);
-			}
-			else
-			{
-				BotFollowPath(pBot);
-			}
-		}
-
-		// Check to ensure BotFollowFlightPath or BotFollowPath haven't cleared the path (will happen if reached end of path)
-		if (BotNavInfo->CurrentPathPoint != BotNavInfo->CurrentPath.end())
-		{
-			HandlePlayerAvoidance(pBot, BotNavInfo->CurrentPathPoint->Location);
-			BotMovementInputs(pBot);
-		}
-
-		return true;
-	}
-
-	return false;
-
-}
-
-bool MoveTo_OLD(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle MoveStyle, const float MaxAcceptableDist)
-{
-	nav_status* BotNavInfo = &pBot->BotNavInfo;
-
-	// If we are currently in the process of getting back on the navmesh, don't interrupt
-	if (BotNavInfo->UnstuckMoveLocation != g_vecZero)
-	{
-		if (IsBotPermaStuck(pBot))
-		{
-			BotSuicide(pBot);
-			return false;
-		}
-
-		Vector MoveTarget = BotNavInfo->UnstuckMoveStartLocation + (UTIL_GetVectorNormal2D(BotNavInfo->UnstuckMoveLocation - BotNavInfo->UnstuckMoveStartLocation) * 100.0f);
-
-		MoveDirectlyTo(pBot, MoveTarget);
-
-		Vector ClosestPoint = vClosestPointOnLine2D(BotNavInfo->UnstuckMoveStartLocation, BotNavInfo->UnstuckMoveLocation, pBot->Edict->v.origin);
-
-		bool bAtOrPastMoveLocation = vEquals2D(ClosestPoint, BotNavInfo->UnstuckMoveLocation, 0.1f);
-
-		if (bAtOrPastMoveLocation)
-		{
-			ClearBotStuckMovement(pBot);
+			NAV_ProgressMovementTask(pBot);
 			return true;
 		}
 		else
 		{
-			// This should only be a short movement, if we don't get there in a few seconds then give up
-			if ((gpGlobals->time - BotNavInfo->UnstuckMoveLocationStartTime) > 5.0f)
-			{
-				ClearBotStuckMovement(pBot);
-				return true;
-			}
-
-			BotJump(pBot);
-
-			if (IsPlayerSkulk(pBot->Edict))
-			{
-				pBot->Button &= ~IN_DUCK;
-			}
-			else
-			{
-				pBot->Button |= IN_DUCK;
-			}
-
-
-
-			return true;
-		}
-	}
-
-	pBot->BotNavInfo.MoveStyle = MoveStyle;
-	UTIL_UpdateBotMovementStatus(pBot);	
-	
-	bool bIsFlyingProfile = pBot->BotNavInfo.NavProfile.bFlyingProfile;
-
-	bool bForceRecalculation = (pBot->BotNavInfo.NextForceRecalc > 0.0f && gpGlobals->time >= pBot->BotNavInfo.NextForceRecalc);
-
-	if (BotNavInfo->CurrentPath.size() > 0)
-	{
-		if (pBot->BotNavInfo.CurrentPathPoint == pBot->BotNavInfo.CurrentPath.end())
-		{
+			NAV_ClearMovementTask(pBot);
 			ClearBotPath(pBot);
 			return true;
 		}
-
-		bool bNavProfileChanged = pBot->BotNavInfo.bNavProfileChanged;
-
-		bool bHasMovementTask = (BotNavInfo->MovementTask.TaskType != TASK_NONE);
-
-		Vector MoveTaskDestination = g_vecZero;
-		Vector MoveTaskOrigin = g_vecZero;
-		Vector MoveSecondaryOrigin = g_vecZero;
-
-		if (bHasMovementTask)
-		{
-			MoveTaskDestination = BotNavInfo->MovementTask.TaskLocation;
-			MoveTaskOrigin = (!FNullEnt(BotNavInfo->MovementTask.TaskTarget)) ? BotNavInfo->MovementTask.TaskTarget->v.origin : g_vecZero;
-			MoveSecondaryOrigin = (!FNullEnt(BotNavInfo->MovementTask.TaskSecondaryTarget)) ? BotNavInfo->MovementTask.TaskSecondaryTarget->v.origin : g_vecZero;
-		}
-
-		bool bUltimateDestinationChanged = !vEquals(Destination, BotNavInfo->TargetDestination, GetPlayerRadius(pBot->Player)) && !vEquals(Destination, MoveTaskDestination) && !vEquals(Destination, MoveTaskOrigin) && !vEquals(Destination, MoveSecondaryOrigin);
-		
-		bool bHasReachedDestination = BotIsAtLocation(pBot, BotNavInfo->TargetDestination);
-
-		if (bUltimateDestinationChanged || bNavProfileChanged || bHasReachedDestination || bForceRecalculation)
-		{
-			// First abort our current move so we don't try to recalculate half-way up a wall or ladder
-			if (bIsFlyingProfile || AbortCurrentMove(pBot, Destination))
-			{
-				// Don't clear the path if we're in the middle of a movement task
-				if (!vEquals(Destination, MoveTaskDestination) && !vEquals(Destination, MoveTaskOrigin) && !vEquals(Destination, MoveSecondaryOrigin))
-				{
-					ClearBotPath(pBot);
-				}
-				return true;
-			}
-		}
-		else
-		{
-			if (bHasMovementTask && !vEquals(Destination, MoveTaskDestination) && !vEquals(Destination, MoveTaskOrigin) && !vEquals(Destination, MoveSecondaryOrigin))
-			{
-				if (AITASK_IsTaskStillValid(pBot, &BotNavInfo->MovementTask))
-				{
-					BotProgressTask(pBot, &BotNavInfo->MovementTask);
-					return true;
-				}
-				else
-				{
-					AITASK_ClearBotTask(pBot, &BotNavInfo->MovementTask);
-				}
-			}
-		}
-	}	
-	
-	bool bCanRecalculatePath = (gpGlobals->time - pBot->BotNavInfo.LastPathCalcTime > MIN_PATH_RECALC_TIME);
-
-	// Only recalculate the path if there isn't a path, or something has changed and enough time has elapsed since the last path calculation
-	bool bShouldCalculatePath = bCanRecalculatePath && (bForceRecalculation || BotNavInfo->CurrentPath.size() == 0 || !vEquals(Destination, BotNavInfo->PathDestination));
-
-	if (bShouldCalculatePath)
-	{
-		if (pBot->Player->IsOnLadder())
-		{
-			BotJump(pBot);
-			return true;
-		}
-
-		pBot->BotNavInfo.LastPathCalcTime = gpGlobals->time;
-		BotNavInfo->bNavProfileChanged = false;
-		BotNavInfo->NextForceRecalc = 0.0f;
-
-		if (vIsZero(BotNavInfo->TargetDestination))
-		{
-			BotNavInfo->TargetDestination = Destination;
-		}
-
-		BotNavInfo->PathDestination = Destination;
-
-		dtStatus PathFindingStatus = DT_FAILURE;
-		
-		if (bIsFlyingProfile)
-		{
-			PathFindingStatus = FindFlightPathToPoint(pBot->BotNavInfo.NavProfile, pBot->Edict->v.origin, Destination, BotNavInfo->CurrentPath, MaxAcceptableDist);
-		}
-		else
-		{
-			Vector ValidNavmeshPoint = UTIL_ProjectPointToNavmesh(Destination, Vector(max_ai_use_reach, max_ai_use_reach, max_ai_use_reach), pBot->BotNavInfo.NavProfile);
-
-			// Destination is not on the nav mesh, so we can't get close enough
-			if (vIsZero(ValidNavmeshPoint))
-			{
-				sprintf(pBot->PathStatus, "Could not project destination to navmesh");
-				return false;
-			}
-
-			PathFindingStatus = FindPathClosestToPoint(pBot, pBot->BotNavInfo.MoveStyle, pBot->CollisionHullBottomLocation, ValidNavmeshPoint, BotNavInfo->CurrentPath, MaxAcceptableDist);
-		}
-
-		if (dtStatusSucceed(PathFindingStatus))
-		{
-			BotNavInfo->ActualMoveDestination = BotNavInfo->CurrentPath.back().Location;
-			ClearBotStuckMovement(pBot);
-			pBot->BotNavInfo.TotalStuckTime = 0.0f;
-
-			BotNavInfo->CurrentPathPoint = BotNavInfo->CurrentPath.begin();
-			sprintf(pBot->PathStatus, "Path finding successful");
-
-		}
-		else
-		{
-			Vector PointBackOnPath = FindClosestPointBackOnPath(pBot);
-
-			if (PointBackOnPath != g_vecZero)
-			{
-				ClearBotStuckMovement(pBot);
-				ClearBotPath(pBot);
-
-				BotNavInfo->UnstuckMoveLocation = PointBackOnPath;
-				BotNavInfo->UnstuckMoveStartLocation = pBot->Edict->v.origin;
-				BotNavInfo->UnstuckMoveLocationStartTime = gpGlobals->time;
-
-				sprintf(pBot->PathStatus, "Backwards Path Find Successful");
-			}
-			else
-			{
-				if (BotNavInfo->LastNavMeshPosition != g_vecZero && vDist2DSq(BotNavInfo->LastNavMeshPosition, pBot->Edict->v.origin) > GetPlayerRadius(pBot->Player))
-				{
-					ClearBotStuckMovement(pBot);
-					ClearBotPath(pBot);
-
-					BotNavInfo->UnstuckMoveLocation = BotNavInfo->LastNavMeshPosition;
-					BotNavInfo->UnstuckMoveStartLocation = pBot->Edict->v.origin;
-					BotNavInfo->UnstuckMoveLocationStartTime = gpGlobals->time;
-				}
-				else
-				{
-					BotSuicide(pBot);
-				}
-
-				return false;
-			}
-		}
 	}
 
 	if (BotNavInfo->CurrentPath.size() > 0)
 	{
+		// If this path requires use of a welder and we don't have one, then find one
+		if ((pBot->BotNavInfo.SpecialMovementFlags & SAMPLE_POLYFLAGS_WELD) && !PlayerHasWeapon(pBot->Player, WEAPON_MARINE_WELDER))
+		{
+			if (pBot->BotNavInfo.MovementTask.TaskType != MOVE_TASK_PICKUP)
+			{
+				nav_profile BaseProfile = GetBaseNavProfile(MARINE_BASE_NAV_PROFILE);
+
+				AvHAIDroppedItem* NearestWelder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, pBot->Player->GetTeam(), BaseProfile.ReachabilityFlag, 0.0f, 0.0f, true);
+
+				if (NearestWelder)
+				{
+					NAV_SetPickupMovementTask(pBot, NearestWelder->edict, nullptr);
+					return true;
+				}
+			}
+		}
+
 		if (IsBotPermaStuck(pBot))
 		{
 			BotSuicide(pBot);
@@ -5689,6 +5514,7 @@ bool MoveTo_OLD(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle 
 	}
 
 	return false;
+
 }
 
 Vector FindClosestPointBackOnPath(AvHAIPlayer* pBot)
@@ -6022,23 +5848,6 @@ void BotFollowPath(AvHAIPlayer* pBot)
 	{
 		ClearBotPath(pBot);
 		return;
-	}
-
-	// If this path requires use of a welder and we don't have one, then find one
-	if ((pBot->BotNavInfo.SpecialMovementFlags & SAMPLE_POLYFLAGS_WELD) && !PlayerHasWeapon(pBot->Player, WEAPON_MARINE_WELDER))
-	{
-		if (pBot->BotNavInfo.MovementTask.TaskType != TASK_GET_WEAPON)
-		{
-			AITASK_ClearBotTask(pBot, &pBot->BotNavInfo.MovementTask);
-
-			AvHAIDroppedItem* NearestWelder = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_WELDER, pBot->Player->GetTeam(), pBot->BotNavInfo.NavProfile.ReachabilityFlag, 0.0f, 0.0f, true);
-
-			if (NearestWelder)
-			{
-				AITASK_SetPickupTask(pBot, &pBot->BotNavInfo.MovementTask, NearestWelder->edict, true);
-				return;
-			}
-		}
 	}
 
 	Vector MoveTo = BotNavInfo->CurrentPathPoint->Location;
@@ -6833,8 +6642,6 @@ void ClearBotPath(AvHAIPlayer* pBot)
 	pBot->BotNavInfo.CurrentPathPoint = pBot->BotNavInfo.CurrentPath.end();
 
 	pBot->BotNavInfo.SpecialMovementFlags = 0;
-
-	AITASK_ClearBotTask(pBot, &pBot->BotNavInfo.MovementTask);
 
 	pBot->BotNavInfo.bNavProfileChanged = false;
 
@@ -8259,4 +8066,228 @@ dtStatus DEBUG_TestFindPath(const nav_profile& NavProfile, const Vector FromLoca
 	}
 
 	return DT_SUCCESS;
+}
+
+void NAV_SetMoveMovementTask(AvHAIPlayer* pBot, Vector MoveLocation, DoorTrigger* TriggerToActivate)
+{
+	AvHAIPlayerMoveTask* MoveTask = &pBot->BotNavInfo.MovementTask;
+
+	if (MoveTask->TaskType == MOVE_TASK_TOUCH && vEquals(MoveTask->TaskLocation, MoveLocation)) { return; }
+
+	MoveTask->TaskType = MOVE_TASK_TOUCH;
+	MoveTask->TaskLocation = MoveLocation;
+
+	vector<bot_path_node> Path;
+	dtStatus PathStatus = FindPathClosestToPoint(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, MoveLocation, Path, 200.0f);
+
+	if (dtStatusSucceed(PathStatus))
+	{
+		MoveTask->TaskLocation = Path.back().Location;
+	}
+}
+
+void NAV_SetTouchMovementTask(AvHAIPlayer* pBot, edict_t* EntityToTouch, DoorTrigger* TriggerToActivate)
+{
+	AvHAIPlayerMoveTask* MoveTask = &pBot->BotNavInfo.MovementTask;
+
+	if (MoveTask->TaskType == MOVE_TASK_TOUCH && MoveTask->TaskTarget == EntityToTouch) { return; }
+
+	MoveTask->TaskType = MOVE_TASK_TOUCH;
+	MoveTask->TaskTarget = EntityToTouch;
+	MoveTask->TriggerToActivate = TriggerToActivate;
+
+	vector<bot_path_node> Path;
+	dtStatus PathStatus = FindPathClosestToPoint(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, UTIL_GetCentreOfEntity(EntityToTouch), Path, 200.0f);
+
+	if (dtStatusSucceed(PathStatus))
+	{
+		MoveTask->TaskLocation = Path.back().Location;
+	}
+}
+
+void NAV_SetUseMovementTask(AvHAIPlayer* pBot, edict_t* EntityToUse, DoorTrigger* TriggerToActivate)
+{
+	AvHAIPlayerMoveTask* MoveTask = &pBot->BotNavInfo.MovementTask;
+
+	if (MoveTask->TaskType == MOVE_TASK_USE && MoveTask->TaskTarget == EntityToUse) { return; }
+
+	NAV_ClearMovementTask(pBot);
+
+	MoveTask->TaskType = MOVE_TASK_USE;
+	MoveTask->TaskTarget = EntityToUse;
+	MoveTask->TriggerToActivate = TriggerToActivate;
+	MoveTask->TaskLocation = UTIL_GetButtonFloorLocation(pBot->Edict->v.origin, EntityToUse);
+}
+
+void NAV_SetBreakMovementTask(AvHAIPlayer* pBot, edict_t* EntityToBreak, DoorTrigger* TriggerToActivate)
+{
+	AvHAIPlayerMoveTask* MoveTask = &pBot->BotNavInfo.MovementTask;
+
+	if (MoveTask->TaskType == MOVE_TASK_BREAK && MoveTask->TaskTarget == EntityToBreak) { return; }
+
+	NAV_ClearMovementTask(pBot);
+
+	MoveTask->TaskType = MOVE_TASK_BREAK;
+	MoveTask->TaskTarget = EntityToBreak;
+	MoveTask->TriggerToActivate = TriggerToActivate;
+
+	MoveTask->TaskLocation = UTIL_GetButtonFloorLocation(pBot->Edict->v.origin, EntityToBreak);
+}
+
+void NAV_SetWeldMovementTask(AvHAIPlayer* pBot, edict_t* EntityToWeld, DoorTrigger* TriggerToActivate)
+{
+	AvHAIPlayerMoveTask* MoveTask = &pBot->BotNavInfo.MovementTask;
+
+	if (MoveTask->TaskType == MOVE_TASK_WELD && MoveTask->TaskTarget == EntityToWeld) { return; }
+
+	NAV_ClearMovementTask(pBot);
+
+	MoveTask->TaskType = MOVE_TASK_WELD;
+	MoveTask->TaskTarget = EntityToWeld;
+	MoveTask->TriggerToActivate = TriggerToActivate;
+	MoveTask->TaskLocation = UTIL_GetButtonFloorLocation(pBot->Edict->v.origin, EntityToWeld);
+}
+
+void NAV_ClearMovementTask(AvHAIPlayer* pBot)
+{
+	pBot->BotNavInfo.MovementTask.TaskType = MOVE_TASK_NONE;
+	pBot->BotNavInfo.MovementTask.TaskLocation = ZERO_VECTOR;
+	pBot->BotNavInfo.MovementTask.TaskTarget = nullptr;
+	pBot->BotNavInfo.MovementTask.TriggerToActivate = nullptr;
+}
+
+void NAV_ProgressMovementTask(AvHAIPlayer* pBot)
+{
+	AvHAIPlayerMoveTask* MoveTask = &pBot->BotNavInfo.MovementTask;
+
+	if (MoveTask->TaskType == MOVE_TASK_NONE) { return; }
+
+	if (MoveTask->TaskType == MOVE_TASK_USE)
+	{
+		if (IsPlayerInUseRange(pBot->Edict, MoveTask->TaskTarget))
+		{
+			BotUseObject(pBot, MoveTask->TaskTarget, false);
+			ClearBotStuck(pBot);
+			return;
+		}
+	}
+
+	if (MoveTask->TaskType == MOVE_TASK_BREAK)
+	{
+		AvHAIWeapon Weapon = WEAPON_INVALID;
+
+		if (IsPlayerMarine(pBot->Edict))
+		{
+			Weapon = BotMarineChooseBestWeaponForStructure(pBot, MoveTask->TaskTarget);
+		}
+		else
+		{
+			Weapon = BotAlienChooseBestWeaponForStructure(pBot, MoveTask->TaskTarget);
+		}
+
+		BotAttackResult AttackResult = PerformAttackLOSCheck(pBot, Weapon, MoveTask->TaskTarget);
+
+		if (AttackResult == ATTACK_SUCCESS)
+		{
+			// If we were ducking before then keep ducking
+			if (pBot->Edict->v.oldbuttons & IN_DUCK)
+			{
+				pBot->Button |= IN_DUCK;
+			}
+
+			BotShootTarget(pBot, Weapon, MoveTask->TaskTarget);
+
+			ClearBotStuck(pBot);
+
+			return;
+		}
+	}
+
+	if (MoveTask->TaskType == MOVE_TASK_WELD)
+	{
+		if (IsPlayerInUseRange(pBot->Edict, MoveTask->TaskTarget))
+		{
+			Vector BBMin = MoveTask->TaskTarget->v.absmin;
+			Vector BBMax = MoveTask->TaskTarget->v.absmax;
+
+			vScaleBB(BBMin, BBMax, 0.75f);
+
+			BotLookAt(pBot, vClosestPointOnBB(pBot->CurrentEyePosition, BBMin, BBMax));
+			pBot->DesiredCombatWeapon = WEAPON_MARINE_WELDER;
+
+			if (GetPlayerCurrentWeapon(pBot->Player) != WEAPON_MARINE_WELDER)
+			{
+				return;
+			}
+
+			pBot->Button |= IN_ATTACK;
+
+			ClearBotStuck(pBot);
+
+			return;
+		}
+	}
+
+	MoveTo(pBot, MoveTask->TaskLocation, MOVESTYLE_NORMAL);
+
+}
+
+bool NAV_IsMovementTaskStillValid(AvHAIPlayer* pBot)
+{
+	AvHAIPlayerMoveTask* MoveTask = &pBot->BotNavInfo.MovementTask;
+
+	if (MoveTask->TaskType == MOVE_TASK_NONE) { return false; }
+
+	if (MoveTask->TriggerToActivate)
+	{
+		if (!MoveTask->TriggerToActivate->bIsActivated) { return false; }
+		if (MoveTask->TriggerToActivate->NextActivationTime > gpGlobals->time) { return false; }
+	}
+
+	if (MoveTask->TaskType == MOVE_TASK_USE)
+	{
+		return (vDist2DSq(pBot->Edict->v.origin, MoveTask->TaskLocation) > sqrf(GetPlayerRadius(pBot->Player)) || fabsf(pBot->Edict->v.origin.z - MoveTask->TaskLocation.z) > 50.0f);
+	}
+
+	if (MoveTask->TaskType == MOVE_TASK_PICKUP)
+	{
+		return (!FNullEnt(MoveTask->TaskTarget) && !(MoveTask->TaskTarget->v.effects & EF_NODRAW));
+	}
+
+	if (MoveTask->TaskType == MOVE_TASK_TOUCH)
+	{
+		return (!FNullEnt(MoveTask->TaskTarget) && !IsPlayerTouchingEntity(pBot->Edict, MoveTask->TaskTarget));
+	}
+
+	if (MoveTask->TaskType == MOVE_TASK_BREAK)
+	{
+		return (!FNullEnt(MoveTask->TaskTarget) && MoveTask->TaskTarget->v.deadflag == DEAD_NO && MoveTask->TaskTarget->v.health > 0.0f);
+	}
+
+	if (MoveTask->TaskType == MOVE_TASK_WELD)
+	{
+		AvHWeldable* WeldableRef = dynamic_cast<AvHWeldable*>(CBaseEntity::Instance(MoveTask->TaskTarget));
+
+		if (WeldableRef)
+		{
+			return !WeldableRef->GetIsWelded();
+		}
+	}
+
+	return false;
+
+}
+
+void NAV_SetPickupMovementTask(AvHAIPlayer* pBot, edict_t* ThingToPickup, DoorTrigger* TriggerToActivate)
+{
+	AvHAIPlayerMoveTask* MoveTask = &pBot->BotNavInfo.MovementTask;
+
+	if (MoveTask->TaskType == MOVE_TASK_PICKUP && MoveTask->TaskTarget == ThingToPickup) { return; }
+
+	NAV_ClearMovementTask(pBot);
+
+	MoveTask->TaskType = MOVE_TASK_PICKUP;
+	MoveTask->TaskTarget = ThingToPickup;
+	MoveTask->TriggerToActivate = TriggerToActivate;
+	MoveTask->TaskLocation = ThingToPickup->v.origin;
 }

@@ -64,11 +64,13 @@ int AIMGR_GetNumHumansOfClassOnTeam(AvHTeamNumber Team, AvHUser3 PlayerType);
 
 AvHAIPlayer* AIMGR_GetAICommander(AvHTeamNumber Team);
 
-
+AvHAIPlayer* AIMGR_GetBotRefFromPlayer(AvHPlayer* PlayerRef);
 
 AvHTeamNumber AIMGR_GetEnemyTeam(const AvHTeamNumber FriendlyTeam);
 AvHClassType AIMGR_GetEnemyTeamType(const AvHTeamNumber FriendlyTeam);
 AvHClassType AIMGR_GetTeamType(const AvHTeamNumber Team);
+AvHTeamNumber AIMGR_GetTeamANumber();
+AvHTeamNumber AIMGR_GetTeamBNumber();
 
 // Returns all NS AI players. Does not include third-party bots
 vector<AvHAIPlayer*> AIMGR_GetAllAIPlayers();

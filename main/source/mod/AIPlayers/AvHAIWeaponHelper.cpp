@@ -397,19 +397,19 @@ float GetMaxIdealWeaponRange(const AvHAIWeapon Weapon)
 	case WEAPON_SKULK_XENOCIDE:
 		return (float)BALANCE_VAR(kDivineWindRadius) * 0.8f;
 	case WEAPON_ONOS_GORE:
-		return (float)BALANCE_VAR(kClawsRange);
+		return (float)BALANCE_VAR(kClawsRange) + 20.0f;
 	case WEAPON_ONOS_DEVOUR:
 		return (float)BALANCE_VAR(kDevourRange);
 	case WEAPON_FADE_SWIPE:
-		return (float)BALANCE_VAR(kSwipeRange);
+		return (float)BALANCE_VAR(kSwipeRange) + 30.0f;
 	case WEAPON_SKULK_BITE:
-		return (float)BALANCE_VAR(kBiteRange);
+		return (float)BALANCE_VAR(kBiteRange) + 20.0f;
 	case WEAPON_LERK_BITE:
-		return (float)BALANCE_VAR(kBite2Range);
+		return (float)BALANCE_VAR(kBite2Range) + 20.0f;
 	case WEAPON_GORGE_HEALINGSPRAY:
 		return (float)BALANCE_VAR(kHealingSprayRange) * 0.5f;
 	case WEAPON_MARINE_WELDER:
-		return (float)BALANCE_VAR(kWelderRange);
+		return (float)BALANCE_VAR(kWelderRange) + 10.0f;
 	default:
 		return max_player_use_reach;
 	}

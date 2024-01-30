@@ -236,8 +236,8 @@ typedef struct _RESOURCE_NODE
 	edict_t* ActiveTowerEntity = nullptr;							// Reference to the resource tower edict (if capped)
 	bool bIsBaseNode = false;										// Is this a node in the marine base or active alien hive?
 	edict_t* ParentHive = nullptr;
-	unsigned int TeamAReachabilityFlags = AI_REACHABILITY_NONE;		// Is this reachable by the bots? Checks for marine reachability only
-	unsigned int TeamBReachabilityFlags = AI_REACHABILITY_NONE;		// Is this reachable by the bots? Checks for marine reachability only
+	unsigned int TeamAReachabilityFlags = AI_REACHABILITY_NONE;		// Who on team A can reach this node?
+	unsigned int TeamBReachabilityFlags = AI_REACHABILITY_NONE;		// Who on team B can reach this node?
 	bool bReachabilityMarkedDirty = false;							// Reachability needs to be recalculated
 	float NextReachabilityRefreshTime = 0.0f;
 } AvHAIResourceNode;
@@ -255,6 +255,8 @@ typedef struct _HIVE_DEFINITION_T
 	unsigned int ObstacleRefs[MAX_NAV_MESHES];		// When in progress or built, will place an obstacle so bots don't try to walk through it
 	float NextFloorLocationCheck = 0.0f;			// When should the closest navigable point to the hive be calculated? Used to delay the check after a hive is built
 	AvHTeamNumber OwningTeam = TEAM_IND;			// Which team owns this hive currently (TEAM_IND if empty)
+	unsigned int TeamAReachabilityFlags = AI_REACHABILITY_NONE;		// Who on team A can reach this node?
+	unsigned int TeamBReachabilityFlags = AI_REACHABILITY_NONE;		// Who on team B can reach this node?
 
 } AvHAIHiveDefinition;
 
@@ -400,6 +402,35 @@ typedef enum
 	BUILD_ATTEMPT_FAILED
 } BotBuildAttemptStatus;
 
+typedef enum
+{
+	MOVE_TASK_NONE = 0,
+	MOVE_TASK_USE,
+	MOVE_TASK_BREAK,
+	MOVE_TASK_TOUCH,
+	MOVE_TASK_PICKUP,
+	MOVE_TASK_WELD
+} BotMovementTaskType;
+
+// Door type. Not currently used, future feature so bots know how to open a door
+enum DoorActivationType
+{
+	DOOR_NONE,   // No type, cannot be activated (permanently open/shut)
+	DOOR_USE,    // Door activated by using it directly
+	DOOR_TRIGGER,// Door activated by touching a trigger_once or trigger_multiple
+	DOOR_BUTTON, // Door activated by pressing a button
+	DOOR_WELD,   // Door activated by welding something
+	DOOR_SHOOT,  // Door activated by being shot
+	DOOR_BREAK	 // Door activated by breaking something
+};
+
+// Door type. Not currently used, future feature so bots know how to open a door
+enum NavDoorType
+{
+	DOORTYPE_DOOR,   // No type, cannot be activated (permanently open/shut)
+	DOORTYPE_PLAT,    // Door activated by using it directly
+	DOORTYPE_TRAIN	// Door activated by touching a trigger_once or trigger_multiple
+};
 
 // Bot path node. A path will be several of these strung together to lead the bot to its destination
 typedef struct _BOT_PATH_NODE
@@ -417,7 +448,8 @@ typedef struct _ENEMY_STATUS
 {
 	AvHPlayer* EnemyPlayer = nullptr;
 	edict_t* EnemyEdict = nullptr; // Reference to the enemy player edict
-	Vector LastSeenLocation = g_vecZero; // The last visibly-confirmed location of the player
+	Vector LastVisibleLocation = g_vecZero; // The last point the bot saw the target
+	Vector LastSeenLocation = g_vecZero; // The last visibly-confirmed location of the player or tracked location (if parasited / motion tracked)
 	Vector LastFloorPosition = g_vecZero; // Nearest point on the floor where the enemy was (for moving towards it)
 	Vector LastSeenVelocity = g_vecZero; // Last visibly-confirmed movement direction of the player
 	Vector PendingSeenLocation = g_vecZero; // The last visibly-confirmed location of the player
@@ -469,6 +501,7 @@ typedef struct _AVH_AI_PLAYER_TASK
 	float TaskLength = 0.0f; // If a task has gone on longer than this time, it will be considered completed
 } AvHAIPlayerTask;
 
+
 typedef struct _AVH_AI_BUILD_ATTEMPT
 {
 	AvHAIDeployableStructureType AttemptedStructureType = STRUCTURE_NONE;
@@ -478,6 +511,30 @@ typedef struct _AVH_AI_BUILD_ATTEMPT
 	float BuildAttemptTime = 0.0f;
 	AvHAIBuildableStructure* LinkedStructure = nullptr;
 } AvHAIBuildAttempt;
+
+typedef struct _DOOR_TRIGGER
+{
+	CBaseEntity* Entity = nullptr;
+	CBaseToggle* ToggleEnt = nullptr;
+	edict_t* Edict = nullptr;
+	DoorActivationType TriggerType = DOOR_NONE;
+	bool bIsActivated = false;
+	CBaseEntity* TriggerChangeTargetRef = nullptr;
+	float ActivationDelay = 0.0f;
+	float LastActivatedTime = 0.0f;
+	TOGGLE_STATE LastToggleState = TS_AT_BOTTOM;
+	float LastNextThink = 0.0f;
+	float NextActivationTime = 0.0f;
+} DoorTrigger;
+
+typedef struct _AVH_AI_PLAYER_MOVE_TASK
+{
+	BotMovementTaskType TaskType = MOVE_TASK_NONE;
+	Vector TaskLocation = g_vecZero;
+	edict_t* TaskTarget = nullptr;
+	DoorTrigger* TriggerToActivate = nullptr;
+	bool bPathGenerated = false;
+} AvHAIPlayerMoveTask;
 
 // Contains the bot's current navigation info, such as current path
 typedef struct _NAV_STATUS
@@ -523,14 +580,12 @@ typedef struct _NAV_STATUS
 	bool bZig; // Is the bot zigging, or zagging?
 	float NextZigTime; // Controls how frequently they zig or zag
 
-	AvHAIPlayerTask MovementTask;
-
 	nav_profile NavProfile;
 	bool bNavProfileChanged = false;
 
 	unsigned int SpecialMovementFlags = 0; // Any special movement flags required for this path (e.g. needs a welder, needs a jetpack etc.)
 
-
+	AvHAIPlayerMoveTask MovementTask;
 } nav_status;
 
 // Type of goal the commander wants to achieve

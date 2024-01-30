@@ -63,5 +63,7 @@ bool AICOMM_ShouldCommanderLeaveChair(AvHAIPlayer* pBot);
 const AvHAIResourceNode* AICOMM_GetNearestResourceNodeCapOpportunity(const AvHTeamNumber Team, const Vector SearchLocation);
 const AvHAIHiveDefinition* AICOMM_GetHiveSiegeOpportunityNearestLocation(AvHAIPlayer* CommanderBot, const Vector SearchLocation);
 
+bool AICOMM_ShouldCommanderPrioritiseNodes(AvHAIPlayer* pBot);
+
 
 #endif // AVH_AI_COMMANDER_H
