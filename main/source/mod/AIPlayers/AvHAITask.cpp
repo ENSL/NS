@@ -1842,11 +1842,7 @@ void AlienProgressGetHealthTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		{
 			BotLookAt(pBot, Task->TaskTarget);
 
-			if (gpGlobals->time - pBot->LastRequestTime > min_request_spam_time)
-			{
-				pBot->Impulse = SAYING_4;
-				pBot->LastRequestTime = gpGlobals->time;
-			}
+			AIPlayerRequestHealth(pBot);
 		}
 	}
 }
