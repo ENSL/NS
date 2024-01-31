@@ -70,6 +70,7 @@ AvHAIDroppedItem*			AITAC_GetDroppedItemRefFromEdict(edict_t* ItemEdict);
 Vector AITAC_GetFloorLocationForHive(const AvHAIHiveDefinition* Hive);
 
 int AITAC_GetNumHives();
+int AITAC_GetNumTeamHives(AvHTeamNumber Team, bool bFullyCompletedOnly);
 
 void AITAC_OnNavMeshModified();
 
@@ -163,6 +164,7 @@ const vector<AvHAIResourceNode*> AITAC_GetAllResourceNodes();
 const vector<AvHAIResourceNode*> AITAC_GetAllReachableResourceNodes(AvHTeamNumber Team);
 const vector<AvHAIHiveDefinition*> AITAC_GetAllHives();
 const vector<AvHAIHiveDefinition*> AITAC_GetAllTeamHives(AvHTeamNumber Team, bool bFullyBuiltOnly);
+const AvHAIHiveDefinition* AITAC_GetNearestTeamHive(AvHTeamNumber Team, const Vector SearchLocation, bool bFullyBuiltOnly);
 
 bool AITAC_AnyPlayerOnTeamWithLOS(AvHTeamNumber Team, const Vector& Location, float SearchRadius);
 

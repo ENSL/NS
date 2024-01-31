@@ -3267,6 +3267,21 @@ int AITAC_GetNumHives()
 	return Hives.size();
 }
 
+int AITAC_GetNumTeamHives(AvHTeamNumber Team, bool bFullyCompletedOnly)
+{
+	int Result = 0;
+
+	for (auto it = Hives.begin(); it != Hives.end(); it++)
+	{
+		if (it->OwningTeam == Team && (!bFullyCompletedOnly || it->Status == HIVE_STATUS_BUILT))
+		{
+			Result++;
+		}
+	}
+
+	return Result;
+}
+
 AvHMessageID UTIL_StructureTypeToImpulseCommand(const AvHAIDeployableStructureType StructureType)
 {
 	switch (StructureType)
@@ -3716,6 +3731,28 @@ const vector<AvHAIHiveDefinition*> AITAC_GetAllHives()
 	return Results;
 }
 
+const AvHAIHiveDefinition* AITAC_GetNearestTeamHive(AvHTeamNumber Team, const Vector SearchLocation, bool bFullyBuiltOnly)
+{
+	AvHAIHiveDefinition* Result = nullptr;
+	float MinDist = 0.0f;
+
+	for (auto it = Hives.begin(); it != Hives.end(); it++)
+	{
+		if (it->OwningTeam == Team && (!bFullyBuiltOnly || it->Status == HIVE_STATUS_BUILT))
+		{
+			float ThisDist = vDist2DSq(it->FloorLocation, SearchLocation);
+
+			if (!Result || ThisDist < MinDist)
+			{
+				Result = &(*it);
+				MinDist = ThisDist;
+			}
+		}
+	}
+
+	return Result;
+}
+
 const vector<AvHAIHiveDefinition*> AITAC_GetAllTeamHives(AvHTeamNumber Team, bool bFullyBuiltOnly)
 {
 	vector<AvHAIHiveDefinition*> Results;
@@ -3759,6 +3796,16 @@ bool AITAC_IsAlienHarasserNeeded(AvHAIPlayer* pBot)
 	if (pBot->Player->GetResources() < BALANCE_VAR(kLerkCost)) { return false; }
 
 	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+
+	if (pBot->BotRole == BOT_ROLE_ASSAULT)
+	{
+		int NumFades = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER4, pBot->Edict);
+		int NumOnos = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER5, pBot->Edict);
+
+		int NumTeamHives = AITAC_GetNumTeamHives(BotTeam, false);
+
+		if (NumFades == 0 || (NumOnos == 0 && NumTeamHives > 1)) { return false; }
+	}	
 
 	int NumTeamPlayers = AIMGR_GetNumPlayersOnTeam(BotTeam);
 	int DesiredLerks = (int)ceilf((float)NumTeamPlayers * 0.1f);
@@ -3906,6 +3953,19 @@ bool AITAC_IsAlienCapperNeeded(AvHAIPlayer* pBot)
 		if (ThisNode->OwningTeam == EnemyTeam) { NumEnemyNodes++; }
 	}
 
+	// If we are currently an assault bot and we are almost able to go fade, only sacrifice that if we are truly desperate and have fades already on the team
+	if (pBot->BotRole == BOT_ROLE_ASSAULT)
+	{
+		if (pBot->Player->GetResources() > BALANCE_VAR(kFadeCost) * 0.8f)
+		{
+			if (NumOwnedNodes >= 3) { return false; }
+
+			int NumFades = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER4, pBot->Edict);
+
+			if (NumFades < 1) { return false; }
+		}
+	}
+
 	int NumNodesLeft = NumEligibleNodes - NumOwnedNodes;
 
 	if (NumNodesLeft == 0) { return false; }
@@ -3997,9 +4057,17 @@ bool AITAC_IsAlienBuilderNeeded(AvHAIPlayer* pBot)
 
 	float ResNodeOwnership = AITAC_GetTeamResNodeOwnership(BotTeam, true);
 
-	// Don't lose all those resources!
-	if (IsPlayerLerk(pBot->Edict) || IsPlayerFade(pBot->Edict) || IsPlayerOnos(pBot->Edict))
+	// Don't lose all those resources if we're a higher lifeform!
+	if (pBot->Player->GetUser3() > AVH_USER3_ALIEN_PLAYER2)
 	{
+		if (IsPlayerLerk(pBot->Edict)) { return false; }
+
+		int NumFades = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER4, pBot->Edict);
+		int NumOnos = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER5, pBot->Edict);
+
+		// Don't downgrade to gorge if we're the only fade or onos on the team
+		if ((IsPlayerFade(pBot->Edict) && NumFades == 0) || (IsPlayerOnos(pBot->Edict) && NumOnos == 0)) { return false; }
+
 		// Only waste those resources if we have loads of res nodes and can easily replenish the lost resources
 		if (pBot->Player->GetResources() < 75 || ResNodeOwnership < 0.6f)
 		{

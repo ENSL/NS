@@ -236,6 +236,8 @@ void AIMGR_UpdateFillTeams()
 	
 	if (TeamSizeA < NumDesiredTeamA && TeamSizeA <= TeamSizeB)
 	{
+		// Don't add a bot if we have any stuck in the ready room, wait for teams to resolve themselves
+		if (AIMGR_GetNumAIPlayersOnTeam(TEAM_IND) > 0) { return; }
 		AIMGR_AddAIPlayerToTeam(1);
 		return;
 	}
@@ -251,6 +253,8 @@ void AIMGR_UpdateFillTeams()
 
 	if (TeamSizeB < NumDesiredTeamB && TeamSizeB <= TeamSizeA)
 	{
+		// Don't add a bot if we have any stuck in the ready room, wait for teams to resolve themselves
+		if (AIMGR_GetNumAIPlayersOnTeam(TEAM_IND) > 0) { return; }
 		AIMGR_AddAIPlayerToTeam(2);
 		return;
 	}
@@ -848,6 +852,8 @@ void AIMGR_ClearBotData()
 void AIMGR_NewMap()
 {
 	if (avh_botsenabled.value == 0) { return; } // Do nothing if we're not using bots
+
+	ActiveAIPlayers.clear();
 
 	AIStartedTime = gpGlobals->time;
 	ALERT(at_console, "AI Manager New Map\n");

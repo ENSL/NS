@@ -35,10 +35,13 @@ bool AICOMM_DoesPlayerOrderNeedReminder(AvHAIPlayer* pBot, ai_commander_order* O
 void AICOMM_IssueOrderForAssignedJob(AvHAIPlayer* pBot, ai_commander_order* Order);
 
 void AICOMM_ClearAction(commander_action* Action);
+
 bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot);
 bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot);
 bool AICOMM_CheckForNextRecycleAction(AvHAIPlayer* pBot);
 bool AICOMM_CheckForNextResearchAction(AvHAIPlayer* pBot);
+bool AICOMM_CheckForNextSupplyAction(AvHAIPlayer* pBot);
+
 void AICOMM_SetDropHealthAction(AvHAIPlayer* pBot, commander_action* Action, edict_t* Recipient);
 void AICOMM_SetDropAmmoAction(AvHAIPlayer* pBot, commander_action* Action, edict_t* Recipient);
 void AICOMM_SetDeployStructureAction(AvHAIPlayer* pBot, commander_action* Action, AvHAIDeployableStructureType StructureToBuild, const Vector Location, bool bIsUrgent);

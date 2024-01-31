@@ -69,6 +69,7 @@ void TestNavThink(AvHAIPlayer* pBot);
 void DroneThink(AvHAIPlayer* pBot);
 void CustomThink(AvHAIPlayer* pBot);
 
+bool AIPlayerMustFinishCurrentTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 AvHAIPlayerTask* AIPlayerGetNextTask(AvHAIPlayer* pBot);
 void AIPlayerSetPrimaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 void AIPlayerSetMarineSweeperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
@@ -77,6 +78,7 @@ void AIPlayerSetMarineAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 void AIPlayerSetMarineBombardierPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 
 void AIPlayerSetSecondaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
+void AIPlayerSetWantsAndNeedsMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 
 void AIPlayerSetPrimaryAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 void AIPlayerSetAlienBuilderPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
@@ -95,6 +97,10 @@ void BotResumePlay(AvHAIPlayer* pBot);
 void UpdateCommanderOrders(AvHAIPlayer* pBot);
 void AIPlayerReceiveMoveOrder(AvHAIPlayer* pBot, Vector Destination);
 void AIPlayerReceiveBuildOrder(AvHAIPlayer* pBot, edict_t* BuildTarget);
+
+void AIPlayerRequestHealth(AvHAIPlayer* pBot);
+void AIPlayerRequestAmmo(AvHAIPlayer* pBot);
+void AIPlayerRequestOrder(AvHAIPlayer* pBot);
 
 void BotStopCommanderMode(AvHAIPlayer* pBot);
 

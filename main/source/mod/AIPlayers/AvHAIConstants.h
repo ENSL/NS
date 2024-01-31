@@ -10,7 +10,7 @@
 #include "../AvHEntities.h"
 
 static const float commander_action_cooldown = 1.0f;
-static const float min_request_spam_time = 5.0f;
+static const float min_request_spam_time = 10.0f;
 
 constexpr auto MAX_AI_PATH_SIZE = 512; // Maximum number of points allowed in a path (this should be enough for any sized map)
 static const int MAX_NAV_MESHES = 8; // Max number of nav meshes allowed. Currently 3 are used (one for building placement, one for the onos, and a regular one for everyone else)
@@ -721,7 +721,7 @@ typedef struct AVH_AI_PLAYER
 
 	vector<ai_commander_request> ActiveRequests;
 	vector<ai_commander_order> ActiveOrders;
-
+	
 	float next_commander_action_time = 0.0f;
 
 	bot_msg ChatMessages[5]; // Bot can have up to 5 chat messages pending

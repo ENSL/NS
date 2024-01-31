@@ -1653,7 +1653,7 @@ dtStatus FindPathClosestToPoint(const nav_profile& NavProfile, const Vector From
 		{
 			NextPathNode.Location = hit.vecEndPos;
 			
-			if (CurrFlags != SAMPLE_POLYFLAGS_JUMP)
+			if (CurrFlags != SAMPLE_POLYFLAGS_JUMP && CurrFlags != SAMPLE_POLYFLAGS_WALLCLIMB)
 			{
 				NextPathNode.Location.z += 20.0f;
 			}
@@ -1664,7 +1664,8 @@ dtStatus FindPathClosestToPoint(const nav_profile& NavProfile, const Vector From
 		if (CurrFlags == SAMPLE_POLYFLAGS_WALLCLIMB || CurrFlags == SAMPLE_POLYFLAGS_LADDER)
 		{
 			float NewRequiredZ = UTIL_FindZHeightForWallClimb(path.back().Location, NextPathNode.Location, head_hull);
-			NextPathNode.requiredZ = fmaxf(NewRequiredZ, NextPathNode.Location.z);
+			//NextPathNode.requiredZ = fmaxf(NewRequiredZ, NextPathNode.Location.z);
+			NextPathNode.requiredZ = NewRequiredZ;
 
 			if (CurrFlags == SAMPLE_POLYFLAGS_LADDER)
 			{
@@ -1813,7 +1814,7 @@ dtStatus FindPathClosestToPoint(AvHAIPlayer* pBot, const BotMoveStyle MoveStyle,
 
 		NextPathNode.Location = AdjustPointForPathfinding(NextPathNode.Location);
 
-		if (CurrFlags != SAMPLE_POLYFLAGS_JUMP || NextPathNode.FromLocation.z > NextPathNode.Location.z)
+		if ((CurrFlags != SAMPLE_POLYFLAGS_JUMP && CurrFlags != SAMPLE_POLYFLAGS_WALLCLIMB) || NextPathNode.FromLocation.z > NextPathNode.Location.z)
 		{
 
 			NextPathNode.Location.z += 17.0f;
@@ -1951,6 +1952,11 @@ bool HasBotReachedPathPoint(const AvHAIPlayer* pBot)
 		return true;
 	}
 
+	if (pBot->BotNavInfo.CurrentPathPoint == pBot->BotNavInfo.CurrentPath.end())
+	{
+		return true;
+	}
+
 	Vector CurrentPos = (pBot->BotNavInfo.IsOnGround) ? pBot->Edict->v.origin : pBot->CurrentFloorPosition;
 
 	edict_t* pEdict = pBot->Edict;
@@ -1976,6 +1982,7 @@ bool HasBotReachedPathPoint(const AvHAIPlayer* pBot)
 	switch (CurrentNavFlag)
 	{
 	case SAMPLE_POLYFLAGS_WALK:
+	{
 		if (!bIsAtFinalPathPoint)
 		{
 			return (bAtOrPastDestination || (vDist2D(pEdict->v.origin, MoveTo) <= 8.0f && (fabs(pBot->CurrentFloorPosition.z - MoveTo.z) < 50.0f)));
@@ -1984,12 +1991,14 @@ bool HasBotReachedPathPoint(const AvHAIPlayer* pBot)
 		{
 			return ((vDist2D(pEdict->v.origin, MoveTo) < playerRadius && bDestIsDirectlyReachable) || bAtOrPastDestination);
 		}
+	}
 	case SAMPLE_POLYFLAGS_BLOCKED:
 	case SAMPLE_POLYFLAGS_TEAM1STRUCTURE:
 	case SAMPLE_POLYFLAGS_TEAM2STRUCTURE:
 		return bAtOrPastDestination;
 	case SAMPLE_POLYFLAGS_FALL:
 	case SAMPLE_POLYFLAGS_JUMP:
+	{
 		if (!bIsAtFinalPathPoint)
 		{
 			Vector thisMoveDir = UTIL_GetVectorNormal2D(MoveTo - MoveFrom);
@@ -2010,9 +2019,11 @@ bool HasBotReachedPathPoint(const AvHAIPlayer* pBot)
 		{
 			return (vDist2D(pEdict->v.origin, MoveTo) <= playerRadius && (pEdict->v.origin.z - MoveTo.z) < 50.0f && pBot->BotNavInfo.IsOnGround);
 		}
+	}
 	case SAMPLE_POLYFLAGS_WALLCLIMB:
-		return (bAtOrPastDestination && fabs(pBot->CollisionHullTopLocation.z - MoveTo.z) < fabs(MoveFrom.z - MoveTo.z));
+		return bAtOrPastDestination && fabs(pEdict->v.origin.z - MoveTo.z) < 50.0f;		
 	case SAMPLE_POLYFLAGS_LADDER:
+	{
 		if (MoveTo.z > MoveFrom.z)
 		{
 			return ((BotPoly == DestinationPoly) && UTIL_QuickTrace(pEdict, pEdict->v.origin, MoveTo));
@@ -2021,6 +2032,7 @@ bool HasBotReachedPathPoint(const AvHAIPlayer* pBot)
 		{
 			return (fabs(pBot->CollisionHullBottomLocation.z - MoveTo.z) < 50.0f);
 		}
+	}
 	case SAMPLE_POLYFLAGS_TEAM1PHASEGATE:
 	case SAMPLE_POLYFLAGS_TEAM2PHASEGATE:
 		return (vDist2DSq(pBot->CurrentFloorPosition, MoveTo) < sqrf(32.0f));
@@ -4045,6 +4057,7 @@ void WallClimbMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndP
 
 		if (VelocityDot > 0.7f)
 		{
+			// This was causing issues in tight areas, rethink this
 			//BotJump(pBot);
 		}
 	}
@@ -5745,6 +5758,12 @@ void BotFollowSwimPath(AvHAIPlayer* pBot)
 		return;
 	}
 
+	if (pBot->BotNavInfo.CurrentPathPoint == pBot->BotNavInfo.CurrentPath.end())
+	{
+		ClearBotPath(pBot);
+		return;
+	}
+
 	nav_status* BotNavInfo = &pBot->BotNavInfo;
 	edict_t* pEdict = pBot->Edict;
 
@@ -5823,6 +5842,12 @@ void BotFollowPath(AvHAIPlayer* pBot)
 {
 	if (pBot->BotNavInfo.CurrentPath.size() == 0)
 	{
+		return;
+	}
+
+	if (pBot->BotNavInfo.CurrentPathPoint == pBot->BotNavInfo.CurrentPath.end())
+	{
+		ClearBotPath(pBot);
 		return;
 	}
 
@@ -8136,6 +8161,8 @@ void NAV_SetBreakMovementTask(AvHAIPlayer* pBot, edict_t* EntityToBreak, DoorTri
 
 void NAV_SetWeldMovementTask(AvHAIPlayer* pBot, edict_t* EntityToWeld, DoorTrigger* TriggerToActivate)
 {
+	if (IsPlayerAlien(pBot->Edict)) { return; }
+
 	AvHAIPlayerMoveTask* MoveTask = &pBot->BotNavInfo.MovementTask;
 
 	if (MoveTask->TaskType == MOVE_TASK_WELD && MoveTask->TaskTarget == EntityToWeld) { return; }

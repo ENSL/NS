@@ -1089,6 +1089,96 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 	return false;
 }
 
+bool AICOMM_CheckForNextSupplyAction(AvHAIPlayer* pBot)
+{
+	AvHTeamNumber CommanderTeam = pBot->Player->GetTeam();
+
+	int NumDesiredWelders = 1;
+	int NumTeamWelders = AITAC_GetNumWeaponsInPlay(CommanderTeam, WEAPON_MARINE_WELDER);
+
+	vector<AvHAIResourceNode*> AllNodes = AITAC_GetAllResourceNodes();
+
+	for (auto it = AllNodes.begin(); it != AllNodes.end(); it++)
+	{
+		AvHAIResourceNode* ThisNode = (*it);
+
+		unsigned int TeamReachabilityFlags = (CommanderTeam == AIMGR_GetTeamANumber()) ? ThisNode->TeamAReachabilityFlags : ThisNode->TeamBReachabilityFlags;
+
+		if ((TeamReachabilityFlags & AI_REACHABILITY_WELDER) && !(TeamReachabilityFlags & AI_REACHABILITY_MARINE))
+		{
+			NumDesiredWelders++;
+			break;
+		}
+
+	}
+
+	vector<AvHAIHiveDefinition*> AllHives = AITAC_GetAllHives();
+
+	for (auto it = AllHives.begin(); it != AllHives.end(); it++)
+	{
+		AvHAIHiveDefinition* ThisHive = (*it);
+
+		unsigned int TeamReachabilityFlags = (CommanderTeam == AIMGR_GetTeamANumber()) ? ThisHive->TeamAReachabilityFlags : ThisHive->TeamBReachabilityFlags;
+
+		if ((TeamReachabilityFlags & AI_REACHABILITY_WELDER) && !(TeamReachabilityFlags & AI_REACHABILITY_MARINE))
+		{
+			NumDesiredWelders++;
+			break;
+		}
+	}
+
+	NumDesiredWelders = imini(NumDesiredWelders, (AIMGR_GetNumPlayersOnTeam(CommanderTeam) / 2));
+
+	if (NumTeamWelders < NumDesiredWelders)
+	{
+		DeployableSearchFilter ArmouryFilter;
+		ArmouryFilter.DeployableTypes = (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY);
+		ArmouryFilter.DeployableTeam = CommanderTeam;
+		ArmouryFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+		ArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+		AvHAIBuildableStructure* NearestArmoury = AITAC_FindClosestDeployableToLocation(AITAC_GetTeamStartingLocation(CommanderTeam), &ArmouryFilter);
+
+		if (NearestArmoury)
+		{
+			Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(3.0f));
+			bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_WELDER, DeployLocation);
+
+			return bSuccess;
+		}
+	}
+
+	// Don't drop stuff if we badly need resource nodes
+	if (AICOMM_ShouldCommanderPrioritiseNodes(pBot)) { return false; }
+
+	if (pBot->Player->GetResources() > (30 + BALANCE_VAR(kShotgunCost)))
+	{
+		int NumDesiredShotguns = (int)ceilf(AIMGR_GetNumPlayersOnTeam(CommanderTeam) * 0.33f);
+		int NumShottysInPlay = AITAC_GetNumWeaponsInPlay(CommanderTeam, WEAPON_MARINE_SHOTGUN);
+
+		if (NumShottysInPlay < NumDesiredShotguns)
+		{
+			DeployableSearchFilter ArmouryFilter;
+			ArmouryFilter.DeployableTypes = (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY);
+			ArmouryFilter.DeployableTeam = CommanderTeam;
+			ArmouryFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+			ArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+			AvHAIBuildableStructure* NearestArmoury = AITAC_FindClosestDeployableToLocation(AITAC_GetTeamStartingLocation(CommanderTeam), &ArmouryFilter);
+
+			if (NearestArmoury)
+			{
+				Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(3.0f));
+				bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_SHOTGUN, DeployLocation);
+
+				return bSuccess;
+			}
+		}
+	}
+
+	return false;
+}
+
 bool AICOMM_CheckForNextResearchAction(AvHAIPlayer* pBot)
 {
 	AvHTeamNumber CommanderTeam = pBot->Player->GetTeam();
@@ -1776,66 +1866,8 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 
 	}
 
-	// We didn't find any requests outstanding, see if we want to pro-actively drop stuff for our team
-	if (!NextRequest)
-	{
-		int NumDesiredWelders = 1;
-		int NumTeamWelders = AITAC_GetNumWeaponsInPlay(CommanderTeam, WEAPON_MARINE_WELDER);
-
-		vector<AvHAIResourceNode*> AllNodes = AITAC_GetAllResourceNodes();
-
-		for (auto it = AllNodes.begin(); it != AllNodes.end(); it++)
-		{
-			AvHAIResourceNode* ThisNode = (*it);
-
-			unsigned int TeamReachabilityFlags = (CommanderTeam == AIMGR_GetTeamANumber()) ? ThisNode->TeamAReachabilityFlags : ThisNode->TeamBReachabilityFlags;
-
-			if ((TeamReachabilityFlags & AI_REACHABILITY_WELDER) && !(TeamReachabilityFlags & AI_REACHABILITY_MARINE))
-			{
-				NumDesiredWelders++;
-				break;
-			}
-
-		}
-
-		vector<AvHAIHiveDefinition*> AllHives = AITAC_GetAllHives();
-
-		for (auto it = AllHives.begin(); it != AllHives.end(); it++)
-		{
-			AvHAIHiveDefinition* ThisHive = (*it);
-
-			unsigned int TeamReachabilityFlags = (CommanderTeam == AIMGR_GetTeamANumber()) ? ThisHive->TeamAReachabilityFlags : ThisHive->TeamBReachabilityFlags;
-
-			if ((TeamReachabilityFlags & AI_REACHABILITY_WELDER) && !(TeamReachabilityFlags & AI_REACHABILITY_MARINE))
-			{
-				NumDesiredWelders++;
-				break;
-			}
-		}
-
-		NumDesiredWelders = imini(NumDesiredWelders, (AIMGR_GetNumPlayersOnTeam(CommanderTeam) / 2));
-
-		if (NumTeamWelders < NumDesiredWelders)
-		{
-			DeployableSearchFilter ArmouryFilter;
-			ArmouryFilter.DeployableTypes = (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY);
-			ArmouryFilter.DeployableTeam = CommanderTeam;
-			ArmouryFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
-			ArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
-
-			AvHAIBuildableStructure* NearestArmoury = AITAC_FindClosestDeployableToLocation(AITAC_GetTeamStartingLocation(CommanderTeam), &ArmouryFilter);
-
-			if (NearestArmoury)
-			{
-				Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(3.0f));
-				bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_WELDER, DeployLocation);
-
-				return bSuccess;
-			}
-		}
-
-		return false;
-	}
+	// We didn't find any unresponded requests outstanding
+	if (!NextRequest) {	return false; }
 	
 	edict_t* Requestor = NextRequest->Requestor;
 
@@ -2050,6 +2082,7 @@ void AICOMM_CommanderThink(AvHAIPlayer* pBot)
 	if (AICOMM_CheckForNextSupportAction(pBot)) { return; }
 	if (AICOMM_CheckForNextBuildAction(pBot)) { return; }
 	if (AICOMM_CheckForNextResearchAction(pBot)) { return; }
+	if (AICOMM_CheckForNextSupplyAction(pBot)) { return; }
 }
 
 bool AICOMM_IsCommanderActionValid(AvHAIPlayer* pBot, commander_action* Action)
