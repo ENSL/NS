@@ -1151,29 +1151,90 @@ bool AICOMM_CheckForNextSupplyAction(AvHAIPlayer* pBot)
 	// Don't drop stuff if we badly need resource nodes
 	if (AICOMM_ShouldCommanderPrioritiseNodes(pBot)) { return false; }
 
-	if (pBot->Player->GetResources() > (30 + BALANCE_VAR(kShotgunCost)))
+	if (pBot->Player->GetResources() < 30) { return false; }
+
+
+	int NumDesiredShotguns = (int)ceilf(AIMGR_GetNumPlayersOnTeam(CommanderTeam) * 0.33f);
+	int NumShottysInPlay = AITAC_GetNumWeaponsInPlay(CommanderTeam, WEAPON_MARINE_SHOTGUN);
+
+	if (NumShottysInPlay < NumDesiredShotguns)
 	{
-		int NumDesiredShotguns = (int)ceilf(AIMGR_GetNumPlayersOnTeam(CommanderTeam) * 0.33f);
-		int NumShottysInPlay = AITAC_GetNumWeaponsInPlay(CommanderTeam, WEAPON_MARINE_SHOTGUN);
+		DeployableSearchFilter ArmouryFilter;
+		ArmouryFilter.DeployableTypes = (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY);
+		ArmouryFilter.DeployableTeam = CommanderTeam;
+		ArmouryFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+		ArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
 
-		if (NumShottysInPlay < NumDesiredShotguns)
+		AvHAIBuildableStructure* NearestArmoury = AITAC_FindClosestDeployableToLocation(AITAC_GetTeamStartingLocation(CommanderTeam), &ArmouryFilter);
+
+		if (NearestArmoury)
 		{
-			DeployableSearchFilter ArmouryFilter;
-			ArmouryFilter.DeployableTypes = (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY);
-			ArmouryFilter.DeployableTeam = CommanderTeam;
-			ArmouryFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
-			ArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+			Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(3.0f));
+			bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_SHOTGUN, DeployLocation);
 
-			AvHAIBuildableStructure* NearestArmoury = AITAC_FindClosestDeployableToLocation(AITAC_GetTeamStartingLocation(CommanderTeam), &ArmouryFilter);
+			return bSuccess;
+		}
+	}
+	
+	int NumMinesInPlay = AITAC_GetNumWeaponsInPlay(CommanderTeam, WEAPON_MARINE_MINES);
+	bool bNeedsMines = false;
+	int DesiredMines = 0;
 
-			if (NearestArmoury)
+	if (NumMinesInPlay < 2)
+	{
+		int UnminedStructures = 0;
+
+		DeployableSearchFilter MineStructures;
+		MineStructures.DeployableTeam = CommanderTeam;
+		MineStructures.DeployableTypes = (STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_MARINE_ADVTURRETFACTORY | STRUCTURE_MARINE_PHASEGATE | STRUCTURE_MARINE_INFANTRYPORTAL);
+		MineStructures.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+		MineStructures.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+		MineStructures.ReachabilityTeam = CommanderTeam;
+		MineStructures.ReachabilityFlags = AI_REACHABILITY_MARINE;
+
+		vector <AvHAIBuildableStructure*> MineableStructures = AITAC_FindAllDeployables(ZERO_VECTOR, &MineStructures);
+
+		MineStructures.DeployableTypes = STRUCTURE_MARINE_DEPLOYEDMINE;
+		MineStructures.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(3.0f);
+
+		for (auto it = MineableStructures.begin(); it != MineableStructures.end(); it++)
+		{
+			AvHAIBuildableStructure* ThisStructure = (*it);
+
+			int NumMines = AITAC_GetNumDeployablesNearLocation(ThisStructure->Location, &MineStructures);
+
+			if (NumMines < 2)
 			{
-				Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(3.0f));
-				bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_SHOTGUN, DeployLocation);
-
-				return bSuccess;
+				UnminedStructures++;
 			}
 		}
+
+		DesiredMines = (int)ceilf((float)UnminedStructures / 2.0f);
+		DesiredMines = clampi(DesiredMines, 0, 2);
+	}
+
+	if (NumMinesInPlay < DesiredMines)
+	{
+		DeployableSearchFilter ArmouryFilter;
+		ArmouryFilter.DeployableTypes = (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY);
+		ArmouryFilter.DeployableTeam = CommanderTeam;
+		ArmouryFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+		ArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+		AvHAIBuildableStructure* NearestArmoury = AITAC_FindClosestDeployableToLocation(AITAC_GetTeamStartingLocation(CommanderTeam), &ArmouryFilter);
+
+		if (NearestArmoury)
+		{
+			Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(3.0f));
+			bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_MINES, DeployLocation);
+
+			return bSuccess;
+		}
+	}
+
+	if (AITAC_ResearchIsComplete(CommanderTeam, TECH_RESEARCH_HEAVYARMOR))
+	{
+
 	}
 
 	return false;
