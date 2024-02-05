@@ -597,7 +597,7 @@ void AIMGR_UpdateAIPlayers()
 
 				UpdateBotChat(bot);
 
-				AIPlayerThink(bot);
+				DroneThink(bot);
 
 				BotUpdateDesiredViewRotation(bot);
 			}
@@ -657,6 +657,11 @@ AvHTeamNumber AIMGR_GetTeamANumber()
 AvHTeamNumber AIMGR_GetTeamBNumber()
 {
 	return GetGameRules()->GetTeamANumber();
+}
+
+AvHTeam* AIMGR_GetTeamRef(const AvHTeamNumber Team)
+{
+	return GetGameRules()->GetTeam(Team);
 }
 
 vector<AvHPlayer*> AIMGR_GetAllPlayersOnTeam(AvHTeamNumber Team)

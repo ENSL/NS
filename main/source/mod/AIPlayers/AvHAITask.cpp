@@ -1129,39 +1129,25 @@ void BotProgressPickupTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 void BotProgressMineStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
-	float DistToPlaceLocation = vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation);
-
-	if (DistToPlaceLocation < sqrf(UTIL_MetresToGoldSrcUnits(3.0f)))
+	if (pBot->ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_PENDING)
 	{
-		pBot->DesiredCombatWeapon = WEAPON_MARINE_MINES;
-	}
-
-	if (!FNullEnt(Task->TaskSecondaryTarget))
-	{
-		Task->TaskLocation = g_vecZero;
-		Task->TaskSecondaryTarget = nullptr;
-		Task->BuildAttempts = 0;
 		return;
 	}
 
-	if (Task->bIsWaitingForBuildLink)
+	if (pBot->ActiveBuildInfo.BuildStatus != BUILD_ATTEMPT_NONE)
 	{
-		
-		if (gpGlobals->time - Task->LastBuildAttemptTime > 1.0f)
+		if (pBot->ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_FAILED)
 		{
-			Task->bIsWaitingForBuildLink = false;
-			if (Task->BuildAttempts > 3)
-			{
-				float Size = fmaxf(Task->TaskTarget->v.size.x, Task->TaskTarget->v.size.y);
-				Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE], Task->TaskTarget->v.origin, Size + 8.0f);
-			}
-			else
-			{
-				Vector Dir = UTIL_GetVectorNormal2D(Task->TaskLocation - Task->TaskTarget->v.origin);
-				Task->TaskLocation = Task->TaskLocation + (Dir * 8.0f);
-			}
+			float Size = fmaxf(Task->TaskTarget->v.size.x, Task->TaskTarget->v.size.y);
+			Size += 8.0f;
+			Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInDonut(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), Task->TaskTarget->v.origin, Size, Size + 8.0f);
 		}
-		return;
+		else
+		{
+			Task->TaskLocation = ZERO_VECTOR;
+		}
+
+		pBot->ActiveBuildInfo.BuildStatus = BUILD_ATTEMPT_NONE;
 	}
 
 	if (vIsZero(Task->TaskLocation))
@@ -1173,22 +1159,23 @@ void BotProgressMineStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 			AITASK_ClearBotTask(pBot, Task);
 			return;
 		}
-	}	
-
-	if (DistToPlaceLocation < sqrf(16.0f))
-	{
-		Vector MoveDir = UTIL_GetVectorNormal2D(Task->TaskLocation - pBot->Edict->v.origin);
-		MoveDirectlyTo(pBot, Task->TaskLocation - (MoveDir * 28.0f));
-		return;
 	}
 
-	if (DistToPlaceLocation > sqrf(32.0f))
+	float DistToPlaceLocation = vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation);
+
+	if (DistToPlaceLocation < sqrf(UTIL_MetresToGoldSrcUnits(3.0f)))
+	{
+		pBot->DesiredCombatWeapon = WEAPON_MARINE_MINES;
+	}
+
+
+	if (DistToPlaceLocation > sqrf(8.0f))
 	{
 		MoveTo(pBot, Task->TaskLocation, MOVESTYLE_NORMAL);
 		return;
 	}
 
-	BotLookAt(pBot, Task->TaskLocation);
+	BotDirectLookAt(pBot, Task->TaskLocation);
 
 	if (GetPlayerCurrentWeapon(pBot->Player) == WEAPON_MARINE_MINES)
 	{
@@ -1197,9 +1184,11 @@ void BotProgressMineStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		if (LookDot > 0.95f)
 		{
 			pBot->Button |= IN_ATTACK;
-			Task->LastBuildAttemptTime = gpGlobals->time;
-			Task->BuildAttempts++;
-			Task->bIsWaitingForBuildLink = true;
+			pBot->ActiveBuildInfo.AttemptedLocation = Task->TaskLocation;
+			pBot->ActiveBuildInfo.BuildStatus = BUILD_ATTEMPT_PENDING;
+			pBot->ActiveBuildInfo.BuildAttemptTime = gpGlobals->time;
+			pBot->ActiveBuildInfo.AttemptedStructureType = STRUCTURE_MARINE_DEPLOYEDMINE;
+			pBot->ActiveBuildInfo.NumAttempts++;
 		}
 	}
 }
@@ -1921,11 +1910,6 @@ void AlienProgressBuildTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		return;
 	}
 
-	if (!vIsZero(Task->TaskLocation))
-	{
-		UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, Task->TaskLocation);
-	}
-
 	// We tried and failed to place the structure
 	if (pBot->ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_FAILED)
 	{
@@ -2393,12 +2377,21 @@ void BotProgressWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (IsPlayerInUseRange(pBot->Edict, Task->TaskTarget))
 	{
-		Vector BBMin = Task->TaskTarget->v.absmin;
-		Vector BBMax = Task->TaskTarget->v.absmax;
+		Vector AimLocation = UTIL_GetCentreOfEntity(Task->TaskTarget);
 
-		vScaleBB(BBMin, BBMax, 0.75f);
+		// If we're targeting a func_weldable, then the centre of the entity might be in a wall or out of reach
+		// so instead aim at the closest point on the func_weldable to us.
+		if (!IsEdictPlayer(Task->TaskTarget) && !IsEdictStructure(Task->TaskTarget))
+		{
+			Vector BBMin = Task->TaskTarget->v.absmin;
+			Vector BBMax = Task->TaskTarget->v.absmax;
 
-		BotLookAt(pBot, vClosestPointOnBB(pBot->CurrentEyePosition, BBMin, BBMax));
+			vScaleBB(BBMin, BBMax, 0.75f);
+
+			AimLocation = vClosestPointOnBB(pBot->CurrentEyePosition, BBMin, BBMax);
+		}
+
+		BotLookAt(pBot, AimLocation);
 		pBot->DesiredCombatWeapon = WEAPON_MARINE_WELDER;
 
 		if (GetPlayerCurrentWeapon(pBot->Player) != WEAPON_MARINE_WELDER)

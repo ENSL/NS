@@ -1760,6 +1760,13 @@ void AITAC_RefreshReachabilityForStructure(AvHAIBuildableStructure* Structure)
 		AITAC_RefreshHiveData();
 	}
 
+	if (Structure->StructureType == STRUCTURE_MARINE_DEPLOYEDMINE)
+	{
+		Structure->TeamAReachabilityFlags = AI_REACHABILITY_ALL;
+		Structure->TeamBReachabilityFlags = AI_REACHABILITY_ALL;
+		return;
+	}
+
 	Structure->bReachabilityMarkedDirty = false;
 
 	Structure->TeamAReachabilityFlags = AI_REACHABILITY_NONE;
@@ -1891,23 +1898,47 @@ AvHAIBuildableStructure* AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 {
 	if (!Structure || (Structure->pev->effects & EF_NODRAW) || (Structure->pev->deadflag != DEAD_NO)) { return nullptr; }
 
-	AvHBaseBuildable* BaseBuildable = dynamic_cast<AvHBaseBuildable*>(Structure);
+	edict_t* BuildingEdict = Structure->edict();
 
-	if (!BaseBuildable) { return nullptr; }
-
-	edict_t* BuildingEdict = BaseBuildable->edict();
-
-	AvHAIDeployableStructureType StructureType = UTIL_IUSER3ToStructureType(BaseBuildable->pev->iuser3);
+	AvHAIDeployableStructureType StructureType = UTIL_IUSER3ToStructureType(BuildingEdict->v.iuser3);
 
 	if (StructureType == STRUCTURE_NONE) { return nullptr; }
 
-	int EntIndex = BaseBuildable->entindex();
+	int EntIndex = ENTINDEX(BuildingEdict);
+
 	if (EntIndex < 0) { return nullptr; }
 
 	AvHTeamNumber TeamANumber = GetGameRules()->GetTeamANumber();
 	AvHTeamNumber TeamBNumber = GetGameRules()->GetTeamBNumber();
 
-	std::unordered_map<int, AvHAIBuildableStructure>& BuildingMap = (BaseBuildable->GetTeamNumber() == TeamANumber) ? TeamAStructureMap : TeamBStructureMap;
+	std::unordered_map<int, AvHAIBuildableStructure>& BuildingMap = ((AvHTeamNumber)BuildingEdict->v.team == TeamANumber) ? TeamAStructureMap : TeamBStructureMap;
+
+	if (StructureType == STRUCTURE_MARINE_DEPLOYEDMINE)
+	{
+		BuildingMap[EntIndex].StructureType = StructureType;
+		if (BuildingMap[EntIndex].LastSeen == 0)
+		{
+			BuildingMap[EntIndex].Location = BuildingEdict->v.origin;
+			BuildingMap[EntIndex].edict = BuildingEdict;
+			BuildingMap[EntIndex].healthPercent = 1.0f;
+			BuildingMap[EntIndex].EntityRef = nullptr;
+			BuildingMap[EntIndex].StructureStatusFlags = STRUCTURE_STATUS_COMPLETED;
+			BuildingMap[EntIndex].TeamAReachabilityFlags = AI_REACHABILITY_ALL;
+			BuildingMap[EntIndex].TeamBReachabilityFlags = AI_REACHABILITY_ALL;
+			AITAC_OnStructureCreated(&BuildingMap[EntIndex]);
+		}
+
+		BuildingMap[EntIndex].LastSeen = StructureRefreshFrame;
+
+		return &BuildingMap[EntIndex];
+	}
+
+	AvHBaseBuildable* BaseBuildable = dynamic_cast<AvHBaseBuildable*>(Structure);
+
+	if (!BaseBuildable) 
+	{
+		return nullptr; 
+	}
 
 	BuildingMap[EntIndex].StructureType = StructureType;
 
@@ -1980,6 +2011,11 @@ AvHAIBuildableStructure* AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 
 	BuildingMap[EntIndex].healthPercent = NewHealthPercent;
 
+	if (BuildingMap[EntIndex].healthPercent < 0.99f && BaseBuildable->GetIsBuilt())
+	{
+		NewFlags |= STRUCTURE_STATUS_DAMAGED;
+	}
+
 	if (gpGlobals->time - BuildingMap[EntIndex].lastDamagedTime < 10.0f)
 	{
 		NewFlags |= STRUCTURE_STATUS_UNDERATTACK;
@@ -2008,7 +2044,7 @@ void AITAC_OnStructureCreated(AvHAIBuildableStructure* NewStructure)
 
 	UTIL_AddStructureTemporaryObstacles(NewStructure);
 
-	AvHTeamNumber StructureTeam = NewStructure->EntityRef->GetTeamNumber();
+	AvHTeamNumber StructureTeam = (AvHTeamNumber)NewStructure->edict->v.team;
 
 	AITAC_RefreshReachabilityForStructure(NewStructure);
 
@@ -2018,9 +2054,9 @@ void AITAC_OnStructureCreated(AvHAIBuildableStructure* NewStructure)
 
 	if (!Team) { return; }
 
-	if (Team->GetTeamType() == AVH_CLASS_TYPE_ALIEN)
+	if (Team->GetTeamType() == AVH_CLASS_TYPE_ALIEN || NewStructure->StructureType == STRUCTURE_MARINE_DEPLOYEDMINE)
 	{
-		AITAC_LinkAlienStructureToPlayer(NewStructure);
+		AITAC_LinkStructureToPlayer(NewStructure);
 	}
 
 }
@@ -2156,7 +2192,7 @@ void AITAC_OnStructureDestroyed(AvHAIBuildableStructure* DestroyedStructure)
 	}
 }
 
-void AITAC_LinkAlienStructureToPlayer(AvHAIBuildableStructure* NewStructure)
+void AITAC_LinkStructureToPlayer(AvHAIBuildableStructure* NewStructure)
 {
 	vector<AvHAIPlayer*> AllTeamPlayers = AIMGR_GetAIPlayersOnTeam((AvHTeamNumber)NewStructure->edict->v.team);
 
@@ -2370,6 +2406,8 @@ float UTIL_GetStructureRadiusForObstruction(AvHAIDeployableStructureType Structu
 		return 60.0f;
 	case STRUCTURE_MARINE_TURRET:
 		return 30.0f;
+	case STRUCTURE_MARINE_DEPLOYEDMINE:
+		return 12.0f;
 	default:
 		return 40.0f;
 
@@ -3120,24 +3158,18 @@ Vector UTIL_GetNextMinePosition(edict_t* StructureToMine)
 	bool bBack = false;
 	bool bLeft = false;
 
-	int NumMines = 0;
+	DeployableSearchFilter MineFilter;
+	MineFilter.DeployableTeam = StructureTeam;
+	MineFilter.DeployableTypes = STRUCTURE_MARINE_DEPLOYEDMINE;
+	MineFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(3.0f);
 
-	AvHTeamNumber TeamANumber = GetGameRules()->GetTeamANumber();
-	AvHTeamNumber TeamBNumber = GetGameRules()->GetTeamBNumber();
+	vector<AvHAIBuildableStructure*> SurroundingMines = AITAC_FindAllDeployables(StructureToMine->v.origin, &MineFilter);
 
-	std::unordered_map<int, AvHAIBuildableStructure>& BuildingMap = (StructureTeam == TeamANumber) ? TeamAStructureMap : TeamBStructureMap;
-
-	for (auto& it : BuildingMap)
+	for (auto it = SurroundingMines.begin(); it != SurroundingMines.end(); it++)
 	{
-		unsigned int TeamReachabilityFlag = (StructureTeam == TeamANumber) ? it.second.TeamAReachabilityFlags : it.second.TeamBReachabilityFlags;
+		AvHAIBuildableStructure* ThisMine = (*it);
 
-		if (it.second.StructureType != STRUCTURE_MARINE_DEPLOYEDMINE || !(TeamReachabilityFlag & AI_REACHABILITY_MARINE)) { continue; }
-
-		if (vDist2DSq(StructureToMine->v.origin, it.second.Location) > sqrf(UTIL_MetresToGoldSrcUnits(2.0f))) { continue; }
-
-		NumMines++;
-
-		Vector Dir = UTIL_GetVectorNormal2D(it.second.Location - StructureToMine->v.origin);
+		Vector Dir = UTIL_GetVectorNormal2D(ThisMine->Location - StructureToMine->v.origin);
 
 		if (UTIL_GetDotProduct2D(FwdVector, Dir) > 0.7f)
 		{
@@ -3158,7 +3190,6 @@ Vector UTIL_GetNextMinePosition(edict_t* StructureToMine)
 		{
 			bLeft = true;
 		}
-
 	}
 
 	float Size = fmaxf(StructureToMine->v.size.x, StructureToMine->v.size.y);
@@ -3212,7 +3243,7 @@ Vector UTIL_GetNextMinePosition(edict_t* StructureToMine)
 		}
 	}
 
-	Vector BuildLocation = UTIL_GetRandomPointOnNavmeshInDonut(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], StructureToMine->v.origin, Size, Size + 16.0f);
+	Vector BuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), StructureToMine->v.origin, Size);
 
 	return BuildLocation;
 }
@@ -3415,6 +3446,35 @@ bool AITAC_AnyPlayerOnTeamHasLOSToLocation(AvHTeamNumber Team, const Vector& Loc
 	return false;
 }
 
+vector<AvHPlayer*> AITAC_GetAllPlayersOnTeamWithLOS(AvHTeamNumber Team, const Vector& Location, float SearchRadius, edict_t* IgnorePlayer)
+{
+	vector<AvHPlayer*> Results;
+
+	float distSq = sqrf(SearchRadius);
+
+	for (int i = 1; i <= gpGlobals->maxClients; i++)
+	{
+		edict_t* PlayerEdict = INDEXENT(i);
+
+		if (!FNullEnt(PlayerEdict) && PlayerEdict != IgnorePlayer && PlayerEdict->v.team == Team && IsPlayerActiveInGame(PlayerEdict))
+		{
+			float ThisDist = vDist2DSq(PlayerEdict->v.origin, Location);
+
+			if (ThisDist <= distSq && UTIL_QuickTrace(PlayerEdict, GetPlayerEyePosition(PlayerEdict), Location))
+			{
+				AvHPlayer* PlayerRef = dynamic_cast<AvHPlayer*>(CBaseEntity::Instance(PlayerEdict));
+
+				if (PlayerRef)
+				{
+					Results.push_back(PlayerRef);
+				}
+			}
+		}
+	}
+
+	return Results;
+}
+
 bool AITAC_GetNumPlayersOnTeamWithLOS(AvHTeamNumber Team, const Vector& Location, float SearchRadius, edict_t* IgnorePlayer)
 {
 	int Result = 0;
@@ -3590,6 +3650,9 @@ const AvHAIHiveDefinition* AITAC_GetNearestHiveUnderActiveSiege(AvHTeamNumber Si
 {
 	AvHAIHiveDefinition* Result = nullptr;
 	float MinDist = 0.0f;
+
+	// Only marines can siege, so return nothing if the enemy are not marines
+	if (AIMGR_GetTeamType(SiegingTeam) != AVH_CLASS_TYPE_MARINE) { return nullptr; }
 
 	for (auto it = Hives.begin(); it != Hives.end(); it++)
 	{

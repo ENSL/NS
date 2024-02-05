@@ -45,7 +45,7 @@ void						AITAC_OnStructureCompleted(AvHAIBuildableStructure* NewStructure);
 void						AITAC_OnStructureBeginRecycling(AvHAIBuildableStructure* RecyclingStructure);
 void						AITAC_OnStructureDestroyed(AvHAIBuildableStructure* DestroyedStructure);
 void						AITAC_LinkDeployedItemToAction(AvHAIPlayer* CommanderBot, const AvHAIDroppedItem* NewItem);
-void						AITAC_LinkAlienStructureToPlayer(AvHAIBuildableStructure* NewStructure);
+void						AITAC_LinkStructureToPlayer(AvHAIBuildableStructure* NewStructure);
 
 float						AITAC_GetPhaseDistanceBetweenPoints(const Vector StartPoint, const Vector EndPoint);
 
@@ -80,6 +80,7 @@ AvHMessageID UTIL_ItemTypeToImpulseCommand(const AvHAIDeployableItemType ItemTyp
 edict_t* AITAC_GetClosestPlayerOnTeamWithLOS(AvHTeamNumber Team, const Vector& Location, float SearchRadius, edict_t* IgnorePlayer);
 bool AITAC_AnyPlayerOnTeamHasLOSToLocation(AvHTeamNumber Team, const Vector& Location, float SearchRadius, edict_t* IgnorePlayer);
 bool AITAC_GetNumPlayersOnTeamWithLOS(AvHTeamNumber Team, const Vector& Location, float SearchRadius, edict_t* IgnorePlayer);
+vector<AvHPlayer*> AITAC_GetAllPlayersOnTeamWithLOS(AvHTeamNumber Team, const Vector& Location, float SearchRadius, edict_t* IgnorePlayer);
 bool AITAC_ShouldBotBeCautious(AvHAIPlayer* pBot);
 
 // Clears out the marine and alien buildable structure maps, resource node and hive lists, and the marine item list

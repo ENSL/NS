@@ -309,6 +309,8 @@ bool BotRecalcPath(AvHAIPlayer* pBot, const Vector Destination);
 */
 bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle MoveStyle, const float MaxAcceptableDist = max_ai_use_reach);
 
+void UpdateBotStuck(AvHAIPlayer* pBot);
+
 // Used by the MoveTo command, handles the bot's movement and inputs to follow a path it has calculated for itself
 void BotFollowPath(AvHAIPlayer* pBot);
 void BotFollowFlightPath(AvHAIPlayer* pBot);
@@ -316,8 +318,6 @@ void BotFollowSwimPath(AvHAIPlayer* pBot);
 
 void SkipAheadInFlightPath(AvHAIPlayer* pBot);
 
-// If the bot has been unable to move more than 32 units in the last MaxStuckTime seconds (must be trying to move somewhere) then returns true
-bool IsBotPermaStuck(AvHAIPlayer* pBot);
 
 // Walks directly towards the destination. No path finding, just raw movement input. Will detect obstacles and try to jump/duck under them.
 void MoveDirectlyTo(AvHAIPlayer* pBot, const Vector Destination);
