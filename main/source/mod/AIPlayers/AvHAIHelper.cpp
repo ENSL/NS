@@ -158,9 +158,9 @@ Vector UTIL_GetFloorUnderEntity(const edict_t* Edict)
 
 	TraceResult hit;
 
-	Vector EntityCentre = UTIL_GetCentreOfEntity(Edict);
+	Vector EntityCentre = UTIL_GetCentreOfEntity(Edict) + Vector(0.0f, 0.0f, 1.0f);
 
-	UTIL_TraceHull(EntityCentre, (EntityCentre - Vector(0.0f, 0.0f, 1000.0f)), ignore_monsters, GetPlayerHullIndex(Edict), Edict->v.pContainingEntity, &hit);
+	UTIL_TraceHull(EntityCentre, (EntityCentre - Vector(0.0f, 0.0f, 1000.0f)), ignore_monsters, head_hull, Edict->v.pContainingEntity, &hit);
 
 	if (hit.flFraction < 1.0f)
 	{

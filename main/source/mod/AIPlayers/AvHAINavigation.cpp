@@ -442,6 +442,8 @@ unsigned int UTIL_AddTemporaryObstacle(unsigned int NavMeshIndex, const Vector L
 
 void UTIL_AddStructureTemporaryObstacles(AvHAIBuildableStructure* Structure)
 {
+	if (Structure->StructureType == STRUCTURE_MARINE_DEPLOYEDMINE) { return; }
+
 	bool bCollideWithPlayers = UTIL_ShouldStructureCollide(Structure->StructureType);
 
 	float Radius = UTIL_GetStructureRadiusForObstruction(Structure->StructureType);
@@ -3821,6 +3823,7 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 void PhaseGateMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 {
 	DeployableSearchFilter PGFilter;
+	PGFilter.DeployableTeam = pBot->Player->GetTeam();
 	PGFilter.DeployableTypes = STRUCTURE_MARINE_PHASEGATE;
 	PGFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(2.0f);
 	PGFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
@@ -3945,7 +3948,7 @@ bool IsBotOffPath(const AvHAIPlayer* pBot)
 	{
 		Vector ExactJumpTarget = UTIL_GetGroundLocation(MoveTo);
 
-		if (pBot->BotNavInfo.IsOnGround && (MoveTo.z - pBot->CurrentFloorPosition.z) > max_player_jump_height)
+		if (pBot->BotNavInfo.IsOnGround && (ExactJumpTarget.z - pBot->CurrentFloorPosition.z) > max_player_jump_height)
 		{
 			return true;
 		}
@@ -4256,6 +4259,7 @@ void MoveDirectlyTo(AvHAIPlayer* pBot, const Vector Destination)
 
 	HandlePlayerAvoidance(pBot, Destination);
 	BotMovementInputs(pBot);
+
 }
 
 
@@ -4952,12 +4956,6 @@ bool AbortCurrentMove(AvHAIPlayer* pBot, const Vector NewDestination)
 {
 	if (pBot->BotNavInfo.CurrentPath.size() == 0 || pBot->BotNavInfo.NavProfile.bFlyingProfile) { return true; }
 
-	if (IsBotPermaStuck(pBot))
-	{
-		BotSuicide(pBot);
-		return false;
-	}
-
 	Vector MoveFrom = pBot->BotNavInfo.CurrentPathPoint->FromLocation;
 	Vector MoveTo = pBot->BotNavInfo.CurrentPathPoint->Location;
 	unsigned int flag = pBot->BotNavInfo.CurrentPathPoint->flag;
@@ -5092,20 +5090,37 @@ bool AbortCurrentMove(AvHAIPlayer* pBot, const Vector NewDestination)
 	return false;
 }
 
-bool IsBotPermaStuck(AvHAIPlayer* pBot)
+void UpdateBotStuck(AvHAIPlayer* pBot)
 {
-	if (MAX_BOT_STUCK_TIME <= 0.1f) { return false; }
-
-	if (vIsZero(pBot->LastPosition) || vDist3DSq(pBot->Edict->v.origin, pBot->LastPosition) > sqrf(32.0f))
+	if (vIsZero(pBot->desiredMovementDir))
 	{
-		pBot->TimeSinceLastMovement = 0.0f;
-		pBot->LastPosition = pBot->Edict->v.origin;
-		return false;
+		return;
 	}
 
-	pBot->TimeSinceLastMovement += AIMGR_GetBotDeltaTime();
+	bool bIsFollowingPath = (pBot->BotNavInfo.CurrentPath.size() > 0 && pBot->BotNavInfo.CurrentPathPoint != pBot->BotNavInfo.CurrentPath.end());
 
-	return (pBot->TimeSinceLastMovement >= 30.0f);
+	bool bDist3D = pBot->BotNavInfo.NavProfile.bFlyingProfile || (bIsFollowingPath && (pBot->BotNavInfo.CurrentPathPoint->flag == SAMPLE_POLYFLAGS_LADDER || pBot->BotNavInfo.CurrentPathPoint->flag == SAMPLE_POLYFLAGS_WALLCLIMB));
+
+	float DistFromLastPoint = (bDist3D) ? vDist3DSq(pBot->Edict->v.origin, pBot->BotNavInfo.StuckInfo.LastBotPosition) : vDist2DSq(pBot->Edict->v.origin, pBot->BotNavInfo.StuckInfo.LastBotPosition);
+
+	if (DistFromLastPoint >= sqrf(8.0f))
+	{
+		pBot->BotNavInfo.StuckInfo.TotalStuckTime = 0.0f;
+		pBot->BotNavInfo.StuckInfo.LastBotPosition = pBot->Edict->v.origin;
+	}
+	else
+	{
+		pBot->BotNavInfo.StuckInfo.TotalStuckTime += AIMGR_GetBotDeltaTime();
+	}
+
+	if (pBot->BotNavInfo.StuckInfo.TotalStuckTime > 0.25f)
+	{
+		BotJump(pBot);
+		if (!IsPlayerSkulk(pBot->Edict))
+		{
+			pBot->Button |= IN_DUCK;
+		}
+	}
 }
 
 void SetBaseNavProfile(AvHAIPlayer* pBot)
@@ -5355,7 +5370,7 @@ void OnosUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
 
 bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle MoveStyle, const float MaxAcceptableDist)
 {
-	if (vIsZero(Destination) || (vDist2D(pBot->Edict->v.origin, Destination) <= 8.0f && (fabs(pBot->CollisionHullBottomLocation.z - Destination.z) < 50.0f)))
+	if (vIsZero(Destination) || (vDist2D(pBot->Edict->v.origin, Destination) <= 6.0f && (fabs(pBot->CollisionHullBottomLocation.z - Destination.z) < 50.0f)))
 	{
 		ClearBotMovement(pBot);
 		return true; 
@@ -5449,12 +5464,6 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 				}
 			}
 
-			if (IsBotPermaStuck(pBot))
-			{
-				BotSuicide(pBot);
-				return false;
-			}
-
 			ClearBotPath(pBot);
 			return false;
 		}
@@ -5492,12 +5501,6 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 					return true;
 				}
 			}
-		}
-
-		if (IsBotPermaStuck(pBot))
-		{
-			BotSuicide(pBot);
-			return false;
 		}
 
 		if (pBot->Edict->v.flags & FL_INWATER)
@@ -5633,7 +5636,11 @@ void SkipAheadInFlightPath(AvHAIPlayer* pBot)
 
 void BotFollowFlightPath(AvHAIPlayer* pBot)
 {
-	if (pBot->BotNavInfo.CurrentPath.size() == 0) { return; }
+	if (pBot->BotNavInfo.CurrentPath.size() == 0) 
+	{
+		ClearBotStuck(pBot);
+		return;
+	}
 
 	nav_status* BotNavInfo = &pBot->BotNavInfo;
 	edict_t* pEdict = pBot->Edict;
@@ -5679,15 +5686,6 @@ void BotFollowFlightPath(AvHAIPlayer* pBot)
 	ClosestPointToPath = vClosestPointOnLine(MoveFrom, CurrentMoveDest, pEdict->v.origin);
 	
 	Vector MoveDir = UTIL_GetVectorNormal(CurrentMoveDest - MoveFrom);
-
-	if (IsBotStuck(pBot, CurrentMoveDest))
-	{
-		if (BotNavInfo->TotalStuckTime > 3.0f)
-		{
-			ClearBotPath(pBot);
-			return;
-		}
-	}
 
 	float CurrentSpeed = vSize3D(pEdict->v.velocity);
 
@@ -5854,6 +5852,7 @@ void BotFollowPath(AvHAIPlayer* pBot)
 	nav_status* BotNavInfo = &pBot->BotNavInfo;
 	edict_t* pEdict = pBot->Edict;
 
+
 	// If we've reached our current path point
 	if (HasBotReachedPathPoint(pBot))
 	{
@@ -5877,32 +5876,7 @@ void BotFollowPath(AvHAIPlayer* pBot)
 
 	Vector MoveTo = BotNavInfo->CurrentPathPoint->Location;
 
-	unsigned int CurrentFlag = BotNavInfo->CurrentPathPoint->flag;
-
-	bool bIsUsingPhaseGate = (CurrentFlag == SAMPLE_POLYFLAGS_TEAM1PHASEGATE || CurrentFlag == SAMPLE_POLYFLAGS_TEAM2PHASEGATE);
-
 	NewMove(pBot);
-
-	if (!bIsUsingPhaseGate && IsBotStuck(pBot, MoveTo))
-	{
-		if (BotNavInfo->TotalStuckTime > 3.0f)
-		{
-			ClearBotPath(pBot);
-			return;
-		}
-
-		// If onos, ducking is usually a good way to get unstuck...
-		if (IsPlayerOnos(pBot->Edict))
-		{
-			pBot->Button |= IN_DUCK;
-		}
-
-		if (!IsPlayerClimbingWall(pBot->Edict) && !IsPlayerOnLadder(pBot->Edict))
-		{
-			PerformUnstuckMove(pBot, MoveTo);
-			return;
-		}
-	}
 
 }
 
@@ -5971,9 +5945,17 @@ void PerformUnstuckMove(AvHAIPlayer* pBot, const Vector MoveDestination)
 bool IsBotStuck(AvHAIPlayer* pBot, const Vector MoveDestination)
 {
 	// If invalid move destination then bail out
-	if (vIsZero(MoveDestination) || vIsZero(pBot->desiredMovementDir)) { return false; }
+	if (vIsZero(MoveDestination) || vDist2DSq(pBot->Edict->v.origin, MoveDestination) < sqrf(32.0f))
+	{
+		pBot->BotNavInfo.LastStuckCheckTime = gpGlobals->time;
+		return false; 
+	}
 
-	if (pBot->BotNavInfo.CurrentPathPoint->flag == SAMPLE_POLYFLAGS_LIFT) { return false; }
+	if (pBot->BotNavInfo.CurrentPathPoint->flag == SAMPLE_POLYFLAGS_LIFT || pBot->BotNavInfo.CurrentPathPoint->flag == SAMPLE_POLYFLAGS_TEAM1PHASEGATE || pBot->BotNavInfo.CurrentPathPoint->flag == SAMPLE_POLYFLAGS_TEAM2PHASEGATE)
+	{
+		pBot->BotNavInfo.LastStuckCheckTime = gpGlobals->time;
+		return false; 
+	}
 
 	// If moving to a new destination set a new distance baseline. We do not reset the stuck timer
 	if (MoveDestination != pBot->BotNavInfo.StuckCheckMoveLocation)
@@ -5985,7 +5967,7 @@ bool IsBotStuck(AvHAIPlayer* pBot, const Vector MoveDestination)
 	}
 
 	// If first time performing a stuck check, set a baseline time and return false
-	if (pBot->BotNavInfo.LastStuckCheckTime == 0.0f)
+	if (pBot->BotNavInfo.LastStuckCheckTime == 0.0f || gpGlobals->time - pBot->BotNavInfo.LastStuckCheckTime > 3.0f)
 	{
 		pBot->BotNavInfo.LastStuckCheckTime = gpGlobals->time;
 		return false;
@@ -6381,8 +6363,6 @@ void ClearBotStuck(AvHAIPlayer* pBot)
 	pBot->BotNavInfo.LastStuckCheckTime = gpGlobals->time;
 	pBot->BotNavInfo.TotalStuckTime = 0.0f;
 	pBot->BotNavInfo.UnstuckMoveLocation = g_vecZero;
-	pBot->BotNavInfo.UnstuckMoveLocationStartTime = 0.0f;
-	pBot->BotNavInfo.UnstuckMoveStartLocation = g_vecZero;
 	pBot->BotNavInfo.StuckCheckMoveLocation = g_vecZero;
 }
 
@@ -6677,8 +6657,6 @@ void ClearBotPath(AvHAIPlayer* pBot)
 void ClearBotStuckMovement(AvHAIPlayer* pBot)
 {
 	pBot->BotNavInfo.UnstuckMoveLocation = g_vecZero;
-	pBot->BotNavInfo.UnstuckMoveLocationStartTime = 0.0f;
-	pBot->BotNavInfo.UnstuckMoveStartLocation = g_vecZero;
 }
 
 void BotMovementInputs(AvHAIPlayer* pBot)

@@ -61,9 +61,11 @@ bool AICOMM_DeployItem(AvHAIPlayer* pBot, const AvHAIDeployableItemType ItemToDe
 
 	if (!AvHSHUGetIsSiteValidForBuild(StructureID, &BuildLocation)) { return false; }
 
-	bool theSuccess = (AvHSUBuildTechForPlayer(StructureID, BuildLocation, pBot->Player) != NULL);
+	CBaseEntity* NewItem = AvHSUBuildTechForPlayer(StructureID, BuildLocation, pBot->Player);
 
-	if (!theSuccess) { return false; }
+	if (!NewItem) { return false; }
+
+	AITAC_UpdateMarineItem(NewItem, ItemToDeploy);
 
 	pBot->Player->PayPurchaseCost(theCost);
 
@@ -84,6 +86,20 @@ bool AICOMM_ResearchTech(AvHAIPlayer* pBot, AvHAIBuildableStructure* StructureTo
 	if (StructureIndex < 0) { return false; }
 
 	if (!StructureToResearch->EntityRef->GetIsTechnologyAvailable(Research)) { return false; }
+
+	AvHTeam* CommanderTeamRef = AIMGR_GetTeamRef(pBot->Player->GetTeam());
+
+	if (!CommanderTeamRef) { return false; }
+
+	AvHResearchManager& theResearchManager = CommanderTeamRef->GetResearchManager();
+
+	bool theIsResearchable = false;
+	int theResearchCost = 0.0f;
+	float theResearchTime = 0.0f;
+
+	theResearchManager.GetResearchInfo(Research, theIsResearchable, theResearchCost, theResearchTime);
+
+	if (pBot->Player->GetResources() < theResearchCost) { return false; }
 
 	pBot->Player->SetSelection(StructureIndex, true);
 
@@ -388,6 +404,7 @@ bool AICOMM_ShouldCommanderPrioritiseNodes(AvHAIPlayer* pBot)
 
 	int NumOwnedNodes = 0;
 	int NumEligibleNodes = 0;
+	int NumFreeNodes = 0;
 
 	// First get ours and the enemy's ownership of all eligible nodes (we can reach them, and they're in the enemy base)
 	vector<AvHAIResourceNode*> AllNodes = AITAC_GetAllReachableResourceNodes(BotTeam);
@@ -399,6 +416,11 @@ bool AICOMM_ShouldCommanderPrioritiseNodes(AvHAIPlayer* pBot)
 		// We don't care about the node at marine spawn or enemy hives, ignore then in our calculations
 		if (ThisNode->OwningTeam == EnemyTeam && ThisNode->bIsBaseNode) { continue; }
 
+		if (ThisNode->OwningTeam == TEAM_IND)
+		{
+			NumFreeNodes++;
+		}
+
 		NumEligibleNodes++;
 
 		if (ThisNode->OwningTeam == BotTeam) { NumOwnedNodes++; }
@@ -408,7 +430,7 @@ bool AICOMM_ShouldCommanderPrioritiseNodes(AvHAIPlayer* pBot)
 
 	if (NumNodesLeft == 0) { return false; }
 
-	return NumOwnedNodes < 3 || NumNodesLeft > 3;
+	return NumOwnedNodes < 3 || NumFreeNodes > 3;
 
 }
 
@@ -587,8 +609,11 @@ edict_t* AICOMM_GetPlayerWithNoOrderNearestLocation(AvHAIPlayer* pBot, Vector Se
 	for (auto it = PlayerList.begin(); it != PlayerList.end();)
 	{
 		AvHPlayer* PlayerRef = (*it);
+		AvHAIPlayer* AIPlayerRef = AIMGR_GetBotRefFromPlayer(PlayerRef);
 
-		if (!IsPlayerActiveInGame(PlayerRef->edict()))
+		// Don't give orders to incapacitated players, or if the bot is currently playing a defensive role. Stops the commander sending everyone out
+		// and leaving nobody at base
+		if (!IsPlayerActiveInGame(PlayerRef->edict()) || (AIPlayerRef && AIPlayerRef->BotRole == BOT_ROLE_SWEEPER))
 		{
 			it = PlayerList.erase(it);
 		}
@@ -1093,8 +1118,75 @@ bool AICOMM_CheckForNextSupplyAction(AvHAIPlayer* pBot)
 {
 	AvHTeamNumber CommanderTeam = pBot->Player->GetTeam();
 
+	// First thing: if our base is damaged and there's nobody able to weld, drop a welder so we don't let the base die
+	bool bBaseIsDamaged = false;
+
+	DeployableSearchFilter DamagedBaseStructures;
+	DamagedBaseStructures.DeployableTypes = (STRUCTURE_MARINE_COMMCHAIR | STRUCTURE_MARINE_INFANTRYPORTAL);
+	DamagedBaseStructures.DeployableTeam = CommanderTeam;
+	DamagedBaseStructures.ReachabilityTeam = CommanderTeam;
+	DamagedBaseStructures.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+	DamagedBaseStructures.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+	DamagedBaseStructures.IncludeStatusFlags = STRUCTURE_STATUS_DAMAGED;
+	DamagedBaseStructures.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+	DamagedBaseStructures.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
+
+	bBaseIsDamaged = AITAC_DeployableExistsAtLocation(AITAC_GetCommChairLocation(CommanderTeam), &DamagedBaseStructures);
+
+	if (bBaseIsDamaged)
+	{
+		AvHAIDroppedItem* NearestWelder = AITAC_FindClosestItemToLocation(AITAC_GetCommChairLocation(CommanderTeam), DEPLOYABLE_ITEM_WELDER, CommanderTeam, AI_REACHABILITY_MARINE, 0.0f, UTIL_MetresToGoldSrcUnits(15.0f), false);
+		bool bPlayerHasWelder = false;
+
+		if (!NearestWelder)
+		{
+			vector<AvHPlayer*> PlayersAtBase = AITAC_GetAllPlayersOfTeamInArea(CommanderTeam, AITAC_GetCommChairLocation(CommanderTeam), UTIL_MetresToGoldSrcUnits(15.0f), false, pBot->Edict, AVH_USER3_COMMANDER_PLAYER);
+
+			for (auto it = PlayersAtBase.begin(); it != PlayersAtBase.end(); it++)
+			{
+				AvHPlayer* ThisPlayer = (*it);
+
+				if (PlayerHasWeapon(ThisPlayer, WEAPON_MARINE_WELDER))
+				{
+					bPlayerHasWelder = true;
+				}
+			}
+		}
+
+		if (!NearestWelder && !bPlayerHasWelder)
+		{
+			DeployableSearchFilter ArmouryFilter;
+			ArmouryFilter.DeployableTypes = (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY);
+			ArmouryFilter.DeployableTeam = CommanderTeam;
+			ArmouryFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+			ArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+			AvHAIBuildableStructure* NearestArmoury = AITAC_FindClosestDeployableToLocation(AITAC_GetTeamStartingLocation(CommanderTeam), &ArmouryFilter);
+
+			if (NearestArmoury)
+			{
+				Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(3.0f));
+				bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_WELDER, DeployLocation);
+
+				return bSuccess;
+			}
+		}
+
+	}
+
+	// Now work out how many welders we want on the team generally
+	
 	int NumDesiredWelders = 1;
+
+	if (!AICOMM_ShouldCommanderPrioritiseNodes(pBot))
+	{
+		NumDesiredWelders = (int)ceilf((float)AIMGR_GetNumPlayersOnTeam(CommanderTeam) * 0.3f);
+		return false; 
+	}
+
 	int NumTeamWelders = AITAC_GetNumWeaponsInPlay(CommanderTeam, WEAPON_MARINE_WELDER);
+
+	// Add additional welders to the team if we have hives or resource nodes which can only be reached with a welder
 
 	vector<AvHAIResourceNode*> AllNodes = AITAC_GetAllResourceNodes();
 
@@ -1127,7 +1219,7 @@ bool AICOMM_CheckForNextSupplyAction(AvHAIPlayer* pBot)
 		}
 	}
 
-	NumDesiredWelders = imini(NumDesiredWelders, (AIMGR_GetNumPlayersOnTeam(CommanderTeam) / 2));
+	NumDesiredWelders = imini(NumDesiredWelders, (int)(ceilf((float)AIMGR_GetNumPlayersOnTeam(CommanderTeam) * 0.5f)));
 
 	if (NumTeamWelders < NumDesiredWelders)
 	{
@@ -1149,9 +1241,7 @@ bool AICOMM_CheckForNextSupplyAction(AvHAIPlayer* pBot)
 	}
 
 	// Don't drop stuff if we badly need resource nodes
-	if (AICOMM_ShouldCommanderPrioritiseNodes(pBot)) { return false; }
-
-	if (pBot->Player->GetResources() < 30) { return false; }
+	if (AICOMM_ShouldCommanderPrioritiseNodes(pBot) && pBot->Player->GetResources() < 20) { return false; }
 
 
 	int NumDesiredShotguns = (int)ceilf(AIMGR_GetNumPlayersOnTeam(CommanderTeam) * 0.33f);
@@ -1232,9 +1322,94 @@ bool AICOMM_CheckForNextSupplyAction(AvHAIPlayer* pBot)
 		}
 	}
 
-	if (AITAC_ResearchIsComplete(CommanderTeam, TECH_RESEARCH_HEAVYARMOR))
-	{
+	if (!AITAC_ResearchIsComplete(CommanderTeam, TECH_RESEARCH_HEAVYARMOR)) { return false; }
+	
+	DeployableSearchFilter StructureFilter;
+	StructureFilter.DeployableTypes = STRUCTURE_MARINE_ADVARMOURY;
+	StructureFilter.DeployableTeam = CommanderTeam;
+	StructureFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+	StructureFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
 
+	AvHAIBuildableStructure* NearestAdvArmoury = AITAC_FindClosestDeployableToLocation(AITAC_GetTeamStartingLocation(CommanderTeam), &StructureFilter);
+
+	StructureFilter.DeployableTypes = STRUCTURE_MARINE_PROTOTYPELAB;
+	AvHAIBuildableStructure* NearestPrototypeLab = AITAC_FindClosestDeployableToLocation(AITAC_GetTeamStartingLocation(CommanderTeam), &StructureFilter);
+
+	if (!NearestAdvArmoury || !NearestPrototypeLab) { return false; }
+
+	AvHAIDroppedItem* ExistingHA = AITAC_FindClosestItemToLocation(NearestPrototypeLab->Location, DEPLOYABLE_ITEM_HEAVYARMOUR, CommanderTeam, AI_REACHABILITY_MARINE, 0.0f, UTIL_MetresToGoldSrcUnits(5.0f), false);
+	AvHAIDroppedItem* ExistingHMG = AITAC_FindClosestItemToLocation(NearestAdvArmoury->Location, DEPLOYABLE_ITEM_HMG, CommanderTeam, AI_REACHABILITY_MARINE, 0.0f, UTIL_MetresToGoldSrcUnits(5.0f), false);
+	AvHAIDroppedItem* ExistingWelder = AITAC_FindClosestItemToLocation(NearestAdvArmoury->Location, DEPLOYABLE_ITEM_WELDER, CommanderTeam, AI_REACHABILITY_MARINE, 0.0f, UTIL_MetresToGoldSrcUnits(5.0f), false);
+
+	if (ExistingHA && ExistingHMG && ExistingWelder) { return false; }
+
+	vector<edict_t*> NearbyPlayers = AITAC_GetAllPlayersOfClassInArea(CommanderTeam, NearestAdvArmoury->Location, UTIL_MetresToGoldSrcUnits(10.0f), false, pBot->Edict, AVH_USER3_MARINE_PLAYER);
+
+	bool bDropWeapon = false;
+	bool bDropWelder = false;
+
+	for (auto it = NearbyPlayers.begin(); it != NearbyPlayers.end(); it++)
+	{
+		edict_t* PlayerEdict = (*it);
+		AvHPlayer* PlayerRef = dynamic_cast<AvHPlayer*>(CBaseEntity::Instance(PlayerEdict));
+		if (!PlayerEdict) { continue; }
+
+		if (PlayerHasHeavyArmour(PlayerEdict) || PlayerHasJetpack(PlayerEdict))
+		{
+			if (PlayerHasWeapon(PlayerRef, WEAPON_MARINE_MG) || UTIL_GetPlayerPrimaryWeapon(PlayerRef) == WEAPON_INVALID)
+			{
+				bDropWeapon = true;
+			}
+			else
+			{
+				if (!PlayerHasWeapon(PlayerRef, WEAPON_MARINE_WELDER))
+				{
+					bDropWelder = true;
+				}
+			}
+		}
+	}
+
+	if (!ExistingHA && !bDropWelder && !bDropWeapon)
+	{
+		Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), NearestPrototypeLab->Location, UTIL_MetresToGoldSrcUnits(3.0f));
+
+		if (vIsZero(DeployLocation))
+		{
+			DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), NearestPrototypeLab->Location, UTIL_MetresToGoldSrcUnits(3.0f));
+		}
+
+		bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_HEAVYARMOUR, DeployLocation);
+
+		return bSuccess;
+	}
+
+	if (bDropWeapon && !ExistingHMG)
+	{
+		Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), NearestAdvArmoury->Location, UTIL_MetresToGoldSrcUnits(3.0f));
+
+		if (vIsZero(DeployLocation))
+		{
+			DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), NearestAdvArmoury->Location, UTIL_MetresToGoldSrcUnits(3.0f));
+		}
+
+		bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_HMG, DeployLocation);
+
+		return bSuccess;
+	}
+
+	if (bDropWelder && !ExistingWelder)
+	{
+		Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), NearestAdvArmoury->Location, UTIL_MetresToGoldSrcUnits(3.0f));
+
+		if (vIsZero(DeployLocation))
+		{
+			DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), NearestAdvArmoury->Location, UTIL_MetresToGoldSrcUnits(3.0f));
+		}
+
+		bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_WELDER, DeployLocation);
+
+		return bSuccess;
 	}
 
 	return false;
@@ -1649,17 +1824,17 @@ bool AICOMM_PerformNextSiegeHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefinit
 	{
 		SiegeLocation = ExistingTF->Location;
 
-		NextBuildPosition = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), SiegeLocation, UTIL_MetresToGoldSrcUnits(5.0f));
+		NextBuildPosition = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), ExistingTF->Location, UTIL_MetresToGoldSrcUnits(5.0f));
 
 		if (vIsZero(NextBuildPosition))
 		{
 			// Reduce radius to avoid putting it on the other side of a wall or something
-			NextBuildPosition = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), SiegeLocation, UTIL_MetresToGoldSrcUnits(3.0f));
+			NextBuildPosition = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), ExistingTF->Location, UTIL_MetresToGoldSrcUnits(3.0f));
 
 			if (vIsZero(NextBuildPosition))
 			{
 				// Fall-back, this could end up putting the structure in dodgy spots but better than not placing it at all
-				NextBuildPosition = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), SiegeLocation, UTIL_MetresToGoldSrcUnits(5.0f));
+				NextBuildPosition = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), ExistingTF->Location, UTIL_MetresToGoldSrcUnits(5.0f));
 			}
 		}
 

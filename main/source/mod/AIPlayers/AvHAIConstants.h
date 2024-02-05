@@ -103,6 +103,7 @@ typedef enum
 	STRUCTURE_STATUS_PARASITED = 1 << 3,
 	STRUCTURE_STATUS_UNDERATTACK = 1 << 4,
 	STRUCTURE_STATUS_RESEARCHING = 1 << 5,
+	STRUCTURE_STATUS_DAMAGED = 1 << 6,
 
 	STRUCTURE_STATUS_ALL = -1
 } AvHAIStructureStatus;
@@ -536,6 +537,14 @@ typedef struct _AVH_AI_PLAYER_MOVE_TASK
 	bool bPathGenerated = false;
 } AvHAIPlayerMoveTask;
 
+typedef struct _AVH_AI_STUCK_TRACKER
+{
+	Vector LastBotPosition = g_vecZero;
+	Vector MoveDestination = g_vecZero;
+	float TotalStuckTime = 0.0f; // Total time the bot has spent stuck
+
+} AvHAIPlayerStuckTracker;
+
 // Contains the bot's current navigation info, such as current path
 typedef struct _NAV_STATUS
 {
@@ -559,8 +568,6 @@ typedef struct _NAV_STATUS
 
 	Vector StuckCheckMoveLocation = g_vecZero; // Where is the bot trying to go that we're checking if they're stuck?
 	Vector UnstuckMoveLocation = g_vecZero; // If the bot is unable to find a path, blindly move here to try and fix the problem
-	Vector UnstuckMoveStartLocation = g_vecZero; // So the bot can track where it was when it started the unstuck movement
-	float UnstuckMoveLocationStartTime = 0.0f; // When did the bot start trying to move to UnstuckMoveLocation? Give up after certain amount of time
 
 	float LandedTime = 0.0f; // When the bot last landed after a fall/jump.
 	float LeapAttemptedTime = 0.0f; // When the bot last attempted to leap/blink. Avoid spam that sends it flying around too fast
@@ -582,6 +589,8 @@ typedef struct _NAV_STATUS
 
 	nav_profile NavProfile;
 	bool bNavProfileChanged = false;
+
+	AvHAIPlayerStuckTracker StuckInfo;
 
 	unsigned int SpecialMovementFlags = 0; // Any special movement flags required for this path (e.g. needs a welder, needs a jetpack etc.)
 
