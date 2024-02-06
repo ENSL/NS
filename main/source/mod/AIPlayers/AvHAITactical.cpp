@@ -1923,8 +1923,8 @@ AvHAIBuildableStructure* AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 			BuildingMap[EntIndex].healthPercent = 1.0f;
 			BuildingMap[EntIndex].EntityRef = nullptr;
 			BuildingMap[EntIndex].StructureStatusFlags = STRUCTURE_STATUS_COMPLETED;
-			BuildingMap[EntIndex].TeamAReachabilityFlags = AI_REACHABILITY_ALL;
-			BuildingMap[EntIndex].TeamBReachabilityFlags = AI_REACHABILITY_ALL;
+			BuildingMap[EntIndex].TeamAReachabilityFlags = (AI_REACHABILITY_ALL & ~(AI_REACHABILITY_UNREACHABLE));
+			BuildingMap[EntIndex].TeamBReachabilityFlags = (AI_REACHABILITY_ALL & ~(AI_REACHABILITY_UNREACHABLE));
 			AITAC_OnStructureCreated(&BuildingMap[EntIndex]);
 		}
 

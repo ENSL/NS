@@ -76,7 +76,7 @@ bool AICOMM_DeployItem(AvHAIPlayer* pBot, const AvHAIDeployableItemType ItemToDe
 
 bool AICOMM_ResearchTech(AvHAIPlayer* pBot, AvHAIBuildableStructure* StructureToResearch, AvHMessageID Research)
 {
-	if (!StructureToResearch || FNullEnt(StructureToResearch->edict)) { return false; }
+	if (!StructureToResearch || FNullEnt(StructureToResearch->edict) || !StructureToResearch->EntityRef) { return false; }
 
 	// Don't do anything if the structure is being recycled, or we DON'T want to recycle but the structure is already busy
 	if (StructureToResearch->EntityRef->GetIsRecycling() || (Research != BUILD_RECYCLE && StructureToResearch->EntityRef->GetIsResearching())) { return false; }
@@ -132,6 +132,8 @@ bool AICOMM_UpgradeStructure(AvHAIPlayer* pBot, AvHAIBuildableStructure* Structu
 
 bool AICOMM_RecycleStructure(AvHAIPlayer* pBot, AvHAIBuildableStructure* StructureToRecycle)
 {
+	if (!StructureToRecycle || StructureToRecycle->StructureType == STRUCTURE_MARINE_DEPLOYEDMINE) { return false; }
+
 	return AICOMM_ResearchTech(pBot, StructureToRecycle, BUILD_RECYCLE);
 }
 
@@ -902,8 +904,8 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 
 	if (NumInfantryPortals < 2)
 	{
-		AICOMM_BuildInfantryPortal(pBot, CommChair);
-		return true;
+		bool bSuccess = AICOMM_BuildInfantryPortal(pBot, CommChair);
+		return (bSuccess || pBot->Player->GetResources() <= BALANCE_VAR(kInfantryPortalCost) + 5);
 	}
 
 	StructureFilter.DeployableTypes = STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY;
@@ -932,8 +934,8 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 
 		if (!vIsZero(BuildLocation))
 		{
-			AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_ARMOURY, BuildLocation);
-			return true;
+			bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_ARMOURY, BuildLocation);
+			return (bSuccess || pBot->Player->GetResources() <= BALANCE_VAR(kArmoryCost) + 5);
 		}
 	}
 
@@ -967,8 +969,8 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 
 			if (!vIsZero(BuildLocation))
 			{
-				AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_PHASEGATE, BuildLocation);
-				return true;
+				bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_PHASEGATE, BuildLocation);
+				return (bSuccess || pBot->Player->GetResources() <= BALANCE_VAR(kPhaseGateCost) + 5);
 			}
 		}
 	}
@@ -977,21 +979,19 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 
 	if (CappableNode)
 	{
-		AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_RESTOWER, CappableNode->Location);
-		return true;
+		bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_RESTOWER, CappableNode->Location);
+		return (bSuccess || pBot->Player->GetResources() <= BALANCE_VAR(kResourceTowerCost) + 5);
 	}
 
 	const AvHAIHiveDefinition* HiveToSecure = AICOMM_GetEmptyHiveOpportunityNearestLocation(pBot, AITAC_GetCommChairLocation(TeamNumber));
 
 	if (HiveToSecure)
 	{
-		if (AICOMM_PerformNextSecureHiveAction(pBot, HiveToSecure))
-		{
-			return true;
-		}
+		bool bSuccess = AICOMM_PerformNextSecureHiveAction(pBot, HiveToSecure);
+		return (bSuccess || pBot->Player->GetResources() <= BALANCE_VAR(kTurretFactoryCost) + 5);
 	}
 
-	if (pBot->Player->GetResources() < 30) { return false; }
+	if (AICOMM_ShouldCommanderPrioritiseNodes(pBot) && pBot->Player->GetResources() < 30) { return false; }
 
 	StructureFilter.DeployableTypes = STRUCTURE_MARINE_ARMSLAB;
 	StructureFilter.MaxSearchRadius = 0.0f;
@@ -1004,10 +1004,8 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 
 		if (!vIsZero(BuildLocation))
 		{
-			if (AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_ARMSLAB, BuildLocation))
-			{
-				return true;
-			}
+			bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_ARMSLAB, BuildLocation);
+			return (bSuccess || pBot->Player->GetResources() <= BALANCE_VAR(kArmsLabCost) + 5);
 		}
 	}
 
@@ -1021,10 +1019,8 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 
 		if (!vIsZero(BuildLocation))
 		{
-			if (AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_OBSERVATORY, BuildLocation))
-			{
-				return true;
-			}
+			bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_OBSERVATORY, BuildLocation);
+			return (bSuccess || pBot->Player->GetResources() <= BALANCE_VAR(kObservatoryCost) + 5);
 		}
 	}
 
@@ -1037,10 +1033,8 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 
 	if (HiveToSiege)
 	{
-		if (AICOMM_PerformNextSiegeHiveAction(pBot, HiveToSiege))
-		{
-			return true;
-		}
+		bool bSuccess = AICOMM_PerformNextSiegeHiveAction(pBot, HiveToSiege);
+		return (bSuccess || pBot->Player->GetResources() <= BALANCE_VAR(kTurretFactoryCost) + 5);
 	}
 
 	StructureFilter.DeployableTypes = STRUCTURE_MARINE_ADVARMOURY;
@@ -1178,10 +1172,9 @@ bool AICOMM_CheckForNextSupplyAction(AvHAIPlayer* pBot)
 	
 	int NumDesiredWelders = 1;
 
-	if (!AICOMM_ShouldCommanderPrioritiseNodes(pBot))
+	if (!AICOMM_ShouldCommanderPrioritiseNodes(pBot) && pBot->Player->GetResources() >= 20)
 	{
 		NumDesiredWelders = (int)ceilf((float)AIMGR_GetNumPlayersOnTeam(CommanderTeam) * 0.3f);
-		return false; 
 	}
 
 	int NumTeamWelders = AITAC_GetNumWeaponsInPlay(CommanderTeam, WEAPON_MARINE_WELDER);
@@ -2021,6 +2014,7 @@ bool AICOMM_BuildInfantryPortal(AvHAIPlayer* pBot, edict_t* CommChair)
 bool AICOMM_CheckForNextRecycleAction(AvHAIPlayer* pBot)
 {
 	DeployableSearchFilter UnreachableFilter;
+	UnreachableFilter.DeployableTypes = (SEARCH_ALL_STRUCTURES & ~(STRUCTURE_MARINE_DEPLOYEDMINE));
 	UnreachableFilter.DeployableTeam = pBot->Player->GetTeam();
 	UnreachableFilter.ReachabilityTeam = pBot->Player->GetTeam();
 	UnreachableFilter.ReachabilityFlags = AI_REACHABILITY_UNREACHABLE;

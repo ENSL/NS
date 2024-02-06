@@ -1672,10 +1672,35 @@ void BotProgressAttackTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 void BotProgressDefendTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
-	BotProgressGuardTask(pBot, Task);
 
 	if (!FNullEnt(Task->TaskTarget))
 	{
+		vector<AvHPlayer*> Attackers = AITAC_GetAllPlayersOnTeamWithLOS(AIMGR_GetEnemyTeam(pBot->Player->GetTeam()), Task->TaskTarget->v.origin, UTIL_MetresToGoldSrcUnits(15.0f), nullptr);
+		edict_t* NearestAttacker = nullptr;
+		float MinDist = 0.0f;		
+
+		for (auto it = Attackers.begin(); it != Attackers.end(); it++)
+		{
+			AvHPlayer* ThisPlayer = (*it);
+			edict_t* PlayerEdict = ThisPlayer->edict();
+
+			if (FNullEnt(PlayerEdict)) { continue; }
+
+			float ThisDist = vDist2DSq(pBot->Edict->v.origin, PlayerEdict->v.origin);
+
+			if (FNullEnt(NearestAttacker) || ThisDist < MinDist)
+			{
+				NearestAttacker = PlayerEdict;
+				MinDist = ThisDist;
+			}
+		}
+
+		if (!FNullEnt(NearestAttacker))
+		{
+			MoveTo(pBot, UTIL_GetEntityGroundLocation(NearestAttacker), MOVESTYLE_NORMAL);
+			return;
+		}
+
 		AvHAIBuildableStructure* StructureRef = AITAC_GetDeployableRefFromEdict(Task->TaskTarget);
 
 		if (!StructureRef) { return; }
@@ -1689,6 +1714,8 @@ void BotProgressDefendTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 			}
 		}
 	}
+
+	BotProgressGuardTask(pBot, Task);
 }
 
 void BotProgressTakeCommandTask(AvHAIPlayer* pBot)

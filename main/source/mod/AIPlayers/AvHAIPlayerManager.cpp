@@ -597,7 +597,9 @@ void AIMGR_UpdateAIPlayers()
 
 				UpdateBotChat(bot);
 
-				DroneThink(bot);
+				AIPlayerThink(bot);
+
+				EndBotFrame(bot);
 
 				BotUpdateDesiredViewRotation(bot);
 			}
