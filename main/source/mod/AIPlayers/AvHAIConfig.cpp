@@ -14,6 +14,8 @@ bool bLerkAllowed = true;
 bool bFadeAllowed = true;
 bool bOnosAllowed = true;
 
+BotFillTiming CurrentBotFillTiming = FILLTIMING_MAPLOAD;
+
 std::unordered_map<std::string, TeamSizeDefinitions> TeamSizeMap;
 
 std::unordered_map<std::string, bot_skill> BotSkillLevelsMap;
@@ -238,6 +240,14 @@ void CONFIG_ParseConfigFile()
             {
                 MaxStuckTime = (float)atoi(value.c_str());
                 MaxStuckTime = fmaxf(0.0f, MaxStuckTime);
+                continue;
+            }
+
+            if (key.compare("BotFillTiming") == 0)
+            {
+                int FillSetting = atoi(value.c_str());
+                FillSetting = clampi(FillSetting, 0, 2);
+                CurrentBotFillTiming = (BotFillTiming)FillSetting;
                 continue;
             }
 
@@ -478,4 +488,9 @@ void CONFIG_ParseConfigFile()
     {
         GlobalSkillLevel = "default";
     }
+}
+
+BotFillTiming CONFIG_GetBotFillTiming()
+{
+    return CurrentBotFillTiming;
 }
