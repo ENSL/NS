@@ -148,7 +148,7 @@ void CONFIG_ParseConfigFile()
     CurrentSkillLevel = "default";
 
 
-    string BotConfigFile = string(getModDirectory()) + "/bots.cfg";
+    string BotConfigFile = string(getModDirectory()) + "/nsbots.cfg";
 
     const char* filename = BotConfigFile.c_str();
 
