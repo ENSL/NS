@@ -54,6 +54,7 @@ void UpdateBotChat(AvHAIPlayer* pBot);
 
 void ClearBotInputs(AvHAIPlayer* pBot);
 void StartNewBotFrame(AvHAIPlayer* pBot);
+void EndBotFrame(AvHAIPlayer* pBot);
 
 void AIPlayerThink(AvHAIPlayer* pBot);
 // Think routine for regular NS game mode

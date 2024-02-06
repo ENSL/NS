@@ -1597,8 +1597,6 @@ void StartNewBotFrame(AvHAIPlayer* pBot)
 		pBot->BotNavInfo.LastNavMeshCheckPosition = pBot->CurrentFloorPosition;
 	}
 
-	UpdateBotStuck(pBot);
-
 	pBot->LookTargetLocation = ZERO_VECTOR;
 	pBot->MoveLookLocation = ZERO_VECTOR;
 	pBot->LookTarget = nullptr;
@@ -1668,6 +1666,18 @@ void StartNewBotFrame(AvHAIPlayer* pBot)
 
 }
 
+void EndBotFrame(AvHAIPlayer* pBot)
+{
+	UpdateBotStuck(pBot);
+
+	AvHAIWeapon DesiredWeapon = (pBot->DesiredMoveWeapon != WEAPON_INVALID) ? pBot->DesiredMoveWeapon : pBot->DesiredCombatWeapon;
+
+	if (DesiredWeapon != WEAPON_INVALID && GetPlayerCurrentWeapon(pBot->Player) != DesiredWeapon)
+	{
+		BotSwitchToWeapon(pBot, DesiredWeapon);
+	}
+}
+
 void CustomThink(AvHAIPlayer* pBot)
 {
 	if (IsPlayerMarine(pBot->Player))
@@ -1699,13 +1709,6 @@ void CustomThink(AvHAIPlayer* pBot)
 
 		BotProgressTask(pBot, &pBot->PrimaryBotTask);
 
-		AvHAIWeapon DesiredWeapon = (pBot->DesiredMoveWeapon != WEAPON_INVALID) ? pBot->DesiredMoveWeapon : pBot->DesiredCombatWeapon;
-
-		if (DesiredWeapon != WEAPON_NONE && GetPlayerCurrentWeapon(pBot->Player) != DesiredWeapon)
-		{
-			BotSwitchToWeapon(pBot, DesiredWeapon);
-		}
-
 		return;
 	}
 
@@ -1721,13 +1724,6 @@ void CustomThink(AvHAIPlayer* pBot)
 		else
 		{
 			MarineCombatThink(pBot);
-		}
-
-		AvHAIWeapon DesiredWeapon = (pBot->DesiredMoveWeapon != WEAPON_INVALID) ? pBot->DesiredMoveWeapon : pBot->DesiredCombatWeapon;
-
-		if (DesiredWeapon != WEAPON_INVALID && GetPlayerCurrentWeapon(pBot->Player) != DesiredWeapon)
-		{
-			BotSwitchToWeapon(pBot, DesiredWeapon);
 		}
 
 		return;
@@ -1756,13 +1752,6 @@ void CustomThink(AvHAIPlayer* pBot)
 		AlienCombatThink(pBot);
 	}	
 
-	AvHAIWeapon DesiredWeapon = (pBot->DesiredMoveWeapon != WEAPON_INVALID) ? pBot->DesiredMoveWeapon : pBot->DesiredCombatWeapon;
-
-	if (DesiredWeapon != WEAPON_INVALID && GetPlayerCurrentWeapon(pBot->Player) != DesiredWeapon)
-	{
-		BotSwitchToWeapon(pBot, DesiredWeapon);
-	}
-
 }
 
 void DroneThink(AvHAIPlayer* pBot)
@@ -1783,12 +1772,6 @@ void DroneThink(AvHAIPlayer* pBot)
 
 	AIDEBUG_DrawBotPath(pBot);
 
-	AvHAIWeapon DesiredWeapon = (pBot->DesiredMoveWeapon != WEAPON_NONE) ? pBot->DesiredMoveWeapon : pBot->DesiredCombatWeapon;
-
-	if (DesiredWeapon != WEAPON_NONE && GetPlayerCurrentWeapon(pBot->Player) != DesiredWeapon)
-	{
-		BotSwitchToWeapon(pBot, DesiredWeapon);
-	}
 }
 
 void SetNewAIPlayerRole(AvHAIPlayer* pBot, AvHAIBotRole NewRole)
@@ -1847,7 +1830,7 @@ bool ShouldAIPlayerTakeCommand(AvHAIPlayer* pBot)
 	AvHTeamNumber BotTeamNumber = pBot->Player->GetTeam();
 	AvHTeam* BotTeam = GetGameRules()->GetTeam(BotTeamNumber);
 
-	// Don't go commander if we're not an alien. You never know with the way I structure my logic...
+	// Don't go commander if we're an alien. You never know with the way I structure my logic...
 	if (!BotTeam || BotTeam->GetTeamType() != AVH_CLASS_TYPE_MARINE) { return false; }
 
 	// Don't go commander if we're only supposed to command when there aren't any humans and we have one
@@ -3049,13 +3032,26 @@ void AIPlayerSetMarineSweeperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 
 	Vector CommChairLocation = AITAC_GetCommChairLocation(BotTeam);
 
+	// Always built IPs first, so we don't end up getting wiped right at the start
+
 	DeployableSearchFilter StructureFilter;
-	StructureFilter.DeployableTypes = STRUCTURE_MARINE_PHASEGATE;
+	StructureFilter.DeployableTypes = STRUCTURE_MARINE_INFANTRYPORTAL;
 	StructureFilter.DeployableTeam = BotTeam;
 	StructureFilter.ReachabilityTeam = BotTeam;
 	StructureFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
-	StructureFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+	StructureFilter.ExcludeStatusFlags = (STRUCTURE_STATUS_RECYCLING | STRUCTURE_STATUS_COMPLETED);
+
+	AvHAIBuildableStructure* UnbuiltIP = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &StructureFilter);
+
+	if (UnbuiltIP)
+	{
+		AITASK_SetBuildTask(pBot, Task, UnbuiltIP->edict, true);
+		return;
+	}
+
+	StructureFilter.DeployableTypes = STRUCTURE_MARINE_PHASEGATE;
 	StructureFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+	StructureFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
 
 	if (AITAC_GetNumDeployablesNearLocation(CommChairLocation, &StructureFilter) < 2)
 	{
@@ -3428,6 +3424,35 @@ void AIPlayerSetWantsAndNeedsMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 			}
 		}
 	}
+
+	if (!PlayerHasWeapon(pBot->Player, WEAPON_MARINE_MINES))
+	{
+		AvHAIDroppedItem* NearbyWeapon = AITAC_FindClosestItemToLocation(pBot->Edict->v.origin, DEPLOYABLE_ITEM_MINES, BotTeam, pBot->BotNavInfo.NavProfile.ReachabilityFlag, 0.0f, UTIL_MetresToGoldSrcUnits(10.0f), true);
+
+		if (NearbyWeapon)
+		{
+			vector<AvHPlayer*> NearbyPlayers = AITAC_GetAllPlayersOfTeamInArea(BotTeam, NearbyWeapon->Location, UTIL_MetresToGoldSrcUnits(5.0f), false, pBot->Edict, AVH_USER3_COMMANDER_PLAYER);
+			bool bHumanNearby = false;
+
+			for (auto it = NearbyPlayers.begin(); it != NearbyPlayers.end(); it++)
+			{
+				AvHPlayer* ThisPlayer = (*it);
+				edict_t* PlayerEdict = ThisPlayer->edict();
+
+				if (IsPlayerActiveInGame(PlayerEdict) && !PlayerHasWeapon(ThisPlayer, WEAPON_MARINE_MINES) && !IsPlayerBot(PlayerEdict))
+				{
+					bHumanNearby = true;
+					break;
+				}
+			}
+
+			if (!bHumanNearby)
+			{
+				AITASK_SetPickupTask(pBot, Task, NearbyWeapon->edict, vDist2DSq(pBot->Edict->v.origin, NearbyWeapon->Location) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)));
+				return;
+			}
+		}
+	}
 }
 
 void AIPlayerRequestHealth(AvHAIPlayer* pBot)
@@ -3456,7 +3481,7 @@ void AIPlayerRequestOrder(AvHAIPlayer* pBot)
 
 void AIPlayerSetSecondaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
-	// Don't pick a new build target if we're already near one
+	// If we're building, finish that before doing anything else
 	if (Task->TaskType == TASK_BUILD && vDist2DSq(pBot->Edict->v.origin, Task->TaskTarget->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(3.0f)))
 	{
 		return;
@@ -3585,21 +3610,47 @@ void AIPlayerSetSecondaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		if (Task->TaskType == TASK_PLACE_MINE) { return; }
 
 		DeployableSearchFilter MineableStructures;
-		MineableStructures.DeployableTypes = (STRUCTURE_MARINE_INFANTRYPORTAL, STRUCTURE_MARINE_PHASEGATE, STRUCTURE_MARINE_TURRETFACTORY, STRUCTURE_MARINE_ADVTURRETFACTORY);
+		MineableStructures.DeployableTypes = (STRUCTURE_MARINE_INFANTRYPORTAL | STRUCTURE_MARINE_PHASEGATE | STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_MARINE_ADVTURRETFACTORY);
 		MineableStructures.DeployableTeam = BotTeam;
 		MineableStructures.ReachabilityTeam = BotTeam;
 		MineableStructures.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
 		MineableStructures.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
 		MineableStructures.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+		MineableStructures.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(20.0f);
+		MineableStructures.bConsiderPhaseDistance = true;
 
 		vector<AvHAIBuildableStructure*> AllMineableStructures = AITAC_FindAllDeployables(AITAC_GetTeamStartingLocation(BotTeam), &MineableStructures);
 		AvHAIBuildableStructure* StructureToMine = nullptr;
 
+		DeployableSearchFilter MineFilter;
+		MineFilter.DeployableTypes = STRUCTURE_MARINE_DEPLOYEDMINE;
+		MineFilter.DeployableTeam = BotTeam;
+		MineFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(3.0f);
+
+		float FarDist = 0.0f;
+
 		for (auto it = AllMineableStructures.begin(); it != AllMineableStructures.end(); it++)
 		{
+			AvHAIBuildableStructure* ThisStructure = (*it);
 
+			int NumMines = AITAC_GetNumDeployablesNearLocation(ThisStructure->Location, &MineFilter);
+
+			if (NumMines < 4)
+			{
+				float ThisDist = AITAC_GetPhaseDistanceBetweenPoints(ThisStructure->Location, AITAC_GetTeamStartingLocation(BotTeam));
+
+				if (!StructureToMine || ThisDist > FarDist)
+				{
+					StructureToMine = ThisStructure;
+					FarDist = ThisDist;
+				}
+			}
 		}
 		
+		if (StructureToMine)
+		{
+			AITASK_SetMineStructureTask(pBot, Task, StructureToMine->edict, true);
+		}
 	}
 
 }
@@ -3751,13 +3802,6 @@ void AIPlayerThink(AvHAIPlayer* pBot)
 		default:
 			AIPlayerDMThink(pBot);
 			break;
-	}
-
-	AvHAIWeapon DesiredWeapon = (pBot->DesiredMoveWeapon != WEAPON_NONE) ? pBot->DesiredMoveWeapon : pBot->DesiredCombatWeapon;
-
-	if (DesiredWeapon != WEAPON_NONE && GetPlayerCurrentWeapon(pBot->Player) != DesiredWeapon)
-	{
-		BotSwitchToWeapon(pBot, DesiredWeapon);
 	}
 }
 
@@ -4357,7 +4401,7 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 		return;
 	}
 
-	if (pBot->Player->GetResources() >= BALANCE_VAR(kOnosCost))
+	if (!IsPlayerOnos(pBot->Edict) && pBot->Player->GetResources() >= BALANCE_VAR(kOnosCost))
 	{
 		int NumOnos = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER5, pBot->Edict);
 
@@ -4373,7 +4417,7 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 		}
 	}
 
-	if (pBot->Player->GetResources() >= BALANCE_VAR(kFadeCost))
+	if (!IsPlayerFade(pBot->Edict) && pBot->Player->GetResources() >= BALANCE_VAR(kFadeCost))
 	{
 		int NumFades = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER4, pBot->Edict);
 		int NumOnos = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER5, pBot->Edict);
@@ -4704,7 +4748,20 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 	}
 
 	DeployableSearchFilter EnemyInfPortalFilter;
+	EnemyInfPortalFilter.DeployableTypes = STRUCTURE_MARINE_INFANTRYPORTAL;
+	EnemyInfPortalFilter.DeployableTeam = EnemyTeam;
+	EnemyInfPortalFilter.ReachabilityTeam = BotTeam;
+	EnemyInfPortalFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+	EnemyInfPortalFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+	EnemyInfPortalFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
 
+	AvHAIBuildableStructure* EnemyInfPortal = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &EnemyInfPortalFilter);
+
+	if (EnemyInfPortal)
+	{
+		AITASK_SetAttackTask(pBot, Task, EnemyInfPortal->edict, false);
+		return;
+	}
 
 	// TODO: Attack enemy hive/base
 	edict_t* EnemyChair = AITAC_GetCommChair(EnemyTeam);
@@ -5080,6 +5137,10 @@ void AIPlayerSetSecondaryAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		AvHAIBuildableStructure* ThisStructure = (*it);
 
 		float ThisDist = vDist2D(pBot->Edict->v.origin, ThisStructure->edict->v.origin);
+
+		int NumAttackers = AITAC_GetNumPlayersOnTeamWithLOS(EnemyTeam, ThisStructure->Location, UTIL_MetresToGoldSrcUnits(15.0f), nullptr);
+
+		if (NumAttackers == 0) { continue; }
 
 		int NumExistingDefenders = AITAC_GetNumPlayersOfTeamInArea(BotTeam, ThisStructure->Location, ThisDist - 10.0f, false, pBot->Edict, AVH_USER3_ALIEN_PLAYER2);
 
