@@ -126,6 +126,29 @@ void AIMGR_UpdateAIPlayerCounts()
 		return;
 	}
 
+	BotFillTiming CurrentFillTiming = CONFIG_GetBotFillTiming();
+
+	if (!GetGameRules()->GetGameStarted())
+	{
+		if (CurrentFillTiming == FILLTIMING_ROUNDSTART) { return; }
+
+		if (CurrentFillTiming == FILLTIMING_ALLHUMANS)
+		{
+			for (int i = 1; i <= gpGlobals->maxClients; i++)
+			{
+				edict_t* PlayerEdict = INDEXENT(i);
+				if (FNullEnt(PlayerEdict) || PlayerEdict->free || (PlayerEdict->v.flags & FL_FAKECLIENT)) { continue; }
+
+				AvHPlayer* PlayerRef = dynamic_cast<AvHPlayer*>(CBaseEntity::Instance(PlayerEdict));
+
+				if (!PlayerRef) { continue; }
+
+				if (PlayerRef->GetInReadyRoom()) { return; }
+			}
+		}
+	}
+	
+
 	if (avh_botautomode.value == 1) // Fill teams: bots will be added and removed to maintain a minimum player count
 	{
 		AIMGR_UpdateFillTeams();

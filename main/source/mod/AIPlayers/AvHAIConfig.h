@@ -21,6 +21,13 @@ typedef struct _TEAMSIZEDEFINITIONS
 	int TeamBSize = 6;
 } TeamSizeDefinitions;
 
+typedef enum _BOTFILLTIMING
+{
+	FILLTIMING_MAPLOAD = 0,		// Bots will start filling teams after map load (after grace period)
+	FILLTIMING_ALLHUMANS,	// Bots will only start filling teams once all humans in the ready room have joined a team
+	FILLTIMING_ROUNDSTART	// Bots will only start filling teams after round start
+} BotFillTiming;
+
 // Reads evobot.cfg in addons/evobot and populates all the settings from it
 void CONFIG_ParseConfigFile();
 
@@ -54,6 +61,8 @@ bool CONFIG_BotSkillLevelExists(const char* SkillName);
 bot_skill CONFIG_GetGlobalBotSkillLevel();
 
 void CONFIG_SetGlobalBotSkillLevel(const char* NewSkillLevel);
+
+BotFillTiming CONFIG_GetBotFillTiming();
 
 
 
