@@ -36,7 +36,7 @@ AvHAIPlayer* DebugAIPlayer = nullptr;
 
 vector<bot_path_node> DebugPath;
 
-string BotNames[MAX_PLAYERS] = { "MrRobot",
+string BotNames[MAX_PLAYERS] = {	"MrRobot",
 									"Wall-E",
 									"BeepBoop",
 									"Robotnik",
@@ -652,7 +652,7 @@ void AIMGR_UpdateAIPlayers()
 		nav_profile NavProfile = GetBaseNavProfile(MARINE_BASE_NAV_PROFILE);
 		NavProfile.Filters.addIncludeFlags(SAMPLE_POLYFLAGS_WELD);
 
-		dtStatus PathStatus = FindPathClosestToPoint(NavProfile, DebugVector1, DebugVector2, path, 100.0f);
+		dtStatus PathStatus = FindPathClosestToPoint(NavProfile, DebugVector1, DebugVector2, path, UTIL_MetresToGoldSrcUnits(10.0f));
 
 		if (dtStatusSucceed(PathStatus))
 		{
@@ -828,6 +828,8 @@ void AIMGR_ResetRound()
 		AIStartedTime = gpGlobals->time;
 	}
 
+	LastAIPlayerCountUpdate = 0.0f;
+
 	AITAC_ClearMapAIData();
 
 	UTIL_PopulateDoors();
@@ -886,6 +888,7 @@ void AIMGR_NewMap()
 	ActiveAIPlayers.clear();
 
 	AIStartedTime = gpGlobals->time;
+	LastAIPlayerCountUpdate = 0.0f;
 	ALERT(at_console, "AI Manager New Map\n");
 
 	if (NavmeshLoaded())

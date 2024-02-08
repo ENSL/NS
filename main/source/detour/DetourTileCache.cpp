@@ -154,6 +154,7 @@ dtStatus dtTileCache::init(const dtTileCacheParams* params,
 	{
 		m_offMeshConnections[i].salt = 1;
 		m_offMeshConnections[i].next = m_nextFreeOffMeshConnection;
+		m_offMeshConnections[i].userId = i;
 		m_nextFreeOffMeshConnection = &m_offMeshConnections[i];
 	}
 	
@@ -405,7 +406,9 @@ dtStatus dtTileCache::addOffMeshConnection(const float* spos, const float* epos,
 		return DT_FAILURE | DT_OUT_OF_MEMORY;
 
 	unsigned short salt = con->salt;
+	unsigned int userId = con->userId;
 	memset(con, 0, sizeof(dtOffMeshConnection));
+	con->userId = userId;
 	con->salt = salt;
 	con->state = DT_OFFMESH_NEW;
 	dtVcopy(&con->pos[0], spos);
@@ -420,8 +423,6 @@ dtStatus dtTileCache::addOffMeshConnection(const float* spos, const float* epos,
 	req->action = REQUEST_OFFMESH_ADD;
 	req->ref = getOffMeshRef(con);
 
-	con->userId = req->ref;
-	
 	if (result)
 		*result = req->ref;
 
@@ -676,6 +677,7 @@ dtStatus dtTileCache::update(const float /*dt*/, dtNavMesh* navmesh,
 			if ((int)idx >= m_params.maxOffMeshConnections)
 				continue;
 			dtOffMeshConnection* con = &m_offMeshConnections[idx];
+			con->userId = idx;
 			unsigned int salt = decodeOffMeshIdSalt(req->ref);
 			if (con->salt != salt)
 				continue;
@@ -748,6 +750,10 @@ dtStatus dtTileCache::update(const float /*dt*/, dtNavMesh* navmesh,
 					if (!contains(m_update, m_nupdate, TileRef))
 						m_update[m_nupdate++] = TileRef;
 				}
+			}
+			else if (req->action == REQUEST_OFFMESH_REFRESH)
+			{
+				con->state = DT_OFFMESH_DIRTY;
 			}
 		}
 
