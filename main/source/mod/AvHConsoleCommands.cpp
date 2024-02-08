@@ -1542,6 +1542,17 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 		theSuccess = true;
 	}
+	else if (FStrEq(pcmd, "showhivefloors"))
+	{
+		vector<AvHAIHiveDefinition*> AllHives = AITAC_GetAllHives();
+
+		for (auto it = AllHives.begin(); it != AllHives.end(); it++)
+		{
+			UTIL_DrawLine(INDEXENT(1), INDEXENT(1)->v.origin, (*it)->FloorLocation, 20.0f, 255, 255, 0);
+		}
+
+		theSuccess = true;
+	}
 	else if (FStrEq(pcmd, "testresearchavailable"))
 	{
 		AvHTeam* PlayerTeam = GetGameRules()->GetTeam(theAvHPlayer->GetTeam());

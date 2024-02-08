@@ -1665,7 +1665,7 @@ dtStatus FindPathClosestToPoint(const nav_profile& NavProfile, const Vector From
 
 		if (CurrFlags == SAMPLE_POLYFLAGS_WALLCLIMB || CurrFlags == SAMPLE_POLYFLAGS_LADDER)
 		{
-			float NewRequiredZ = UTIL_FindZHeightForWallClimb(path.back().Location, NextPathNode.Location, head_hull);
+			float NewRequiredZ = UTIL_FindZHeightForWallClimb(NextPathNode.FromLocation, NextPathNode.Location, head_hull);
 			//NextPathNode.requiredZ = fmaxf(NewRequiredZ, NextPathNode.Location.z);
 			NextPathNode.requiredZ = NewRequiredZ;
 
@@ -2003,6 +2003,8 @@ bool HasBotReachedPathPoint(const AvHAIPlayer* pBot)
 	{
 		if (!bIsAtFinalPathPoint)
 		{
+			if (pBot->BotNavInfo.IsOnGround && fabsf(pEdict->v.origin.z - MoveTo.z) > 50.0f) { return false; }
+
 			Vector thisMoveDir = UTIL_GetVectorNormal2D(MoveTo - MoveFrom);
 			Vector nextMoveDir = UTIL_GetVectorNormal2D(next(pBot->BotNavInfo.CurrentPathPoint)->Location - MoveTo);
 
@@ -2019,7 +2021,7 @@ bool HasBotReachedPathPoint(const AvHAIPlayer* pBot)
 		}
 		else
 		{
-			return (vDist2D(pEdict->v.origin, MoveTo) <= playerRadius && (pEdict->v.origin.z - MoveTo.z) < 50.0f && pBot->BotNavInfo.IsOnGround);
+			return (vDist2D(pEdict->v.origin, MoveTo) <= playerRadius && fabsf(pEdict->v.origin.z - MoveTo.z) < 50.0f && pBot->BotNavInfo.IsOnGround);
 		}
 	}
 	case SAMPLE_POLYFLAGS_WALLCLIMB:
@@ -5092,21 +5094,29 @@ bool AbortCurrentMove(AvHAIPlayer* pBot, const Vector NewDestination)
 
 void UpdateBotStuck(AvHAIPlayer* pBot)
 {
-	if (vIsZero(pBot->desiredMovementDir))
+	if (vIsZero(pBot->desiredMovementDir) && !pBot->BotNavInfo.StuckInfo.bPathFollowFailed)
 	{
 		return;
 	}
 
-	bool bIsFollowingPath = (pBot->BotNavInfo.CurrentPath.size() > 0 && pBot->BotNavInfo.CurrentPathPoint != pBot->BotNavInfo.CurrentPath.end());
-
-	bool bDist3D = pBot->BotNavInfo.NavProfile.bFlyingProfile || (bIsFollowingPath && (pBot->BotNavInfo.CurrentPathPoint->flag == SAMPLE_POLYFLAGS_LADDER || pBot->BotNavInfo.CurrentPathPoint->flag == SAMPLE_POLYFLAGS_WALLCLIMB));
-
-	float DistFromLastPoint = (bDist3D) ? vDist3DSq(pBot->Edict->v.origin, pBot->BotNavInfo.StuckInfo.LastBotPosition) : vDist2DSq(pBot->Edict->v.origin, pBot->BotNavInfo.StuckInfo.LastBotPosition);
-
-	if (DistFromLastPoint >= sqrf(8.0f))
+	if (!pBot->BotNavInfo.StuckInfo.bPathFollowFailed)
 	{
-		pBot->BotNavInfo.StuckInfo.TotalStuckTime = 0.0f;
-		pBot->BotNavInfo.StuckInfo.LastBotPosition = pBot->Edict->v.origin;
+
+		bool bIsFollowingPath = (pBot->BotNavInfo.CurrentPath.size() > 0 && pBot->BotNavInfo.CurrentPathPoint != pBot->BotNavInfo.CurrentPath.end());
+
+		bool bDist3D = pBot->BotNavInfo.NavProfile.bFlyingProfile || (bIsFollowingPath && (pBot->BotNavInfo.CurrentPathPoint->flag == SAMPLE_POLYFLAGS_LADDER || pBot->BotNavInfo.CurrentPathPoint->flag == SAMPLE_POLYFLAGS_WALLCLIMB));
+
+		float DistFromLastPoint = (bDist3D) ? vDist3DSq(pBot->Edict->v.origin, pBot->BotNavInfo.StuckInfo.LastBotPosition) : vDist2DSq(pBot->Edict->v.origin, pBot->BotNavInfo.StuckInfo.LastBotPosition);
+
+		if (DistFromLastPoint >= sqrf(8.0f))
+		{
+			pBot->BotNavInfo.StuckInfo.TotalStuckTime = 0.0f;
+			pBot->BotNavInfo.StuckInfo.LastBotPosition = pBot->Edict->v.origin;
+		}
+		else
+		{
+			pBot->BotNavInfo.StuckInfo.TotalStuckTime += AIMGR_GetBotDeltaTime();
+		}
 	}
 	else
 	{
@@ -5115,6 +5125,12 @@ void UpdateBotStuck(AvHAIPlayer* pBot)
 
 	if (pBot->BotNavInfo.StuckInfo.TotalStuckTime > 0.25f)
 	{
+		if (pBot->BotNavInfo.StuckInfo.TotalStuckTime > 15.0f)
+		{
+			BotSuicide(pBot);
+			return;
+		}
+
 		BotJump(pBot);
 		if (!IsPlayerSkulk(pBot->Edict))
 		{
@@ -5425,6 +5441,7 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 
 		if (dtStatusSucceed(PathFindingStatus))
 		{		
+			pBot->BotNavInfo.StuckInfo.bPathFollowFailed = false;
 			ClearBotStuckMovement(pBot);
 			pBot->BotNavInfo.TotalStuckTime = 0.0f;
 			BotNavInfo->PathDestination = Destination;
@@ -5439,6 +5456,8 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 		}
 		else
 		{
+			pBot->BotNavInfo.StuckInfo.bPathFollowFailed = true;
+
 			if (!vIsZero(BotNavInfo->LastNavMeshPosition))
 			{
 				MoveDirectlyTo(pBot, BotNavInfo->LastNavMeshPosition);
@@ -5870,9 +5889,12 @@ void BotFollowPath(AvHAIPlayer* pBot)
 
 	if (IsBotOffPath(pBot))
 	{
+		pBot->BotNavInfo.StuckInfo.bPathFollowFailed = true;
 		ClearBotPath(pBot);
 		return;
 	}
+
+	pBot->BotNavInfo.StuckInfo.bPathFollowFailed = false;
 
 	Vector MoveTo = BotNavInfo->CurrentPathPoint->Location;
 

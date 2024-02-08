@@ -258,7 +258,7 @@ typedef struct _HIVE_DEFINITION_T
 	AvHTeamNumber OwningTeam = TEAM_IND;			// Which team owns this hive currently (TEAM_IND if empty)
 	unsigned int TeamAReachabilityFlags = AI_REACHABILITY_NONE;		// Who on team A can reach this node?
 	unsigned int TeamBReachabilityFlags = AI_REACHABILITY_NONE;		// Who on team B can reach this node?
-
+	char HiveName[64];
 } AvHAIHiveDefinition;
 
 // A nav profile combines a nav mesh reference (indexed into NavMeshes) and filters to determine how a bot should find paths
@@ -542,6 +542,7 @@ typedef struct _AVH_AI_STUCK_TRACKER
 	Vector LastBotPosition = g_vecZero;
 	Vector MoveDestination = g_vecZero;
 	float TotalStuckTime = 0.0f; // Total time the bot has spent stuck
+	bool bPathFollowFailed = false;
 
 } AvHAIPlayerStuckTracker;
 
@@ -549,7 +550,7 @@ typedef struct _AVH_AI_STUCK_TRACKER
 typedef struct _NAV_STATUS
 {
 	vector<bot_path_node> CurrentPath; // Bot's path nodes
-	vector<bot_path_node>::iterator CurrentPathPoint;
+	vector<bot_path_node>::iterator CurrentPathPoint = CurrentPath.end();
 
 	Vector TargetDestination = g_vecZero; // Desired destination
 	Vector ActualMoveDestination = g_vecZero; // Actual destination on nav mesh

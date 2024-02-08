@@ -16,11 +16,18 @@ bool AICOMM_DeployStructure(AvHAIPlayer* pBot, const AvHAIDeployableStructureTyp
 {
 	if (vIsZero(Location)) { return false; }
 
+	nav_profile WelderProfile = GetBaseNavProfile(MARINE_BASE_NAV_PROFILE);
+	WelderProfile.Filters.addIncludeFlags(SAMPLE_POLYFLAGS_WELD);
+
+	// Don't allow the commander to place a structure somewhere unreachable to marines
+	if (!UTIL_PointIsReachable(WelderProfile, AITAC_GetTeamStartingLocation(pBot->Player->GetTeam()), Location, max_player_use_reach)) { return false; }
+
 	AvHMessageID StructureID = UTIL_StructureTypeToImpulseCommand(StructureToDeploy);
 
 	Vector BuildLocation = Location;
 	BuildLocation.z += 4.0f;
 
+	// This would be rejected if a human was trying to build here, so don't let the bot do it
 	if (!AvHSHUGetIsSiteValidForBuild(StructureID, &BuildLocation)) { return false; }
 
 	string theErrorMessage;
@@ -358,6 +365,8 @@ bool AICOMM_IsOrderStillValid(AvHAIPlayer* pBot, ai_commander_order* Order)
 		break;
 		case ORDERPURPOSE_SECURE_RESNODE:
 		{
+			if (!AICOMM_ShouldCommanderPrioritiseNodes(pBot)) { return false; }
+
 			const AvHAIResourceNode* ResNode = AITAC_GetResourceNodeFromEdict(Order->OrderTarget);
 
 			if (!ResNode) { return false; }
@@ -408,6 +417,8 @@ bool AICOMM_ShouldCommanderPrioritiseNodes(AvHAIPlayer* pBot)
 	int NumEligibleNodes = 0;
 	int NumFreeNodes = 0;
 
+	
+
 	// First get ours and the enemy's ownership of all eligible nodes (we can reach them, and they're in the enemy base)
 	vector<AvHAIResourceNode*> AllNodes = AITAC_GetAllReachableResourceNodes(BotTeam);
 
@@ -428,11 +439,13 @@ bool AICOMM_ShouldCommanderPrioritiseNodes(AvHAIPlayer* pBot)
 		if (ThisNode->OwningTeam == BotTeam) { NumOwnedNodes++; }
 	}
 
+	int NumDesiredNodes = imini(4, (int)ceilf((float)NumEligibleNodes * 0.5f));
+
 	int NumNodesLeft = NumEligibleNodes - NumOwnedNodes;
 
 	if (NumNodesLeft == 0) { return false; }
 
-	return NumOwnedNodes < 3 || NumFreeNodes > 3;
+	return NumOwnedNodes < NumDesiredNodes || NumFreeNodes > 1;
 
 }
 
@@ -1075,6 +1088,11 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 	if (!bHasPrototypeLab && bHasAdvArmoury)
 	{
 		Vector BuildLocation = UTIL_GetRandomPointOnNavmeshInDonutIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), BaseArmoury->Location, UTIL_MetresToGoldSrcUnits(3.0f), UTIL_MetresToGoldSrcUnits(5.0f));
+
+		if (vIsZero(BuildLocation))
+		{
+			BuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), CommChair->v.origin, UTIL_MetresToGoldSrcUnits(10.0f));
+		}
 
 		if (!vIsZero(BuildLocation))
 		{

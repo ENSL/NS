@@ -306,7 +306,7 @@ private:
 	OffMeshRequest m_OffMeshReqs[MAX_REQUESTS];
 	int m_nOffMeshReqs;
 	
-	static const int MAX_UPDATE = 64;
+	static const int MAX_UPDATE = 256;
 	dtCompressedTileRef m_update[MAX_UPDATE];
 	int m_nupdate;
 };

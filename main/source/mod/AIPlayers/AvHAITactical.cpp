@@ -18,6 +18,7 @@
 
 #include "../AvHGamerules.h"
 #include "../AvHServerUtil.h"
+#include "../AvHSharedUtil.h"
 #include "../AvHMarineEquipment.h"
 
 #include <float.h>
@@ -25,6 +26,7 @@
 #include "DetourTileCacheBuilder.h"
 
 #include <unordered_map>
+
 
 
 vector<AvHAIResourceNode> ResourceNodes;
@@ -638,14 +640,18 @@ Vector AITAC_GetFloorLocationForHive(const AvHAIHiveDefinition* Hive)
 
 	Vector NearestNavigableLoc = ZERO_VECTOR;
 
-	FOR_ALL_ENTITIES(kesTeamStart, AvHTeamStartEntity*)
-		if (NearestNavigableLoc == ZERO_VECTOR)
-		{
-			NearestNavigableLoc = FindClosestNavigablePointToDestination(BaseNavProfiles[MARINE_BASE_NAV_PROFILE], theEntity->pev->origin, HiveFloorLoc, UTIL_MetresToGoldSrcUnits(10.0f));
-		}
-	END_FOR_ALL_ENTITIES(kesTeamStart);
+	nav_profile TestNavProfile = GetBaseNavProfile(MARINE_BASE_NAV_PROFILE);
+	TestNavProfile.Filters.addIncludeFlags(SAMPLE_POLYFLAGS_WELD);
+	TestNavProfile.ReachabilityFlag = AI_REACHABILITY_WELDER;
 
-	if (NearestNavigableLoc != ZERO_VECTOR)
+	FOR_ALL_ENTITIES(kwsTeamCommand, AvHCommandStation*)
+		if (vIsZero(NearestNavigableLoc))
+		{
+			NearestNavigableLoc = FindClosestNavigablePointToDestination(TestNavProfile, theEntity->pev->origin, HiveFloorLoc, UTIL_MetresToGoldSrcUnits(10.0f));
+		}
+	END_FOR_ALL_ENTITIES(kwsTeamCommand);
+
+	if (!vIsZero(NearestNavigableLoc))
 	{
 		return NearestNavigableLoc;
 	}
@@ -653,11 +659,14 @@ Vector AITAC_GetFloorLocationForHive(const AvHAIHiveDefinition* Hive)
 	{
 		return HiveFloorLoc;
 	}
+
 }
 
 void AITAC_PopulateHiveData()
 {
 	Hives.clear();
+
+	const AvHBaseInfoLocationListType& theInfoLocations = GetGameRules()->GetInfoLocations();
 
 	FOR_ALL_ENTITIES(kesTeamHive, AvHHive*)
 
@@ -674,6 +683,17 @@ void AITAC_PopulateHiveData()
 		}
 
 		NewHive.FloorLocation = UTIL_GetFloorUnderEntity(theEntity->edict()); // Some hives are suspended in the air, this is the floor location directly beneath it
+
+		string HiveName;
+
+		string theLocationName;
+		if (AvHSHUGetNameOfLocation(GetGameRules()->GetInfoLocations(), NewHive.Location, theLocationName))
+		{
+			HiveName = theLocationName;
+		}
+
+		sprintf(NewHive.HiveName, HiveName.c_str(), "%s");
+
 
 		Hives.push_back(NewHive);
 
@@ -734,7 +754,7 @@ void AITAC_RefreshHiveData()
 			it->NextFloorLocationCheck = gpGlobals->time + 1.0f;
 		}
 
-		if (it->NextFloorLocationCheck > 0.0f && gpGlobals->time >= it->NextFloorLocationCheck)
+		if (gpGlobals->time >= it->NextFloorLocationCheck)
 		{
 			it->FloorLocation = AITAC_GetFloorLocationForHive(&(*it));
 

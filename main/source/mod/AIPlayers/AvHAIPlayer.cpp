@@ -3026,8 +3026,6 @@ void AIPlayerSetPrimaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 void AIPlayerSetMarineSweeperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
-	if (Task->TaskType == TASK_GUARD) { return; }
-
 	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
 
 	Vector CommChairLocation = AITAC_GetCommChairLocation(BotTeam);
@@ -3041,13 +3039,56 @@ void AIPlayerSetMarineSweeperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 	StructureFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
 	StructureFilter.ExcludeStatusFlags = (STRUCTURE_STATUS_RECYCLING | STRUCTURE_STATUS_COMPLETED);
 
-	AvHAIBuildableStructure* UnbuiltIP = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &StructureFilter);
+	AvHAIBuildableStructure* UnbuiltIP = AITAC_FindClosestDeployableToLocation(CommChairLocation, &StructureFilter);
 
 	if (UnbuiltIP)
 	{
 		AITASK_SetBuildTask(pBot, Task, UnbuiltIP->edict, true);
 		return;
 	}
+
+	StructureFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
+	StructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
+
+	AvHAIBuildableStructure* UnbuiltStructure = AITAC_FindClosestDeployableToLocation(CommChairLocation, &StructureFilter);
+
+	if (UnbuiltStructure)
+	{
+		AITASK_SetBuildTask(pBot, Task, UnbuiltStructure->edict, true);
+		return;
+	}
+
+	DeployableSearchFilter AttackedStructureFilter;
+	AttackedStructureFilter.DeployableTypes = STRUCTURE_MARINE_INFANTRYPORTAL;
+	AttackedStructureFilter.DeployableTeam = BotTeam;
+	AttackedStructureFilter.ReachabilityTeam = BotTeam;
+	AttackedStructureFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+	AttackedStructureFilter.IncludeStatusFlags = STRUCTURE_STATUS_UNDERATTACK;
+	AttackedStructureFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+	AttackedStructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(20.0f);
+	AttackedStructureFilter.bConsiderPhaseDistance = true;
+
+	AvHAIBuildableStructure* AttackedStructure = AITAC_FindClosestDeployableToLocation(CommChairLocation, &AttackedStructureFilter);
+
+	if (AttackedStructure)
+	{
+		AITASK_SetDefendTask(pBot, Task, AttackedStructure->edict, true);
+		return;
+	}
+
+	if (PlayerHasWeapon(pBot->Player, WEAPON_MARINE_WELDER))
+	{
+		AttackedStructureFilter.IncludeStatusFlags = STRUCTURE_STATUS_DAMAGED;
+
+		AvHAIBuildableStructure* AttackedStructure = AITAC_FindClosestDeployableToLocation(CommChairLocation, &AttackedStructureFilter);
+
+		if (AttackedStructure)
+		{
+			AITASK_SetWeldTask(pBot, Task, AttackedStructure->edict, true);
+			return;
+		}
+	}
+
 
 	StructureFilter.DeployableTypes = STRUCTURE_MARINE_PHASEGATE;
 	StructureFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
@@ -3482,7 +3523,7 @@ void AIPlayerRequestOrder(AvHAIPlayer* pBot)
 void AIPlayerSetSecondaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
 	// If we're building, finish that before doing anything else
-	if (Task->TaskType == TASK_BUILD && vDist2DSq(pBot->Edict->v.origin, Task->TaskTarget->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(3.0f)))
+	if (Task->TaskType == TASK_BUILD && (Task->StructureType == STRUCTURE_MARINE_INFANTRYPORTAL || vDist2DSq(pBot->Edict->v.origin, Task->TaskTarget->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(3.0f))))
 	{
 		return;
 	}
@@ -3491,12 +3532,28 @@ void AIPlayerSetSecondaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	// Find any nearby unbuilt structures
 	DeployableSearchFilter UnbuiltFilter;
-	UnbuiltFilter.DeployableTypes = SEARCH_ALL_MARINE_STRUCTURES;
+	UnbuiltFilter.DeployableTypes = STRUCTURE_MARINE_INFANTRYPORTAL;
 	UnbuiltFilter.DeployableTeam = BotTeam;
 	UnbuiltFilter.ReachabilityTeam = BotTeam;
 	UnbuiltFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
-	UnbuiltFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING | STRUCTURE_STATUS_COMPLETED;
+	UnbuiltFilter.ExcludeStatusFlags = (STRUCTURE_STATUS_RECYCLING | STRUCTURE_STATUS_COMPLETED);
 	UnbuiltFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(20.0f);
+
+	AvHAIBuildableStructure* UnbuiltIP = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &UnbuiltFilter);
+
+	if (UnbuiltIP)
+	{
+		float ThisDist = vDist2D(UnbuiltIP->Location, pBot->Edict->v.origin);
+		int NumBuilders = AITAC_GetNumPlayersOfTeamInArea(BotTeam, UnbuiltIP->Location, ThisDist - 5.0f, false, pBot->Edict, AVH_USER3_COMMANDER_PLAYER);
+
+		if (NumBuilders < 1)
+		{
+			AITASK_SetBuildTask(pBot, Task, UnbuiltIP->edict, true);
+			return;
+		}
+	}
+
+	UnbuiltFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
 
 	vector <AvHAIBuildableStructure*> BuildableStructures = AITAC_FindAllDeployables(pBot->Edict->v.origin, &UnbuiltFilter);
 

@@ -2629,7 +2629,7 @@ void MarineProgressCapResNodeTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	else
 	{
 		// If we're not at our destination yet, go there
-		if (vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation) > UTIL_MetresToGoldSrcUnits(5.0f))
+		if (vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation) > sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
 		{
 			MoveTo(pBot, Task->TaskLocation, MOVESTYLE_NORMAL);
 			return;
@@ -2697,7 +2697,7 @@ void BotGuardLocation(AvHAIPlayer* pBot, const Vector GuardLocation)
 	{
 		if (IsPlayerLerk(pBot->Edict))
 		{
-			MoveTo(pBot, pBot->GuardInfo.GuardStandPosition, MOVESTYLE_HIDE);
+			MoveTo(pBot, pBot->GuardInfo.GuardStandPosition, MOVESTYLE_AMBUSH);
 		}
 		else
 		{
