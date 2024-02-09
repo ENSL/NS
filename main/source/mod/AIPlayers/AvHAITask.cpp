@@ -372,11 +372,11 @@ bool AITASK_IsTouchTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 bool AITASK_IsMoveTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
-	if (!Task->TaskLocation) { return false; }
+	if (vIsZero(Task->TaskLocation)) { return false; }
 
 	if (pBot->BotNavInfo.NavProfile.bFlyingProfile && vEquals(pBot->Edict->v.origin, Task->TaskLocation, 50.0f)) { return false; }
 
-	return (vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation) > sqrf(max_player_use_reach) || !UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, Task->TaskLocation));
+	return (vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation) > sqrf(GetPlayerRadius(pBot->Player)) || fabsf(pBot->Edict->v.origin.z - Task->TaskLocation.z) > 50.0f);
 }
 
 bool AITASK_IsWeldTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
@@ -3055,8 +3055,21 @@ void AITASK_SetMoveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, const Vector L
 
 	if (vIsZero(Location)) { return; }
 
+	Vector MoveStart = AdjustPointForPathfinding(pBot->CurrentFloorPosition);
+	Vector MoveEnd = AdjustPointForPathfinding(Location);
+
 	// Get as close as possible to desired location
-	Vector MoveLocation = FindClosestNavigablePointToDestination(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, Location, UTIL_MetresToGoldSrcUnits(20.0f));
+	Vector MoveLocation = FindClosestNavigablePointToDestination(pBot->BotNavInfo.NavProfile, MoveStart, MoveEnd, UTIL_MetresToGoldSrcUnits(1.0f));
+
+	if (vIsZero(MoveLocation))
+	{
+		Vector ReverseMove = FindClosestNavigablePointToDestination(pBot->BotNavInfo.NavProfile, MoveEnd, MoveStart, UTIL_MetresToGoldSrcUnits(5.0f));
+
+		if (!vIsZero(ReverseMove))
+		{
+			MoveLocation = MoveEnd;
+		}
+	}
 
 	if (!vIsZero(MoveLocation))
 	{
