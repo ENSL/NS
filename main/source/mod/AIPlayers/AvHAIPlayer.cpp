@@ -1772,6 +1772,11 @@ void DroneThink(AvHAIPlayer* pBot)
 
 	AIDEBUG_DrawBotPath(pBot);
 
+	if (pBot->BotNavInfo.CurrentPathPoint != pBot->BotNavInfo.CurrentPath.end())
+	{
+		UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, pBot->BotNavInfo.CurrentPathPoint->Location, 0, 255, 255);
+	}
+
 }
 
 void SetNewAIPlayerRole(AvHAIPlayer* pBot, AvHAIBotRole NewRole)
@@ -3245,8 +3250,13 @@ void AIPlayerSetMarineAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 
 	if (NearestEmptyHive)
 	{
-		AITASK_SetSecureHiveTask(pBot, Task, NearestEmptyHive->HiveEntity->edict(), NearestEmptyHive->FloorLocation, false);
-		return;
+		Vector ActualMoveLocation = FindClosestNavigablePointToDestination(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, NearestEmptyHive->FloorLocation, UTIL_MetresToGoldSrcUnits(5.0f));
+
+		if (!vIsZero(ActualMoveLocation))
+		{
+			AITASK_SetSecureHiveTask(pBot, Task, NearestEmptyHive->HiveEntity->edict(), NearestEmptyHive->FloorLocation, false);
+			return;
+		}
 	}
 
 	// Go to a good siege location if phase gates available
@@ -3846,6 +3856,8 @@ void AIPlayerThink(AvHAIPlayer* pBot)
 	if (pBot == AIMGR_GetDebugAIPlayer())
 	{
 		bool bBreak = true;
+
+		AIDEBUG_DrawBotPath(pBot);
 	}
 
 	switch (GetGameRules()->GetMapMode())
@@ -3949,6 +3961,14 @@ void AIPlayerReceiveBuildOrder(AvHAIPlayer* pBot, edict_t* BuildTarget)
 
 void AIPlayerReceiveMoveOrder(AvHAIPlayer* pBot, Vector Destination)
 {
+	Vector NavMoveLocation = AdjustPointForPathfinding(Destination);
+
+	Vector ActualMoveLocation = FindClosestNavigablePointToDestination(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, NavMoveLocation, UTIL_MetresToGoldSrcUnits(5.0f));
+
+	if (vIsZero(ActualMoveLocation)) // Don't try to follow an invalid move order
+	{
+		return;
+	}
 
 	const AvHAIResourceNode* ResNodeRef = AITAC_GetNearestResourceNodeToLocation(Destination);
 
@@ -3971,14 +3991,14 @@ void AIPlayerReceiveMoveOrder(AvHAIPlayer* pBot, Vector Destination)
 	{
 		if (!AICOMM_IsHiveFullySecured(pBot, HiveRef, false))
 		{
-			AITASK_SetSecureHiveTask(pBot, &pBot->CommanderTask, HiveRef->HiveEntity->edict(), Destination, false);
+			AITASK_SetSecureHiveTask(pBot, &pBot->CommanderTask, HiveRef->HiveEntity->edict(), ActualMoveLocation, false);
 			pBot->CommanderTask.bIssuedByCommander = true;
 			return;
 		}
 	}
 
 	// Otherwise, treat as a normal move order. Go there and wait a bit to see what the commander wants to do next
-	AITASK_SetMoveTask(pBot, &pBot->CommanderTask, Destination, true);
+	AITASK_SetMoveTask(pBot, &pBot->CommanderTask, ActualMoveLocation, true);
 	pBot->CommanderTask.bIssuedByCommander = true;
 	
 }

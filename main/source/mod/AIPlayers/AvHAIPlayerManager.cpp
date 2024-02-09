@@ -27,6 +27,8 @@ int BotNameIndex = 0;
 
 float AIStartedTime = 0.0f; // Used to give 5-second grace period before adding bots
 
+bool bHasRoundStarted = false;
+
 extern int m_spriteTexture;
 
 Vector DebugVector1 = ZERO_VECTOR;
@@ -130,20 +132,20 @@ void AIMGR_UpdateAIPlayerCounts()
 
 	if (!GetGameRules()->GetGameStarted())
 	{
-		if (CurrentFillTiming == FILLTIMING_ROUNDSTART) { return; }
+		if (CurrentFillTiming == FILLTIMING_ROUNDSTART) { return; } // Do nothing if we're only meant to add bots after round start, and the round hasn't started
 
 		if (CurrentFillTiming == FILLTIMING_ALLHUMANS)
 		{
 			for (int i = 1; i <= gpGlobals->maxClients; i++)
 			{
 				edict_t* PlayerEdict = INDEXENT(i);
-				if (FNullEnt(PlayerEdict) || PlayerEdict->free || (PlayerEdict->v.flags & FL_FAKECLIENT)) { continue; }
+				if (FNullEnt(PlayerEdict) || PlayerEdict->free || (PlayerEdict->v.flags & FL_FAKECLIENT)) { continue; } // Ignore fake clients
 
 				AvHPlayer* PlayerRef = dynamic_cast<AvHPlayer*>(CBaseEntity::Instance(PlayerEdict));
 
 				if (!PlayerRef) { continue; }
 
-				if (PlayerRef->GetInReadyRoom()) { return; }
+				if (PlayerRef->GetInReadyRoom()) { return; } // If there is a human in the ready room, don't add any more bots
 			}
 		}
 	}
@@ -609,7 +611,7 @@ void AIMGR_UpdateAIPlayers()
 		{
 			BotDeltaTime = ThinkDelta;
 
-			if (ShouldBotThink(bot))
+			if (bHasRoundStarted && ShouldBotThink(bot))
 			{
 				if (bot->bIsInactive)
 				{
@@ -620,7 +622,7 @@ void AIMGR_UpdateAIPlayers()
 
 				UpdateBotChat(bot);
 
-				AIPlayerThink(bot);
+				DroneThink(bot);
 
 				EndBotFrame(bot);
 
@@ -836,6 +838,8 @@ void AIMGR_ResetRound()
 	UTIL_PopulateWeldableObstacles();
 
 	ALERT(at_console, "AI Manager Reset Round\n");
+
+	bHasRoundStarted = false;
 }
 
 void AIMGR_RoundStarted()
@@ -850,6 +854,8 @@ void AIMGR_RoundStarted()
 	UTIL_UpdateDoors(true);
 
 	UTIL_UpdateTileCache();
+
+	bHasRoundStarted = true;
 	
 }
 
@@ -906,6 +912,8 @@ void AIMGR_NewMap()
 	}
 
 	AIMGR_BotPrecache();
+
+	bHasRoundStarted = false;
 }
 
 AvHAIPlayer* AIMGR_GetAICommander(AvHTeamNumber Team)
