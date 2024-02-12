@@ -483,6 +483,16 @@ typedef struct _BOT_SKILL
 
 } bot_skill;
 
+typedef struct _AVH_AI_BUILD_ATTEMPT
+{
+	AvHAIDeployableStructureType AttemptedStructureType = STRUCTURE_NONE;
+	Vector AttemptedLocation = g_vecZero;
+	int NumAttempts = 0;
+	BotBuildAttemptStatus BuildStatus = BUILD_ATTEMPT_NONE;
+	float BuildAttemptTime = 0.0f;
+	AvHAIBuildableStructure* LinkedStructure = nullptr;
+} AvHAIBuildAttempt;
+
 // A bot task is a goal the bot wants to perform, such as attacking a structure, placing a structure etc. NOT USED BY COMMANDER
 typedef struct _AVH_AI_PLAYER_TASK
 {
@@ -500,18 +510,8 @@ typedef struct _AVH_AI_PLAYER_TASK
 	int BuildAttempts = 0; // How many attempts the Gorge has tried to place it, so it doesn't keep trying forever
 	AvHMessageID Evolution = MESSAGE_NULL; // Used by TASK_EVOLVE to determine what to evolve into
 	float TaskLength = 0.0f; // If a task has gone on longer than this time, it will be considered completed
+	AvHAIBuildAttempt ActiveBuildInfo; // If gorge, the current status of any recent attempt to place a structure
 } AvHAIPlayerTask;
-
-
-typedef struct _AVH_AI_BUILD_ATTEMPT
-{
-	AvHAIDeployableStructureType AttemptedStructureType = STRUCTURE_NONE;
-	Vector AttemptedLocation = g_vecZero;
-	int NumAttempts = 0;
-	BotBuildAttemptStatus BuildStatus = BUILD_ATTEMPT_NONE;
-	float BuildAttemptTime = 0.0f;
-	AvHAIBuildableStructure* LinkedStructure = nullptr;
-} AvHAIBuildAttempt;
 
 typedef struct _DOOR_TRIGGER
 {
@@ -726,8 +726,6 @@ typedef struct AVH_AI_PLAYER
 	char MoveStatus[128]; // Debug used to help figure out what's going on with a bot's steering
 
 	nav_status BotNavInfo; // Bot's movement information, their current path, where in the path they are etc.
-
-	AvHAIBuildAttempt ActiveBuildInfo; // If gorge, the current status of any recent attempt to place a structure
 
 	vector<ai_commander_request> ActiveRequests;
 	vector<ai_commander_order> ActiveOrders;

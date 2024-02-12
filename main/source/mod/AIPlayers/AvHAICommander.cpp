@@ -911,17 +911,19 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 	StructureFilter.DeployableTeam = TeamNumber;
 	StructureFilter.ReachabilityFlags = AI_REACHABILITY_MARINE;
 	StructureFilter.ReachabilityTeam = TeamNumber;
-	StructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(10.0f);
+	StructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
 
 	int NumInfantryPortals = AITAC_GetNumDeployablesNearLocation(CommChair->v.origin, &StructureFilter);
 
 	if (NumInfantryPortals < 2)
 	{
-		bool bSuccess = AICOMM_BuildInfantryPortal(pBot, CommChair);
+		bool bEnemyInBase = NumInfantryPortals > 1 && AITAC_AnyPlayerOnTeamWithLOS(AIMGR_GetEnemyTeam(TeamNumber), CommChair->v.origin, UTIL_MetresToGoldSrcUnits(10.0f));
+
+		bool bSuccess = !bEnemyInBase && AICOMM_BuildInfantryPortal(pBot, CommChair);
 		return (bSuccess || pBot->Player->GetResources() <= BALANCE_VAR(kInfantryPortalCost) + 5);
 	}
 
-	StructureFilter.DeployableTypes = STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY;
+	StructureFilter.DeployableTypes = (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY);
 
 	AvHAIBuildableStructure* BaseArmoury = AITAC_FindClosestDeployableToLocation(CommChair->v.origin, &StructureFilter);
 
@@ -929,7 +931,6 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 	{
 
 		StructureFilter.DeployableTypes = STRUCTURE_MARINE_INFANTRYPORTAL;
-		StructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
 
 		AvHAIBuildableStructure* NearestInfantryPortal = AITAC_FindClosestDeployableToLocation(CommChair->v.origin, &StructureFilter);
 
@@ -982,7 +983,9 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 
 			if (!vIsZero(BuildLocation))
 			{
-				bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_PHASEGATE, BuildLocation);
+				bool bEnemyInBase = AITAC_AnyPlayerOnTeamWithLOS(AIMGR_GetEnemyTeam(TeamNumber), BuildLocation + Vector(0.0f, 0.0f, 32.0f), UTIL_MetresToGoldSrcUnits(10.0f));
+
+				bool bSuccess = !bEnemyInBase && AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_PHASEGATE, BuildLocation);
 				return (bSuccess || pBot->Player->GetResources() <= BALANCE_VAR(kPhaseGateCost) + 5);
 			}
 		}
@@ -1017,7 +1020,9 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 
 		if (!vIsZero(BuildLocation))
 		{
-			bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_ARMSLAB, BuildLocation);
+			bool bEnemyInBase = AITAC_AnyPlayerOnTeamWithLOS(AIMGR_GetEnemyTeam(TeamNumber), BuildLocation + Vector(0.0f, 0.0f, 32.0f), UTIL_MetresToGoldSrcUnits(10.0f));
+
+			bool bSuccess = !bEnemyInBase && AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_ARMSLAB, BuildLocation);
 			return (bSuccess || pBot->Player->GetResources() <= BALANCE_VAR(kArmsLabCost) + 5);
 		}
 	}
@@ -1032,7 +1037,9 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 
 		if (!vIsZero(BuildLocation))
 		{
-			bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_OBSERVATORY, BuildLocation);
+			bool bEnemyInBase = AITAC_AnyPlayerOnTeamWithLOS(AIMGR_GetEnemyTeam(TeamNumber), BuildLocation + Vector(0.0f, 0.0f, 32.0f), UTIL_MetresToGoldSrcUnits(10.0f));
+
+			bool bSuccess = !bEnemyInBase && AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_OBSERVATORY, BuildLocation);
 			return (bSuccess || pBot->Player->GetResources() <= BALANCE_VAR(kObservatoryCost) + 5);
 		}
 	}
@@ -1096,10 +1103,10 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 
 		if (!vIsZero(BuildLocation))
 		{
-			if (AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_PROTOTYPELAB, BuildLocation))
-			{
-				return true;
-			}
+			bool bEnemyInBase = AITAC_AnyPlayerOnTeamWithLOS(AIMGR_GetEnemyTeam(TeamNumber), BuildLocation + Vector(0.0f, 0.0f, 32.0f), UTIL_MetresToGoldSrcUnits(10.0f));
+
+			bool bSuccess = !bEnemyInBase && AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_PROTOTYPELAB, BuildLocation);
+			return (bSuccess || pBot->Player->GetResources() <= BALANCE_VAR(kPrototypeLabCost) + 5);
 		}
 	}
 
@@ -1718,6 +1725,8 @@ const AvHAIResourceNode* AICOMM_GetNearestResourceNodeCapOpportunity(const AvHTe
 
 		if (!AITAC_AnyPlayerOnTeamWithLOS(Team, (ResNode->Location + Vector(0.0f, 0.0f, 32.0f)), UTIL_MetresToGoldSrcUnits(5.0f))) { continue; }
 
+		if (AITAC_AnyPlayerOnTeamWithLOS(AIMGR_GetEnemyTeam(Team), (ResNode->Location + Vector(0.0f, 0.0f, 32.0f)), UTIL_MetresToGoldSrcUnits(10.0f))) { continue; }
+
 		float ThisDist = vDist2DSq(ResNode->Location, SearchLocation);
 
 		if (!Result || ThisDist < MinDist)
@@ -1805,11 +1814,15 @@ bool AICOMM_PerformNextSiegeHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefinit
 		return AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_PHASEGATE, NextBuildPosition, STRUCTURE_PURPOSE_SIEGE);
 	}
 
+	if (ExistingPG && !(ExistingPG->StructureStatusFlags & STRUCTURE_STATUS_COMPLETED)) { return false; }
+
 	if (!ExistingTF)
 	{
 		if (vDist2DSq(NextBuildPosition, HiveToSiege->Location) > sqrf(UTIL_MetresToGoldSrcUnits(20.0f))) { return true; }
 		return AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_TURRETFACTORY, NextBuildPosition, STRUCTURE_PURPOSE_SIEGE);
 	}
+
+	if (ExistingTF && !(ExistingTF->StructureStatusFlags & STRUCTURE_STATUS_COMPLETED)) { return false; }
 
 	StructureFilter.DeployableTypes = STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY;
 	StructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(10.0f);

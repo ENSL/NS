@@ -1389,6 +1389,7 @@ AvHAIResourceNode* AITAC_GetRandomResourceNode(AvHTeamNumber SearchingTeam, cons
 
 void AITAC_UpdateMapAIData()
 {
+
 	AITAC_RefreshHiveData();
 
 	UTIL_UpdateDoors(false);
@@ -2220,14 +2221,24 @@ void AITAC_LinkStructureToPlayer(AvHAIBuildableStructure* NewStructure)
 	{
 		AvHAIPlayer* Player = (*it);
 
-		if (Player->ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_PENDING && Player->ActiveBuildInfo.AttemptedStructureType == NewStructure->StructureType)
+		if (Player->PrimaryBotTask.ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_PENDING && Player->PrimaryBotTask.ActiveBuildInfo.AttemptedStructureType == NewStructure->StructureType)
 		{
-			if (vDist2DSq(NewStructure->Location, Player->ActiveBuildInfo.AttemptedLocation) < sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
+			if (vDist2DSq(NewStructure->Location, Player->PrimaryBotTask.ActiveBuildInfo.AttemptedLocation) < sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
 			{
-				Player->ActiveBuildInfo.BuildStatus = BUILD_ATTEMPT_SUCCESS;
-				Player->ActiveBuildInfo.LinkedStructure = NewStructure;
+				Player->PrimaryBotTask.ActiveBuildInfo.BuildStatus = BUILD_ATTEMPT_SUCCESS;
+				Player->PrimaryBotTask.ActiveBuildInfo.LinkedStructure = NewStructure;
 			}
 			
+		}
+
+		if (Player->SecondaryBotTask.ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_PENDING && Player->SecondaryBotTask.ActiveBuildInfo.AttemptedStructureType == NewStructure->StructureType)
+		{
+			if (vDist2DSq(NewStructure->Location, Player->SecondaryBotTask.ActiveBuildInfo.AttemptedLocation) < sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
+			{
+				Player->SecondaryBotTask.ActiveBuildInfo.BuildStatus = BUILD_ATTEMPT_SUCCESS;
+				Player->SecondaryBotTask.ActiveBuildInfo.LinkedStructure = NewStructure;
+			}
+
 		}
 	}
 }
@@ -2994,6 +3005,32 @@ int AITAC_GetNumPlayersOfTeamInArea(const AvHTeamNumber Team, const Vector Searc
 
 	return Result;
 
+}
+
+bool AITAC_AnyPlayersOfTeamInArea(const AvHTeamNumber Team, const Vector SearchLocation, const float SearchRadius, const bool bConsiderPhaseDist, const edict_t* IgnorePlayer, const AvHUser3 IgnoreClass)
+{
+	float MaxRadiusSq = sqrf(SearchRadius);
+
+	for (int i = 1; i <= gpGlobals->maxClients; i++)
+	{
+		edict_t* PlayerEdict = INDEXENT(i);
+
+		if (FNullEnt(PlayerEdict) || PlayerEdict->free || PlayerEdict == IgnorePlayer) { continue; }
+
+		AvHPlayer* PlayerRef = dynamic_cast<AvHPlayer*>(CBaseEntity::Instance(PlayerEdict));
+
+		if (PlayerRef != nullptr && GetPlayerActiveClass(PlayerRef) != IgnoreClass && (Team == TEAM_IND || PlayerRef->GetTeam() == Team) && IsPlayerActiveInGame(PlayerEdict))
+		{
+			float Dist = (bConsiderPhaseDist) ? sqrf(AITAC_GetPhaseDistanceBetweenPoints(PlayerEdict->v.origin, SearchLocation)) : vDist2DSq(PlayerEdict->v.origin, SearchLocation);
+
+			if (Dist <= MaxRadiusSq)
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
 
 int AITAC_GetNumPlayersOnTeamOfClass(const AvHTeamNumber Team, const AvHUser3 SearchClass, const edict_t* IgnorePlayer)

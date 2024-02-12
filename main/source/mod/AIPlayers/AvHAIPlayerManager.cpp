@@ -28,6 +28,7 @@ int BotNameIndex = 0;
 float AIStartedTime = 0.0f; // Used to give 5-second grace period before adding bots
 
 bool bHasRoundStarted = false;
+bool bMapDataInitialised = false;
 
 extern int m_spriteTexture;
 
@@ -622,7 +623,7 @@ void AIMGR_UpdateAIPlayers()
 
 				UpdateBotChat(bot);
 
-				DroneThink(bot);
+				AIPlayerThink(bot);
 
 				EndBotFrame(bot);
 
@@ -837,26 +838,19 @@ void AIMGR_ResetRound()
 	UTIL_PopulateDoors();
 	UTIL_PopulateWeldableObstacles();
 
-	ALERT(at_console, "AI Manager Reset Round\n");
-
-	bHasRoundStarted = false;
-}
-
-void AIMGR_RoundStarted()
-{
-	AITAC_PopulateResourceNodes();
-	AITAC_PopulateHiveData();
-
-	AITAC_RefreshResourceNodes();
-
-	AITAC_RefreshHiveData();
-
 	UTIL_UpdateDoors(true);
 
 	UTIL_UpdateTileCache();
 
+	ALERT(at_console, "AI Manager Reset Round\n");
+
+	bHasRoundStarted = false;
+	bMapDataInitialised = true;
+}
+
+void AIMGR_RoundStarted()
+{
 	bHasRoundStarted = true;
-	
 }
 
 void AIMGR_ClearBotData()
@@ -891,11 +885,15 @@ void AIMGR_NewMap()
 {
 	if (avh_botsenabled.value == 0) { return; } // Do nothing if we're not using bots
 
+	bMapDataInitialised = false;
+
 	ActiveAIPlayers.clear();
 
 	AIStartedTime = gpGlobals->time;
 	LastAIPlayerCountUpdate = 0.0f;
 	ALERT(at_console, "AI Manager New Map\n");
+
+	AITAC_ClearMapAIData();
 
 	if (NavmeshLoaded())
 	{
@@ -1025,9 +1023,12 @@ vector<AvHPlayer*> AIMGR_GetNonAIPlayersOnTeam(AvHTeamNumber Team)
 
 void AIMGR_UpdateAIMapData()
 {
-	AITAC_UpdateMapAIData();
-	UTIL_UpdateTileCache();
-	AITAC_CheckNavMeshModified();
+	if (bMapDataInitialised && gpGlobals->time - AIStartedTime > AI_GRACE_PERIOD)
+	{
+		AITAC_UpdateMapAIData();
+		UTIL_UpdateTileCache();
+		AITAC_CheckNavMeshModified();
+	}
 }
 
 void AIMGR_BotPrecache()
