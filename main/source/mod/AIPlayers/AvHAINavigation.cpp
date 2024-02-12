@@ -1838,7 +1838,8 @@ dtStatus FindPathClosestToPoint(AvHAIPlayer* pBot, const BotMoveStyle MoveStyle,
 		if (CurrFlags == SAMPLE_POLYFLAGS_WALLCLIMB || CurrFlags == SAMPLE_POLYFLAGS_LADDER)
 		{
 			int HullNum = GetPlayerHullIndex(pBot->Edict, false);
-			float NewRequiredZ = UTIL_FindZHeightForWallClimb(path.back().Location, NextPathNode.Location, HullNum);
+			Vector FromLocation = (path.size() > 0) ? path.back().Location : pBot->CurrentFloorPosition;
+			float NewRequiredZ = UTIL_FindZHeightForWallClimb(FromLocation, NextPathNode.Location, HullNum);
 			NextPathNode.requiredZ = fmaxf(NewRequiredZ, NextPathNode.Location.z);
 
 			if (CurrFlags == SAMPLE_POLYFLAGS_LADDER)
@@ -3054,27 +3055,38 @@ void GroundMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoin
 
 void FallMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 {
-	Vector vForward = UTIL_GetVectorNormal2D(EndPoint - pBot->Edict->v.origin);
+	Vector vBotOrientation = UTIL_GetVectorNormal2D(EndPoint - pBot->Edict->v.origin);
+	Vector vForward = UTIL_GetVectorNormal2D(EndPoint - StartPoint);
 
-	if (vIsZero(vForward))
+	if (pBot->BotNavInfo.IsOnGround)
 	{
-		vForward = UTIL_GetVectorNormal2D(EndPoint - StartPoint);
+		if (vDist2DSq(pBot->Edict->v.origin, EndPoint) > sqrf(GetPlayerRadius(pBot->Player)))
+		{
+			pBot->desiredMovementDir = vBotOrientation;
+		}
+		else
+		{
+			pBot->desiredMovementDir = vForward;
+		}
+
+		bool bCanDuck = (IsPlayerMarine(pBot->Edict) || IsPlayerFade(pBot->Edict) || IsPlayerOnos(pBot->Edict));
+
+		if (!bCanDuck) { return; }
+
+		Vector HeadLocation = GetPlayerTopOfCollisionHull(pBot->Edict, false);
+
+		if (!UTIL_QuickTrace(pBot->Edict, HeadLocation, (HeadLocation + (pBot->desiredMovementDir * 50.0f))))
+		{
+			pBot->Button |= IN_DUCK;
+		}
+	}
+	else
+	{
+		pBot->desiredMovementDir = vBotOrientation;
 	}
 
-	pBot->desiredMovementDir = vForward;
 
-	if (UTIL_PointIsDirectlyReachable(pBot, EndPoint)) { return; }
 
-	bool bCanDuck = (IsPlayerMarine(pBot->Edict) || IsPlayerFade(pBot->Edict) || IsPlayerOnos(pBot->Edict));
-
-	if (!bCanDuck) { return; }
-
-	Vector HeadLocation = GetPlayerTopOfCollisionHull(pBot->Edict, false);
-
-	if (!UTIL_QuickTrace(pBot->Edict, HeadLocation, (HeadLocation + (pBot->desiredMovementDir * 50.0f))))
-	{
-		pBot->Button |= IN_DUCK;
-	}
 }
 
 void StructureBlockedMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
@@ -3858,7 +3870,7 @@ bool IsBotOffPath(const AvHAIPlayer* pBot)
 
 	Vector vForward = UTIL_GetVectorNormal2D(MoveTo - MoveFrom);
 
-	Vector PointOnPath = vClosestPointOnLine2D(MoveFrom, MoveTo, pBot->CurrentFloorPosition);
+	Vector PointOnPath = vClosestPointOnLine2D(MoveFrom, MoveTo, pBot->Edict->v.origin);
 
 	if (pBot->BotNavInfo.CurrentPathPoint->flag == SAMPLE_POLYFLAGS_WALLCLIMB)
 	{
@@ -3871,16 +3883,7 @@ bool IsBotOffPath(const AvHAIPlayer* pBot)
 	if (pBot->BotNavInfo.CurrentPathPoint->flag == SAMPLE_POLYFLAGS_WALK)
 	{
 
-		if (!UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, MoveTo))
-		{
-			Vector TraceEnd = MoveTo;
-			TraceEnd.z = pBot->Edict->v.origin.z;
-
-			if (!UTIL_QuickHullTrace(pBot->Edict, pBot->Edict->v.origin, TraceEnd, GetPlayerHullIndex(pBot->Edict)))
-			{
-				return true;
-			}
-		}
+		if (vDist2DSq(pBot->Edict->v.origin, PointOnPath) > sqrf(100.0f)) { return true; }
 
 		bool bAtMoveStart = vEquals(PointOnPath, MoveFrom, 2.0f);
 
@@ -4964,7 +4967,7 @@ bool AbortCurrentMove(AvHAIPlayer* pBot, const Vector NewDestination)
 
 	if (flag == SAMPLE_POLYFLAGS_LIFT)
 	{
-		if (pBot->BotNavInfo.MovementTask.TaskType != MOVE_TASK_NONE)
+		if (pBot->BotNavInfo.MovementTask.TaskType != MOVE_TASK_NONE && !vEquals(NewDestination, pBot->BotNavInfo.MovementTask.TaskLocation))
 		{
 			if (NAV_IsMovementTaskStillValid(pBot))
 			{
@@ -5132,7 +5135,7 @@ void UpdateBotStuck(AvHAIPlayer* pBot)
 
 		if (!vIsZero(pBot->desiredMovementDir))
 		{
-			//BotJump(pBot);
+			BotJump(pBot);
 
 			if (!IsPlayerSkulk(pBot->Edict))
 			{

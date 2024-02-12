@@ -109,11 +109,11 @@ AvHAIPlayer* GetFirstBotWithReinforceTask(AvHTeamNumber Team, edict_t* Reinforce
 
 void UTIL_ClearGuardInfo(AvHAIPlayer* pBot);
 
-void BotAlienPlaceChamber(AvHAIPlayer* pBot, Vector Location, AvHAIDeployableStructureType DesiredStructure);
-void BotAlienBuildHive(AvHAIPlayer* pBot, const AvHAIHiveDefinition* HiveToBuild);
-void BotAlienBuildResTower(AvHAIPlayer* pBot, const AvHAIResourceNode* NodeToCap);
+void BotAlienPlaceChamber(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, AvHAIDeployableStructureType DesiredStructure);
+void BotAlienBuildHive(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, const AvHAIHiveDefinition* HiveToBuild);
+void BotAlienBuildResTower(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, const AvHAIResourceNode* NodeToCap);
 void BotAlienHealTarget(AvHAIPlayer* pBot, edict_t* HealTarget);
 
-void RegisterBotAlienBuildAttempt(AvHAIPlayer* pBot, Vector PlacementLocation, AvHAIDeployableStructureType DesiredStructure);
+void RegisterBotAlienBuildAttempt(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, Vector PlacementLocation, AvHAIDeployableStructureType DesiredStructure);
 
 #endif

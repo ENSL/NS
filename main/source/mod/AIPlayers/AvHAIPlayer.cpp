@@ -1641,27 +1641,49 @@ void StartNewBotFrame(AvHAIPlayer* pBot)
 	}
 
 	// If we tried placing a building as gorge, and nothing has appeared within the expected time, then mark it as a failed attempt.
-	if (pBot->ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_PENDING)
+	if (pBot->PrimaryBotTask.ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_PENDING)
 	{
-		if (pBot->ActiveBuildInfo.AttemptedStructureType == STRUCTURE_ALIEN_HIVE)
+		if (pBot->PrimaryBotTask.ActiveBuildInfo.AttemptedStructureType == STRUCTURE_ALIEN_HIVE)
 		{
 			// Give a 3-second grace period to check if the hive placement was successful
-			if ((gpGlobals->time - pBot->ActiveBuildInfo.BuildAttemptTime) > 3.0f)
+			if ((gpGlobals->time - pBot->PrimaryBotTask.ActiveBuildInfo.BuildAttemptTime) > 3.0f)
 			{
-				const AvHAIHiveDefinition* NearestHive = AITAC_GetHiveNearestLocation(pBot->ActiveBuildInfo.AttemptedLocation);
+				const AvHAIHiveDefinition* NearestHive = AITAC_GetHiveNearestLocation(pBot->PrimaryBotTask.ActiveBuildInfo.AttemptedLocation);
 
-				pBot->ActiveBuildInfo.BuildStatus = (NearestHive->Status != HIVE_STATUS_UNBUILT) ? BUILD_ATTEMPT_SUCCESS : BUILD_ATTEMPT_FAILED;
+				pBot->PrimaryBotTask.ActiveBuildInfo.BuildStatus = (NearestHive->Status != HIVE_STATUS_UNBUILT) ? BUILD_ATTEMPT_SUCCESS : BUILD_ATTEMPT_FAILED;
 			}
 		}
 		else
 		{
 			// All other structures should appear near-instantly
-			if ((gpGlobals->time - pBot->ActiveBuildInfo.BuildAttemptTime) > 0.5f)
+			if ((gpGlobals->time - pBot->PrimaryBotTask.ActiveBuildInfo.BuildAttemptTime) > 0.5f)
 			{
-				pBot->ActiveBuildInfo.BuildStatus = BUILD_ATTEMPT_FAILED;
+				pBot->PrimaryBotTask.ActiveBuildInfo.BuildStatus = BUILD_ATTEMPT_FAILED;
 			}
 		}
+	}
 
+	// If we tried placing a building as gorge, and nothing has appeared within the expected time, then mark it as a failed attempt.
+	if (pBot->SecondaryBotTask.ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_PENDING)
+	{
+		if (pBot->SecondaryBotTask.ActiveBuildInfo.AttemptedStructureType == STRUCTURE_ALIEN_HIVE)
+		{
+			// Give a 3-second grace period to check if the hive placement was successful
+			if ((gpGlobals->time - pBot->SecondaryBotTask.ActiveBuildInfo.BuildAttemptTime) > 3.0f)
+			{
+				const AvHAIHiveDefinition* NearestHive = AITAC_GetHiveNearestLocation(pBot->SecondaryBotTask.ActiveBuildInfo.AttemptedLocation);
+
+				pBot->SecondaryBotTask.ActiveBuildInfo.BuildStatus = (NearestHive->Status != HIVE_STATUS_UNBUILT) ? BUILD_ATTEMPT_SUCCESS : BUILD_ATTEMPT_FAILED;
+			}
+		}
+		else
+		{
+			// All other structures should appear near-instantly
+			if ((gpGlobals->time - pBot->SecondaryBotTask.ActiveBuildInfo.BuildAttemptTime) > 0.5f)
+			{
+				pBot->SecondaryBotTask.ActiveBuildInfo.BuildStatus = BUILD_ATTEMPT_FAILED;
+			}
+		}
 	}
 
 }
@@ -2553,6 +2575,11 @@ void AIPlayerNSMarineThink(AvHAIPlayer* pBot)
 		return;
 	}
 
+	if (pBot->CurrentEnemy > -1)
+	{
+		if (MarineCombatThink(pBot)) { return; }
+	}
+
 	if (!pBot->CurrentTask) { pBot->CurrentTask = &pBot->PrimaryBotTask; }
 
 	if (gpGlobals->time >= pBot->BotNextTaskEvaluationTime)
@@ -2567,11 +2594,6 @@ void AIPlayerNSMarineThink(AvHAIPlayer* pBot)
 	}
 
 	pBot->CurrentTask = AIPlayerGetNextTask(pBot);
-
-	if (pBot->CurrentEnemy > -1)
-	{
-		if (MarineCombatThink(pBot)) { return; }
-	}
 
 	if (pBot->CurrentTask && pBot->CurrentTask->TaskType != TASK_NONE)
 	{
@@ -2983,6 +3005,8 @@ bool RegularMarineCombatThink(AvHAIPlayer* pBot)
 
 			BotShootTarget(pBot, DesiredCombatWeapon, CurrentEnemy);
 		}
+
+		return true;
 	}
 
 	return false;
@@ -3732,7 +3756,7 @@ bool AIPlayerMustFinishCurrentTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	{
 		AvHTeamNumber BotTeam = pBot->Player->GetTeam();
 
-		if (pBot->ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_PENDING) { return true; }
+		if (Task->ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_PENDING) { return true; }
 
 		// If we're already capping a node, are at the node and there is an unfinished tower on there, then finish the job and don't move on yet
 		if (Task->TaskType == TASK_CAP_RESNODE)
@@ -3773,7 +3797,15 @@ void AIPlayerNSAlienThink(AvHAIPlayer* pBot)
 
 	if (AITAC_ShouldBotBuildHive(pBot, &HiveToBuild))
 	{
-		BotAlienBuildHive(pBot, HiveToBuild);
+		if (pBot->PrimaryBotTask.TaskType != TASK_BUILD || pBot->PrimaryBotTask.StructureType != STRUCTURE_ALIEN_HIVE)
+		{
+			pBot->PrimaryBotTask.TaskType = TASK_BUILD;
+			pBot->PrimaryBotTask.StructureType = STRUCTURE_ALIEN_HIVE;
+			char msg[64];
+			sprintf(msg, "I'm going to drop the hive at %s", HiveToBuild->HiveName);
+			BotSay(pBot, true, 1.0f, msg);
+		}
+		BotAlienBuildHive(pBot, &pBot->PrimaryBotTask, HiveToBuild);
 		return;
 	}	
 
@@ -3858,6 +3890,16 @@ void AIPlayerThink(AvHAIPlayer* pBot)
 		bool bBreak = true;
 
 		AIDEBUG_DrawBotPath(pBot);
+
+		if (pBot->BotNavInfo.CurrentPathPoint != pBot->BotNavInfo.CurrentPath.end())
+		{
+			UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, pBot->BotNavInfo.CurrentPathPoint->Location, 0, 255, 255);
+		}
+	}
+
+	if (pBot->PrimaryBotTask.TaskType == TASK_BUILD)
+	{
+		UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, pBot->PrimaryBotTask.TaskLocation, 0, 255, 255);
 	}
 
 	switch (GetGameRules()->GetMapMode())
@@ -4261,7 +4303,7 @@ void AIPlayerSetAlienBuilderPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 			if (!TowerToReinforce || ThisDist < MinDist)
 			{
 				TowerToReinforce = ThisResTower->edict;
-				MaxDist = ThisDist;
+				MinDist = ThisDist;
 			}
 		}
 	}
