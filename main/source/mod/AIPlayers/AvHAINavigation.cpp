@@ -3408,8 +3408,9 @@ void LadderMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoin
 		return;
 	}
 
+	Vector nearestLadderTop = UTIL_GetNearestLadderTopPoint(pEdict);
 
-	if (bIsGoingUpLadder && (pBot->CollisionHullTopLocation.z > EndPoint.z))
+	if (bIsGoingUpLadder && ((pBot->CollisionHullTopLocation.z > EndPoint.z) || (pBot->Edict->v.origin.z > nearestLadderTop.z)))
 	{
 		pBot->desiredMovementDir = vForward;
 
@@ -3428,8 +3429,7 @@ void LadderMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoin
 
 		return;
 	}
-
-	Vector nearestLadderTop = UTIL_GetNearestLadderTopPoint(pEdict);
+	
 
 	if (pBot->Edict->v.origin.z < nearestLadderTop.z)
 	{
