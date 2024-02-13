@@ -623,7 +623,7 @@ void AIMGR_UpdateAIPlayers()
 
 				UpdateBotChat(bot);
 
-				AIPlayerThink(bot);
+				DroneThink(bot);
 
 				EndBotFrame(bot);
 
