@@ -1466,7 +1466,6 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 			if (Door)
 			{
-
 				for (auto it = Door->TriggerEnts.begin(); it != Door->TriggerEnts.end(); it++)
 				{
 					const char* ButtonTarget = STRING(it->Edict->v.target);

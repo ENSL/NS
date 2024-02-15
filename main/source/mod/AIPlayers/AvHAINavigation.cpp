@@ -36,6 +36,7 @@
 
 vector<nav_door> NavDoors;
 vector<nav_weldable> NavWeldableObstacles;
+vector<AvHAIOffMeshConnection> BaseMapConnections;
 
 nav_mesh NavMeshes[MAX_NAV_MESHES] = { }; // Array of nav meshes. Currently only 3 are used (building, onos, and regular)
 nav_profile BaseNavProfiles[MAX_NAV_PROFILES] = { }; // Array of nav profiles
@@ -299,6 +300,9 @@ void AIDEBUG_DrawOffMeshConnections(float DrawTime)
 				case SAMPLE_POLYFLAGS_TEAM1PHASEGATE:
 				case SAMPLE_POLYFLAGS_TEAM2PHASEGATE:
 					UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 255, 128, 128);
+					break;
+				case SAMPLE_POLYFLAGS_DISABLED:
+					UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 128, 128, 128);
 					break;
 				default:
 					UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 0, 255, 255);
@@ -640,6 +644,8 @@ void UnloadNavMeshes()
 			NavMeshes[i].tileCache = nullptr;
 		}
 	}
+
+	BaseMapConnections.clear();
 }
 
 void UnloadNavigationData()
@@ -658,6 +664,7 @@ void UnloadNavigationData()
 bool LoadNavMesh(const char* mapname)
 {
 	memset(NavMeshes, 0, sizeof(NavMeshes));
+	BaseMapConnections.clear();
 
 	char filename[256]; // Full path to BSP file
 
@@ -846,10 +853,23 @@ bool LoadNavMesh(const char* mapname)
 
 		fread(&def, sizeof(dtOffMeshConnection), 1, savedFile);
 
+		AvHAIOffMeshConnection NewMapConnection;
+		NewMapConnection.ConnectionFlags = def.flags;
+		NewMapConnection.DefaultConnectionFlags = def.flags;
+		NewMapConnection.TargetObject = nullptr;
+		NewMapConnection.FromLocation = Vector(def.pos[0], -def.pos[2], def.pos[1]);
+		NewMapConnection.ToLocation = Vector(def.pos[3], -def.pos[5], def.pos[4]);
+
 		for (int ii = 0; ii < BUILDING_NAV_MESH; ii++)
 		{
-			NavMeshes[ii].tileCache->addOffMeshConnection(&def.pos[0], &def.pos[3], 10.0f, def.area, def.flags, def.bBiDir, 0);
+			dtOffMeshConnectionRef ref = 0;
+
+			NavMeshes[ii].tileCache->addOffMeshConnection(&def.pos[0], &def.pos[3], 10.0f, def.area, def.flags, def.bBiDir, &ref);
+
+			NewMapConnection.ConnectionRefs[ii] = (unsigned int)ref;
 		}
+
+		BaseMapConnections.push_back(NewMapConnection);
 	}
 
 	fclose(savedFile);
@@ -899,7 +919,7 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALLDAMAGE, 10.0f);
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
 	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_FLY | SAMPLE_POLYFLAGS_WALLCLIMB | SAMPLE_POLYFLAGS_WELD);
-	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
+	BaseNavProfiles[MARINE_BASE_NAV_PROFILE].Filters.setExcludeFlags(SAMPLE_POLYFLAGS_DISABLED);
 	
 
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
@@ -912,7 +932,7 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_STRUCTUREBLOCK, 20.0f);
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
 	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE | SAMPLE_POLYFLAGS_TEAM2PHASEGATE | SAMPLE_POLYFLAGS_DUCKJUMP | SAMPLE_POLYFLAGS_WELD | SAMPLE_POLYFLAGS_FLY);
-	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
+	BaseNavProfiles[SKULK_BASE_NAV_PROFILE].Filters.setExcludeFlags(SAMPLE_POLYFLAGS_DISABLED);
 
 
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
@@ -925,7 +945,7 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_FALLDAMAGE, 10.0f);
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_STRUCTUREBLOCK, 20.0f);
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
-	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
+	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.setExcludeFlags(SAMPLE_POLYFLAGS_DISABLED);
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE);
 	BaseNavProfiles[GORGE_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM2PHASEGATE);
@@ -942,7 +962,7 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_STRUCTUREBLOCK, 20.0f);
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
-	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
+	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.setExcludeFlags(SAMPLE_POLYFLAGS_DISABLED);
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE);
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM2PHASEGATE);
 	BaseNavProfiles[LERK_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_WELD);
@@ -957,7 +977,7 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_STRUCTUREBLOCK, 20.0f);
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
-	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
+	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.setExcludeFlags(SAMPLE_POLYFLAGS_DISABLED);
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE);
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM2PHASEGATE);
 	BaseNavProfiles[FADE_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_WELD);
@@ -973,7 +993,7 @@ void UTIL_PopulateBaseNavProfiles()
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_BLOCKED, 2.0f);
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setAreaCost(SAMPLE_POLYAREA_STRUCTUREBLOCK, 5.0f); // Onos is a wrecking machine, structures shouldn't be such an obstacle for them!
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
-	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
+	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.setExcludeFlags(SAMPLE_POLYFLAGS_DISABLED);
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_WALLCLIMB);
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM1PHASEGATE);
 	BaseNavProfiles[ONOS_BASE_NAV_PROFILE].Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM2PHASEGATE);
@@ -983,13 +1003,13 @@ void UTIL_PopulateBaseNavProfiles()
 
 	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].NavMeshIndex = BUILDING_NAV_MESH;
 	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
-	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].Filters.setExcludeFlags(0);
+	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].Filters.setExcludeFlags(SAMPLE_POLYFLAGS_DISABLED);
 	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].bFlyingProfile = false;
 	BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_MARINE;
 
 	BaseNavProfiles[ALL_NAV_PROFILE].NavMeshIndex = REGULAR_NAV_MESH;
 	BaseNavProfiles[ALL_NAV_PROFILE].Filters.setIncludeFlags(SAMPLE_POLYFLAGS_ALL);
-	BaseNavProfiles[ALL_NAV_PROFILE].Filters.setExcludeFlags(0);
+	BaseNavProfiles[ALL_NAV_PROFILE].Filters.setExcludeFlags(SAMPLE_POLYFLAGS_DISABLED);
 	BaseNavProfiles[ALL_NAV_PROFILE].bFlyingProfile = false;
 	BaseNavProfiles[ALL_NAV_PROFILE].ReachabilityFlag = AI_REACHABILITY_SKULK;
 }
@@ -1247,7 +1267,7 @@ dtStatus FindFlightPathToPoint(const nav_profile &NavProfile, Vector FromLocatio
 {
 	TraceResult directHit;
 
-	if (UTIL_QuickHullTrace(nullptr, FromLocation, ToLocation, head_hull))
+	if (UTIL_QuickHullTrace(nullptr, FromLocation, ToLocation, head_hull, false))
 	{
 		path.clear();
 
@@ -3885,7 +3905,7 @@ bool IsBotOffPath(const AvHAIPlayer* pBot)
 
 		if (vDist2DSq(pBot->Edict->v.origin, PointOnPath) > sqrf(100.0f)) { return true; }
 
-		bool bAtMoveStart = vEquals(PointOnPath, MoveFrom, 2.0f);
+		bool bAtMoveStart = vEquals(PointOnPath, MoveFrom, GetPlayerRadius(pBot->Player));
 
 
 		// If we're on the from or to move points, but the height is significantly different, we must be under or over the path somehow
@@ -3894,7 +3914,7 @@ bool IsBotOffPath(const AvHAIPlayer* pBot)
 			return true;
 		}
 
-		bool bAtMoveEnd = vEquals(PointOnPath, MoveTo, 2.0f);
+		bool bAtMoveEnd = vEquals(PointOnPath, MoveTo, GetPlayerRadius(pBot->Player));
 
 		if (bAtMoveEnd && fabs(pBot->CurrentFloorPosition.z - MoveTo.z) > PlayerHeight)
 		{
@@ -5133,6 +5153,17 @@ void UpdateBotStuck(AvHAIPlayer* pBot)
 			return;
 		}
 
+		if (pBot->BotNavInfo.StuckInfo.TotalStuckTime > 5.0f)
+		{
+			if (pBot->BotNavInfo.MovementTask.TaskType != MOVE_TASK_NONE)
+			{
+				NAV_ClearMovementTask(pBot);
+			}
+
+			ClearBotPath(pBot);
+			
+		}
+
 		if (!vIsZero(pBot->desiredMovementDir))
 		{
 			BotJump(pBot);
@@ -5642,7 +5673,7 @@ void SkipAheadInFlightPath(AvHAIPlayer* pBot)
 	// Early exit if we don't have a path, or we're already on the last path point
 	if (BotNavInfo->CurrentPath.size() == 0 || BotNavInfo->CurrentPathPoint == prev(BotNavInfo->CurrentPath.end())) { return; }
 
-	if (UTIL_QuickHullTrace(pBot->Edict, pBot->Edict->v.origin, prev(BotNavInfo->CurrentPath.end())->Location, head_hull))
+	if (UTIL_QuickHullTrace(pBot->Edict, pBot->Edict->v.origin, prev(BotNavInfo->CurrentPath.end())->Location, head_hull, false))
 	{
 		pBot->BotNavInfo.CurrentPathPoint = prev(BotNavInfo->CurrentPath.end());
 		return;
@@ -6637,7 +6668,7 @@ float UTIL_FindZHeightForWallClimb(const Vector ClimbStart, const Vector ClimbEn
 
 	UTIL_TraceLine(ClimbEnd, ClimbEnd - Vector(0.0f, 0.0f, 50.0f), ignore_monsters, nullptr, &hit);
 
-	if (hit.flFraction < 1.0f)
+	if (hit.fAllSolid || hit.fStartSolid || hit.flFraction < 1.0f)
 	{
 		StartTrace.z = hit.vecEndPos.z + 18.0f;
 	}
@@ -6650,7 +6681,7 @@ float UTIL_FindZHeightForWallClimb(const Vector ClimbStart, const Vector ClimbEn
 
 	UTIL_TraceHull(StartTrace, EndTrace, ignore_monsters, HullNum, nullptr, &hit);
 
-	if (hit.flFraction >= 1.0f && !hit.fStartSolid)
+	if (hit.flFraction >= 1.0f && !hit.fAllSolid && !hit.fStartSolid)
 	{
 		return StartTrace.z;
 	}
@@ -6659,7 +6690,7 @@ float UTIL_FindZHeightForWallClimb(const Vector ClimbStart, const Vector ClimbEn
 		int maxTests = 100;
 		int testCount = 0;
 
-		while ((hit.flFraction < 1.0f || hit.fStartSolid) && testCount < maxTests)
+		while ((hit.flFraction < 1.0f || hit.fStartSolid || hit.fAllSolid) && testCount < maxTests)
 		{
 			CurrTraceStart.z += 1.0f;
 			EndTrace.z = CurrTraceStart.z;
@@ -7115,7 +7146,44 @@ bool UTIL_IsTriggerLinkedToDoor(CBaseEntity* TriggerEntity, CBaseEntity* Door)
 	return false;
 }
 
-void UTIL_PopulateTriggersForEntity2(edict_t* Entity, vector<DoorTrigger>& TriggerList)
+void UTIL_PopulateAffectedConnectionsForDoor(nav_door* Door)
+{
+	Door->AffectedConnections.clear();
+
+	Vector HalfExtents = (Door->DoorEdict->v.size * 0.5f);
+
+	for (auto it = BaseMapConnections.begin(); it != BaseMapConnections.end(); it++)
+	{
+		if (it->ConnectionFlags == SAMPLE_POLYFLAGS_TEAM1PHASEGATE || it->ConnectionFlags == SAMPLE_POLYFLAGS_TEAM2PHASEGATE) { continue; }
+
+		Vector ConnStart = it->FromLocation + Vector(0.0f, 0.0f, 10.0f);
+		Vector ConnEnd = it->ToLocation + Vector(0.0f, 0.0f, 10.0f);
+		Vector MidPoint = ConnStart + ((ConnEnd - ConnStart) * 0.5f);
+		MidPoint.z = fmaxf(ConnStart.z, ConnEnd.z);
+
+		for (auto stopIt = Door->StopPoints.begin(); stopIt != Door->StopPoints.end(); stopIt++)
+		{
+			Vector DoorCentre = (*stopIt);
+
+			Vector NearestPointOnLine = vClosestPointOnLine(ConnStart, MidPoint, DoorCentre);
+			if (vPointOverlaps3D(NearestPointOnLine, DoorCentre - HalfExtents, DoorCentre + HalfExtents))
+			{
+				Door->AffectedConnections.push_back(&(*it));
+				break;
+			}
+
+			NearestPointOnLine = vClosestPointOnLine(MidPoint, ConnEnd, DoorCentre);
+			if (vPointOverlaps3D(NearestPointOnLine, DoorCentre - HalfExtents, DoorCentre + HalfExtents))
+			{
+				Door->AffectedConnections.push_back(&(*it));
+				break;
+			}
+		}
+			
+	}
+}
+
+void UTIL_PopulateTriggersForEntity(edict_t* Entity, vector<DoorTrigger>& TriggerList)
 {
 	CBaseEntity* TriggerRef = NULL;
 	CBaseEntity* DoorRef = CBaseEntity::Instance(Entity);
@@ -7217,200 +7285,7 @@ void UTIL_PopulateTriggersForEntity2(edict_t* Entity, vector<DoorTrigger>& Trigg
 	}
 }
 
-void UTIL_PopulateTriggersForEntity(edict_t* Entity, vector<DoorTrigger>& TriggerList)
-{
-	CBaseEntity* EntityRef = CBaseEntity::Instance(Entity);
 
-	const char* EntName = STRING(Entity->v.targetname);
-
-	if (!EntityRef) { return; }
-
-	CBaseButton* ButtonRef = dynamic_cast<CBaseButton*>(EntityRef);
-	AvHWeldable* WeldableRef = dynamic_cast<AvHWeldable*>(EntityRef);
-	CBaseTrigger* TriggerRef = dynamic_cast<CBaseTrigger*>(EntityRef);
-	CBreakable* BreakableRef = dynamic_cast<CBreakable*>(EntityRef);
-
-	CBasePlatTrain* TrainRef = dynamic_cast<CBasePlatTrain*>(EntityRef);
-
-	if (TrainRef)
-	{
-		bool bBreak = true;
-	}
-
-	if (ButtonRef || WeldableRef || TriggerRef || BreakableRef)
-	{
-		CBaseToggle* ToggleRef = dynamic_cast<CBaseToggle*>(EntityRef);
-
-		DoorActivationType NewTriggerType = DOOR_NONE;
-
-		if (ButtonRef)
-		{
-			NewTriggerType = DOOR_BUTTON;
-		}
-		else if (TriggerRef)
-		{
-			NewTriggerType = DOOR_TRIGGER;
-		}
-		else if (WeldableRef)
-		{
-			NewTriggerType = DOOR_WELD;
-		}
-		else if (BreakableRef)
-		{
-			NewTriggerType = DOOR_BREAK;
-		}
-
-		DoorTrigger NewTrigger;
-		NewTrigger.Entity = EntityRef;
-		NewTrigger.Edict = EntityRef->edict();
-		NewTrigger.ToggleEnt = ToggleRef;
-		NewTrigger.TriggerType = NewTriggerType;
-		NewTrigger.bIsActivated = (!ToggleRef || !ToggleRef->IsLockedByMaster());
-
-		TriggerList.push_back(NewTrigger);
-
-		if (!NewTrigger.bIsActivated)
-		{
-			CBaseEntity* MasterEntity = UTIL_FindEntityByString(NULL, "targetname", STRING(ToggleRef->m_sMaster));
-
-			if (MasterEntity)
-			{
-				UTIL_PopulateTriggersForEntity(MasterEntity->edict(), TriggerList);
-			}
-		}
-
-		return;
-	}
-
-
-	CMultiSource* MultiSourceRef = dynamic_cast<CMultiSource*>(EntityRef);
-
-	if (MultiSourceRef)
-	{
-		for (int i = 0; i < MultiSourceRef->m_iTotal; i++)
-		{
-			UTIL_PopulateTriggersForEntity(MultiSourceRef->m_rgEntities[i]->edict(), TriggerList);
-		}
-
-		if (MultiSourceRef->m_globalstate)
-		{
-			const char* GlobalName = STRING(MultiSourceRef->m_globalstate);
-
-			CBaseEntity* EnvBaseRef = NULL;
-
-			while ((EnvBaseRef = UTIL_FindEntityByClassname(EnvBaseRef, "env_global")) != NULL)
-			{
-				CEnvGlobal* EnvGlobalRef = dynamic_cast<CEnvGlobal*>(EnvBaseRef);
-
-				if (FStrEq(STRING(EnvGlobalRef->m_globalstate), GlobalName))
-				{
-					UTIL_PopulateTriggersForEntity(EnvGlobalRef->edict(), TriggerList);
-				}
-			}
-		}
-
-		return;
-	}
-
-	const char* EntityName = STRING(Entity->v.targetname);
-
-	CBaseEntity* currTrigger = NULL;
-
-	while ((currTrigger = UTIL_FindEntityByString(currTrigger, "target", EntityName)) != NULL)
-	{
-		UTIL_PopulateTriggersForEntity(currTrigger->edict(), TriggerList);
-	}
-
-	FOR_ALL_ENTITIES(kwsWeldableClassName, AvHWeldable*)
-		if (theEntity->GetTargetOnFinish() == EntityName)
-		{
-			UTIL_PopulateTriggersForEntity(theEntity->edict(), TriggerList);
-		}
-	END_FOR_ALL_ENTITIES(kwsWeldableClassName)
-
-	FOR_ALL_ENTITIES("trigger_changetarget", CTriggerChangeTarget*)
-
-		const char* TargetName = STRING(theEntity->pev->targetname);
-		const char* NewTargetName = STRING(theEntity->GetNewTargetName());
-
-		if (FStrEq(STRING(theEntity->GetNewTargetName()), EntityName))
-		{
-			currTrigger = NULL;
-
-			while ((currTrigger = UTIL_FindEntityByString(currTrigger, "target", STRING(theEntity->pev->targetname))) != NULL)
-			{
-				UTIL_PopulateTriggersForEntity(currTrigger->edict(), TriggerList);
-			}
-
-			currTrigger = NULL;
-
-			while ((currTrigger = UTIL_FindEntityByString(currTrigger, "targetname", STRING(theEntity->pev->target))) != NULL)
-			{
-				UTIL_PopulateTriggersForEntity(currTrigger->edict(), TriggerList);
-			}
-
-			string NewString = TargetName;
-
-			CBaseEntity* CurrWeldable = NULL;
-
-			while ((CurrWeldable = UTIL_FindEntityByClassname(CurrWeldable, kwsWeldableClassName)) != NULL)
-			{
-				AvHWeldable* ThisWeldableRef = dynamic_cast<AvHWeldable*>(CurrWeldable);
-
-				if (ThisWeldableRef)
-				{
-					if (ThisWeldableRef->GetTargetOnFinish() == NewString)
-					{
-						UTIL_PopulateTriggersForEntity(ThisWeldableRef->edict(), TriggerList);
-					}
-				}
-			}
-		
-		}
-	END_FOR_ALL_ENTITIES("trigger_changetarget")
-
-
-	while (((currTrigger = UTIL_FindEntityByClassname(currTrigger, "multi_manager")) != NULL))
-	{
-		CMultiManager* MMRef = dynamic_cast<CMultiManager*>(currTrigger);
-
-		bool bTargetsDoor = false;
-
-		if (MMRef)
-		{
-			for (int i = 0; i < MMRef->m_cTargets; i++)
-			{
-				if (FStrEq(EntityName, STRING(MMRef->m_iTargetName[i])))
-				{
-					bTargetsDoor = true;
-					break;
-				}
-			}
-		}
-
-		if (bTargetsDoor)
-		{
-			CBaseEntity* MMTrigger = NULL;
-
-			const char* MMNameChar = STRING(MMRef->pev->targetname);
-
-			while ((MMTrigger = UTIL_FindEntityByString(MMTrigger, "target", MMNameChar)) != NULL)
-			{
-				UTIL_PopulateTriggersForEntity(MMTrigger->edict(), TriggerList);
-			}
-
-			const string MMName = MMNameChar;
-
-			FOR_ALL_ENTITIES(kwsWeldableClassName, AvHWeldable*)
-				if (theEntity->GetTargetOnFinish() == MMName)
-				{
-					UTIL_PopulateTriggersForEntity(theEntity->edict(), TriggerList);
-				}
-			END_FOR_ALL_ENTITIES(kwsWeldableClassName)
-		}
-	}
-	
-}
 
 void UTIL_PopulateWeldableObstacles()
 {
@@ -7478,17 +7353,38 @@ void UTIL_PopulateWeldableObstacles()
 	}
 }
 
+void UTIL_ModifyOffMeshConnectionFlag(AvHAIOffMeshConnection* Connection, const unsigned int NewFlag)
+{
+	if (!Connection) { return; }
+
+	Connection->ConnectionFlags = NewFlag;
+
+	for (int i = 0; i < BUILDING_NAV_MESH; i++)
+	{
+		if (NavMeshes[i].tileCache && Connection->ConnectionRefs[i])
+		{
+			NavMeshes[i].tileCache->modifyOffMeshConnection(Connection->ConnectionRefs[i], NewFlag);
+		}
+	}
+}
+
 void UTIL_UpdateDoors(bool bInitial)
 {
 	for (auto it = NavDoors.begin(); it != NavDoors.end(); it++)
 	{
+		nav_door* NavDoor = &(*it);
 		DoorActivationType PrevType = it->ActivationType;
 
-		UTIL_UpdateDoorTriggers(&(*it));
+		UTIL_UpdateDoorTriggers(NavDoor);
 				
 		CBaseToggle* DoorRef = it->DoorEntity;
 
 		if (!DoorRef) { continue; }
+
+		if (bInitial)
+		{
+			UTIL_PopulateAffectedConnectionsForDoor(NavDoor);
+		}
 
 		if (DoorRef->m_toggle_state == TS_GOING_UP || DoorRef->m_toggle_state == TS_GOING_DOWN)
 		{
@@ -7520,15 +7416,97 @@ void UTIL_UpdateDoors(bool bInitial)
 
 			if (it->ActivationType == DOOR_NONE)
 			{
-				UTIL_ApplyTempObstaclesToDoor(&(*it), DT_TILECACHE_NULL_AREA);
+				Vector HalfExtents = (NavDoor->DoorEdict->v.size) * 0.5f;
+
+				for (auto conIt = NavDoor->AffectedConnections.begin(); conIt != NavDoor->AffectedConnections.end(); conIt++)
+				{
+					AvHAIOffMeshConnection* ThisConnection = (*conIt);
+
+					Vector ConnStart = ThisConnection->FromLocation + Vector(0.0f, 0.0f, 10.0f);
+					Vector ConnEnd = ThisConnection->ToLocation + Vector(0.0f, 0.0f, 10.0f);
+					Vector MidPoint = ConnStart + ((ConnEnd - ConnStart) * 0.5f);
+					MidPoint.z = fmaxf(ConnStart.z, ConnEnd.z);
+
+					Vector DoorCentre = UTIL_GetCentreOfEntity(NavDoor->DoorEdict);
+
+					bool bThisConnectionAffected = false;
+
+					Vector NearestPointOnLine = vClosestPointOnLine(ConnStart, MidPoint, DoorCentre);
+					if (vPointOverlaps3D(NearestPointOnLine, DoorCentre - HalfExtents, DoorCentre + HalfExtents))
+					{
+						UTIL_ModifyOffMeshConnectionFlag(ThisConnection, SAMPLE_POLYFLAGS_DISABLED);
+						bThisConnectionAffected = true;
+					}
+					else
+					{
+						NearestPointOnLine = vClosestPointOnLine(MidPoint, ConnEnd, DoorCentre);
+						if (vPointOverlaps3D(NearestPointOnLine, DoorCentre - HalfExtents, DoorCentre + HalfExtents))
+						{
+							UTIL_ModifyOffMeshConnectionFlag(ThisConnection, SAMPLE_POLYFLAGS_DISABLED);
+							bThisConnectionAffected = true;
+						}
+					}
+
+					if (!bThisConnectionAffected)
+					{
+						if (ThisConnection->ConnectionFlags != ThisConnection->DefaultConnectionFlags)
+						{
+							UTIL_ModifyOffMeshConnectionFlag(ThisConnection, ThisConnection->DefaultConnectionFlags);
+						}
+					}
+
+				}
+
+				UTIL_ApplyTempObstaclesToDoor(NavDoor, DT_TILECACHE_NULL_AREA);
 			}
 			else if (it->ActivationType == DOOR_WELD)
 			{
-				UTIL_ApplyTempObstaclesToDoor(&(*it), DT_TILECACHE_WELD_AREA);
+				Vector HalfExtents = (NavDoor->DoorEdict->v.size) * 0.5f;
+
+				for (auto conIt = NavDoor->AffectedConnections.begin(); conIt != NavDoor->AffectedConnections.end(); conIt++)
+				{
+					AvHAIOffMeshConnection* ThisConnection = (*conIt);
+
+					Vector ConnStart = ThisConnection->FromLocation + Vector(0.0f, 0.0f, 10.0f);
+					Vector ConnEnd = ThisConnection->ToLocation + Vector(0.0f, 0.0f, 10.0f);
+					Vector MidPoint = ConnStart + ((ConnEnd - ConnStart) * 0.5f);
+					MidPoint.z = fmaxf(ConnStart.z, ConnEnd.z);
+
+					Vector DoorCentre = UTIL_GetCentreOfEntity(NavDoor->DoorEdict);
+
+					bool bThisConnectionAffected = false;
+
+					Vector NearestPointOnLine = vClosestPointOnLine(ConnStart, MidPoint, DoorCentre);
+					if (vPointOverlaps3D(NearestPointOnLine, DoorCentre - HalfExtents, DoorCentre + HalfExtents))
+					{
+						UTIL_ModifyOffMeshConnectionFlag(ThisConnection, SAMPLE_POLYFLAGS_WELD);
+						bThisConnectionAffected = true;
+					}
+					else
+					{
+						NearestPointOnLine = vClosestPointOnLine(MidPoint, ConnEnd, DoorCentre);
+						if (vPointOverlaps3D(NearestPointOnLine, DoorCentre - HalfExtents, DoorCentre + HalfExtents))
+						{
+							UTIL_ModifyOffMeshConnectionFlag(ThisConnection, SAMPLE_POLYFLAGS_WELD);
+							bThisConnectionAffected = true;
+						}
+					}
+
+					if (!bThisConnectionAffected)
+					{
+						if (ThisConnection->ConnectionFlags != ThisConnection->DefaultConnectionFlags)
+						{
+							UTIL_ModifyOffMeshConnectionFlag(ThisConnection, ThisConnection->DefaultConnectionFlags);
+						}
+					}
+
+				}
+
+				UTIL_ApplyTempObstaclesToDoor(NavDoor, DT_TILECACHE_WELD_AREA);
 			}
 			else
 			{
-				UTIL_ApplyTempObstaclesToDoor(&(*it), DT_TILECACHE_DOOR_AREA);
+				UTIL_ApplyTempObstaclesToDoor(NavDoor, DT_TILECACHE_DOOR_AREA);
 			}
 
 			it->CurrentState = DoorRef->m_toggle_state;
@@ -7865,7 +7843,7 @@ void UTIL_PopulateDoors()
 		else
 		{
 			NewDoor.TriggerEnts.clear();
-			UTIL_PopulateTriggersForEntity2(DoorEnt->edict(), NewDoor.TriggerEnts);
+			UTIL_PopulateTriggersForEntity(DoorEnt->edict(), NewDoor.TriggerEnts);
 		}
 
 		CBasePlatTrain* TrainRef = dynamic_cast<CBasePlatTrain*>(DoorEnt);
@@ -7888,7 +7866,6 @@ void UTIL_PopulateDoors()
 				NewDoor.StopPoints.push_back(UTIL_GetCentreOfEntity(NewDoor.DoorEdict) + ToggleRef->m_vecPosition1);
 				NewDoor.StopPoints.push_back(UTIL_GetCentreOfEntity(NewDoor.DoorEdict) + ToggleRef->m_vecPosition2);
 			}
-			
 		}
 		
 

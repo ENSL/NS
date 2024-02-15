@@ -158,6 +158,7 @@ public:
 	dtStatus addObstacle(const float* pos, const float radius, const float height, const int area, dtObstacleRef* result);
 
 	dtStatus addOffMeshConnection(const float* spos, const float* epos, const float radius, const unsigned char area, const unsigned int flags, const bool bBiDirectional, dtOffMeshConnectionRef* result);
+	dtStatus modifyOffMeshConnection(dtOffMeshConnectionRef ConRef, const unsigned int newFlag);
 
 	// Aabb obstacle.
 	dtStatus addBoxObstacle(const float* bmin, const float* bmax, dtObstacleRef* result);

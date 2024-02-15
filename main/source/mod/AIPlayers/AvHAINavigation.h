@@ -85,6 +85,7 @@ typedef struct _NAV_DOOR
 	float OpenDelay = 0.0f; // How long the door takes to start opening after activation
 	vector<Vector> StopPoints; // Where does this door/platform stop when triggered?
 	NavDoorType DoorType = DOORTYPE_DOOR;
+	vector<AvHAIOffMeshConnection*> AffectedConnections;
 } nav_door;
 
 typedef struct _NAV_WELDABLE
@@ -451,10 +452,12 @@ void UTIL_PopulateTrainStopPoints(nav_door* TrainDoor);
 void UTIL_UpdateWeldableObstacles();
 void UTIL_UpdateDoors(bool bInitial = false);
 void UTIL_UpdateDoorTriggers(nav_door* Door);
-void UTIL_PopulateTriggersForEntity(edict_t* Entity, vector<DoorTrigger>& TriggerList);
+
+void UTIL_ModifyOffMeshConnectionFlag(AvHAIOffMeshConnection* Connection, const unsigned int NewFlag);
 
 bool UTIL_IsTriggerLinkedToDoor(CBaseEntity* TriggerEntity, CBaseEntity* Door);
-void UTIL_PopulateTriggersForEntity2(edict_t* Entity, vector<DoorTrigger>& TriggerList);
+void UTIL_PopulateTriggersForEntity(edict_t* Entity, vector<DoorTrigger>& TriggerList);
+void UTIL_PopulateAffectedConnectionsForDoor(nav_door* Door);
 
 void UTIL_PopulateWeldableObstacles();
 

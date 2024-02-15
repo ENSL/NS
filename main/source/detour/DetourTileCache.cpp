@@ -390,6 +390,26 @@ dtStatus dtTileCache::removeTile(dtCompressedTileRef ref, unsigned char** data, 
 	return DT_SUCCESS;
 }
 
+dtStatus dtTileCache::modifyOffMeshConnection(dtOffMeshConnectionRef ConRef, const unsigned int newFlag)
+{
+	if (m_nOffMeshReqs >= MAX_REQUESTS)
+		return DT_FAILURE | DT_BUFFER_TOO_SMALL;
+
+	dtOffMeshConnection* con = getOffMeshConnectionByRef(ConRef);
+
+	if (!con) { return DT_FAILURE; }
+
+	con->state = DT_OFFMESH_DIRTY;
+	con->flags = newFlag;
+
+	OffMeshRequest* req = &m_OffMeshReqs[m_nOffMeshReqs++];
+	memset(req, 0, sizeof(OffMeshRequest));
+	req->action = REQUEST_OFFMESH_REFRESH;
+	req->ref = ConRef;
+
+	return DT_SUCCESS;
+}
+
 dtStatus dtTileCache::addOffMeshConnection(const float* spos, const float* epos, const float radius, const unsigned char area, const unsigned int flags, const bool bBiDirectional, dtOffMeshConnectionRef* result)
 {
 	if (m_nOffMeshReqs >= MAX_REQUESTS)

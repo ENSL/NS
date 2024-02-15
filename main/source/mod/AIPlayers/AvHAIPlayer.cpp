@@ -3600,6 +3600,7 @@ void AIPlayerSetSecondaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 		int NumBuilders = AITAC_GetNumPlayersOfTeamInArea(BotTeam, (*it)->Location, ThisDist - 5.0f, false, pBot->Edict, AVH_USER3_COMMANDER_PLAYER);
 
+		// Two builders if we're not in the marine base, one to guard and keep lookout while the other builds
 		int NumDesiredBuilders = (vDist2DSq((*it)->Location, AITAC_GetCommChairLocation(BotTeam)) < sqrf(UTIL_MetresToGoldSrcUnits(15.0f))) ? 1 : 2;
 
 		if (NumBuilders < NumDesiredBuilders)
@@ -3918,13 +3919,76 @@ void AIPlayerThink(AvHAIPlayer* pBot)
 
 void TestNavThink(AvHAIPlayer* pBot)
 {
+	if (pBot == AIMGR_GetDebugAIPlayer())
+	{
+		bool bBreak = true; // Add a break point here if you want to debug a specific bot
+
+		AIDEBUG_DrawBotPath(pBot);
+
+		if (pBot->BotNavInfo.CurrentPathPoint != pBot->BotNavInfo.CurrentPath.end())
+		{
+			UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, pBot->BotNavInfo.CurrentPathPoint->Location, 0, 255, 255);
+		}
+	}
+
 	AITASK_BotUpdateAndClearTasks(pBot);
 
 	pBot->CurrentTask = &pBot->PrimaryBotTask;
 
+	if (IsPlayerAlien(pBot->Edict) && IsPlayerSkulk(pBot->Edict))
+	{
+		if (AITAC_GetNumPlayersOnTeamOfClass(pBot->Player->GetTeam(), AVH_USER3_ALIEN_PLAYER2, pBot->Edict) == 0)
+		{
+			if (pBot->Player->GetResources() >= BALANCE_VAR(kGorgeCost))
+			{
+				BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_TWO);
+				return;
+			}
+		}
+
+		if (AITAC_GetNumPlayersOnTeamOfClass(pBot->Player->GetTeam(), AVH_USER3_ALIEN_PLAYER3, pBot->Edict) == 0)
+		{
+			if (pBot->Player->GetResources() >= BALANCE_VAR(kLerkCost))
+			{
+				BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_THREE);
+				return;
+			}
+			else
+			{
+				pBot->Player->GiveResources(BALANCE_VAR(kLerkCost));
+			}
+		}
+
+		if (AITAC_GetNumPlayersOnTeamOfClass(pBot->Player->GetTeam(), AVH_USER3_ALIEN_PLAYER4, pBot->Edict) == 0)
+		{
+			if (pBot->Player->GetResources() >= BALANCE_VAR(kFadeCost))
+			{
+				BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_FOUR);
+				return;
+			}
+			else
+			{
+				pBot->Player->GiveResources(BALANCE_VAR(kFadeCost));
+			}
+		}
+
+		if (AITAC_GetNumPlayersOnTeamOfClass(pBot->Player->GetTeam(), AVH_USER3_ALIEN_PLAYER5, pBot->Edict) == 0)
+		{
+			if (pBot->Player->GetResources() >= BALANCE_VAR(kOnosCost))
+			{
+				BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_FIVE);
+				return;
+			}
+			else
+			{
+				pBot->Player->GiveResources(BALANCE_VAR(kOnosCost));
+			}
+		}
+	}
+
 	if (pBot->PrimaryBotTask.TaskType == TASK_MOVE)
 	{
-		if (vDist2DSq(pBot->Edict->v.origin, pBot->PrimaryBotTask.TaskLocation) < sqrf(UTIL_MetresToGoldSrcUnits(2.0f)))
+		if (vDist2DSq(pBot->Edict->v.origin, pBot->PrimaryBotTask.TaskLocation) < sqrf(UTIL_MetresToGoldSrcUnits(1.0f)))
 		{
 			AITASK_ClearBotTask(pBot, &pBot->PrimaryBotTask);
 			return;
