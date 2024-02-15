@@ -24,23 +24,23 @@ bool UTIL_QuickTrace(const edict_t* pEdict, const Vector& start, const Vector& e
 	return (hit.flFraction >= 1.0f && !hit.fAllSolid);
 }
 
-bool UTIL_QuickHullTrace(const edict_t* pEdict, const Vector& start, const Vector& end)
+bool UTIL_QuickHullTrace(const edict_t* pEdict, const Vector& start, const Vector& end, bool bAllowStartSolid)
 {
 	int hullNum = (!FNullEnt(pEdict)) ? GetPlayerHullIndex(pEdict) : point_hull;
 	edict_t* IgnoreEdict = (!FNullEnt(pEdict)) ? pEdict->v.pContainingEntity : NULL;
 	TraceResult hit;
 	UTIL_TraceHull(start, end, ignore_monsters, hullNum, IgnoreEdict, &hit);
 
-	return (hit.flFraction >= 1.0f && !hit.fAllSolid);
+	return (hit.flFraction >= 1.0f && !hit.fAllSolid && (bAllowStartSolid || !hit.fStartSolid));
 }
 
-bool UTIL_QuickHullTrace(const edict_t* pEdict, const Vector& start, const Vector& end, int hullNum)
+bool UTIL_QuickHullTrace(const edict_t* pEdict, const Vector& start, const Vector& end, int hullNum, bool bAllowStartSolid)
 {
 	TraceResult hit;
 	edict_t* IgnoreEdict = (!FNullEnt(pEdict)) ? pEdict->v.pContainingEntity : NULL;
 	UTIL_TraceHull(start, end, ignore_monsters, hullNum, IgnoreEdict, &hit);
 
-	return (hit.flFraction >= 1.0f && !hit.fAllSolid);
+	return (hit.flFraction >= 1.0f && !hit.fAllSolid && (bAllowStartSolid || !hit.fStartSolid));
 }
 
 edict_t* UTIL_TraceEntity(const edict_t* pEdict, const Vector& start, const Vector& end)

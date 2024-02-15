@@ -8,8 +8,8 @@
 
 bool UTIL_CommanderTrace(const edict_t* pEdict, const Vector& start, const Vector& end);
 bool UTIL_QuickTrace(const edict_t* pEdict, const Vector& start, const Vector& end);
-bool UTIL_QuickHullTrace(const edict_t* pEdict, const Vector& start, const Vector& end);
-bool UTIL_QuickHullTrace(const edict_t* pEdict, const Vector& start, const Vector& end, int hullNum);
+bool UTIL_QuickHullTrace(const edict_t* pEdict, const Vector& start, const Vector& end, bool bAllowStartSolid = false);
+bool UTIL_QuickHullTrace(const edict_t* pEdict, const Vector& start, const Vector& end, int hullNum, bool bAllowStartSolid = false);
 edict_t* UTIL_TraceEntity(const edict_t* pEdict, const Vector& start, const Vector& end);
 Vector UTIL_GetTraceHitLocation(const Vector Start, const Vector End);
 Vector UTIL_GetHullTraceHitLocation(const Vector Start, const Vector End, int HullNum);

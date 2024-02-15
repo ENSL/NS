@@ -215,6 +215,7 @@ typedef struct _OFF_MESH_CONN
 {
 	unsigned int ConnectionRefs[2];
 	unsigned int ConnectionFlags = 0;
+	unsigned int DefaultConnectionFlags = 0;
 	Vector FromLocation = g_vecZero;
 	Vector ToLocation = g_vecZero;
 	edict_t* TargetObject = nullptr;
@@ -340,7 +341,7 @@ typedef struct _DROPPED_MARINE_ITEM
 	int LastSeen = 0; // Which refresh cycle was this last seen on? Used to determine if the item has been removed from play
 } AvHAIDroppedItem;
 
-// How far a bot can be from a useable object when trying to interact with it. Used also for melee attacks
+// How far a bot can be from a useable object when trying to interact with it. Used also for melee attacks. We make it slightly less than actual to avoid edge cases
 static const float max_ai_use_reach = 55.0f;
 
 // Minimum time a bot can wait between attempts to use something in seconds (when not holding the use key down)
