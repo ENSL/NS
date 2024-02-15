@@ -7151,13 +7151,16 @@ void UTIL_PopulateAffectedConnectionsForDoor(nav_door* Door)
 	Door->AffectedConnections.clear();
 
 	Vector HalfExtents = (Door->DoorEdict->v.size * 0.5f);
+	HalfExtents.x += 16.0f;
+	HalfExtents.y += 16.0f;
+	HalfExtents.z += 16.0f;
 
 	for (auto it = BaseMapConnections.begin(); it != BaseMapConnections.end(); it++)
 	{
 		if (it->ConnectionFlags == SAMPLE_POLYFLAGS_TEAM1PHASEGATE || it->ConnectionFlags == SAMPLE_POLYFLAGS_TEAM2PHASEGATE) { continue; }
 
-		Vector ConnStart = it->FromLocation + Vector(0.0f, 0.0f, 10.0f);
-		Vector ConnEnd = it->ToLocation + Vector(0.0f, 0.0f, 10.0f);
+		Vector ConnStart = it->FromLocation + Vector(0.0f, 0.0f, 15.0f);
+		Vector ConnEnd = it->ToLocation + Vector(0.0f, 0.0f, 15.0f);
 		Vector MidPoint = ConnStart + ((ConnEnd - ConnStart) * 0.5f);
 		MidPoint.z = fmaxf(ConnStart.z, ConnEnd.z);
 
@@ -7355,7 +7358,7 @@ void UTIL_PopulateWeldableObstacles()
 
 void UTIL_ModifyOffMeshConnectionFlag(AvHAIOffMeshConnection* Connection, const unsigned int NewFlag)
 {
-	if (!Connection) { return; }
+	if (!Connection || Connection->ConnectionFlags == NewFlag) { return; }
 
 	Connection->ConnectionFlags = NewFlag;
 
@@ -7366,6 +7369,8 @@ void UTIL_ModifyOffMeshConnectionFlag(AvHAIOffMeshConnection* Connection, const 
 			NavMeshes[i].tileCache->modifyOffMeshConnection(Connection->ConnectionRefs[i], NewFlag);
 		}
 	}
+
+	bNavMeshModified = true;
 }
 
 void UTIL_UpdateDoors(bool bInitial)
@@ -7417,13 +7422,16 @@ void UTIL_UpdateDoors(bool bInitial)
 			if (it->ActivationType == DOOR_NONE)
 			{
 				Vector HalfExtents = (NavDoor->DoorEdict->v.size) * 0.5f;
+				HalfExtents.x += 16.0f;
+				HalfExtents.y += 16.0f;
+				HalfExtents.z += 16.0f;
 
 				for (auto conIt = NavDoor->AffectedConnections.begin(); conIt != NavDoor->AffectedConnections.end(); conIt++)
 				{
 					AvHAIOffMeshConnection* ThisConnection = (*conIt);
 
-					Vector ConnStart = ThisConnection->FromLocation + Vector(0.0f, 0.0f, 10.0f);
-					Vector ConnEnd = ThisConnection->ToLocation + Vector(0.0f, 0.0f, 10.0f);
+					Vector ConnStart = ThisConnection->FromLocation + Vector(0.0f, 0.0f, 15.0f);
+					Vector ConnEnd = ThisConnection->ToLocation + Vector(0.0f, 0.0f, 15.0f);
 					Vector MidPoint = ConnStart + ((ConnEnd - ConnStart) * 0.5f);
 					MidPoint.z = fmaxf(ConnStart.z, ConnEnd.z);
 
@@ -7462,13 +7470,16 @@ void UTIL_UpdateDoors(bool bInitial)
 			else if (it->ActivationType == DOOR_WELD)
 			{
 				Vector HalfExtents = (NavDoor->DoorEdict->v.size) * 0.5f;
+				HalfExtents.x += 16.0f;
+				HalfExtents.y += 16.0f;
+				HalfExtents.z += 16.0f;
 
 				for (auto conIt = NavDoor->AffectedConnections.begin(); conIt != NavDoor->AffectedConnections.end(); conIt++)
 				{
 					AvHAIOffMeshConnection* ThisConnection = (*conIt);
 
-					Vector ConnStart = ThisConnection->FromLocation + Vector(0.0f, 0.0f, 10.0f);
-					Vector ConnEnd = ThisConnection->ToLocation + Vector(0.0f, 0.0f, 10.0f);
+					Vector ConnStart = ThisConnection->FromLocation + Vector(0.0f, 0.0f, 15.0f);
+					Vector ConnEnd = ThisConnection->ToLocation + Vector(0.0f, 0.0f, 15.0f);
 					Vector MidPoint = ConnStart + ((ConnEnd - ConnStart) * 0.5f);
 					MidPoint.z = fmaxf(ConnStart.z, ConnEnd.z);
 
