@@ -1086,7 +1086,7 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 	}
 
 	StructureFilter.DeployableTypes = STRUCTURE_MARINE_PROTOTYPELAB;
-	StructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
+	StructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(20.0f);
 	StructureFilter.IncludeStatusFlags = STRUCTURE_STATUS_NONE;
 	StructureFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
 
@@ -2065,12 +2065,56 @@ bool AICOMM_CheckForNextRecycleAction(AvHAIPlayer* pBot)
 	{
 		AvHAIHiveDefinition* Hive = (*HiveIt);
 
+		// If the hive is still active or growing, then clearly we should keep any siege bases
 		if (Hive->Status != HIVE_STATUS_UNBUILT) { continue; }
 
+		// If the hive is empty, but we've not secured it yet, then keep any siege bases nearby in case we need to re-siege later
+		DeployableSearchFilter SecuringStructuresFilter;
+		SecuringStructuresFilter.DeployableTypes = (STRUCTURE_MARINE_PHASEGATE | STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_MARINE_ADVTURRETFACTORY | STRUCTURE_MARINE_TURRET);
+		SecuringStructuresFilter.DeployableTeam = pBot->Player->GetTeam();
+		SecuringStructuresFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+		SecuringStructuresFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+		SecuringStructuresFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
+
+		vector<AvHAIBuildableStructure*> NearbySecuringStructures = AITAC_FindAllDeployables(Hive->Location, &SecuringStructuresFilter);
+
+		bool bHiveHasPG = false;
+		bool bHiveHasTF = false;
+		bool bHiveHasTurret = false;
+
+		for (auto SecureIt = NearbySecuringStructures.begin(); SecureIt != NearbySecuringStructures.end(); SecureIt++)
+		{
+			AvHAIBuildableStructure* Structure = (*SecureIt);
+
+			if (Structure->Purpose == STRUCTURE_PURPOSE_SIEGE)
+			{
+				if (Structure->StructureType == STRUCTURE_MARINE_PHASEGATE)
+				{
+					bHiveHasPG = true;
+				}
+
+				if (Structure->StructureType == STRUCTURE_MARINE_TURRETFACTORY || Structure->StructureType == STRUCTURE_MARINE_ADVTURRETFACTORY)
+				{
+					bHiveHasTF = true;
+				}
+
+				if (Structure->StructureType == STRUCTURE_MARINE_TURRET)
+				{
+					bHiveHasTurret = true;
+				}
+			}
+		}
+
+		bool bHiveIsSecureEnough = (bHiveHasPG && bHiveHasTF && bHiveHasTurret);
+
+		if (!bHiveIsSecureEnough) { continue; }
+
+		// Ok, hive is secured by us, now we can check if there are any siege objects to be got rid of
 		DeployableSearchFilter RedundantFilter;
+		RedundantFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
 		RedundantFilter.DeployableTeam = pBot->Player->GetTeam();
 		RedundantFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
-		RedundantFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(25.0f);
+		RedundantFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(30.0f);
 
 		vector<AvHAIBuildableStructure*> NearbyStructures = AITAC_FindAllDeployables(Hive->Location, &RedundantFilter);
 

@@ -392,6 +392,18 @@ AvHGamerules::AvHGamerules() : mTeamA(TEAM_ONE), mTeamB(TEAM_TWO)
 			AIMGR_RemoveAIPlayerFromTeam(DesiredTeam);
 		});
 
+	REGISTER_SERVER_FUNCTION("sv_testainavigation", []()
+		{
+			if (avh_botsenabled.value == 0)
+			{
+				return;
+			}
+
+			bool bNewTestValue = !AIMGR_GetTestNavMode();
+
+			AIMGR_SetTestNavMode(bNewTestValue);
+		});
+
 	g_VoiceGameMgr.Init(&gVoiceHelper, gpGlobals->maxClients);
 
 	#ifdef DEBUG

@@ -224,6 +224,11 @@ bool IsEdictStructure(const edict_t* edict)
 	return (GetDeployableObjectTypeFromEdict(edict) != STRUCTURE_NONE);
 }
 
+bool IsEdictHive(const edict_t* edict)
+{
+	return (GetDeployableObjectTypeFromEdict(edict) != STRUCTURE_ALIEN_HIVE);
+}
+
 bool IsDamagingStructure(const edict_t* StructureEdict)
 {
 	return IsDamagingStructure(GetStructureTypeFromEdict(StructureEdict));

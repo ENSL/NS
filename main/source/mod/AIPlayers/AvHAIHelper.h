@@ -25,6 +25,7 @@ Vector UTIL_GetClosestPointOnEntityToLocation(const Vector Location, edict_t* En
 AvHAIDeployableStructureType IUSER3ToStructureType(const int inIUSER3);
 
 bool IsEdictStructure(const edict_t* edict);
+bool IsEdictHive(const edict_t* edict);
 
 AvHAIDeployableStructureType GetStructureTypeFromEdict(const edict_t* StructureEdict);
 

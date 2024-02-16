@@ -2628,6 +2628,8 @@ bool AITAC_ElectricalResearchIsAvailable(edict_t* Structure)
 
 AvHAIHiveDefinition* AITAC_GetHiveFromEdict(const edict_t* Edict)
 {
+	if (Edict->v.iuser3 != AVH_USER3_HIVE) { return nullptr; }
+
 	for (auto it = Hives.begin(); it != Hives.end(); it++)
 	{
 		if (it->HiveEntity->edict() == Edict)
@@ -4428,7 +4430,7 @@ bool AITAC_IsAlienBuilderNeeded(AvHAIPlayer* pBot)
 
 }
 
-AvHAIDeployableStructureType AITAC_GetNextMissingUpgradeChamberForTeam(AvHTeamNumber Team)
+AvHAIDeployableStructureType AITAC_GetNextMissingUpgradeChamberForTeam(AvHTeamNumber Team, int& NumMissing)
 {
 	if (AIMGR_GetTeamType(Team) != AVH_CLASS_TYPE_ALIEN) { return STRUCTURE_NONE; }
 
@@ -4453,6 +4455,7 @@ AvHAIDeployableStructureType AITAC_GetNextMissingUpgradeChamberForTeam(AvHTeamNu
 
 		if (NumChambers < 3)
 		{
+			NumMissing = 3 - NumChambers;
 			return ChamberTypeOne;
 		}
 	}
@@ -4465,6 +4468,7 @@ AvHAIDeployableStructureType AITAC_GetNextMissingUpgradeChamberForTeam(AvHTeamNu
 
 		if (NumChambers < 3)
 		{
+			NumMissing = 3 - NumChambers;
 			return ChamberTypeTwo;
 		}
 	}
@@ -4477,6 +4481,7 @@ AvHAIDeployableStructureType AITAC_GetNextMissingUpgradeChamberForTeam(AvHTeamNu
 
 		if (NumChambers < 3)
 		{
+			NumMissing = 3 - NumChambers;
 			return ChamberTypeThree;
 		}
 	}
