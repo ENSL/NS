@@ -2004,7 +2004,7 @@ bool HasBotReachedPathPoint(const AvHAIPlayer* pBot)
 	Vector ClosestPointToPath = vClosestPointOnLine2D(MoveFrom, MoveTo, pEdict->v.origin);
 
 	bool bDestIsDirectlyReachable = UTIL_PointIsDirectlyReachable(CurrentPos, MoveTo);
-	bool bAtOrPastDestination = vEquals2D(ClosestPointToPath, MoveTo, 1.0f) && bDestIsDirectlyReachable;
+	bool bAtOrPastDestination = vEquals2D(ClosestPointToPath, MoveTo, 8.0f) && bDestIsDirectlyReachable;
 
 	dtPolyRef BotPoly = pBot->BotNavInfo.CurrentPoly;
 	dtPolyRef DestinationPoly = pBot->BotNavInfo.CurrentPathPoint->poly;
@@ -3916,14 +3916,14 @@ bool IsBotOffPath(const AvHAIPlayer* pBot)
 
 		bool bAtMoveEnd = vEquals(PointOnPath, MoveTo, GetPlayerRadius(pBot->Player));
 
-		if (bAtMoveEnd && fabs(pBot->CurrentFloorPosition.z - MoveTo.z) > PlayerHeight)
+		if (bAtMoveEnd && fabsf(pBot->CurrentFloorPosition.z - MoveTo.z) > PlayerHeight)
 		{
 			return true;
 		}
 
 		float MaxDist = (bAtMoveStart || bAtMoveEnd) ? 50.0f : 200.0f;
 
-		if (vDistanceFromLine2D(MoveFrom, MoveTo, pBot->CurrentFloorPosition) > sqrf(MaxDist))
+		if (vDistanceFromLine2D(MoveFrom, MoveTo, pBot->CurrentFloorPosition) > MaxDist)
 		{ 
 			return true;
 		}
@@ -5742,6 +5742,12 @@ void BotFollowFlightPath(AvHAIPlayer* pBot)
 	if (BotNavInfo->CurrentPathPoint->area != SAMPLE_POLYAREA_CROUCH && next(BotNavInfo->CurrentPathPoint) != BotNavInfo->CurrentPath.end() && next(BotNavInfo->CurrentPathPoint)->area != SAMPLE_POLYAREA_CROUCH)
 	{
 		SkipAheadInFlightPath(pBot);
+	}
+
+	if (!UTIL_QuickTrace(pBot->Edict, pBot->Edict->v.origin, BotNavInfo->CurrentPathPoint->Location + Vector(0.0f, 0.0f, 5.0f)))
+	{
+		ClearBotPath(pBot);
+		return;
 	}
 
 	CurrentMoveDest = BotNavInfo->CurrentPathPoint->Location;
@@ -7702,7 +7708,7 @@ void UTIL_UpdateDoorTriggers(nav_door* Door)
 		{
 			if (it->LastToggleState != TS_GOING_UP && it->LastToggleState != TS_GOING_DOWN)
 			{
-				it->NextActivationTime = gpGlobals->time + it->ActivationDelay;
+				it->NextActivationTime = gpGlobals->time + fmaxf(it->ActivationDelay + 1.0f, 1.0f);
 			}
 
 			it->LastToggleState = (TOGGLE_STATE)it->ToggleEnt->GetToggleState();

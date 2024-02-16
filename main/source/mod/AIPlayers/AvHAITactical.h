@@ -176,7 +176,7 @@ bool AITAC_IsAlienHarasserNeeded(AvHAIPlayer* pBot);
 
 bool AITAC_ShouldBotBuildHive(AvHAIPlayer* pBot, AvHAIHiveDefinition** EligibleHive);
 
-AvHAIDeployableStructureType AITAC_GetNextMissingUpgradeChamberForTeam(AvHTeamNumber Team);
+AvHAIDeployableStructureType AITAC_GetNextMissingUpgradeChamberForTeam(AvHTeamNumber Team, int& NumMissing);
 
 void AITAC_OnTeamStartsModified();
 

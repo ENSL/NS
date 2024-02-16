@@ -1035,14 +1035,6 @@ void BotProgressMoveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	{
 		MoveDirectlyTo(pBot, Task->TaskLocation);
 	}
-
-	if (IsPlayerMarine(pBot->Edict))
-	{
-		if (gpGlobals->time - pBot->LastCombatTime > 5.0f)
-		{
-			BotReloadWeapons(pBot);
-		}
-	}
 }
 
 void BotProgressTouchTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
@@ -1225,22 +1217,18 @@ void BotProgressReinforceStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		SearchRadius = UTIL_MetresToGoldSrcUnits(10.0f);
 	}
 
-	AvHAIDeployableStructureType NextStructure = AITAC_GetNextMissingUpgradeChamberForTeam(BotTeam);
+	AvHAIDeployableStructureType NextStructure = STRUCTURE_NONE;
 
 	DeployableSearchFilter StructureFilter;
 	StructureFilter.DeployableTeam = BotTeam;
 	StructureFilter.MaxSearchRadius = SearchRadius;
+	StructureFilter.DeployableTypes = STRUCTURE_ALIEN_OFFENCECHAMBER;
 
-	if (NextStructure == STRUCTURE_NONE)
+	int NumOCs = AITAC_GetNumDeployablesNearLocation(ReinforceLocation, &StructureFilter);
+
+	if (NumOCs < 3)
 	{
-		StructureFilter.DeployableTypes = STRUCTURE_ALIEN_OFFENCECHAMBER;
-
-		int NumOCs = AITAC_GetNumDeployablesNearLocation(ReinforceLocation, &StructureFilter);
-
-		if (NumOCs < 3)
-		{
-			NextStructure = STRUCTURE_ALIEN_OFFENCECHAMBER;
-		}
+		NextStructure = STRUCTURE_ALIEN_OFFENCECHAMBER;
 	}
 
 	if (NextStructure == STRUCTURE_NONE)
@@ -1548,14 +1536,6 @@ void MarineProgressBuildTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	MoveTo(pBot, Task->TaskTarget->v.origin, MOVESTYLE_NORMAL);
 
-	if (IsPlayerMarine(pBot->Edict))
-	{
-		if (gpGlobals->time - pBot->LastCombatTime > 5.0f)
-		{
-			BotReloadWeapons(pBot);
-		}
-	}
-
 	if (vDist2DSq(pBot->Edict->v.origin, Task->TaskTarget->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
 	{
 		BotLookAt(pBot, UTIL_GetCentreOfEntity(Task->TaskTarget));
@@ -1565,13 +1545,6 @@ void MarineProgressBuildTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 void BotProgressGuardTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
-	if (IsPlayerMarine(pBot->Edict))
-	{
-		if (gpGlobals->time - pBot->LastCombatTime > 5.0f)
-		{
-			BotReloadWeapons(pBot);
-		}
-	}
 
 	if (vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation) > sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
 	{
@@ -2816,7 +2789,7 @@ AvHAIPlayer* GetFirstBotWithBuildTask(AvHTeamNumber Team, AvHAIDeployableStructu
 	{
 		AvHAIPlayer* Bot = (*it);
 
-		if (!IsPlayerActiveInGame(Bot->Edict)) { continue; }
+		if (!IsPlayerActiveInGame(Bot->Edict) || Bot->Edict == IgnorePlayer) { continue; }
 
 		bool bPrimaryIsBuildTask = (Bot->PrimaryBotTask.TaskType == TASK_BUILD || Bot->PrimaryBotTask.TaskType == TASK_REINFORCE_STRUCTURE);
 		bool bSecondaryIsBuildTask = (Bot->SecondaryBotTask.TaskType == TASK_BUILD || Bot->SecondaryBotTask.TaskType == TASK_REINFORCE_STRUCTURE);
@@ -2831,6 +2804,30 @@ AvHAIPlayer* GetFirstBotWithBuildTask(AvHTeamNumber Team, AvHAIDeployableStructu
 	return nullptr;
 }
 
+int AITASK_GetNumBotsWithBuildTask(AvHTeamNumber Team, AvHAIDeployableStructureType StructureType, edict_t* IgnorePlayer)
+{
+	vector<AvHAIPlayer*> AIPlayers = AIMGR_GetAIPlayersOnTeam(Team);
+	int Result = 0;
+
+	for (auto it = AIPlayers.begin(); it != AIPlayers.end(); it++)
+	{
+		AvHAIPlayer* Bot = (*it);
+
+		if (!IsPlayerActiveInGame(Bot->Edict) || Bot->Edict == IgnorePlayer) { continue; }
+
+		bool bPrimaryIsBuildTask = (Bot->PrimaryBotTask.TaskType == TASK_BUILD || Bot->PrimaryBotTask.TaskType == TASK_REINFORCE_STRUCTURE);
+		bool bSecondaryIsBuildTask = (Bot->SecondaryBotTask.TaskType == TASK_BUILD || Bot->SecondaryBotTask.TaskType == TASK_REINFORCE_STRUCTURE);
+
+		if ((bPrimaryIsBuildTask && Bot->PrimaryBotTask.StructureType == StructureType) || (bSecondaryIsBuildTask && Bot->SecondaryBotTask.StructureType == StructureType))
+		{
+			Result++;
+		}
+
+	}
+
+	return Result;
+}
+
 AvHAIPlayer* GetFirstBotWithReinforceTask(AvHTeamNumber Team, edict_t* ReinforceStructure, edict_t* IgnorePlayer)
 {
 	vector<AvHAIPlayer*> AIPlayers = AIMGR_GetAIPlayersOnTeam(Team);
@@ -2839,7 +2836,7 @@ AvHAIPlayer* GetFirstBotWithReinforceTask(AvHTeamNumber Team, edict_t* Reinforce
 	{
 		AvHAIPlayer* Bot = (*it);
 
-		if (!IsPlayerActiveInGame(Bot->Edict)) { continue; }
+		if (!IsPlayerActiveInGame(Bot->Edict) || Bot->Edict == IgnorePlayer) { continue; }
 
 		if ((Bot->PrimaryBotTask.TaskType == TASK_REINFORCE_STRUCTURE && Bot->PrimaryBotTask.TaskTarget == ReinforceStructure) || (Bot->SecondaryBotTask.TaskType == TASK_REINFORCE_STRUCTURE && Bot->SecondaryBotTask.TaskTarget == ReinforceStructure))
 		{
@@ -2945,6 +2942,47 @@ void AITASK_SetPickupTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Tar
 	Task->TaskTarget = Target;
 	Task->TaskLocation = PickupLocation;
 	Task->bTaskIsUrgent = bIsUrgent;
+
+}
+
+void AITASK_SetGetHealthTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* HealingSource, const bool bIsUrgent)
+{
+	if (Task->TaskType == TASK_GET_HEALTH && Task->TaskTarget == HealingSource)
+	{
+		Task->bTaskIsUrgent = bIsUrgent;
+		return;
+	}
+
+	AITASK_ClearBotTask(pBot, Task);
+
+	if (FNullEnt(HealingSource)) { return; }
+
+	Vector HealLocation = ZERO_VECTOR;
+	AvHAIHiveDefinition* HiveRef = AITAC_GetHiveFromEdict(HealingSource);
+
+	if (HiveRef)
+	{
+		HealLocation = HiveRef->FloorLocation;
+	}
+	else
+	{
+		if (IsEdictPlayer(HealingSource))
+		{
+			HealLocation = HealingSource->v.origin;
+		}
+		else
+		{
+			HealLocation = FindClosestNavigablePointToDestination(pBot->BotNavInfo.NavProfile, pBot->Edict->v.origin, HealingSource->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+		}
+	}
+
+	if (!vIsZero(HealLocation))
+	{
+		Task->TaskType = TASK_GET_HEALTH;
+		Task->TaskTarget = HealingSource;
+		Task->TaskLocation = HealLocation;
+		Task->bTaskIsUrgent = bIsUrgent;
+	}
 
 }
 

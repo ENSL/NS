@@ -30,6 +30,8 @@ float AIStartedTime = 0.0f; // Used to give 5-second grace period before adding 
 bool bHasRoundStarted = false;
 bool bMapDataInitialised = false;
 
+bool bTestNavigation = false;
+
 extern int m_spriteTexture;
 
 Vector DebugVector1 = ZERO_VECTOR;
@@ -623,7 +625,15 @@ void AIMGR_UpdateAIPlayers()
 
 				UpdateBotChat(bot);
 
-				DroneThink(bot);
+				if (bTestNavigation)
+				{
+					TestNavThink(bot);
+				}
+				else
+				{
+					DroneThink(bot);
+				}
+				
 
 				EndBotFrame(bot);
 
@@ -1051,4 +1061,14 @@ void AIMGR_SetDebugAIPlayer(edict_t* AIPlayer)
 			return;
 		}
 	}
+}
+
+void AIMGR_SetTestNavMode(bool bNewValue)
+{
+	bTestNavigation = bNewValue;
+}
+
+bool AIMGR_GetTestNavMode()
+{
+	return bTestNavigation;
 }

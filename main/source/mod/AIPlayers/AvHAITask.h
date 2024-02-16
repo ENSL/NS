@@ -68,6 +68,7 @@ void AITASK_SetSecureHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t*
 void AITASK_SetMineStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Target, bool bIsUrgent);
 void AITASK_SetWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Target, const bool bIsUrgent);
 void AITASK_SetPickupTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Target, const bool bIsUrgent);
+void AITASK_SetGetHealthTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* HealingSource, const bool bIsUrgent);
 
 void BotProgressTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 
@@ -104,6 +105,7 @@ void BotGuardLocation(AvHAIPlayer* pBot, const Vector GuardLocation);
 void AITASK_GenerateGuardWatchPoints(AvHAIPlayer* pBot, const Vector& GuardLocation);
 
 bool BotWithBuildTaskExists(AvHTeamNumber Team, AvHAIDeployableStructureType StructureType);
+int AITASK_GetNumBotsWithBuildTask(AvHTeamNumber Team, AvHAIDeployableStructureType StructureType, edict_t* IgnorePlayer);
 AvHAIPlayer* GetFirstBotWithBuildTask(AvHTeamNumber Team, AvHAIDeployableStructureType StructureType, edict_t* IgnorePlayer);
 AvHAIPlayer* GetFirstBotWithReinforceTask(AvHTeamNumber Team, edict_t* ReinforceStructure, edict_t* IgnorePlayer);
 

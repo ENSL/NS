@@ -368,7 +368,7 @@ void BotSay(AvHAIPlayer* pBot, bool bTeamSay, float Delay, char* textToSay)
 bool BotReloadWeapons(AvHAIPlayer* pBot)
 {
 	// Aliens and commander don't reload
-	if (!IsPlayerMarine(pBot->Edict) || !IsPlayerActiveInGame(pBot->Edict)) { return false; }
+	if (!IsPlayerMarine(pBot->Edict) || !IsPlayerActiveInGame(pBot->Edict) || IsPlayerReloading(pBot->Player)) { return false; }
 
 	AvHAIWeapon PrimaryWeapon = UTIL_GetPlayerPrimaryWeapon(pBot->Player);
 	AvHAIWeapon SecondaryWeapon = GetBotMarineSecondaryWeapon(pBot);
@@ -3314,6 +3314,11 @@ void AIPlayerSetMarineBombardierPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* 
 
 void AIPlayerSetWantsAndNeedsMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
+	if (gpGlobals->time - pBot->LastCombatTime > 5.0f)
+	{
+		if (BotReloadWeapons(pBot)) { return; }
+	}
+
 	if (Task->TaskType == TASK_RESUPPLY || Task->TaskType == TASK_GET_HEALTH || Task->TaskType == TASK_GET_AMMO) { return; }
 
 	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
@@ -3818,11 +3823,12 @@ void AIPlayerNSAlienThink(AvHAIPlayer* pBot)
 
 		AIPlayerSetPrimaryAlienTask(pBot, &pBot->PrimaryBotTask);
 		AIPlayerSetSecondaryAlienTask(pBot, &pBot->SecondaryBotTask);
+		AIPlayerSetWantsAndNeedsAlienTask(pBot, &pBot->WantsAndNeedsTask);
 	}
 
 	pBot->CurrentTask = AIPlayerGetNextTask(pBot);
 
-	if (pBot->LastCombatTime > 5.0f)
+	if (gpGlobals->time - pBot->LastCombatTime > 5.0f)
 	{
 		if (!PlayerHasAlienUpgradeOfType(pBot->Edict, HIVE_TECH_DEFENCE) && AITAC_IsAlienUpgradeAvailableForTeam(pBot->Player->GetTeam(), HIVE_TECH_DEFENCE))
 		{
@@ -4148,11 +4154,24 @@ void AIPlayerSetAlienBuilderPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
 	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
 
+	int NumMissingChambers = 0;
+
 	// Do we have any missing upgrade chambers (should have 3 of each if we can build them)
-	AvHAIDeployableStructureType MissingStructure = AITAC_GetNextMissingUpgradeChamberForTeam(BotTeam);
+	AvHAIDeployableStructureType MissingStructure = AITAC_GetNextMissingUpgradeChamberForTeam(BotTeam, NumMissingChambers);
+	bool bShouldBuildMissingStructure = false;
+
+	if (MissingStructure != STRUCTURE_NONE)
+	{
+		int NumBuilders = AITASK_GetNumBotsWithBuildTask(BotTeam, MissingStructure, pBot->Edict);
+
+		if (NumBuilders < NumMissingChambers)
+		{
+			bShouldBuildMissingStructure = true;
+		}
+	}
 
 	// If we do have a missing upgrade chamber, built it at the nearest hive or resource node that we own, whichever is nearest
-	if (MissingStructure != STRUCTURE_NONE)
+	if (bShouldBuildMissingStructure)
 	{
 		if (Task->TaskType == TASK_BUILD && Task->StructureType == MissingStructure) { return; }
 
@@ -4221,7 +4240,7 @@ void AIPlayerSetAlienBuilderPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 
 	AvHAIHiveDefinition* HiveToSecure = nullptr;
 
-	float MaxDist = 0.0f;
+	float MinDist = 0.0f;
 
 	for (auto it = AllHives.begin(); it != AllHives.end(); it++)
 	{
@@ -4291,12 +4310,12 @@ void AIPlayerSetAlienBuilderPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 				|| (AITAC_TeamHiveWithTechExists(BotTeam, ALIEN_BUILD_MOVEMENT_CHAMBER) && NumMCs < 1)
 				|| (AITAC_TeamHiveWithTechExists(BotTeam, ALIEN_BUILD_SENSORY_CHAMBER) && NumSCs < 1))
 			{
-				float ThisDist = vDist2DSq(AITAC_GetTeamStartingLocation(EnemyTeam), ThisHive->FloorLocation);
+				float ThisDist = vDist2DSq(pBot->Edict->v.origin, ThisHive->FloorLocation);
 
-				if (ThisDist > MaxDist)
+				if (!HiveToSecure || ThisDist < MinDist)
 				{
 					HiveToSecure = ThisHive;
-					MaxDist = ThisDist;
+					MinDist = ThisDist;
 				}
 			}
 			
@@ -4318,7 +4337,7 @@ void AIPlayerSetAlienBuilderPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 	vector<AvHAIBuildableStructure*> AllMatchingTowers = AITAC_FindAllDeployables(pBot->Edict->v.origin, &ResNodeFilter);
 
 	edict_t* TowerToReinforce = nullptr;
-	float MinDist = 0.0f;
+	MinDist = 0.0f;
 
 	for (auto it = AllMatchingTowers.begin(); it != AllMatchingTowers.end(); it++)
 	{
@@ -4327,7 +4346,7 @@ void AIPlayerSetAlienBuilderPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 		DeployableSearchFilter ExistingReinforcementFilter;
 		ExistingReinforcementFilter.DeployableTeam = BotTeam;
 		ExistingReinforcementFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
-		ExistingReinforcementFilter.DeployableTypes = SEARCH_ALL_ALIEN_STRUCTURES;
+		ExistingReinforcementFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
 
 		vector<AvHAIBuildableStructure*> AllReinforcingStructures = AITAC_FindAllDeployables(ThisResTower->Location, &ExistingReinforcementFilter);
 
@@ -4584,6 +4603,8 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 		return;
 	}
 
+	if (Task->TaskType == TASK_EVOLVE) { return; }
+
 	if (!IsPlayerOnos(pBot->Edict) && pBot->Player->GetResources() >= BALANCE_VAR(kOnosCost))
 	{
 		int NumOnos = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER5, pBot->Edict);
@@ -4622,6 +4643,14 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 
 	if (NearestSiegedHive)
 	{
+		// Check if we're already trying to break a siege attempt, so we don't get torn between multiple potentials
+		if (Task->TaskType == TASK_ATTACK)
+		{
+			const AvHAIHiveDefinition* HiveNearestAttackTarget = AITAC_GetNearestTeamHive(BotTeam, Task->TaskTarget->v.origin, false);
+
+			if (HiveNearestAttackTarget && vDist2DSq(HiveNearestAttackTarget->Location, Task->TaskTarget->v.origin) <= sqrf(UTIL_MetresToGoldSrcUnits(25.0f))) { return; }
+		}
+
 		DeployableSearchFilter EnemyStuffFilter;
 		EnemyStuffFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
 		EnemyStuffFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
@@ -4681,6 +4710,14 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 	// If we're up against marines, look out for any siege stuff
 	if (AIMGR_GetTeamType(EnemyTeam) == AVH_CLASS_TYPE_MARINE)
 	{
+		// Check if we're already trying to break a siege attempt, so we don't get torn between multiple potentials
+		if (Task->TaskType == TASK_ATTACK)
+		{
+			const AvHAIHiveDefinition* HiveNearestAttackTarget = AITAC_GetNearestTeamHive(BotTeam, Task->TaskTarget->v.origin, false);
+
+			if (HiveNearestAttackTarget && vDist2DSq(HiveNearestAttackTarget->Location, Task->TaskTarget->v.origin) <= sqrf(UTIL_MetresToGoldSrcUnits(25.0f))) { return; }
+		}
+
 		vector<AvHAIHiveDefinition*> AllTeamHives = AITAC_GetAllTeamHives(BotTeam, false);
 
 		for (auto it = AllTeamHives.begin(); it != AllTeamHives.end(); it++)
@@ -4689,7 +4726,6 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 
 			DeployableSearchFilter EnemyStuffFilter;
 			EnemyStuffFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
-			EnemyStuffFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
 			EnemyStuffFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
 			EnemyStuffFilter.DeployableTeam = EnemyTeam;
 			EnemyStuffFilter.ReachabilityTeam = BotTeam;
@@ -4814,8 +4850,10 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 			FriendlyStuffFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
 			FriendlyStuffFilter.DeployableTypes = STRUCTURE_ALIEN_OFFENCECHAMBER;
 
-			if (AITAC_DeployableExistsAtLocation(ThisHive->FloorLocation, &FriendlyStuffFilter)) { continue; }
+			// Don't guard a hive if some defences are already present
+			if (AITAC_GetNumDeployablesNearLocation(ThisHive->FloorLocation, &FriendlyStuffFilter) >= 2) { continue; }
 
+			// Only guard empty hives if a gorge is in there
 			if (AITAC_GetNumPlayersOfTeamAndClassInArea(BotTeam, ThisHive->FloorLocation, UTIL_MetresToGoldSrcUnits(20.0f), false, pBot->Edict, AVH_USER3_ALIEN_PLAYER2) == 0) { continue; }
 
 			bool bNeedsExtraGuards = true;
@@ -4876,6 +4914,14 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 	}
 	else if (HiveToSecure)
 	{
+		// Check if we're already trying to clear out a hive
+		if (Task->TaskType == TASK_ATTACK)
+		{
+			const AvHAIHiveDefinition* HiveNearestAttackTarget = AITAC_GetNearestTeamHive(BotTeam, Task->TaskTarget->v.origin, false);
+
+			if (HiveNearestAttackTarget && vDist2DSq(HiveNearestAttackTarget->Location, Task->TaskTarget->v.origin) <= sqrf(UTIL_MetresToGoldSrcUnits(15.0f))) { return; }
+		}
+
 		EnemyStuffFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
 
 		// Don't attack electrified structures as skulk
@@ -5343,8 +5389,58 @@ void AIPlayerSetSecondaryAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		return;
 	}
 
-	AITASK_ClearBotTask(pBot, Task);
+}
 
+void AIPlayerSetWantsAndNeedsAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
+{
+	float CurrentHealth = GetPlayerOverallHealthPercent(pBot->Edict);
+
+	if (Task->TaskType == TASK_GET_HEALTH)
+	{
+		Task->bTaskIsUrgent = Task->bTaskIsUrgent || CurrentHealth < 0.4f;
+		return;
+	}
+
+	if (CurrentHealth >= 1.0f) { return; }
+
+	bool bCanSelfHeal = (PlayerHasWeapon(pBot->Player, WEAPON_GORGE_HEALINGSPRAY) || PlayerHasWeapon(pBot->Player, WEAPON_FADE_METABOLIZE));
+
+	if (CurrentHealth < 0.95f && bCanSelfHeal && gpGlobals->time - pBot->LastCombatTime > 5.0f)
+	{
+		pBot->DesiredCombatWeapon = (PlayerHasWeapon(pBot->Player, WEAPON_FADE_METABOLIZE)) ? WEAPON_FADE_METABOLIZE : WEAPON_GORGE_HEALINGSPRAY;
+
+		if (GetPlayerCurrentWeapon(pBot->Player) == pBot->DesiredCombatWeapon)
+		{
+			pBot->Button |= IN_ATTACK;
+		}
+	}
+
+	// Only look for gorges as a healing source if we're something with low health like a skulk or lerk, or we have over 50% health. Don't use gorges if we're near death as an Onos or it will take forever...
+	edict_t* NearestHealingSource = AITAC_AlienFindNearestHealingSource(pBot->Player->GetTeam(), pBot->Edict->v.origin, pBot->Edict, (IsPlayerSkulk(pBot->Edict) || IsPlayerLerk(pBot->Edict) || CurrentHealth > 0.5f));
+
+	if (FNullEnt(NearestHealingSource)) { return; }
+
+	float GetHealthThreshold = 0.6f;
+
+	// If we're right by a healing source, then might as well heal up, set the "find health" threshold to 90% or less health
+	if (vDist2DSq(pBot->Edict->v.origin, NearestHealingSource->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(10.0f)))
+	{
+		GetHealthThreshold = 0.9f;
+	}
+	else
+	{
+		// If we can heal ourselves, then don't go running for the hive/DCs/Gorge unless we're very low
+		if (bCanSelfHeal)
+		{
+			GetHealthThreshold = 0.4f;
+		}
+	}
+	
+
+	if (CurrentHealth < GetHealthThreshold)
+	{
+		AITASK_SetGetHealthTask(pBot, Task, NearestHealingSource, true);
+	}
 }
 
 bool AlienCombatThink(AvHAIPlayer* pBot)
@@ -6066,7 +6162,7 @@ bool FadeCombatThink(AvHAIPlayer* pBot)
 
 			bool bInHealingRange = (DistFromHealingSourceSq <= sqrf(DesiredDistFromHealingSource));
 
-			if (!bInHealingRange)
+			if (!bInHealingRange && GetPlayerOverallHealthPercent(pBot->Edict) < 0.5f)
 			{
 				MoveTo(pBot, UTIL_GetEntityGroundLocation(NearestHealingSource), MOVESTYLE_NORMAL, DesiredDistFromHealingSource);
 
@@ -6078,11 +6174,24 @@ bool FadeCombatThink(AvHAIPlayer* pBot)
 						BotLeap(pBot, pBot->BotNavInfo.CurrentPathPoint->Location);
 					}
 				}
+				else
+				{
+					if (PlayerHasWeapon(pBot->Player, WEAPON_FADE_METABOLIZE))
+					{
+						pBot->DesiredCombatWeapon = WEAPON_FADE_METABOLIZE;
+
+						if (GetPlayerCurrentWeapon(pBot->Player) == WEAPON_FADE_METABOLIZE)
+						{
+							pBot->Button |= IN_ATTACK;
+						}
+					}
+				}
 
 				return true;
 			}
 
-			if (bOutOfEnemyLOS)
+			// If we're not in immediate danger, and we're either healing up at the source, or we can metabolize, then wait a bit and catch our breath
+			if (bOutOfEnemyLOS && (bInHealingRange || PlayerHasWeapon(pBot->Player, WEAPON_FADE_METABOLIZE)))
 			{
 				BotLookAt(pBot, TrackedEnemyRef->LastLOSPosition);
 				if (PlayerHasWeapon(pBot->Player, WEAPON_FADE_METABOLIZE))
@@ -6100,10 +6209,21 @@ bool FadeCombatThink(AvHAIPlayer* pBot)
 			if (!UTIL_PlayerHasLOSToLocation(TrackedEnemyRef->EnemyEdict, UTIL_GetEntityGroundLocation(NearestHealingSource) + Vector(0.0f, 0.0f, 16.0f), UTIL_MetresToGoldSrcUnits(30.0f)))
 			{
 				MoveTo(pBot, UTIL_GetEntityGroundLocation(NearestHealingSource), MOVESTYLE_NORMAL, DesiredDistFromHealingSource);
+
+				if (PlayerHasWeapon(pBot->Player, WEAPON_FADE_METABOLIZE))
+				{
+					pBot->DesiredCombatWeapon = WEAPON_FADE_METABOLIZE;
+
+					if (GetPlayerCurrentWeapon(pBot->Player) == WEAPON_FADE_METABOLIZE)
+					{
+						pBot->Button |= IN_ATTACK;
+					}
+				}
+
 				return true;
 			}
 
-			// If the enemy can see the healing source, then we must go on the attack
+			// If the enemy can see the healing source, then we must go on the attack as we're cornered
 			bShouldBreakRetreat = true;
 		}
 	}
