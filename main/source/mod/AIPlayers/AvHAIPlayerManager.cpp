@@ -631,7 +631,7 @@ void AIMGR_UpdateAIPlayers()
 				}
 				else
 				{
-					DroneThink(bot);
+					AIPlayerThink(bot);
 				}
 				
 
