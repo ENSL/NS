@@ -588,29 +588,6 @@ void AICOMM_UpdatePlayerOrders(AvHAIPlayer* pBot)
 		}
 	}
 
-	DeployableSearchFilter ResNodeFilter;
-	ResNodeFilter.DeployableTeam = TEAM_IND;
-	ResNodeFilter.ReachabilityTeam = pBot->Player->GetTeam();
-	ResNodeFilter.ReachabilityFlags = AI_REACHABILITY_MARINE;
-
-	const AvHAIResourceNode* ResNode = AITAC_FindNearestResourceNodeToLocation(AITAC_GetCommChairLocation(pBot->Player->GetTeam()), &ResNodeFilter);
-
-	if (ResNode)
-	{
-		int NumAssignedPlayers = AICOMM_GetNumPlayersAssignedToOrder(pBot, ResNode->ResourceEntity->edict(), ORDERPURPOSE_SECURE_RESNODE);
-
-		if (NumAssignedPlayers < 1)
-		{
-			edict_t* NewAssignee = AICOMM_GetPlayerWithNoOrderNearestLocation(pBot, ResNode->Location);
-
-			if (!FNullEnt(NewAssignee))
-			{
-				AICOMM_AssignNewPlayerOrder(pBot, NewAssignee, ResNode->ResourceEntity->edict(), ORDERPURPOSE_SECURE_RESNODE);
-			}
-		}
-	}
-
-
 }
 
 edict_t* AICOMM_GetPlayerWithNoOrderNearestLocation(AvHAIPlayer* pBot, Vector SearchLocation)
@@ -2344,6 +2321,14 @@ void AICOMM_ClearAction(commander_action* Action)
 
 void AICOMM_CommanderThink(AvHAIPlayer* pBot)
 {
+	if (IsPlayerCommander(pBot->Edict))
+	{
+		if (AICOMM_ShouldBeacon(pBot))
+		{
+			return;
+		}
+	}
+
 	// Thanks to EterniumDev (Alien) for the suggestion to have the commander jump out and build if nobody is around to help
 	if (AICOMM_ShouldCommanderLeaveChair(pBot))
 	{
@@ -2586,4 +2571,78 @@ bool AICOMM_IsHiveFullySecured(AvHAIPlayer* CommanderBot, const AvHAIHiveDefinit
 	bool bSecuredResNode = (!ResNode || (ResNode->bIsOccupied && ResNode->OwningTeam == CommanderTeam && UTIL_StructureIsFullyBuilt(ResNode->ActiveTowerEntity)));
 
 	return ((!bPhaseGatesAvailable || bHasPhaseGate) && bHasTurretFactory && (!bIncludeElectrical || bTurretFactoryElectrified) && NumTurrets >= 5 && bSecuredResNode);
+}
+
+bool AICOMM_ShouldBeacon(AvHAIPlayer* pBot)
+{
+	if (pBot->Player->GetResources() < BALANCE_VAR(kDistressBeaconCost)) { return false; }
+
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+
+	DeployableSearchFilter ObservatoryFilter;
+	ObservatoryFilter.DeployableTypes = STRUCTURE_MARINE_OBSERVATORY;
+	ObservatoryFilter.DeployableTeam = BotTeam;
+	ObservatoryFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+	ObservatoryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+	AvHAIBuildableStructure* Observatory = AITAC_FindClosestDeployableToLocation(ZERO_VECTOR, &ObservatoryFilter);
+
+	if (!Observatory || Observatory->StructureStatusFlags == STRUCTURE_STATUS_RESEARCHING) { return false; }
+
+	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
+
+	Vector BaseLocation = AITAC_GetTeamStartingLocation(BotTeam);
+
+	DeployableSearchFilter BaseStructureFilter;
+	BaseStructureFilter.DeployableTypes = (STRUCTURE_MARINE_INFANTRYPORTAL | STRUCTURE_MARINE_COMMCHAIR);
+	BaseStructureFilter.DeployableTeam = BotTeam;
+	BaseStructureFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+	BaseStructureFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+	vector<AvHAIBuildableStructure*> BaseStructures = AITAC_FindAllDeployables(BaseLocation, &BaseStructureFilter);
+
+	bool bHasInfantryPortals = false;
+	bool bBaseUnderAttack = false;
+
+	for (auto it = BaseStructures.begin(); it != BaseStructures.end(); it++)
+	{
+		AvHAIBuildableStructure* ThisStructure = (*it);
+
+		if (ThisStructure->StructureStatusFlags & STRUCTURE_STATUS_UNDERATTACK)
+		{
+			bBaseUnderAttack = true;
+		}
+
+		if (ThisStructure->StructureType == STRUCTURE_MARINE_INFANTRYPORTAL)
+		{
+			bHasInfantryPortals = true;
+		}
+	}
+
+	if (!bBaseUnderAttack && bHasInfantryPortals) { return false; }
+
+	int EnemyStrength = 0;
+	int DefenderStrength = AITAC_GetNumPlayersOfTeamInArea(BotTeam, BaseLocation, UTIL_MetresToGoldSrcUnits(10.0f), false, nullptr, AVH_USER3_COMMANDER_PLAYER);
+
+	if (AIMGR_GetTeamType(EnemyTeam) == AVH_CLASS_TYPE_MARINE)
+	{
+		EnemyStrength = AITAC_GetNumPlayersOfTeamInArea(EnemyTeam, BaseLocation, UTIL_MetresToGoldSrcUnits(10.0f), false, nullptr, AVH_USER3_COMMANDER_PLAYER);
+	}
+	else
+	{
+		int NumSkulks = AITAC_GetNumPlayersOfTeamAndClassInArea(EnemyTeam, BaseLocation, UTIL_MetresToGoldSrcUnits(10.0f), false, nullptr, AVH_USER3_ALIEN_PLAYER1);
+		int NumFades = AITAC_GetNumPlayersOfTeamAndClassInArea(EnemyTeam, BaseLocation, UTIL_MetresToGoldSrcUnits(10.0f), false, nullptr, AVH_USER3_ALIEN_PLAYER4);
+		int NumOnos = AITAC_GetNumPlayersOfTeamAndClassInArea(EnemyTeam, BaseLocation, UTIL_MetresToGoldSrcUnits(10.0f), false, nullptr, AVH_USER3_ALIEN_PLAYER5);
+
+		EnemyStrength = NumSkulks + (NumFades * 2) + (NumOnos * 2);
+	}
+	
+	if (EnemyStrength >= 3 && EnemyStrength >= DefenderStrength * 3)
+	{
+		return AICOMM_ResearchTech(pBot, Observatory, RESEARCH_DISTRESSBEACON);
+	}
+
+	return false;
+
+
 }

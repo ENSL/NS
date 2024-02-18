@@ -3391,6 +3391,7 @@ void AIPlayerSetWantsAndNeedsMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 		{
 			vector<AvHPlayer*> NearbyPlayers = AITAC_GetAllPlayersOfTeamInArea(BotTeam, NearbyHA->Location, UTIL_MetresToGoldSrcUnits(5.0f), false, pBot->Edict, AVH_USER3_COMMANDER_PLAYER);
 			bool bHumanNearby = false;
+			bool bHumanWaitingRespawn = false;
 
 			for (auto it = NearbyPlayers.begin(); it != NearbyPlayers.end(); it++)
 			{
@@ -5435,7 +5436,28 @@ void AIPlayerSetWantsAndNeedsAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 			GetHealthThreshold = 0.4f;
 		}
 	}
-	
+
+	// If we're a skulk and we're attacking something, don't bother going to get health. DEATH OR GLORY.
+	if (IsPlayerSkulk(pBot->Edict))
+	{
+		if (pBot->PrimaryBotTask.TaskType == TASK_ATTACK)
+		{
+			if (pBot->PrimaryBotTask.bTaskIsUrgent || vDist2DSq(pBot->Edict->v.origin, pBot->PrimaryBotTask.TaskTarget->v.origin) <= sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
+			{
+				AITASK_ClearBotTask(pBot, Task);
+				return;
+			}
+		}
+
+		if (pBot->SecondaryBotTask.TaskType == TASK_ATTACK)
+		{
+			if (pBot->SecondaryBotTask.bTaskIsUrgent || vDist2DSq(pBot->Edict->v.origin, pBot->SecondaryBotTask.TaskTarget->v.origin) <= sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
+			{
+				AITASK_ClearBotTask(pBot, Task);
+				return;
+			}
+		}
+	}	
 
 	if (CurrentHealth < GetHealthThreshold)
 	{

@@ -67,6 +67,6 @@ const AvHAIResourceNode* AICOMM_GetNearestResourceNodeCapOpportunity(const AvHTe
 const AvHAIHiveDefinition* AICOMM_GetHiveSiegeOpportunityNearestLocation(AvHAIPlayer* CommanderBot, const Vector SearchLocation);
 
 bool AICOMM_ShouldCommanderPrioritiseNodes(AvHAIPlayer* pBot);
-
+bool AICOMM_ShouldBeacon(AvHAIPlayer* pBot);
 
 #endif // AVH_AI_COMMANDER_H
