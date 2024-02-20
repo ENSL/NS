@@ -1815,6 +1815,32 @@ void SetNewAIPlayerRole(AvHAIPlayer* pBot, AvHAIBotRole NewRole)
 void UpdateAIPlayerCORole(AvHAIPlayer* pBot)
 {
 
+
+	if (AIMGR_GetNumAIPlayersWithRoleOnTeam(pBot->Player->GetTeam(), BOT_ROLE_SWEEPER, pBot) == 0)
+	{
+		SetNewAIPlayerRole(pBot, BOT_ROLE_SWEEPER);
+		return;
+	}
+
+	if (IsPlayerAlien(pBot->Edict))
+	{
+		if (IsPlayerLerk(pBot->Edict))
+		{
+			SetNewAIPlayerRole(pBot, BOT_ROLE_SWEEPER);
+			return;
+		}
+
+		int NumLerks = AITAC_GetNumPlayersOnTeamOfClass(pBot->Player->GetTeam(), AVH_USER3_ALIEN_PLAYER3, pBot->Edict);
+		int NumHarassers = AIMGR_GetNumAIPlayersWithRoleOnTeam(pBot->Player->GetTeam(), BOT_ROLE_HARASS, pBot);
+
+		if (NumLerks + NumHarassers == 0)
+		{
+			SetNewAIPlayerRole(pBot, BOT_ROLE_SWEEPER);
+			return;
+		}
+	}
+
+	SetNewAIPlayerRole(pBot, BOT_ROLE_ASSAULT);
 }
 
 void UpdateAIPlayerDMRole(AvHAIPlayer* pBot)
@@ -3881,13 +3907,147 @@ AvHMessageID AlienGetDesiredUpgrade(AvHAIPlayer* pBot, HiveTechStatus DesiredTec
 	return MESSAGE_NULL;
 }
 
+AvHMessageID GetNextAIPlayerCOUpgrade(AvHAIPlayer* pBot)
+{
+	if (IsPlayerMarine(pBot->Player))
+	{
+		return GetNextAIPlayerCOMarineUpgrade(pBot);
+	}
+	else
+	{
+		return GetNextAIPlayerCOAlienUpgrade(pBot);
+	}
+
+}
+
+AvHMessageID GetNextAIPlayerCOMarineUpgrade(AvHAIPlayer* pBot)
+{
+	// Make sure sweeper always has a welder to repair CC / armouries / unlock new armouries
+	if (pBot->BotRole == BOT_ROLE_SWEEPER)
+	{
+		if (!pBot->Player->GetHasCombatModeUpgrade(BUILD_WELDER))
+		{
+			return BUILD_WELDER;
+		}
+	}
+
+	if (!pBot->Player->GetHasCombatModeUpgrade(RESEARCH_GRENADES))
+	{
+		return RESEARCH_GRENADES;
+	}
+
+	if (!pBot->Player->GetHasCombatModeUpgrade(RESEARCH_ARMOR_ONE))
+	{
+		return RESEARCH_ARMOR_ONE;
+	}
+
+	if (!pBot->Player->GetHasCombatModeUpgrade(RESEARCH_WEAPONS_ONE))
+	{
+		return RESEARCH_WEAPONS_ONE;
+	}
+
+}
+
+AvHMessageID GetNextAIPlayerCOAlienUpgrade(AvHAIPlayer* pBot)
+{
+	// Always start off getting carapace, to improve viability early game
+	if (!pBot->Player->GetHasCombatModeUpgrade(ALIEN_EVOLUTION_ONE))
+	{
+		return ALIEN_EVOLUTION_ONE;
+	}
+
+	// Unlock leap for further viability early game
+	if (!pBot->Player->GetHasCombatModeUpgrade(ALIEN_HIVE_TWO_UNLOCK))
+	{
+		return ALIEN_HIVE_TWO_UNLOCK;
+	}
+
+	// If we are a sweeper, always ensure we have enough resources to go gorge in case we want to heal the hive
+	if (pBot->BotRole == BOT_ROLE_SWEEPER)
+	{
+		if (!IsPlayerGorge(pBot->Edict))
+		{
+			if (pBot->ExperiencePointsAvailable <= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_TWO))
+			{
+				return MESSAGE_NULL;
+			}
+		}
+	}
+
+	// If we are a harasser, always ensure we have enough resources to go lerk
+	if (pBot->BotRole == BOT_ROLE_HARASS)
+	{
+		if (!IsPlayerLerk(pBot->Edict))
+		{
+			if (pBot->ExperiencePointsAvailable <= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_THREE))
+			{
+				return MESSAGE_NULL;
+			}
+		}
+	}
+
+
+	
+}
+
 void AIPlayerCOThink(AvHAIPlayer* pBot)
 {
+	pBot->ExperiencePointsAvailable = (pBot->Player->GetExperienceLevel() - pBot->Player->GetExperienceLevelsSpent() - 1);
 
+	pBot->CurrentEnemy = BotGetNextEnemyTarget(pBot);
+
+	if (pBot->CurrentEnemy > -1)
+	{
+		if (IsPlayerMarine(pBot->Player))
+		{
+			MarineCombatThink(pBot);
+		}
+		else
+		{
+			AlienCombatThink(pBot);
+		}
+
+		return;
+	}
+
+	UpdateAIPlayerCORole(pBot);
+
+	AvHMessageID NextCombatUpgrade = GetNextAIPlayerCOUpgrade(pBot);
 }
 
 void AIPlayerDMThink(AvHAIPlayer* pBot)
 {
+	pBot->CurrentEnemy = BotGetNextEnemyTarget(pBot);
+
+	if (pBot->CurrentEnemy > -1)
+	{
+		if (IsPlayerMarine(pBot->Player))
+		{
+			MarineCombatThink(pBot);
+		}
+		else
+		{
+			AlienCombatThink(pBot);
+		}
+
+		return;
+	}
+
+	pBot->CurrentTask = &pBot->PrimaryBotTask;
+
+	AITASK_BotUpdateAndClearTasks(pBot);
+
+	if (pBot->CurrentTask->TaskType == TASK_NONE)
+	{
+		Vector RandomMovePoint = UTIL_GetRandomPointOnNavmeshInRadius(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, UTIL_MetresToGoldSrcUnits(50.0f));
+
+		if (!vIsZero(RandomMovePoint))
+		{
+			AITASK_SetMoveTask(pBot, pBot->CurrentTask, RandomMovePoint, false);
+		}
+	}
+
+	BotProgressTask(pBot, pBot->CurrentTask);
 
 }
 
@@ -3903,11 +4063,6 @@ void AIPlayerThink(AvHAIPlayer* pBot)
 		{
 			UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, pBot->BotNavInfo.CurrentPathPoint->Location, 0, 255, 255);
 		}
-	}
-
-	if (pBot->PrimaryBotTask.TaskType == TASK_BUILD)
-	{
-		UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, pBot->PrimaryBotTask.TaskLocation, 0, 255, 255);
 	}
 
 	switch (GetGameRules()->GetMapMode())

@@ -70,6 +70,10 @@ void TestNavThink(AvHAIPlayer* pBot);
 void DroneThink(AvHAIPlayer* pBot);
 void CustomThink(AvHAIPlayer* pBot);
 
+AvHMessageID GetNextAIPlayerCOUpgrade(AvHAIPlayer* pBot);
+AvHMessageID GetNextAIPlayerCOMarineUpgrade(AvHAIPlayer* pBot);
+AvHMessageID GetNextAIPlayerCOAlienUpgrade(AvHAIPlayer* pBot);
+
 bool AIPlayerMustFinishCurrentTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 AvHAIPlayerTask* AIPlayerGetNextTask(AvHAIPlayer* pBot);
 void AIPlayerSetPrimaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);

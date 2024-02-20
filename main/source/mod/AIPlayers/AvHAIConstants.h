@@ -758,6 +758,7 @@ typedef struct AVH_AI_PLAYER
 
 	AvHAIBotRole BotRole = BOT_ROLE_NONE;
 
+	int ExperiencePointsAvailable = 0; // How much experience the bot has to spend
 
 } AvHAIPlayer;
 
