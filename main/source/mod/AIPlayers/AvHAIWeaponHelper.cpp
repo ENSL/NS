@@ -742,7 +742,7 @@ AvHAIWeapon BotMarineChooseBestWeaponForStructure(AvHAIPlayer* pBot, edict_t* ta
 {
 	AvHAIDeployableStructureType StructureType = GetStructureTypeFromEdict(target);
 
-	if (StructureType == STRUCTURE_NONE || StructureType == STRUCTURE_ALIEN_HIVE || IsDamagingStructure(StructureType))
+	if (StructureType == STRUCTURE_NONE || StructureType == STRUCTURE_ALIEN_HIVE || IsDamagingStructure(StructureType) || UTIL_IsStructureElectrified(target))
 	{
 		if (UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) > 0 || UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) > 0)
 		{

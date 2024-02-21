@@ -13,6 +13,7 @@
 #include "../AvHAlienWeaponConstants.h"
 #include "../AvHGamerules.h"
 #include "../AvHWeldable.h"
+#include "../AvHTurret.h"
 
 extern nav_mesh NavMeshes[MAX_NAV_MESHES]; // Array of nav meshes. Currently only 3 are used (building, onos, and regular)
 extern nav_profile BaseNavProfiles[MAX_NAV_PROFILES]; // Array of nav profiles
@@ -1604,6 +1605,26 @@ void BotProgressAttackTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		Weapon = BotAlienChooseBestWeaponForStructure(pBot, Task->TaskTarget);
 	}
 
+	if (IsPlayerMarine(pBot->Player) && IsDamagingStructure(Task->TaskTarget) && !IsMeleeWeapon(Weapon))
+	{
+		if (GetPlayerCurrentWeaponClipAmmo(pBot->Player) == 0 || IsPlayerReloading(pBot->Player))
+		{
+			BotReloadWeapons(pBot);
+
+			AvHTurret* TurretRef = dynamic_cast<AvHTurret*>(CBaseEntity::Instance(Task->TaskTarget));
+
+			if (TurretRef && TurretRef->GetIsValidTarget(pBot->Player))
+			{
+				if (vIsZero(pBot->LastSafeLocation))
+				{
+					pBot->LastSafeLocation = AITAC_GetTeamStartingLocation(pBot->Player->GetTeam());
+				}
+
+				MoveTo(pBot, pBot->LastSafeLocation, MOVESTYLE_NORMAL);
+			}
+		}
+	}
+
 	BotAttackResult AttackResult = PerformAttackLOSCheck(pBot, Weapon, Task->TaskTarget);
 
 	if (AttackResult == ATTACK_SUCCESS)
@@ -1615,6 +1636,24 @@ void BotProgressAttackTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		}
 
 		BotShootTarget(pBot, Weapon, Task->TaskTarget);
+
+		if (IsDamagingStructure(Task->TaskTarget))
+		{
+			Vector EnemyOrientation = UTIL_GetVectorNormal2D(Task->TaskTarget->v.origin - pBot->Edict->v.origin);
+
+			Vector RightDir = UTIL_GetCrossProduct(EnemyOrientation, UP_VECTOR);
+
+			pBot->desiredMovementDir = (pBot->BotNavInfo.bZig) ? UTIL_GetVectorNormal2D(RightDir) : UTIL_GetVectorNormal2D(-RightDir);
+
+			// Let's get ziggy with it
+			if (gpGlobals->time > pBot->BotNavInfo.NextZigTime)
+			{
+				pBot->BotNavInfo.bZig = !pBot->BotNavInfo.bZig;
+				pBot->BotNavInfo.NextZigTime = gpGlobals->time + frandrange(0.5f, 1.0f);
+			}
+
+			BotMovementInputs(pBot);
+		}
 
 		return;
 	}

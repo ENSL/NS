@@ -1505,6 +1505,10 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 		{
 			AIMGR_SetDebugAIPlayer(SpectatedPlayer->edict());
 		}
+		else
+		{
+			AIMGR_SetDebugAIPlayer(nullptr);
+		}
 
 		theSuccess = true;
 	}

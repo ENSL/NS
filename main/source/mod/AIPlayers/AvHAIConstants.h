@@ -104,6 +104,7 @@ typedef enum
 	STRUCTURE_STATUS_UNDERATTACK = 1 << 4,
 	STRUCTURE_STATUS_RESEARCHING = 1 << 5,
 	STRUCTURE_STATUS_DAMAGED = 1 << 6,
+	STRUCTURE_STATUS_DISABLED = 1 << 7,		// For marine turrets when there's no TF
 
 	STRUCTURE_STATUS_ALL = -1
 } AvHAIStructureStatus;
@@ -714,6 +715,8 @@ typedef struct AVH_AI_PLAYER
 	int CurrentEnemy = -1;
 	AvHAICombatStrategy CurrentCombatStrategy = COMBAT_STRATEGY_ATTACK;
 	edict_t* CurrentEnemyRef = nullptr;
+
+	vector<AvHAIBuildableStructure*> DangerTurrets;
 
 	AvHAIPlayerTask* CurrentTask = nullptr; // Bot's current task they're performing
 	AvHAIPlayerTask PrimaryBotTask;

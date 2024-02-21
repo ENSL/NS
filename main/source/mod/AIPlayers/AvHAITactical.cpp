@@ -23,6 +23,7 @@
 #include "../AvHServerUtil.h"
 #include "../AvHSharedUtil.h"
 #include "../AvHMarineEquipment.h"
+#include "../AvHTurret.h"
 
 #include <float.h>
 
@@ -2035,6 +2036,16 @@ AvHAIBuildableStructure* AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 	if (BaseBuildable->GetIsResearching())
 	{
 		NewFlags |= STRUCTURE_STATUS_RESEARCHING;
+	}
+
+	if (StructureType == STRUCTURE_MARINE_TURRET)
+	{
+		AvHTurret* TurretRef = dynamic_cast<AvHTurret*>(BaseBuildable);
+
+		if (TurretRef && !TurretRef->GetEnabledState())
+		{
+			NewFlags |= STRUCTURE_STATUS_DISABLED;
+		}
 	}
 
 	float NewHealthPercent = (BuildingEdict->v.health / BuildingEdict->v.max_health);
