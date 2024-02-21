@@ -31,6 +31,7 @@ bool bHasRoundStarted = false;
 bool bMapDataInitialised = false;
 
 bool bTestNavigation = false;
+bool bDroneMode = false;
 
 extern int m_spriteTexture;
 
@@ -614,6 +615,18 @@ void AIMGR_UpdateAIPlayers()
 		{
 			BotDeltaTime = ThinkDelta;
 
+			if (bot == AIMGR_GetDebugAIPlayer())
+			{
+				bool bBreak = true; // Add a break point here if you want to debug a specific bot
+
+				AIDEBUG_DrawBotPath(bot);
+
+				if (bot->BotNavInfo.CurrentPathPoint != bot->BotNavInfo.CurrentPath.end())
+				{
+					UTIL_DrawLine(INDEXENT(1), bot->Edict->v.origin, bot->BotNavInfo.CurrentPathPoint->Location, 0, 255, 255);
+				}
+			}
+
 			if (bHasRoundStarted && ShouldBotThink(bot))
 			{
 				if (bot->bIsInactive)
@@ -625,15 +638,18 @@ void AIMGR_UpdateAIPlayers()
 
 				UpdateBotChat(bot);
 
-				if (bTestNavigation)
+				if (bDroneMode)
+				{
+					DroneThink(bot);
+				}
+				else if (bTestNavigation)
 				{
 					TestNavThink(bot);
 				}
 				else
 				{
 					AIPlayerThink(bot);
-				}
-				
+				}				
 
 				EndBotFrame(bot);
 
@@ -1053,6 +1069,12 @@ AvHAIPlayer* AIMGR_GetDebugAIPlayer()
 
 void AIMGR_SetDebugAIPlayer(edict_t* AIPlayer)
 {
+	if (FNullEnt(AIPlayer))
+	{
+		DebugAIPlayer = nullptr;
+		return;
+	}
+
 	for (auto it = ActiveAIPlayers.begin(); it != ActiveAIPlayers.end(); it++)
 	{
 		if (it->Edict == AIPlayer)
@@ -1061,14 +1083,34 @@ void AIMGR_SetDebugAIPlayer(edict_t* AIPlayer)
 			return;
 		}
 	}
+
+	DebugAIPlayer = nullptr;
 }
 
 void AIMGR_SetTestNavMode(bool bNewValue)
 {
+	if (bNewValue)
+	{
+		bDroneMode = false;
+	}
 	bTestNavigation = bNewValue;
 }
 
+void AIMGR_SetDroneMode(bool bNewValue)
+{
+	if (bNewValue)
+	{
+		bTestNavigation = false;
+	}
+	bDroneMode = bNewValue;
+}
+
 bool AIMGR_GetTestNavMode()
+{
+	return bTestNavigation;
+}
+
+bool AIMGR_GetDroneMode()
 {
 	return bTestNavigation;
 }

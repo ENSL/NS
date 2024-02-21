@@ -90,4 +90,7 @@ void AIMGR_SetDebugAIPlayer(edict_t* AIPlayer);
 void AIMGR_SetTestNavMode(bool bNewValue);
 bool AIMGR_GetTestNavMode();
 
+void AIMGR_SetDroneMode(bool bNewValue);
+bool AIMGR_GetDroneMode();
+
 #endif

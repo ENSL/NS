@@ -243,7 +243,7 @@ bool IsDamagingStructure(AvHAIDeployableStructureType StructureType)
 	switch (StructureType)
 	{
 		case STRUCTURE_ALIEN_OFFENCECHAMBER:
-		case STRUCTURE_MARINE_TURRETFACTORY:
+		case STRUCTURE_MARINE_TURRET:
 			return true;
 		default:
 			return false;
