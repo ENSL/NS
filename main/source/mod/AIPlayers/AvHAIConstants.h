@@ -189,12 +189,12 @@ typedef enum _AVHAIBOTROLE
 
 	BOT_ROLE_FIND_RESOURCES, // Will hunt for uncapped resource nodes and cap them. Will attack enemy resource towers
 	BOT_ROLE_SWEEPER,		 // Defensive role to protect infrastructure and build at base. Will patrol to keep outposts secure
-	BOT_ROLE_ASSAULT,		 // Will go to attack the hive and other alien structures
+	BOT_ROLE_ASSAULT,		 // Will go to attack the enemy base. In combat mode, used for Fade-focus aliens
 
 	// Marine-only Roles
 
 	BOT_ROLE_COMMAND,		 // Will attempt to take command
-	BOT_ROLE_BOMBARDIER,	 // Bot is armed with a GL and wants to wreck your shit
+	BOT_ROLE_BOMBARDIER,	 // Bot is armed with a GL and wants to wreck your shit. In combat mode, used for Onos-focus aliens
 
 	// Alien-only roles
 
@@ -248,11 +248,13 @@ typedef struct _RESOURCE_NODE
 typedef struct _HIVE_DEFINITION_T
 {
 	AvHHive* HiveEntity = nullptr;					// Hive entity reference
+	edict_t* HiveEdict = nullptr;					// Hive edict reference
 	Vector Location = g_vecZero;					// Origin of the hive
 	Vector FloorLocation = g_vecZero;				// Some hives are suspended in the air, this is the floor location directly beneath it
 	HiveStatusType Status = HIVE_STATUS_UNBUILT;	// Can be unbuilt, in progress, or fully built
 	AvHMessageID TechStatus = MESSAGE_NULL;			// What tech (if any) is assigned to this hive right now
 	bool bIsUnderAttack = false;					// Is the hive currently under attack? Becomes false if not taken damage for more than 10 seconds
+	float HealthPercent = 0.0f;						// If the hive is built and active, what its health currently is
 	AvHAIResourceNode* HiveResNodeRef = nullptr;	// Which resource node (indexes into ResourceNodes array) belongs to this hive?
 	unsigned int ObstacleRefs[MAX_NAV_MESHES];		// When in progress or built, will place an obstacle so bots don't try to walk through it
 	float NextFloorLocationCheck = 0.0f;			// When should the closest navigable point to the hive be calculated? Used to delay the check after a hive is built
@@ -759,6 +761,7 @@ typedef struct AVH_AI_PLAYER
 	AvHAIBotRole BotRole = BOT_ROLE_NONE;
 
 	int ExperiencePointsAvailable = 0; // How much experience the bot has to spend
+	AvHMessageID NextCombatModeUpgrade = MESSAGE_NULL;
 
 } AvHAIPlayer;
 

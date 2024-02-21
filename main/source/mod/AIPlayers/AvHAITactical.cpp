@@ -6,6 +6,9 @@
 // Contains gorge-related functions. Needs refactoring into helper function file
 //
 
+
+
+
 #include "AvHAITactical.h"
 #include "AvHAINavigation.h"
 #include "AvHAITask.h"
@@ -26,7 +29,6 @@
 #include "DetourTileCacheBuilder.h"
 
 #include <unordered_map>
-
 
 
 vector<AvHAIResourceNode> ResourceNodes;
@@ -636,7 +638,7 @@ Vector AITAC_GetFloorLocationForHive(const AvHAIHiveDefinition* Hive)
 {
 	if (!Hive) { return ZERO_VECTOR; }
 
-	Vector HiveFloorLoc = UTIL_GetFloorUnderEntity(Hive->HiveEntity->edict());
+	Vector HiveFloorLoc = UTIL_GetFloorUnderEntity(Hive->HiveEdict);
 
 	Vector NearestNavigableLoc = ZERO_VECTOR;
 
@@ -672,23 +674,26 @@ void AITAC_PopulateHiveData()
 
 		AvHAIHiveDefinition NewHive;
 		NewHive.HiveEntity = theEntity;
+		NewHive.HiveEdict = theEntity->edict();
 		NewHive.Location = theEntity->pev->origin;
+		memset(&NewHive.ObstacleRefs, 0, sizeof(NewHive.ObstacleRefs));
 
 		AvHAIResourceNode* NearestNode = AITAC_GetNearestResourceNodeToLocation(theEntity->pev->origin);
 
 		if (NearestNode)
 		{
 			NewHive.HiveResNodeRef = NearestNode;
-			NearestNode->ParentHive = NewHive.HiveEntity->edict();
+			NearestNode->ParentHive = NewHive.HiveEdict;
 		}
 
-		NewHive.FloorLocation = UTIL_GetFloorUnderEntity(theEntity->edict()); // Some hives are suspended in the air, this is the floor location directly beneath it
+		NewHive.FloorLocation = UTIL_GetFloorUnderEntity(NewHive.HiveEdict); // Some hives are suspended in the air, this is the floor location directly beneath it
 
 		string HiveName;
 
 		string theLocationName;
 		if (AvHSHUGetNameOfLocation(GetGameRules()->GetInfoLocations(), NewHive.Location, theLocationName))
 		{
+			UTIL_LocalizeText(theLocationName.c_str(), theLocationName);
 			HiveName = theLocationName;
 		}
 
@@ -719,6 +724,15 @@ void AITAC_RefreshHiveData()
 		AvHTeamNumber CurrentOwningTeam = theEntity->GetTeamNumber();
 		HiveStatusType CurrentStatus = (theEntity->GetIsActive() ? HIVE_STATUS_BUILT : (theEntity->GetIsSpawning() ? HIVE_STATUS_BUILDING : HIVE_STATUS_UNBUILT));
 
+		if (CurrentStatus == HIVE_STATUS_BUILT)
+		{
+			it->HealthPercent = (it->HiveEdict->v.health / it->HiveEdict->v.max_health);
+		}
+		else
+		{
+			it->HealthPercent = 1.0f;
+		}
+
 		bool bHiveDestroyed = (CurrentOwningTeam != it->OwningTeam) || (it->Status == HIVE_STATUS_BUILT && CurrentStatus != it->Status);
 
 		if (bHiveDestroyed)
@@ -745,7 +759,7 @@ void AITAC_RefreshHiveData()
 
 		if (it->Status != HIVE_STATUS_UNBUILT && it->ObstacleRefs[REGULAR_NAV_MESH] == 0)
 		{
-			UTIL_AddTemporaryObstacles(UTIL_GetCentreOfEntity(it->HiveEntity->edict()) - Vector(0.0f, 0.0f, 25.0f), 125.0f, 300.0f, DT_AREA_NULL, it->ObstacleRefs);
+			UTIL_AddTemporaryObstacles(UTIL_GetCentreOfEntity(it->HiveEdict) - Vector(0.0f, 0.0f, 25.0f), 125.0f, 300.0f, DT_AREA_NULL, it->ObstacleRefs);
 			it->NextFloorLocationCheck = gpGlobals->time + 1.0f;
 		}
 		else if (it->Status == HIVE_STATUS_UNBUILT && it->ObstacleRefs[REGULAR_NAV_MESH] != 0)
@@ -2061,8 +2075,6 @@ AvHAIBuildableStructure* AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 
 void AITAC_OnStructureCreated(AvHAIBuildableStructure* NewStructure)
 {
-	if (!GetGameRules()->GetGameStarted()) { return; }
-
 	UTIL_AddStructureTemporaryObstacles(NewStructure);
 
 	AvHTeamNumber StructureTeam = (AvHTeamNumber)NewStructure->edict->v.team;
@@ -2250,6 +2262,8 @@ void AITAC_LinkDeployedItemToAction(AvHAIPlayer* CommanderBot, const AvHAIDroppe
 
 void AITAC_ClearMapAIData()
 {
+	UTIL_ClearLocalizations();
+
 	ResourceNodes.clear();
 
 	AITAC_ClearHiveInfo();
@@ -2632,7 +2646,7 @@ AvHAIHiveDefinition* AITAC_GetHiveFromEdict(const edict_t* Edict)
 
 	for (auto it = Hives.begin(); it != Hives.end(); it++)
 	{
-		if (it->HiveEntity->edict() == Edict)
+		if (it->HiveEdict == Edict)
 		{
 			return &(*it);
 		}
@@ -4503,11 +4517,11 @@ edict_t* AITAC_AlienFindNearestHealingSource(AvHTeamNumber Team, Vector SearchLo
 		ThisDist -= BALANCE_VAR(kHiveHealRadius) * 0.75f;
 		
 		// We're already in healing distance of a hive, that's our healing source
-		if (ThisDist <= 0.0f) { return (*it)->HiveEntity->edict(); }
+		if (ThisDist <= 0.0f) { return (*it)->HiveEdict; }
 
 		if (FNullEnt(Result) || ThisDist < MinDist)
 		{
-			Result = (*it)->HiveEntity->edict();
+			Result = (*it)->HiveEdict;
 			MinDist = ThisDist;
 		}
 	}

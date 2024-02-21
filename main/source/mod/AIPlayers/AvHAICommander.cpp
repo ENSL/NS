@@ -20,7 +20,10 @@ bool AICOMM_DeployStructure(AvHAIPlayer* pBot, const AvHAIDeployableStructureTyp
 	WelderProfile.Filters.addIncludeFlags(SAMPLE_POLYFLAGS_WELD);
 
 	// Don't allow the commander to place a structure somewhere unreachable to marines
-	if (!UTIL_PointIsReachable(WelderProfile, AITAC_GetTeamStartingLocation(pBot->Player->GetTeam()), Location, max_player_use_reach)) { return false; }
+	if (!UTIL_PointIsReachable(WelderProfile, AITAC_GetTeamStartingLocation(pBot->Player->GetTeam()), Location, max_player_use_reach)) 
+	{
+		return false;
+	}
 
 	AvHMessageID StructureID = UTIL_StructureTypeToImpulseCommand(StructureToDeploy);
 
@@ -28,7 +31,10 @@ bool AICOMM_DeployStructure(AvHAIPlayer* pBot, const AvHAIDeployableStructureTyp
 	BuildLocation.z += 4.0f;
 
 	// This would be rejected if a human was trying to build here, so don't let the bot do it
-	if (!AvHSHUGetIsSiteValidForBuild(StructureID, &BuildLocation)) { return false; }
+	if (!AvHSHUGetIsSiteValidForBuild(StructureID, &BuildLocation))
+	{
+		return false; 
+	}
 
 	string theErrorMessage;
 	int theCost = 0;
@@ -477,7 +483,7 @@ void AICOMM_UpdatePlayerOrders(AvHAIPlayer* pBot)
 
 	if (SiegedHive)
 	{
-		int NumAssignedPlayers = AICOMM_GetNumPlayersAssignedToOrder(pBot, SiegedHive->HiveEntity->edict(), ORDERPURPOSE_SIEGE_HIVE);
+		int NumAssignedPlayers = AICOMM_GetNumPlayersAssignedToOrder(pBot, SiegedHive->HiveEdict, ORDERPURPOSE_SIEGE_HIVE);
 
 		if (NumAssignedPlayers < DesiredPlayers)
 		{
@@ -487,7 +493,7 @@ void AICOMM_UpdatePlayerOrders(AvHAIPlayer* pBot)
 
 				if (!FNullEnt(NewAssignee))
 				{
-					AICOMM_AssignNewPlayerOrder(pBot, NewAssignee, SiegedHive->HiveEntity->edict(), ORDERPURPOSE_SIEGE_HIVE);
+					AICOMM_AssignNewPlayerOrder(pBot, NewAssignee, SiegedHive->HiveEdict, ORDERPURPOSE_SIEGE_HIVE);
 				}
 			}
 		}
@@ -560,7 +566,7 @@ void AICOMM_UpdatePlayerOrders(AvHAIPlayer* pBot)
 		if (ThisHive->Status != HIVE_STATUS_UNBUILT) { continue; }
 		if (AICOMM_IsHiveFullySecured(pBot, ThisHive, false)) { continue; }
 
-		int NumAssignedPlayers = AICOMM_GetNumPlayersAssignedToOrder(pBot, ThisHive->HiveEntity->edict(), ORDERPURPOSE_SECURE_HIVE);
+		int NumAssignedPlayers = AICOMM_GetNumPlayersAssignedToOrder(pBot, ThisHive->HiveEdict, ORDERPURPOSE_SECURE_HIVE);
 
 		if (NumAssignedPlayers < DesiredPlayers)
 		{
@@ -583,7 +589,7 @@ void AICOMM_UpdatePlayerOrders(AvHAIPlayer* pBot)
 
 			if (!FNullEnt(NewAssignee))
 			{
-				AICOMM_AssignNewPlayerOrder(pBot, NewAssignee, EmptyHive->HiveEntity->edict(), ORDERPURPOSE_SECURE_HIVE);
+				AICOMM_AssignNewPlayerOrder(pBot, NewAssignee, EmptyHive->HiveEdict, ORDERPURPOSE_SECURE_HIVE);
 			}
 		}
 	}
@@ -913,19 +919,33 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 
 		Vector BuildLocation = ZERO_VECTOR;
 
+		bool bSuccess = false;
+		bool bFoundLocation = false;
+
 		if (NearestInfantryPortal)
 		{
 			BuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), NearestInfantryPortal->Location, UTIL_MetresToGoldSrcUnits(5.0f));
+
+			if (!vIsZero(BuildLocation))
+			{
+				bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_ARMOURY, BuildLocation);
+				bFoundLocation = true;
+			}
 		}
 
-		if (vIsZero(BuildLocation))
+		if (!bSuccess)
 		{
 			BuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), CommChair->v.origin, UTIL_MetresToGoldSrcUnits(10.0f));
+
+			if (!vIsZero(BuildLocation))
+			{
+				bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_ARMOURY, BuildLocation);
+				bFoundLocation = true;
+			}
 		}
 
-		if (!vIsZero(BuildLocation))
+		if (bFoundLocation)
 		{
-			bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_ARMOURY, BuildLocation);
 			return (bSuccess || pBot->Player->GetResources() <= BALANCE_VAR(kArmoryCost) + 5);
 		}
 	}
@@ -1977,42 +1997,51 @@ bool AICOMM_BuildInfantryPortal(AvHAIPlayer* pBot, edict_t* CommChair)
 	if (ExistingInfantryPortal)
 	{
 		BuildLocation = UTIL_GetRandomPointOnNavmeshInDonutIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), ExistingInfantryPortal->edict->v.origin, UTIL_MetresToGoldSrcUnits(2.0f), UTIL_MetresToGoldSrcUnits(3.0f));
+
+		if (!vIsZero(BuildLocation))
+		{
+			bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_INFANTRYPORTAL, BuildLocation);
+
+			if (bSuccess) { return true; }
+		}
 	}
 
-	if (vIsZero(BuildLocation))
+	Vector SearchPoint = ZERO_VECTOR;
+
+	DeployableSearchFilter ResNodeFilter;
+	ResNodeFilter.ReachabilityFlags = AI_REACHABILITY_MARINE;
+	ResNodeFilter.ReachabilityTeam = pBot->Player->GetTeam();
+
+	const AvHAIResourceNode* ResNode = AITAC_FindNearestResourceNodeToLocation(CommChair->v.origin, &ResNodeFilter);
+
+	if (ResNode)
 	{
-		Vector SearchPoint = ZERO_VECTOR;
-
-		DeployableSearchFilter ResNodeFilter;
-		ResNodeFilter.ReachabilityFlags = AI_REACHABILITY_MARINE;
-		ResNodeFilter.ReachabilityTeam = pBot->Player->GetTeam();
-
-		const AvHAIResourceNode* ResNode = AITAC_FindNearestResourceNodeToLocation(CommChair->v.origin, &ResNodeFilter);
-
-		if (ResNode)
-		{
-			SearchPoint = ResNode->Location;
-		}
-		else
-		{
-			return false;
-		}
-
-		Vector NearestPointToChair = FindClosestNavigablePointToDestination(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), SearchPoint, CommChair->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
-
-		if (NearestPointToChair != ZERO_VECTOR)
-		{
-			float Distance = vDist2D(NearestPointToChair, CommChair->v.origin);
-			float RandomDist = UTIL_MetresToGoldSrcUnits(5.0f) - Distance;
-
-			BuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), NearestPointToChair, RandomDist);
-
-		}
-		else
-		{
-			BuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), CommChair->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
-		}
+		SearchPoint = ResNode->Location;
 	}
+	else
+	{
+		return false;
+	}
+
+	Vector NearestPointToChair = FindClosestNavigablePointToDestination(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), SearchPoint, CommChair->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+
+	if (!vIsZero(NearestPointToChair))
+	{
+		float Distance = vDist2D(NearestPointToChair, CommChair->v.origin);
+		float RandomDist = UTIL_MetresToGoldSrcUnits(5.0f) - Distance;
+
+		BuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), NearestPointToChair, RandomDist);
+
+		if (!vIsZero(BuildLocation))
+		{
+			bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_INFANTRYPORTAL, BuildLocation);
+
+			if (bSuccess) { return true; }
+		}
+
+	}
+	
+	BuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), CommChair->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
 
 	if (vIsZero(BuildLocation)) { return false; }
 
