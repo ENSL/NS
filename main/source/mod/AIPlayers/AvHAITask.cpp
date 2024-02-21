@@ -2384,12 +2384,13 @@ void BotProgressWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		// so instead aim at the closest point on the func_weldable to us.
 		if (!IsEdictPlayer(Task->TaskTarget) && !IsEdictStructure(Task->TaskTarget))
 		{
-			Vector BBMin = Task->TaskTarget->v.absmin;
-			Vector BBMax = Task->TaskTarget->v.absmax;
+			Vector BBMin = Task->TaskTarget->v.absmin + Vector(5.0f, 5.0f, 5.0f);
+			Vector BBMax = Task->TaskTarget->v.absmax - Vector(5.0f, 5.0f, 5.0f);
 
 			vScaleBB(BBMin, BBMax, 0.75f);
 
-			AimLocation = vClosestPointOnBB(pBot->CurrentEyePosition, BBMin, BBMax);
+			AimLocation = vClosestPointOnBB(pBot->Edict->v.origin, BBMin, BBMax);
+
 		}
 
 		BotLookAt(pBot, AimLocation);
@@ -2625,7 +2626,7 @@ void BotGuardLocation(AvHAIPlayer* pBot, const Vector GuardLocation)
 {
 	float DistFromGuardLocation = vDist2DSq(pBot->Edict->v.origin, GuardLocation);
 
-	if (DistFromGuardLocation > sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
+	if (DistFromGuardLocation > sqrf(UTIL_MetresToGoldSrcUnits(10.0f)))
 	{
 		pBot->GuardInfo.GuardLocation = g_vecZero;
 		pBot->GuardInfo.GuardStartLookTime = 0.0f;
@@ -2662,7 +2663,7 @@ void BotGuardLocation(AvHAIPlayer* pBot, const Vector GuardLocation)
 
 	if (gpGlobals->time > pBot->GuardInfo.ThisGuardStandTime)
 	{
-		pBot->GuardInfo.GuardStandPosition = UTIL_GetRandomPointOnNavmeshInRadius(pBot->BotNavInfo.NavProfile, GuardLocation, UTIL_MetresToGoldSrcUnits(4.0f));
+		pBot->GuardInfo.GuardStandPosition = UTIL_GetRandomPointOnNavmeshInRadius(pBot->BotNavInfo.NavProfile, GuardLocation, UTIL_MetresToGoldSrcUnits(5.0f));
 
 		pBot->GuardInfo.ThisGuardStandTime = gpGlobals->time + frandrange(5.0f, 10.0f);
 	}

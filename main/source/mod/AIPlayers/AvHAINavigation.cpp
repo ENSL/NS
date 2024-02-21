@@ -5161,11 +5161,19 @@ void UpdateBotStuck(AvHAIPlayer* pBot)
 			}
 
 			ClearBotPath(pBot);
-			
 		}
 
 		if (!vIsZero(pBot->desiredMovementDir))
 		{
+			edict_t* BlockingEntity = UTIL_TraceEntity(pBot->Edict, pBot->Edict->v.origin, (pBot->Edict->v.origin + pBot->desiredMovementDir * 50.0f));
+
+			if (IsEdictStructure(BlockingEntity))
+			{
+				pBot->desiredMovementDir = UTIL_GetVectorNormal2D(pBot->desiredMovementDir + UTIL_GetCrossProduct(pBot->desiredMovementDir, UP_VECTOR));
+
+				BotMovementInputs(pBot);
+			}
+
 			BotJump(pBot);
 
 			if (!IsPlayerSkulk(pBot->Edict))
@@ -5235,11 +5243,15 @@ void UpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
 	{
 		pBot->BotNavInfo.NavProfile.Filters.removeExcludeFlags(SAMPLE_POLYFLAGS_TEAM2STRUCTURE);
 		pBot->BotNavInfo.NavProfile.Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM1STRUCTURE);
+		pBot->BotNavInfo.NavProfile.Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM1STRUCTURE);
+		pBot->BotNavInfo.NavProfile.Filters.addIncludeFlags(SAMPLE_POLYFLAGS_TEAM2STRUCTURE);
 	}
 	else
 	{
 		pBot->BotNavInfo.NavProfile.Filters.removeExcludeFlags(SAMPLE_POLYFLAGS_TEAM1STRUCTURE);
 		pBot->BotNavInfo.NavProfile.Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM2STRUCTURE);
+		pBot->BotNavInfo.NavProfile.Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM2STRUCTURE);
+		pBot->BotNavInfo.NavProfile.Filters.addIncludeFlags(SAMPLE_POLYFLAGS_TEAM1STRUCTURE);
 	}
 
 }
@@ -8245,12 +8257,12 @@ void NAV_ProgressMovementTask(AvHAIPlayer* pBot)
 	{
 		if (IsPlayerInUseRange(pBot->Edict, MoveTask->TaskTarget))
 		{
-			Vector BBMin = MoveTask->TaskTarget->v.absmin;
-			Vector BBMax = MoveTask->TaskTarget->v.absmax;
+			Vector BBMin = MoveTask->TaskTarget->v.absmin + Vector(5.0f, 5.0f, 5.0f);
+			Vector BBMax = MoveTask->TaskTarget->v.absmax - Vector(5.0f, 5.0f, 5.0f);
 
 			vScaleBB(BBMin, BBMax, 0.75f);
 
-			BotLookAt(pBot, vClosestPointOnBB(pBot->CurrentEyePosition, BBMin, BBMax));
+			BotLookAt(pBot, vClosestPointOnBB(pBot->Edict->v.origin, BBMin, BBMax));
 			pBot->DesiredCombatWeapon = WEAPON_MARINE_WELDER;
 
 			if (GetPlayerCurrentWeapon(pBot->Player) != WEAPON_MARINE_WELDER)

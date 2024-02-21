@@ -1814,9 +1814,9 @@ void SetNewAIPlayerRole(AvHAIPlayer* pBot, AvHAIBotRole NewRole)
 
 void UpdateAIPlayerCORole(AvHAIPlayer* pBot)
 {
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
 
-
-	if (AIMGR_GetNumAIPlayersWithRoleOnTeam(pBot->Player->GetTeam(), BOT_ROLE_SWEEPER, pBot) == 0)
+	if (AIMGR_GetNumAIPlayersWithRoleOnTeam(BotTeam, BOT_ROLE_SWEEPER, pBot) == 0)
 	{
 		SetNewAIPlayerRole(pBot, BOT_ROLE_SWEEPER);
 		return;
@@ -1826,21 +1826,30 @@ void UpdateAIPlayerCORole(AvHAIPlayer* pBot)
 	{
 		if (IsPlayerLerk(pBot->Edict))
 		{
-			SetNewAIPlayerRole(pBot, BOT_ROLE_SWEEPER);
+			SetNewAIPlayerRole(pBot, BOT_ROLE_HARASS);
 			return;
 		}
 
-		int NumLerks = AITAC_GetNumPlayersOnTeamOfClass(pBot->Player->GetTeam(), AVH_USER3_ALIEN_PLAYER3, pBot->Edict);
-		int NumHarassers = AIMGR_GetNumAIPlayersWithRoleOnTeam(pBot->Player->GetTeam(), BOT_ROLE_HARASS, pBot);
+		int NumLerks = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER3, pBot->Edict);
+		int NumHarassers = AIMGR_GetNumAIPlayersWithRoleOnTeam(BotTeam, BOT_ROLE_HARASS, pBot);
 
 		if (NumLerks + NumHarassers == 0)
 		{
-			SetNewAIPlayerRole(pBot, BOT_ROLE_SWEEPER);
+			SetNewAIPlayerRole(pBot, BOT_ROLE_HARASS);
+			return;
+		}
+
+		int MaxOnos = (int)(ceilf((float)(AIMGR_GetNumPlayersOnTeam(BotTeam) - 2)) * 0.3f);
+
+		if (AIMGR_GetNumAIPlayersWithRoleOnTeam(BotTeam, BOT_ROLE_BOMBARDIER, pBot) < MaxOnos)
+		{
+			SetNewAIPlayerRole(pBot, BOT_ROLE_BOMBARDIER);
 			return;
 		}
 	}
 
 	SetNewAIPlayerRole(pBot, BOT_ROLE_ASSAULT);
+		
 }
 
 void UpdateAIPlayerDMRole(AvHAIPlayer* pBot)
@@ -3268,7 +3277,7 @@ void AIPlayerSetMarineAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 
 	if (ActiveSiegeHive)
 	{
-		AITASK_SetAttackTask(pBot, Task, ActiveSiegeHive->HiveEntity->edict(), false);
+		AITASK_SetAttackTask(pBot, Task, ActiveSiegeHive->HiveEdict, false);
 		return;
 	}
 
@@ -3304,7 +3313,7 @@ void AIPlayerSetMarineAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 
 		if (!vIsZero(ActualMoveLocation))
 		{
-			AITASK_SetSecureHiveTask(pBot, Task, NearestEmptyHive->HiveEntity->edict(), NearestEmptyHive->FloorLocation, false);
+			AITASK_SetSecureHiveTask(pBot, Task, NearestEmptyHive->HiveEdict, NearestEmptyHive->FloorLocation, false);
 			return;
 		}
 	}
@@ -3834,7 +3843,7 @@ void AIPlayerNSAlienThink(AvHAIPlayer* pBot)
 		{
 			pBot->PrimaryBotTask.TaskType = TASK_BUILD;
 			pBot->PrimaryBotTask.StructureType = STRUCTURE_ALIEN_HIVE;
-			char msg[64];
+			char msg[128];
 			sprintf(msg, "I'm going to drop the hive at %s", HiveToBuild->HiveName);
 			BotSay(pBot, true, 1.0f, msg);
 		}
@@ -3946,48 +3955,233 @@ AvHMessageID GetNextAIPlayerCOMarineUpgrade(AvHAIPlayer* pBot)
 		return RESEARCH_WEAPONS_ONE;
 	}
 
+	if (!pBot->Player->GetHasCombatModeUpgrade(BUILD_SHOTGUN))
+	{
+		return BUILD_SHOTGUN;
+	}
+
+	if (!pBot->Player->GetHasCombatModeUpgrade(BUILD_SHOTGUN))
+	{
+		return BUILD_SHOTGUN;
+	}
+
+	if (!pBot->Player->GetHasCombatModeUpgrade(BUILD_HMG))
+	{
+		return BUILD_HMG;
+	}
+
+	if (!pBot->Player->GetHasCombatModeUpgrade(RESEARCH_ARMOR_TWO))
+	{
+		return RESEARCH_ARMOR_TWO;
+	}
+
+	if (!pBot->Player->GetHasCombatModeUpgrade(RESEARCH_WEAPONS_TWO))
+	{
+		return RESEARCH_WEAPONS_TWO;
+	}
+
+	if (!pBot->Player->GetHasCombatModeUpgrade(BUILD_HEAVY))
+	{
+		return BUILD_HEAVY;
+	}
+
+	if (!pBot->Player->GetHasCombatModeUpgrade(RESEARCH_ARMOR_THREE))
+	{
+		return RESEARCH_ARMOR_TWO;
+	}
+
+	if (!pBot->Player->GetHasCombatModeUpgrade(RESEARCH_WEAPONS_THREE))
+	{
+		return RESEARCH_WEAPONS_TWO;
+	}
+
+	return MESSAGE_NULL;
 }
 
 AvHMessageID GetNextAIPlayerCOAlienUpgrade(AvHAIPlayer* pBot)
 {
+	int NumPointsAvailable = pBot->ExperiencePointsAvailable;
+
+	if (IsPlayerGorge(pBot->Edict))
+	{
+		NumPointsAvailable += GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_TWO);
+	}
+
+	if (IsPlayerLerk(pBot->Edict))
+	{
+		NumPointsAvailable += GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_THREE);
+	}
+
+	if (IsPlayerFade(pBot->Edict))
+	{
+		NumPointsAvailable += GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_FOUR);
+	}
+
+	if (IsPlayerOnos(pBot->Edict))
+	{
+		NumPointsAvailable += GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_FIVE);
+	}
+
 	// Always start off getting carapace, to improve viability early game
 	if (!pBot->Player->GetHasCombatModeUpgrade(ALIEN_EVOLUTION_ONE))
 	{
 		return ALIEN_EVOLUTION_ONE;
 	}
 
-	// Unlock leap for further viability early game
+	// If we are a harasser, always ensure we have enough resources to go lerk
+	if (pBot->BotRole == BOT_ROLE_HARASS)
+	{
+		if (NumPointsAvailable <= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_THREE))
+		{
+			return MESSAGE_NULL;
+		}
+
+		// Lerks need adrenaline
+		if (!pBot->Player->GetHasCombatModeUpgrade(ALIEN_EVOLUTION_EIGHT))
+		{
+			return ALIEN_EVOLUTION_EIGHT;
+		}
+
+		// Unlock umbra
+		if (!pBot->Player->GetHasCombatModeUpgrade(ALIEN_HIVE_TWO_UNLOCK))
+		{
+			return ALIEN_HIVE_TWO_UNLOCK;
+		}
+
+		// Get that sweet primal scream
+		if (!pBot->Player->GetHasCombatModeUpgrade(ALIEN_HIVE_THREE_UNLOCK))
+		{
+			return ALIEN_HIVE_THREE_UNLOCK;
+		}
+
+		// Unlock focus
+		if (!pBot->Player->GetHasCombatModeUpgrade(ALIEN_EVOLUTION_ELEVEN))
+		{
+			return ALIEN_EVOLUTION_ELEVEN;
+		}
+
+		// Unlock regeneration
+		if (!pBot->Player->GetHasCombatModeUpgrade(ALIEN_EVOLUTION_TWO))
+		{
+			return ALIEN_EVOLUTION_TWO;
+		}
+
+		// Unlock celerity
+		if (!pBot->Player->GetHasCombatModeUpgrade(ALIEN_EVOLUTION_SEVEN))
+		{
+			return ALIEN_EVOLUTION_SEVEN;
+		}
+
+
+		return MESSAGE_NULL;
+	}
+
+	
+	if (pBot->BotRole == BOT_ROLE_SWEEPER)
+	{
+		// If we are a sweeper, always ensure we have enough resources to go gorge in case we want to heal the hive
+		if (NumPointsAvailable <= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_TWO))
+		{
+			return MESSAGE_NULL;
+		}
+
+		// Gorges need adrenaline
+		if (!pBot->Player->GetHasCombatModeUpgrade(ALIEN_EVOLUTION_EIGHT))
+		{
+			return ALIEN_EVOLUTION_EIGHT;
+		}
+
+		// Regen
+		if (!pBot->Player->GetHasCombatModeUpgrade(ALIEN_EVOLUTION_TWO))
+		{
+			return ALIEN_EVOLUTION_EIGHT;
+		}
+
+		// Celerity
+		if (!pBot->Player->GetHasCombatModeUpgrade(ALIEN_EVOLUTION_SEVEN))
+		{
+			return ALIEN_EVOLUTION_EIGHT;
+		}
+
+		// Redemption
+		if (!pBot->Player->GetHasCombatModeUpgrade(ALIEN_EVOLUTION_THREE))
+		{
+			return ALIEN_EVOLUTION_EIGHT;
+		}
+
+		// Focus
+		if (!pBot->Player->GetHasCombatModeUpgrade(ALIEN_EVOLUTION_ELEVEN))
+		{
+			return ALIEN_EVOLUTION_EIGHT;
+		}
+
+		// Silence
+		if (!pBot->Player->GetHasCombatModeUpgrade(ALIEN_EVOLUTION_NINE))
+		{
+			return ALIEN_EVOLUTION_EIGHT;
+		}
+
+		// Cloak
+		if (!pBot->Player->GetHasCombatModeUpgrade(ALIEN_EVOLUTION_TEN))
+		{
+			return ALIEN_EVOLUTION_EIGHT;
+		}
+
+		return MESSAGE_NULL;
+	}
+
+	// ASSAULT and BOMBARDIER STUFF BELOW
+	// ASSAULT = jacked-up fade
+	// BOMBARDIER = Onos
+
+	// Unlock leap
 	if (!pBot->Player->GetHasCombatModeUpgrade(ALIEN_HIVE_TWO_UNLOCK))
 	{
 		return ALIEN_HIVE_TWO_UNLOCK;
 	}
 
-	// If we are a sweeper, always ensure we have enough resources to go gorge in case we want to heal the hive
-	if (pBot->BotRole == BOT_ROLE_SWEEPER)
+	// If we're going assault then make sure we've saved up enough for fade
+	if (pBot->BotRole == BOT_ROLE_ASSAULT)
 	{
-		if (!IsPlayerGorge(pBot->Edict))
+		if (NumPointsAvailable <= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_FOUR))
 		{
-			if (pBot->ExperiencePointsAvailable <= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_TWO))
-			{
-				return MESSAGE_NULL;
-			}
+			return MESSAGE_NULL;
+		}
+
+		// Unlock adrenaline
+		if (!pBot->Player->GetHasCombatModeUpgrade(ALIEN_EVOLUTION_EIGHT))
+		{
+			return ALIEN_EVOLUTION_EIGHT;
+		}
+
+		if (!pBot->Player->GetHasCombatModeUpgrade(ALIEN_HIVE_THREE_UNLOCK))
+		{
+			return ALIEN_HIVE_THREE_UNLOCK;
 		}
 	}
 
-	// If we are a harasser, always ensure we have enough resources to go lerk
-	if (pBot->BotRole == BOT_ROLE_HARASS)
+	// As a bombardier, we can still go fade if we can't afford Onos yet, so calculate our points savings accordingly
+	if (pBot->BotRole == BOT_ROLE_BOMBARDIER)
 	{
-		if (!IsPlayerLerk(pBot->Edict))
+		if (NumPointsAvailable <= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_FIVE))
 		{
-			if (pBot->ExperiencePointsAvailable <= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_THREE))
-			{
-				return MESSAGE_NULL;
-			}
+			return MESSAGE_NULL;
+		}
+
+		// Unlock adrenaline
+		if (!pBot->Player->GetHasCombatModeUpgrade(ALIEN_EVOLUTION_EIGHT))
+		{
+			return ALIEN_EVOLUTION_EIGHT;
+		}
+
+		// Unlock regeneration
+		if (!pBot->Player->GetHasCombatModeUpgrade(ALIEN_EVOLUTION_TWO))
+		{
+			return ALIEN_EVOLUTION_TWO;
 		}
 	}
 
-
-	
+	return MESSAGE_NULL;	
 }
 
 void AIPlayerCOThink(AvHAIPlayer* pBot)
@@ -4012,8 +4206,461 @@ void AIPlayerCOThink(AvHAIPlayer* pBot)
 
 	UpdateAIPlayerCORole(pBot);
 
-	AvHMessageID NextCombatUpgrade = GetNextAIPlayerCOUpgrade(pBot);
+	if (IsPlayerMarine(pBot->Edict))
+	{
+		AIPlayerCOMarineThink(pBot);
+	}
+	else
+	{
+		AIPlayerCOAlienThink(pBot);
+	}
 }
+
+void AIPlayerCOMarineThink(AvHAIPlayer* pBot)
+{
+	AvHMessageID NextCombatUpgrade = GetNextAIPlayerCOMarineUpgrade(pBot);
+
+	if (NextCombatUpgrade != MESSAGE_NULL)
+	{
+		int Cost = GetGameRules()->GetCostForMessageID(NextCombatUpgrade);
+
+		if (pBot->ExperiencePointsAvailable >= Cost)
+		{
+			if (gpGlobals->time - pBot->LastRequestTime > 1.0f)
+			{
+				pBot->Impulse = (int)NextCombatUpgrade;
+				pBot->LastRequestTime = gpGlobals->time;
+				return;
+			}
+		}
+	}
+
+	if (gpGlobals->time >= pBot->BotNextTaskEvaluationTime)
+	{
+		pBot->BotNextTaskEvaluationTime = gpGlobals->time + frandrange(0.2f, 0.5f);
+
+		AITASK_BotUpdateAndClearTasks(pBot);
+
+		AIPlayerSetPrimaryCOMarineTask(pBot, &pBot->PrimaryBotTask);
+		AIPlayerSetSecondaryCOMarineTask(pBot, &pBot->SecondaryBotTask);
+	}
+
+	pBot->CurrentTask = AIPlayerGetNextTask(pBot);
+
+	if (pBot->CurrentTask && pBot->CurrentTask->TaskType != TASK_NONE)
+	{
+		BotProgressTask(pBot, pBot->CurrentTask);
+	}
+}
+
+void AIPlayerCOAlienThink(AvHAIPlayer* pBot)
+{
+	if (!pBot->CurrentTask) { pBot->CurrentTask = &pBot->PrimaryBotTask; }
+
+	AvHMessageID NextCombatUpgrade = GetNextAIPlayerCOAlienUpgrade(pBot);
+
+	if (NextCombatUpgrade != MESSAGE_NULL)
+	{
+		int Cost = GetGameRules()->GetCostForMessageID(NextCombatUpgrade);
+
+		if (pBot->ExperiencePointsAvailable >= Cost)
+		{
+			if (gpGlobals->time - pBot->LastCombatTime > 5.0f)
+			{
+				if (gpGlobals->time - pBot->LastRequestTime > 1.0f)
+				{
+					pBot->Impulse = (int)NextCombatUpgrade;
+					pBot->LastRequestTime = gpGlobals->time;
+					return;
+				}
+			}
+		}
+	}
+
+	if (gpGlobals->time >= pBot->BotNextTaskEvaluationTime)
+	{
+		pBot->BotNextTaskEvaluationTime = gpGlobals->time + frandrange(0.2f, 0.5f);
+
+		AITASK_BotUpdateAndClearTasks(pBot);
+
+		AIPlayerSetPrimaryCOAlienTask(pBot, &pBot->PrimaryBotTask);
+		AIPlayerSetSecondaryCOAlienTask(pBot, &pBot->SecondaryBotTask);
+	}
+
+	pBot->CurrentTask = AIPlayerGetNextTask(pBot);
+
+	if (pBot->CurrentTask && pBot->CurrentTask->TaskType != TASK_NONE)
+	{
+		BotProgressTask(pBot, pBot->CurrentTask);
+	}
+
+}
+
+void AIPlayerSetPrimaryCOMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
+{
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
+
+	DeployableSearchFilter EnemyStuffFilter;
+	EnemyStuffFilter.DeployableTeam = EnemyTeam;
+	EnemyStuffFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
+	EnemyStuffFilter.ReachabilityTeam = BotTeam;
+	EnemyStuffFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+
+	AvHAIBuildableStructure* EnemyStructure = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &EnemyStuffFilter);
+
+	if (EnemyStructure)
+	{
+		AITASK_SetAttackTask(pBot, Task, EnemyStructure->edict, false);
+		return;
+	}
+	else
+	{
+		if (AIMGR_GetTeamType(EnemyTeam) == AVH_CLASS_TYPE_ALIEN)
+		{
+			const AvHAIHiveDefinition* EnemyHive = AITAC_GetActiveHiveNearestLocation(EnemyTeam, pBot->Edict->v.origin);
+
+			if (EnemyHive)
+			{
+				AITASK_SetAttackTask(pBot, Task, EnemyHive->HiveEdict, false);
+				return;
+			}
+		}
+	}
+
+	vector<AvHPlayer*> AllEnemyPlayers = AIMGR_GetAllPlayersOnTeam(EnemyTeam);
+	edict_t* TargetPlayer = nullptr;
+
+	float MinDist = 0.0f;
+
+	for (auto it = AllEnemyPlayers.begin(); it != AllEnemyPlayers.end(); it++)
+	{
+		AvHPlayer* ThisPlayer = (*it);
+
+		if (!ThisPlayer) { continue; }
+
+		edict_t* PlayerEdict = ThisPlayer->edict();
+
+		if (!IsPlayerActiveInGame(PlayerEdict)) { continue; }
+
+		float ThisDist = vDist2DSq(PlayerEdict->v.origin, pBot->Edict->v.origin);
+
+		if (FNullEnt(TargetPlayer) || ThisDist < MinDist)
+		{
+			TargetPlayer = PlayerEdict;
+			MinDist = ThisDist;
+		}
+	}
+
+	if (!FNullEnt(TargetPlayer))
+	{
+		MoveTo(pBot, UTIL_GetEntityGroundLocation(TargetPlayer), MOVESTYLE_NORMAL);
+	}
+}
+
+void AIPlayerSetSecondaryCOMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
+{
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
+
+	edict_t* CommChair = AITAC_GetCommChair(BotTeam);
+
+	DeployableSearchFilter AttackedStructuresFilter;
+	AttackedStructuresFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
+	AttackedStructuresFilter.DeployableTeam = BotTeam;
+	AttackedStructuresFilter.ReachabilityTeam = BotTeam;
+	AttackedStructuresFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+	AttackedStructuresFilter.IncludeStatusFlags = STRUCTURE_STATUS_UNDERATTACK;
+	AttackedStructuresFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(30.0f);
+
+	vector<AvHAIBuildableStructure*> AllAttackedStructures = AITAC_FindAllDeployables(pBot->Edict->v.origin, &AttackedStructuresFilter);
+
+	AvHAIBuildableStructure* StructureToDefend = nullptr;
+	float MinDist = 0.0f;
+
+	for (auto it = AllAttackedStructures.begin(); it != AllAttackedStructures.end(); it++)
+	{
+		AvHAIBuildableStructure* ThisStructure = (*it);
+
+		float ThisDist = vDist2D(pBot->Edict->v.origin, ThisStructure->edict->v.origin);
+
+		int NumAttackers = AITAC_GetNumPlayersOnTeamWithLOS(EnemyTeam, ThisStructure->Location, UTIL_MetresToGoldSrcUnits(15.0f), nullptr);
+
+		if (NumAttackers == 0) { continue; }
+
+		int NumExistingDefenders = AITAC_GetNumPlayersOfTeamInArea(BotTeam, ThisStructure->Location, ThisDist - 10.0f, false, pBot->Edict, AVH_USER3_COMMANDER_PLAYER);
+
+		if (NumExistingDefenders < 2)
+		{
+			if (!StructureToDefend || ThisDist < MinDist)
+			{
+				StructureToDefend = ThisStructure;
+				MinDist = ThisDist;
+			}
+		}
+	}
+
+	if (StructureToDefend)
+	{
+		AITASK_SetDefendTask(pBot, Task, StructureToDefend->edict, true);
+		return;
+	}
+
+	if (PlayerHasWeapon(pBot->Player, WEAPON_MARINE_WELDER))
+	{
+		DeployableSearchFilter DamagedStructuresFilter;
+		DamagedStructuresFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
+		DamagedStructuresFilter.DeployableTeam = BotTeam;
+		DamagedStructuresFilter.ReachabilityTeam = BotTeam;
+		DamagedStructuresFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+		DamagedStructuresFilter.IncludeStatusFlags = STRUCTURE_STATUS_DAMAGED;
+		DamagedStructuresFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(20.0f);
+
+		AvHAIBuildableStructure* StructureToRepair = nullptr;
+		vector<AvHAIBuildableStructure*> AllDamagedStructures = AITAC_FindAllDeployables(pBot->Edict->v.origin, &DamagedStructuresFilter);
+
+		MinDist = 0.0f;
+
+		for (auto it = AllDamagedStructures.begin(); it != AllDamagedStructures.end(); it++)
+		{
+			AvHAIBuildableStructure* ThisStructure = (*it);
+
+			if (ThisStructure->StructureType == STRUCTURE_MARINE_COMMCHAIR && ThisStructure->healthPercent < 0.7f)
+			{
+				StructureToRepair = ThisStructure;
+				break;
+			}
+
+			float ThisDist = vDist2DSq(ThisStructure->Location, pBot->Edict->v.origin);
+
+			if (!StructureToRepair || ThisDist < MinDist)
+			{
+				StructureToRepair = ThisStructure;
+				MinDist = ThisDist;
+			}
+		}
+
+		if (StructureToRepair)
+		{
+			AITASK_SetWeldTask(pBot, Task, StructureToRepair->edict, true);
+			return;
+		}
+
+		DeployableSearchFilter NearbyArmouryFilter;
+		NearbyArmouryFilter.DeployableTypes = (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY);
+		NearbyArmouryFilter.DeployableTeam = BotTeam;
+		NearbyArmouryFilter.ReachabilityTeam = BotTeam;
+		NearbyArmouryFilter.ReachabilityFlags = AI_REACHABILITY_MARINE;
+
+		AvHAIBuildableStructure* NearestEasyAccessArmoury = AITAC_FindClosestDeployableToLocation(ZERO_VECTOR, &NearbyArmouryFilter);
+
+		if (!NearestEasyAccessArmoury)
+		{
+			NearbyArmouryFilter.ReachabilityFlags = AI_REACHABILITY_WELDER;
+
+			AvHAIBuildableStructure* NearestWeldableAccessArmoury = AITAC_FindClosestDeployableToLocation(ZERO_VECTOR, &NearbyArmouryFilter);
+
+			if (NearestWeldableAccessArmoury)
+			{
+				AITASK_SetMoveTask(pBot, Task, NearestWeldableAccessArmoury->Location, true);
+				return;
+			}
+		}
+	}
+
+	AITASK_ClearBotTask(pBot, Task);
+}
+
+void AIPlayerSetPrimaryCOAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
+{
+
+	if (IsPlayerGorge(pBot->Edict))
+	{
+		const AvHAIHiveDefinition* TheHive = AITAC_GetNearestTeamHive(pBot->Player->GetTeam(), pBot->Edict->v.origin, true);
+
+		if (TheHive)
+		{
+			AITASK_ClearBotTask(pBot, Task);
+			BotGuardLocation(pBot, TheHive->FloorLocation);
+			return;
+		}
+	}
+
+	if (Task->TaskType == TASK_ATTACK && vDist2DSq(Task->TaskTarget->v.origin, pBot->Edict->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(10.0f)))
+	{
+		return;
+	}
+
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
+
+	if (pBot->BotRole == BOT_ROLE_HARASS)
+	{
+		if (!IsPlayerLerk(pBot->Edict) && pBot->ExperiencePointsAvailable >= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_THREE))
+		{
+			if (Task->TaskType != TASK_EVOLVE)
+			{
+				const AvHAIHiveDefinition* NearestHive = AITAC_GetActiveHiveNearestLocation(BotTeam, pBot->Edict->v.origin);
+
+				if (NearestHive)
+				{
+					AITASK_SetEvolveTask(pBot, Task, NearestHive->HiveEdict, ALIEN_LIFEFORM_THREE, true);
+					
+				}
+			}
+
+			return;
+		}
+	}
+
+	if (pBot->BotRole == BOT_ROLE_ASSAULT)
+	{
+		if (!IsPlayerFade(pBot->Edict) && pBot->ExperiencePointsAvailable >= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_FOUR))
+		{
+			if (Task->TaskType != TASK_EVOLVE)
+			{
+				const AvHAIHiveDefinition* NearestHive = AITAC_GetActiveHiveNearestLocation(BotTeam, pBot->Edict->v.origin);
+
+				if (NearestHive)
+				{
+					AITASK_SetEvolveTask(pBot, Task, NearestHive->HiveEdict, ALIEN_LIFEFORM_FOUR, true);
+				}
+			}
+			return;
+		}
+	}
+
+	if (pBot->BotRole == BOT_ROLE_BOMBARDIER)
+	{
+		if (!IsPlayerOnos(pBot->Edict) && !IsPlayerFade(pBot->Edict))
+		{
+			AvHMessageID DesiredEvolution = MESSAGE_NULL;
+
+			if (pBot->ExperiencePointsAvailable >= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_FIVE))
+			{
+				DesiredEvolution = ALIEN_LIFEFORM_FIVE;
+			}
+			else if (pBot->ExperiencePointsAvailable >= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_FOUR))
+			{
+				DesiredEvolution = ALIEN_LIFEFORM_FOUR;
+			}
+
+			if (DesiredEvolution != MESSAGE_NULL)
+			{
+				if (Task->TaskType != TASK_EVOLVE)
+				{
+					const AvHAIHiveDefinition* NearestHive = AITAC_GetActiveHiveNearestLocation(BotTeam, pBot->Edict->v.origin);
+
+					if (NearestHive)
+					{
+						AITASK_SetEvolveTask(pBot, Task, NearestHive->HiveEdict, DesiredEvolution, true);
+					}
+				}
+				return;
+			}
+		}
+	}
+
+	DeployableSearchFilter EnemyStuffFilter;
+	EnemyStuffFilter.DeployableTeam = EnemyTeam;
+	EnemyStuffFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
+	EnemyStuffFilter.ReachabilityTeam = BotTeam;
+	EnemyStuffFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+
+	AvHAIBuildableStructure* EnemyStructure = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &EnemyStuffFilter);
+
+	if (EnemyStructure)
+	{
+		AITASK_SetAttackTask(pBot, Task, EnemyStructure->edict, false);
+		return;
+	}
+
+	vector<AvHPlayer*> AllEnemyPlayers = AIMGR_GetAllPlayersOnTeam(EnemyTeam);
+	edict_t* TargetPlayer = nullptr;
+
+	float MinDist = 0.0f;
+
+	for (auto it = AllEnemyPlayers.begin(); it != AllEnemyPlayers.end(); it++)
+	{
+		AvHPlayer* ThisPlayer = (*it);
+
+		if (!ThisPlayer) { continue; }
+
+		edict_t* PlayerEdict = ThisPlayer->edict();
+
+		if (!IsPlayerActiveInGame(PlayerEdict)) { continue; }
+
+		float ThisDist = vDist2DSq(PlayerEdict->v.origin, pBot->Edict->v.origin);
+
+		if (FNullEnt(TargetPlayer) || ThisDist < MinDist)
+		{
+			TargetPlayer = PlayerEdict;
+			MinDist = ThisDist;
+		}
+	}
+
+	if (!FNullEnt(TargetPlayer))
+	{
+		MoveTo(pBot, UTIL_GetEntityGroundLocation(TargetPlayer), MOVESTYLE_NORMAL);
+	}
+	
+}
+
+void AIPlayerSetSecondaryCOAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
+{
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
+
+	const AvHAIHiveDefinition* TheHive = AITAC_GetNearestTeamHive(BotTeam, pBot->Edict->v.origin, true);
+
+	if (TheHive->bIsUnderAttack)
+	{
+		int NumAttackers = AITAC_GetNumPlayersOfTeamInArea(EnemyTeam, TheHive->FloorLocation, UTIL_MetresToGoldSrcUnits(15.0f), false, nullptr, AVH_USER3_NONE);
+
+		int MaxDefenders = imini(NumAttackers + 1, (int)floorf((float)AIMGR_GetNumPlayersOnTeam(BotTeam) * 0.5f));
+
+		float ThisDist = vDist2D(pBot->Edict->v.origin, TheHive->FloorLocation);
+
+		int NumExistingDefenders = AITAC_GetNumPlayersOfTeamInArea(BotTeam, TheHive->FloorLocation, ThisDist - 10.0f, false, pBot->Edict, AVH_USER3_COMMANDER_PLAYER);
+
+		if (NumExistingDefenders < MaxDefenders)
+		{
+			AITASK_SetDefendTask(pBot, Task, TheHive->HiveEdict, true);
+			return;
+		}
+	}
+
+	if (TheHive->HealthPercent < 1.0f && IsPlayerGorge(pBot->Edict))
+	{
+		Task->TaskType = TASK_HEAL;
+		Task->TaskTarget = TheHive->HiveEdict;
+		Task->bTaskIsUrgent = true;
+		return;
+	}
+
+	if (TheHive->HealthPercent < 0.8f)
+	{
+		if (IsPlayerGorge(pBot->Edict) || (pBot->BotRole == BOT_ROLE_SWEEPER && pBot->ExperiencePointsAvailable >= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_TWO)))
+		{
+			if (!IsPlayerGorge(pBot->Edict))
+			{
+				AITASK_SetEvolveTask(pBot, Task, TheHive->HiveEdict, ALIEN_LIFEFORM_TWO, true);
+				return;
+			}
+			else
+			{
+				Task->TaskType = TASK_HEAL;
+				Task->TaskTarget = TheHive->HiveEdict;
+				Task->bTaskIsUrgent = true;
+				return;
+			}
+		}
+	}
+
+
+	AITASK_ClearBotTask(pBot, Task);
+}
+
 
 void AIPlayerDMThink(AvHAIPlayer* pBot)
 {
@@ -4259,7 +4906,7 @@ void AIPlayerReceiveMoveOrder(AvHAIPlayer* pBot, Vector Destination)
 	{
 		if (!AICOMM_IsHiveFullySecured(pBot, HiveRef, false))
 		{
-			AITASK_SetSecureHiveTask(pBot, &pBot->CommanderTask, HiveRef->HiveEntity->edict(), ActualMoveLocation, false);
+			AITASK_SetSecureHiveTask(pBot, &pBot->CommanderTask, HiveRef->HiveEdict, ActualMoveLocation, false);
 			pBot->CommanderTask.bIssuedByCommander = true;
 			return;
 		}
@@ -4480,7 +5127,7 @@ void AIPlayerSetAlienBuilderPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 
 	if (HiveToSecure)
 	{
-		AITASK_SetReinforceStructureTask(pBot, Task, HiveToSecure->HiveEntity->edict(), false);
+		AITASK_SetReinforceStructureTask(pBot, Task, HiveToSecure->HiveEdict, false);
 		return;
 	}
 
@@ -4771,7 +5418,7 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 
 			if (NearestHive)
 			{
-				AITASK_SetEvolveTask(pBot, Task, NearestHive->HiveEntity->edict(), ALIEN_LIFEFORM_FIVE, true);
+				AITASK_SetEvolveTask(pBot, Task, NearestHive->HiveEdict, ALIEN_LIFEFORM_FIVE, true);
 				return;
 			}
 		}
@@ -4788,7 +5435,7 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 
 			if (NearestHive)
 			{
-				AITASK_SetEvolveTask(pBot, Task, NearestHive->HiveEntity->edict(), ALIEN_LIFEFORM_FOUR, true);
+				AITASK_SetEvolveTask(pBot, Task, NearestHive->HiveEdict, ALIEN_LIFEFORM_FOUR, true);
 				return;
 			}
 
@@ -5022,7 +5669,7 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 			{
 				if ((*AIIt) == pBot) { continue; }
 
-				if ((*AIIt)->PrimaryBotTask.TaskType == TASK_GUARD && (*AIIt)->PrimaryBotTask.TaskTarget == ThisHive->HiveEntity->edict())
+				if ((*AIIt)->PrimaryBotTask.TaskType == TASK_GUARD && (*AIIt)->PrimaryBotTask.TaskTarget == ThisHive->HiveEdict)
 				{
 					if ((*AIIt)->Player->GetUser3() >= AVH_USER3_ALIEN_PLAYER3) { bNeedsExtraGuards = false; }
 					NumGuards++;
@@ -5065,7 +5712,7 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 	{
 		Task->TaskType = TASK_GUARD;
 		Task->TaskLocation = HiveToGuard->FloorLocation;
-		Task->TaskTarget = HiveToGuard->HiveEntity->edict();
+		Task->TaskTarget = HiveToGuard->HiveEdict;
 		return;
 	}
 	else if (HiveToSecure)
@@ -5215,7 +5862,7 @@ void AIPlayerSetAlienHarasserPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 
 			if (NearestHive)
 			{
-				AITASK_SetEvolveTask(pBot, Task, NearestHive->HiveEntity->edict(), ALIEN_LIFEFORM_THREE, true);
+				AITASK_SetEvolveTask(pBot, Task, NearestHive->HiveEdict, ALIEN_LIFEFORM_THREE, true);
 				return;
 			}
 			else
@@ -5282,7 +5929,7 @@ void AIPlayerSetAlienHarasserPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 	{
 		const AvHAIHiveDefinition* EnemyHive = AITAC_GetActiveHiveNearestLocation(EnemyTeam, pBot->Edict->v.origin);
 
-		AITASK_SetAttackTask(pBot, Task, EnemyHive->HiveEntity->edict(), false);
+		AITASK_SetAttackTask(pBot, Task, EnemyHive->HiveEdict, false);
 		return;
 	}
 
@@ -5466,7 +6113,7 @@ void AIPlayerSetSecondaryAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 				if (ThisBot != pBot && IsPlayerActiveInGame(ThisBot->Edict) && !IsPlayerGorge(ThisBot->Edict) && vDist2DSq(ThisBot->Edict->v.origin, ThisHive->FloorLocation) > sqrf(UTIL_MetresToGoldSrcUnits(15.0f)))
 				{
-					if (ThisBot->SecondaryBotTask.TaskType == TASK_DEFEND && ThisBot->SecondaryBotTask.TaskTarget == ThisHive->HiveEntity->edict())
+					if (ThisBot->SecondaryBotTask.TaskType == TASK_DEFEND && ThisBot->SecondaryBotTask.TaskTarget == ThisHive->HiveEdict)
 					{
 						int ThisDefenderStrength = 1;
 
@@ -5500,7 +6147,7 @@ void AIPlayerSetSecondaryAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (HiveToDefend)
 	{
-		AITASK_SetDefendTask(pBot, Task, HiveToDefend->HiveEntity->edict(), true);
+		AITASK_SetDefendTask(pBot, Task, HiveToDefend->HiveEdict, true);
 		return;
 	}
 

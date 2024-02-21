@@ -6,7 +6,11 @@
 
 #include "../AvHGamerules.h"
 
+#include <unordered_map>
+
 int m_spriteTexture;
+
+std::unordered_map<const char*, std::string> LocalizedLocationsMap;
 
 bool UTIL_CommanderTrace(const edict_t* pEdict, const Vector& start, const Vector& end)
 {
@@ -492,4 +496,91 @@ void UTIL_DrawHUDText(edict_t* pEntity, char channel, float x, float y, unsigned
 	MESSAGE_END(); // end
 
 	return;
+}
+
+void UTIL_ClearLocalizations()
+{
+	LocalizedLocationsMap.clear();
+}
+
+void UTIL_LocalizeText(const char* InputText, string& OutputText)
+{
+	// Don't localize empty strings
+	if (!strcmp(InputText, ""))
+	{
+		OutputText = "";
+	}
+
+	char theInputString[1024];
+
+	sprintf(theInputString, "%s", InputText);
+
+	std::unordered_map<const char*, std::string>::const_iterator FoundLocalization = LocalizedLocationsMap.find(theInputString);
+
+	if (FoundLocalization != LocalizedLocationsMap.end())
+	{
+		OutputText = FoundLocalization->second;
+		return;
+	}
+
+	char filename[256];
+
+	std::string localizedString(theInputString);
+
+	string titlesPath = string(getModDirectory()) + "/titles.txt";
+	strcpy(filename, titlesPath.c_str());
+
+	std::ifstream cFile(filename);
+	if (cFile.is_open())
+	{
+		std::string line;
+		while (getline(cFile, line))
+		{
+			line.erase(std::remove_if(line.begin(), line.end(), isspace),
+				line.end());
+			if (line[0] == '/' || line.empty())
+				continue;
+
+			if (line.compare(theInputString) == 0)
+			{
+				getline(cFile, line);
+				getline(cFile, localizedString);
+				break;
+
+			}
+		}
+	}
+
+	char theOutputString[1024];
+
+	sprintf(theOutputString, "%s", localizedString.c_str());
+
+	string Delimiter = "Hive -";
+	auto delimiterPos = localizedString.find(Delimiter);
+
+	if (delimiterPos == std::string::npos)
+	{
+		Delimiter = "Hive Location -";
+		delimiterPos = localizedString.find(Delimiter);
+	}
+
+	if (delimiterPos == std::string::npos)
+	{
+		Delimiter = "Hive Location  -";
+		delimiterPos = localizedString.find("Hive Location  -");
+	}
+
+	if (delimiterPos != std::string::npos)
+	{
+		auto AreaName = localizedString.substr(delimiterPos + Delimiter.length());
+
+		AreaName.erase(0, AreaName.find_first_not_of(" \r\n\t\v\f"));
+
+		sprintf(theOutputString, "%s", AreaName.c_str());
+	}
+
+	OutputText = theOutputString;
+
+	LocalizedLocationsMap[InputText] = OutputText;
+
 }

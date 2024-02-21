@@ -52,4 +52,7 @@ void UTIL_DrawLine(edict_t* pEntity, Vector start, Vector end, float drawTimeSec
 
 void UTIL_DrawHUDText(edict_t* pEntity, char channel, float x, float y, unsigned char r, unsigned char g, unsigned char b, const char* string);
 
+void UTIL_ClearLocalizations();
+void UTIL_LocalizeText(const char* InputText, string& OutputText);
+
 #endif

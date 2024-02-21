@@ -63,6 +63,11 @@ void AIPlayerNSMarineThink(AvHAIPlayer* pBot);
 void AIPlayerNSAlienThink(AvHAIPlayer* pBot);
 // Think routine for the combat game mode
 void AIPlayerCOThink(AvHAIPlayer* pBot);
+void AIPlayerCOMarineThink(AvHAIPlayer* pBot);
+void AIPlayerCOAlienThink(AvHAIPlayer* pBot);
+
+
+
 // Think routine for the deathmatch game mode (e.g. when playing CS maps)
 void AIPlayerDMThink(AvHAIPlayer* pBot);
 
@@ -93,6 +98,11 @@ void AIPlayerSetAlienHarasserPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 
 void AIPlayerSetSecondaryAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 void AIPlayerSetWantsAndNeedsAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
+
+void AIPlayerSetPrimaryCOMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
+void AIPlayerSetSecondaryCOMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
+void AIPlayerSetPrimaryCOAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
+void AIPlayerSetSecondaryCOAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 
 void BotSwitchToWeapon(AvHAIPlayer* pBot, AvHAIWeapon NewWeaponSlot);
 
