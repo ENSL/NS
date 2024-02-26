@@ -1864,8 +1864,17 @@ void UpdateAIPlayerCORole(AvHAIPlayer* pBot)
 
 		if (NumLerks + NumHarassers == 0)
 		{
-			SetNewAIPlayerRole(pBot, BOT_ROLE_HARASS);
-			return;
+			float LastSeenTime;
+			edict_t* PreviousLerk = AITAC_GetLastSeenLerkForTeam(BotTeam, LastSeenTime);
+
+			// We only go lerk if the last lerk we had in the match was either us, or we've not had another lerk in 30 seconds
+			// This prevents a situation where a human is lerk, gets killed, and a bot immediately takes over.
+			// This is undesireable as it pressures the human to pick something else to avoid too many lerks
+			if (LastSeenTime > 30.0f || PreviousLerk == pBot->Edict)
+			{
+				SetNewAIPlayerRole(pBot, BOT_ROLE_HARASS);
+				return;
+			}
 		}
 
 		int MaxOnos = (int)(ceilf((float)(AIMGR_GetNumPlayersOnTeam(BotTeam) - 2)) * 0.3f);

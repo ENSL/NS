@@ -410,6 +410,7 @@ typedef enum
 typedef enum
 {
 	MOVE_TASK_NONE = 0,
+	MOVE_TASK_MOVE,
 	MOVE_TASK_USE,
 	MOVE_TASK_BREAK,
 	MOVE_TASK_TOUCH,

@@ -152,5 +152,13 @@ bool IsPlayerReloading(const AvHPlayer* Player);
 // If the player is gestating, will return the target evolution. Otherwise, returns the iuser3
 AvHUser3 GetPlayerActiveClass(const AvHPlayer* Player);
 
+edict_t* UTIL_GetNearestLadderAtPoint(const Vector SearchLocation);
+Vector UTIL_GetNearestLadderNormal(edict_t* pEdict);
+Vector UTIL_GetNearestLadderNormal(Vector SearchLocation);
+Vector UTIL_GetNearestLadderCentrePoint(edict_t* pEdict);
+Vector UTIL_GetNearestLadderCentrePoint(const Vector SearchLocation);
+Vector UTIL_GetNearestLadderTopPoint(edict_t* pEdict);
+Vector UTIL_GetNearestLadderTopPoint(const Vector SearchLocation);
+Vector UTIL_GetNearestLadderBottomPoint(edict_t* pEdict);
 
 #endif

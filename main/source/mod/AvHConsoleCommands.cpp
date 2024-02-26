@@ -1586,6 +1586,21 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 		theSuccess = true;
 	}
+	else if (FStrEq(pcmd, "amonladder"))
+	{		
+		if (IsPlayerOnLadder(theAvHPlayer->edict()))
+		{
+			UTIL_SayText("TRUE\n", theAvHPlayer);
+		}
+		else
+		{
+			UTIL_SayText("FALSE\n", theAvHPlayer);
+		}
+
+
+
+		theSuccess = true;
+	}
 	else if (FStrEq(pcmd, "tracelift"))
 	{
 		Vector TraceStart = GetPlayerEyePosition(theAvHPlayer->edict()); // origin + pev->view_ofs

@@ -44,7 +44,9 @@ enum SamplePolyAreas
 	SAMPLE_POLYAREA_WALLCLIMB		= 4,	// Requires the ability to wall-stick, fly or blink
 	SAMPLE_POLYAREA_OBSTRUCTION		= 5,	// There is a door or weldable object in the way
 	SAMPLE_POLYAREA_STRUCTUREBLOCK	= 6,	// An enemy structure is blocking the way that must be destroyed
-	SAMPLE_POLYAREA_PHASEGATE		= 7		// Phase gate area, for area cost calculation
+	SAMPLE_POLYAREA_PHASEGATE		= 7,		// Phase gate area, for area cost calculation
+	SAMPLE_POLYAREA_LADDER			= 8,		// Phase gate area, for area cost calculation
+	SAMPLE_POLYAREA_LIFT			= 9,		// Phase gate area, for area cost calculation
 };
 
 // Possible movement types. Swim and door are not used
@@ -222,8 +224,7 @@ void StructureBlockedMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vect
 void FallMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint);
 // Called by NewMove, determines the movement direction and inputs required to climb a ladder to reach endpoint
 void LadderMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint, float RequiredClimbHeight, unsigned char NextArea);
-// Called by NewMove, determines the movement direction and inputs required to climb a ladder to reach endpoint as skulk, which requires different movement
-void SkulkLadderMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint, float RequiredClimbHeight, unsigned char NextArea);
+
 // Called by NewMove, determines the movement direction and inputs required to climb a wall to reach endpoint
 void WallClimbMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint, float RequiredClimbHeight);
 void BlinkClimbMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint, float RequiredClimbHeight);
@@ -417,11 +418,7 @@ unsigned char UTIL_GetNavAreaAtLocation(const nav_profile& NavProfile, const Vec
 // For printing out human-readable nav mesh areas
 const char* UTIL_NavmeshAreaToChar(const unsigned char Area);
 
-Vector UTIL_GetNearestLadderNormal(edict_t* pEdict);
-Vector UTIL_GetNearestLadderCentrePoint(edict_t* pEdict);
-Vector UTIL_GetNearestLadderTopPoint(edict_t* pEdict);
-Vector UTIL_GetNearestLadderTopPoint(const Vector SearchLocation);
-Vector UTIL_GetNearestLadderBottomPoint(edict_t* pEdict);
+
 
 // From the given start point, determine how high up the bot needs to climb to get to climb end. Will allow the bot to climb over railings
 float UTIL_FindZHeightForWallClimb(const Vector ClimbStart, const Vector ClimbEnd, const int HullNum);

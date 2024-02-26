@@ -60,6 +60,12 @@ extern nav_profile BaseNavProfiles[MAX_NAV_PROFILES]; // Array of nav profiles
 bool bNavMeshModified = false;
 extern bool bTileCacheUpToDate;
 
+edict_t* LastSeenLerkTeamA = nullptr; // Track who went lerk on team A last time. This ensures we don't get endless cycles of lerks
+edict_t* LastSeenLerkTeamB = nullptr; // Track who went lerk on team B last time. This ensures we don't get endless cycles of lerks
+
+float LastSeenLerkTeamATime = 0.0f;
+float LastSeenLerkTeamBTime = 0.0f;
+
 std::vector<AvHAIBuildableStructure*> AITAC_FindAllDeployables(const Vector& Location, const DeployableSearchFilter* Filter)
 {
 	std::vector<AvHAIBuildableStructure*> Result;
@@ -1423,6 +1429,39 @@ void AITAC_UpdateMapAIData()
 		AITAC_RefreshMarineItems();
 		last_item_refresh_time = gpGlobals->time;
 	}
+
+	vector<AvHPlayer*> AllTeamAPlayers = AITAC_GetAllPlayersOnTeamOfClass(GetGameRules()->GetTeamANumber(), AVH_USER3_ALIEN_PLAYER3, nullptr);
+	edict_t* LastTeamALerk = nullptr;
+
+	for (auto it = AllTeamAPlayers.begin(); it != AllTeamAPlayers.end(); it++)
+	{
+		edict_t* PlayerEdict = (*it)->edict();
+
+		if (FNullEnt(LastTeamALerk) || IsPlayerHuman(PlayerEdict))
+		{
+			LastTeamALerk = PlayerEdict;
+			LastSeenLerkTeamATime = gpGlobals->time;
+		}
+	}
+
+	LastSeenLerkTeamA = LastTeamALerk;
+
+	vector<AvHPlayer*> AllTeamBPlayers = AITAC_GetAllPlayersOnTeamOfClass(GetGameRules()->GetTeamBNumber(), AVH_USER3_ALIEN_PLAYER3, nullptr);
+	edict_t* LastTeamBLerk = nullptr;
+
+	for (auto it = AllTeamBPlayers.begin(); it != AllTeamBPlayers.end(); it++)
+	{
+		edict_t* PlayerEdict = (*it)->edict();
+
+		if (FNullEnt(LastTeamBLerk) || IsPlayerHuman(PlayerEdict))
+		{
+			LastTeamBLerk = PlayerEdict;
+			LastSeenLerkTeamBTime = gpGlobals->time;
+		}
+	}
+
+	LastSeenLerkTeamB = LastTeamALerk;
+
 }
 
 void AITAC_CheckNavMeshModified()
@@ -3060,6 +3099,28 @@ bool AITAC_AnyPlayersOfTeamInArea(const AvHTeamNumber Team, const Vector SearchL
 	return false;
 }
 
+vector<AvHPlayer*> AITAC_GetAllPlayersOnTeamOfClass(const AvHTeamNumber Team, const AvHUser3 SearchClass, const edict_t* IgnorePlayer)
+{
+	vector<AvHPlayer*> Result;
+
+	for (int i = 1; i <= gpGlobals->maxClients; i++)
+	{
+		edict_t* PlayerEdict = INDEXENT(i);
+
+		if (FNullEnt(PlayerEdict) || PlayerEdict->free || PlayerEdict == IgnorePlayer) { continue; }
+
+		AvHPlayer* PlayerRef = dynamic_cast<AvHPlayer*>(CBaseEntity::Instance(PlayerEdict));
+
+		if (PlayerRef != nullptr && (SearchClass == AVH_USER3_NONE || GetPlayerActiveClass(PlayerRef) == SearchClass) && (Team == TEAM_IND || PlayerRef->GetTeam() == Team) && IsPlayerActiveInGame(PlayerEdict))
+		{
+			Result.push_back(PlayerRef);
+		}
+
+	}
+
+	return Result;
+}
+
 int AITAC_GetNumPlayersOnTeamOfClass(const AvHTeamNumber Team, const AvHUser3 SearchClass, const edict_t* IgnorePlayer)
 {
 	int Result = 0;
@@ -4645,4 +4706,18 @@ int AITAC_GetNumWeaponsInPlay(AvHTeamNumber Team, AvHAIWeapon WeaponType)
 	}
 
 	return Result;
+}
+
+edict_t* AITAC_GetLastSeenLerkForTeam(AvHTeamNumber Team, float& LastSeenTime)
+{
+	if (Team == GetGameRules()->GetTeamANumber())
+	{
+		LastSeenTime = LastSeenLerkTeamATime;
+		return LastSeenLerkTeamA;
+	}
+	else
+	{
+		LastSeenTime = LastSeenLerkTeamBTime;
+		return LastSeenLerkTeamB;
+	}
 }
