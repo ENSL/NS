@@ -6,6 +6,8 @@
 #include "../AvHPlayerUpgrade.h"
 #include "AvHAIMath.h"
 #include "../AvHGamerules.h"
+#include "../pm_shared/pm_shared.h"
+#include "../pm_shared/pm_defs.h"
 
 bool IsPlayerSkulk(const edict_t* Player)
 {
@@ -137,6 +139,25 @@ bool IsPlayerBuffed(const edict_t* Player)
 
 bool IsPlayerOnLadder(const edict_t* Player)
 {
+	if (IsPlayerSkulk(Player))
+	{
+		edict_t* NearestLadder = UTIL_GetNearestLadderAtPoint(Player->v.origin);
+
+		if (FNullEnt(NearestLadder)) { return false; }
+
+		if (vPointOverlaps3D(Player->v.origin, NearestLadder->v.absmin, NearestLadder->v.absmax)) { return true; }
+
+		trace_t TraceResult;
+
+		Vector TraceStart = Player->v.origin;
+		Vector TraceEnd = UTIL_GetCentreOfEntity(NearestLadder);
+		TraceEnd.z = TraceStart.z;
+
+		NS_TraceLine(TraceStart, TraceEnd, 1, PM_WORLD_ONLY, -1, true, TraceResult);
+
+		return (TraceResult.fraction < 0.01f);
+	}
+
 	return (Player->v.movetype == MOVETYPE_FLY);
 }
 
@@ -764,4 +785,205 @@ AvHUser3 GetPlayerActiveClass(const AvHPlayer* Player)
 
 	// Player isn't gestating, just return whatever they are now
 	return (AvHUser3)Player->pev->iuser3;
+}
+
+edict_t* UTIL_GetNearestLadderAtPoint(const Vector SearchLocation)
+{
+	CBaseEntity* entity = NULL;
+
+	entity = UTIL_FindEntityByClassname(entity, "func_ladder");
+
+	CBaseEntity* closestLadderRef = entity;
+	float lowestDist = FLT_MAX;
+
+	while (entity)
+	{
+		Vector LadderMin = entity->pev->absmin;
+		Vector LadderMax = entity->pev->absmax;
+
+		float dist = vDistanceFromLine3D(LadderMin, LadderMax, SearchLocation);
+
+		if (dist < lowestDist)
+		{
+			closestLadderRef = entity;
+			lowestDist = dist;
+		}
+
+		entity = UTIL_FindEntityByClassname(entity, "func_ladder");
+	}
+
+	return (closestLadderRef) ? closestLadderRef->edict() : nullptr;
+}
+
+Vector UTIL_GetNearestLadderNormal(edict_t* pEdict)
+{
+	return UTIL_GetNearestLadderNormal(pEdict->v.origin);
+}
+
+Vector UTIL_GetNearestLadderNormal(Vector SearchLocation)
+{
+	TraceResult result;
+	CBaseEntity* entity = NULL;
+
+	entity = UTIL_FindEntityByClassname(entity, "func_ladder");
+
+	CBaseEntity* closestLadderRef = entity;
+	float lowestDist = FLT_MAX;
+
+	while (entity)
+	{
+		Vector LadderMin = entity->pev->absmin;
+		Vector LadderMax = entity->pev->absmax;
+
+		float dist = vDistanceFromLine3D(LadderMin, LadderMax, SearchLocation);
+
+		if (dist < lowestDist)
+		{
+			closestLadderRef = entity;
+			lowestDist = dist;
+		}
+
+		entity = UTIL_FindEntityByClassname(entity, "func_ladder");
+	}
+
+	if (closestLadderRef)
+	{
+		Vector CentrePoint = closestLadderRef->pev->absmin + ((closestLadderRef->pev->absmax - closestLadderRef->pev->absmin) * 0.5f);
+		CentrePoint.z = SearchLocation.z;
+
+		if (vPointOverlaps3D(SearchLocation, closestLadderRef->pev->absmin, closestLadderRef->pev->absmax))
+		{
+			CentrePoint = SearchLocation;
+			CentrePoint.z = closestLadderRef->pev->absmin.z;
+		}
+
+		trace_t TraceResult;
+		NS_TraceLine(SearchLocation, CentrePoint, 1, PM_WORLD_ONLY, -1, true, TraceResult);
+
+		if (TraceResult.fraction < 1.0f)
+		{
+			return TraceResult.plane.normal;
+		}
+	}
+
+	return ZERO_VECTOR;
+}
+
+Vector UTIL_GetNearestLadderBottomPoint(edict_t* pEdict)
+{
+	TraceResult result;
+	CBaseEntity* entity = NULL;
+
+	entity = UTIL_FindEntityByClassname(entity, "func_ladder");
+
+	CBaseEntity* closestLadderRef = entity;
+	float lowestDist = 999999.0f;
+
+	while (entity)
+	{
+		Vector LadderMin = entity->pev->absmin;
+		Vector LadderMax = entity->pev->absmax;
+
+		float dist = vDistanceFromLine3D(LadderMin, LadderMax, pEdict->v.origin);
+
+		if (dist < lowestDist)
+		{
+			closestLadderRef = entity;
+			lowestDist = dist;
+		}
+
+		entity = UTIL_FindEntityByClassname(entity, "func_ladder");
+	}
+
+	if (closestLadderRef)
+	{
+		Vector Centre = (closestLadderRef->pev->absmin + (closestLadderRef->pev->size * 0.5f));
+		Centre.z = closestLadderRef->pev->absmin.z;
+		return Centre;
+
+	}
+
+	return pEdict->v.origin;
+}
+
+Vector UTIL_GetNearestLadderTopPoint(const Vector SearchLocation)
+{
+	TraceResult result;
+	CBaseEntity* entity = NULL;
+
+	entity = UTIL_FindEntityByClassname(entity, "func_ladder");
+
+	CBaseEntity* closestLadderRef = entity;
+	float lowestDist = 999999.0f;
+
+	while (entity)
+	{
+		Vector LadderMin = entity->pev->absmin;
+		Vector LadderMax = entity->pev->absmax;
+
+		float dist = vDistanceFromLine3D(LadderMin, LadderMax, SearchLocation);
+
+		if (dist < lowestDist)
+		{
+			closestLadderRef = entity;
+			lowestDist = dist;
+		}
+
+		entity = UTIL_FindEntityByClassname(entity, "func_ladder");
+	}
+
+	if (closestLadderRef)
+	{
+		Vector Centre = (closestLadderRef->pev->absmin + ((closestLadderRef->pev->absmax - closestLadderRef->pev->absmin) * 0.5f));
+		Centre.z = closestLadderRef->pev->absmax.z;
+		return Centre;
+
+	}
+
+	return SearchLocation;
+}
+
+Vector UTIL_GetNearestLadderTopPoint(edict_t* pEdict)
+{
+	return UTIL_GetNearestLadderTopPoint(pEdict->v.origin);
+}
+
+Vector UTIL_GetNearestLadderCentrePoint(edict_t* pEdict)
+{
+	return UTIL_GetNearestLadderCentrePoint(pEdict->v.origin);
+}
+
+Vector UTIL_GetNearestLadderCentrePoint(const Vector SearchLocation)
+{
+	TraceResult result;
+	CBaseEntity* entity = NULL;
+
+	entity = UTIL_FindEntityByClassname(entity, "func_ladder");
+
+	CBaseEntity* closestLadderRef = entity;
+	float lowestDist = 999999.0f;
+
+	while (entity)
+	{
+		Vector LadderMin = entity->pev->absmin;
+		Vector LadderMax = entity->pev->absmax;
+
+		float dist = vDistanceFromLine3D(LadderMin, LadderMax, SearchLocation);
+
+		if (dist < lowestDist)
+		{
+			closestLadderRef = entity;
+			lowestDist = dist;
+		}
+
+		entity = UTIL_FindEntityByClassname(entity, "func_ladder");
+	}
+
+	if (closestLadderRef)
+	{
+		return (closestLadderRef->pev->absmin + ((closestLadderRef->pev->absmax - closestLadderRef->pev->absmin) * 0.5f));
+
+	}
+
+	return SearchLocation;
 }

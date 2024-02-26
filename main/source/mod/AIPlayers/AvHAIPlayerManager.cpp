@@ -621,7 +621,7 @@ void AIMGR_UpdateAIPlayers()
 
 				AIDEBUG_DrawBotPath(bot);
 
-				if (bot->BotNavInfo.CurrentPathPoint != bot->BotNavInfo.CurrentPath.end())
+				if (bot->BotNavInfo.CurrentPath.size() > 0 && bot->BotNavInfo.CurrentPathPoint != bot->BotNavInfo.CurrentPath.end())
 				{
 					UTIL_DrawLine(INDEXENT(1), bot->Edict->v.origin, bot->BotNavInfo.CurrentPathPoint->Location, 0, 255, 255);
 				}

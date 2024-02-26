@@ -23,6 +23,7 @@
 void PM_Init( struct playermove_s *ppmove );
 void PM_Move ( struct playermove_s *ppmove, int server );
 char PM_FindTextureType( char *name );
+void NS_TraceLine(float* start, float* end, int hull, int traceFlags, int ignore_pe, bool ignorePlayers, trace_t& result);
 
 // Spectator Movement modes (stored in pev->iuser1, so the physics code can get at them)
 #define OBS_NONE				0
