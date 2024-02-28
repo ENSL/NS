@@ -3247,15 +3247,31 @@ void LadderMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoin
 	if (IsPlayerOnLadder(pBot->Edict))
 	{
 		// We're on the ladder and actively climbing
-		Vector CurrentLadderNormal = UTIL_GetNearestLadderNormal(pBot->CollisionHullBottomLocation + Vector(0.0f, 0.0f, 5.0f));
+		Vector CurrentLadderNormal;
+		
+		if (IsPlayerSkulk(pBot->Edict))
+		{
+			CurrentLadderNormal = UTIL_GetNearestSurfaceNormal(pBot->Edict->v.origin);
+		}
+		else
+		{
+			CurrentLadderNormal = UTIL_GetNearestLadderNormal(pBot->CollisionHullBottomLocation + Vector(0.0f, 0.0f, 5.0f));
+		} 
+
 		//CurrentLadderNormal = UTIL_GetVectorNormal2D(CurrentLadderNormal);
 
 		if (vIsZero(CurrentLadderNormal))
 		{
-			CurrentLadderNormal = UTIL_GetVectorNormal2D(EndPoint - pBot->Edict->v.origin);
-		}
 
-		UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, pBot->Edict->v.origin + (CurrentLadderNormal * 100.0f), 0.5f);
+			if (EndPoint.z > StartPoint.z)
+			{
+				CurrentLadderNormal = UTIL_GetVectorNormal2D(StartPoint - EndPoint);
+			}
+			else
+			{
+				CurrentLadderNormal = UTIL_GetVectorNormal2D(EndPoint - StartPoint);
+			}
+		}
 
 		const Vector LadderRightNormal = UTIL_GetVectorNormal(UTIL_GetCrossProduct(CurrentLadderNormal, UP_VECTOR));
 
@@ -5156,12 +5172,12 @@ void UpdateBotStuck(AvHAIPlayer* pBot)
 		}
 		else
 		{
-			pBot->BotNavInfo.StuckInfo.TotalStuckTime += AIMGR_GetBotDeltaTime();
+			pBot->BotNavInfo.StuckInfo.TotalStuckTime += fminf(AIMGR_GetBotDeltaTime(), 0.016f);
 		}
 	}
 	else
 	{
-		pBot->BotNavInfo.StuckInfo.TotalStuckTime += AIMGR_GetBotDeltaTime();
+		pBot->BotNavInfo.StuckInfo.TotalStuckTime += fminf(AIMGR_GetBotDeltaTime(), 0.016f);
 	}
 
 	if (pBot->BotNavInfo.StuckInfo.TotalStuckTime > 0.25f)
