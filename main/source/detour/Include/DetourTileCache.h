@@ -300,14 +300,14 @@ private:
 	dtOffMeshConnection* m_offMeshConnections;
 	dtOffMeshConnection* m_nextFreeOffMeshConnection;
 	
-	static const int MAX_REQUESTS = 256;
+	static const int MAX_REQUESTS = 512;
 	ObstacleRequest m_reqs[MAX_REQUESTS];
 	int m_nreqs;
 
 	OffMeshRequest m_OffMeshReqs[MAX_REQUESTS];
 	int m_nOffMeshReqs;
 	
-	static const int MAX_UPDATE = 256;
+	static const int MAX_UPDATE = 512;
 	dtCompressedTileRef m_update[MAX_UPDATE];
 	int m_nupdate;
 };

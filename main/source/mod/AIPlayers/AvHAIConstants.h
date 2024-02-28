@@ -677,6 +677,7 @@ typedef struct _AI_COMMANDER_REQUEST
 	AvHMessageID RequestType = MESSAGE_NULL; // What did they request?
 	bool bResponded = false; // Have we already responded to this request?
 	float RequestTime = 0.0f; // When the request came in
+	int ResponseAttempts = 0; // How many times have we tried to respond to this request?
 } ai_commander_request;
 
 typedef struct AVH_AI_PLAYER

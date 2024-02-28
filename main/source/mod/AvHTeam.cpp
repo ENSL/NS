@@ -158,6 +158,8 @@
 #include "AvHNetworkMessages.h"
 #include "AvHNexusServer.h"
 
+#include "AIPlayers/AvHAIPlayerManager.h"
+
 extern int gPhaseInEventID;
 extern cvar_t avh_votecasttime;
 extern cvar_t avh_votedowntime;
@@ -721,6 +723,10 @@ bool AvHTeam::PlayerVote(int inPlayerIndex, string& outPlayerMessage)
 				if(theCommander)
 				{
 					theCommander->LogPlayerActionPlayer(theVotingPlayer, "votedown");
+					if (theCommander->pev->flags & FL_FAKECLIENT)
+					{
+						AIMGR_SetCommanderAllowedTime(theVotingPlayer->GetTeam(), gpGlobals->time + 60.0f);
+					}
 				}
 			}
 		}

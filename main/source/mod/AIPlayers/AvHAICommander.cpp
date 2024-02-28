@@ -868,10 +868,50 @@ bool AICOMM_IsRequestValid(ai_commander_request* Request)
 {
 	if (Request->bResponded) { return false; }
 
+	// We tried and failed to respond 5 times, give up so we don't block the queue of people needing help
+	if (Request->ResponseAttempts > 5) { return false; }
+
+	edict_t* Requestor = Request->Requestor;
+
+	if (FNullEnt(Requestor) || !IsPlayerActiveInGame(Requestor)) { return false; }
+
+	AvHPlayer* PlayerRef = dynamic_cast<AvHPlayer*>(CBaseEntity::Instance(Requestor));
+
+	if (!PlayerRef) { return false; }
+
+	AvHTeamNumber RequestorTeam = PlayerRef->GetTeam();
+
 	switch (Request->RequestType)
 	{
 		case COMMANDER_NEXTHEALTH:
-			return Request->Requestor->v.health < Request->Requestor->v.max_health;
+			return Requestor->v.health < Requestor->v.max_health;
+		case BUILD_SHOTGUN:
+			return !PlayerHasWeapon(PlayerRef, WEAPON_MARINE_SHOTGUN)
+				&& !AITAC_ItemExistsInLocation(Requestor->v.origin, DEPLOYABLE_ITEM_SHOTGUN, RequestorTeam, AI_REACHABILITY_MARINE, 0.0f, UTIL_MetresToGoldSrcUnits(5.0f), false)
+				&& AITAC_IsCompletedStructureOfTypeNearLocation(RequestorTeam, (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY), Requestor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f)) ;
+		case BUILD_WELDER:
+			return !PlayerHasWeapon(PlayerRef, WEAPON_MARINE_WELDER)
+				&& !AITAC_ItemExistsInLocation(Requestor->v.origin, DEPLOYABLE_ITEM_WELDER, RequestorTeam, AI_REACHABILITY_MARINE, 0.0f, UTIL_MetresToGoldSrcUnits(5.0f), false)
+				&& AITAC_IsCompletedStructureOfTypeNearLocation(RequestorTeam, (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY), Requestor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+		case BUILD_HMG:
+			return !PlayerHasWeapon(PlayerRef, WEAPON_MARINE_HMG)
+				&& !AITAC_ItemExistsInLocation(Requestor->v.origin, DEPLOYABLE_ITEM_HMG, RequestorTeam, AI_REACHABILITY_MARINE, 0.0f, UTIL_MetresToGoldSrcUnits(5.0f), false)
+				&& AITAC_IsCompletedStructureOfTypeNearLocation(RequestorTeam, STRUCTURE_MARINE_ADVARMOURY, Requestor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+		case BUILD_MINES:
+			return !PlayerHasWeapon(PlayerRef, WEAPON_MARINE_MINES)
+				&& !AITAC_ItemExistsInLocation(Requestor->v.origin, DEPLOYABLE_ITEM_MINES, RequestorTeam, AI_REACHABILITY_MARINE, 0.0f, UTIL_MetresToGoldSrcUnits(5.0f), false)
+				&& AITAC_IsCompletedStructureOfTypeNearLocation(RequestorTeam, (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY), Requestor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+		case BUILD_CAT:
+			return !IsPlayerBuffed(Requestor)
+				&& !AITAC_ItemExistsInLocation(Requestor->v.origin, DEPLOYABLE_ITEM_CATALYSTS, RequestorTeam, AI_REACHABILITY_MARINE, 0.0f, UTIL_MetresToGoldSrcUnits(5.0f), false)
+				&& AITAC_IsCompletedStructureOfTypeNearLocation(RequestorTeam, (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY), Requestor->v.origin, 0.0f)
+				&& AITAC_ResearchIsComplete(RequestorTeam, TECH_RESEARCH_CATALYSTS);
+		case BUILD_PHASEGATE:
+			return !AITAC_IsStructureOfTypeNearLocation(RequestorTeam, STRUCTURE_MARINE_PHASEGATE, Requestor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+		case BUILD_TURRET_FACTORY:
+			return !AITAC_IsStructureOfTypeNearLocation(RequestorTeam, (STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_MARINE_ADVTURRETFACTORY), Requestor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+		case BUILD_ARMORY:
+			return !AITAC_IsStructureOfTypeNearLocation(RequestorTeam, (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY), Requestor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));		
 		default:
 			return true;
 	}
@@ -2215,6 +2255,10 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 				NextRequest->bResponded = true;
 			}
 		}
+		else
+		{
+			NextRequest->ResponseAttempts++;
+		}
 
 		return true;
 	}
@@ -2280,6 +2324,10 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 					NextRequest->bResponded = true;
 				}
 			}
+			else
+			{
+				NextRequest->ResponseAttempts++;
+			}
 
 			return true;
 		}
@@ -2296,6 +2344,276 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 	{
 		// TODO: Have the commander prioritise this player when looking for people to give orders to
 		NextRequest->bResponded = true;
+	}
+
+	if (NextRequest->RequestType == BUILD_CAT)
+	{
+		Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), Requestor->v.origin, UTIL_MetresToGoldSrcUnits(2.0f));
+		bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_AMMO, DeployLocation);
+
+		if (bSuccess)
+		{
+			NextRequest->bResponded = true;
+		}
+		else
+		{
+			NextRequest->ResponseAttempts++;
+		}
+
+		return true;
+	}
+
+	if (NextRequest->RequestType == BUILD_WELDER)
+	{
+		if (pBot->Player->GetResources() < BALANCE_VAR(kWelderCost)) { return false; }
+
+		DeployableSearchFilter ArmouryFilter;
+		ArmouryFilter.DeployableTeam = CommanderTeam;
+		ArmouryFilter.DeployableTypes = (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY);
+		ArmouryFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+		ArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+		AvHAIBuildableStructure* NearestArmoury = AITAC_FindClosestDeployableToLocation(Requestor->v.origin, &ArmouryFilter);
+
+		if (!NearestArmoury)
+		{
+			NextRequest->bResponded = true;
+			return false;
+		}
+
+		Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(4.0f));
+
+		if (vIsZero(DeployLocation))
+		{
+			DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(4.0f));
+		}
+
+		if (vIsZero(DeployLocation))
+		{
+			NextRequest->bResponded = true;
+			return false;
+		}
+
+		bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_WELDER, DeployLocation);
+
+		NextRequest->ResponseAttempts++;
+
+		NextRequest->bResponded = bSuccess;
+		return true;
+
+	}
+
+	if (NextRequest->RequestType == BUILD_SHOTGUN)
+	{
+		if (pBot->Player->GetResources() < BALANCE_VAR(kShotgunCost)) { return false; }
+
+		DeployableSearchFilter ArmouryFilter;
+		ArmouryFilter.DeployableTeam = CommanderTeam;
+		ArmouryFilter.DeployableTypes = (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY);
+		ArmouryFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+		ArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+		AvHAIBuildableStructure* NearestArmoury = AITAC_FindClosestDeployableToLocation(Requestor->v.origin, &ArmouryFilter);
+
+		if (!NearestArmoury)
+		{
+			NextRequest->bResponded = true;
+			return false;
+		}
+
+		Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(4.0f));
+
+		if (vIsZero(DeployLocation))
+		{
+			DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(4.0f));
+		}
+
+		if (vIsZero(DeployLocation))
+		{
+			NextRequest->bResponded = true;
+			return false;
+		}
+
+		bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_SHOTGUN, DeployLocation);
+
+		NextRequest->ResponseAttempts++;
+
+		NextRequest->bResponded = bSuccess;
+		return true;
+
+	}
+
+	if (NextRequest->RequestType == BUILD_MINES)
+	{
+		if (pBot->Player->GetResources() < BALANCE_VAR(kMineCost)) { return false; }
+
+		DeployableSearchFilter ArmouryFilter;
+		ArmouryFilter.DeployableTeam = CommanderTeam;
+		ArmouryFilter.DeployableTypes = (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY);
+		ArmouryFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+		ArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+		AvHAIBuildableStructure* NearestArmoury = AITAC_FindClosestDeployableToLocation(Requestor->v.origin, &ArmouryFilter);
+
+		if (!NearestArmoury)
+		{
+			NextRequest->bResponded = true;
+			return false;
+		}
+
+		Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(4.0f));
+
+		if (vIsZero(DeployLocation))
+		{
+			DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(4.0f));
+		}
+
+		if (vIsZero(DeployLocation))
+		{
+			NextRequest->bResponded = true;
+			return false;
+		}
+
+		bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_MINES, DeployLocation);
+
+		NextRequest->ResponseAttempts++;
+
+		NextRequest->bResponded = bSuccess;
+		return true;
+
+	}
+
+	if (NextRequest->RequestType == BUILD_HMG)
+	{
+		if (pBot->Player->GetResources() < BALANCE_VAR(kHMGCost)) { return false; }
+
+		DeployableSearchFilter ArmouryFilter;
+		ArmouryFilter.DeployableTeam = CommanderTeam;
+		ArmouryFilter.DeployableTypes = STRUCTURE_MARINE_ADVARMOURY;
+		ArmouryFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+		ArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+		AvHAIBuildableStructure* NearestArmoury = AITAC_FindClosestDeployableToLocation(Requestor->v.origin, &ArmouryFilter);
+
+		if (!NearestArmoury)
+		{
+			NextRequest->bResponded = true;
+			return false;
+		}
+
+		Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(4.0f));
+
+		if (vIsZero(DeployLocation))
+		{
+			DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(4.0f));
+		}
+
+		if (vIsZero(DeployLocation))
+		{
+			NextRequest->bResponded = true;
+			return false;
+		}
+
+		bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_HMG, DeployLocation);
+
+		NextRequest->ResponseAttempts++;
+
+		NextRequest->bResponded = bSuccess;
+		return true;
+
+	}
+
+	if (NextRequest->RequestType == BUILD_PHASEGATE)
+	{
+		if (pBot->Player->GetResources() < BALANCE_VAR(kPhaseGateCost)) { return false; }
+
+		Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), Requestor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+
+		if (vIsZero(DeployLocation))
+		{
+			DeployLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), Requestor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+		}
+
+		if (vIsZero(DeployLocation))
+		{
+			NextRequest->bResponded = true;
+			return false;
+		}
+
+		bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_PHASEGATE, DeployLocation);
+
+		NextRequest->ResponseAttempts++;
+
+		NextRequest->bResponded = bSuccess;
+		return true;
+
+	}
+
+	if (NextRequest->RequestType == BUILD_TURRET_FACTORY)
+	{
+		if (pBot->Player->GetResources() < BALANCE_VAR(kTurretFactoryCost)) { return false; }
+
+		Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), Requestor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+
+		if (vIsZero(DeployLocation))
+		{
+			DeployLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), Requestor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+		}
+
+		if (vIsZero(DeployLocation))
+		{
+			NextRequest->bResponded = true;
+			return false;
+		}
+
+		bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_TURRETFACTORY, DeployLocation);
+
+		NextRequest->ResponseAttempts++;
+
+		NextRequest->bResponded = bSuccess;
+		return true;
+
+	}
+
+	if (NextRequest->RequestType == BUILD_TURRET)
+	{
+		if (pBot->Player->GetResources() < BALANCE_VAR(kSentryCost)) { return false; }
+
+		DeployableSearchFilter TFFilter;
+		TFFilter.DeployableTeam = CommanderTeam;
+		TFFilter.DeployableTypes = (STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_MARINE_ADVTURRETFACTORY);
+		TFFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+		TFFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+		TFFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(10.0f);
+
+		AvHAIBuildableStructure* NearestTF = AITAC_FindClosestDeployableToLocation(Requestor->v.origin, &TFFilter);
+
+		if (!NearestTF)
+		{
+			NextRequest->bResponded = true;
+			return false;
+		}
+
+		Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), NearestTF->Location, UTIL_MetresToGoldSrcUnits(5.0f));
+
+		if (vIsZero(DeployLocation))
+		{
+			DeployLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), NearestTF->Location, UTIL_MetresToGoldSrcUnits(5.0f));
+		}
+
+		if (vIsZero(DeployLocation))
+		{
+			NextRequest->bResponded = true;
+			return false;
+		}
+
+		bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_TURRET, DeployLocation);
+
+		NextRequest->ResponseAttempts++;
+
+		NextRequest->bResponded = bSuccess;
+		return true;
+
 	}
 
 	return false;
@@ -2445,6 +2763,8 @@ bool AICOMM_ShouldCommanderLeaveChair(AvHAIPlayer* pBot)
 	{
 		if (AIMGR_GetNumHumanPlayersOnTeam(pBot->Player->GetTeam()) > 0) { return true;}
 	}
+
+	if (IsPlayerCommander(pBot->Edict) && AIMGR_GetCommanderAllowedTime(pBot->Player->GetTeam()) > gpGlobals->time) { return true; }
 
 	int NumAliveMarinesInBase = AITAC_GetNumPlayersOfTeamInArea(pBot->Player->GetTeam(), AITAC_GetCommChairLocation(pBot->Player->GetTeam()), UTIL_MetresToGoldSrcUnits(30.0f), true, pBot->Edict, AVH_USER3_NONE);
 
@@ -2674,4 +2994,64 @@ bool AICOMM_ShouldBeacon(AvHAIPlayer* pBot)
 	return false;
 
 
+}
+
+void AICOMM_ReceiveChatRequest(AvHAIPlayer* Commander, edict_t* Requestor, const char* Request)
+{
+	AvHMessageID NewRequestType = MESSAGE_NULL;
+
+	if (!stricmp(Request, "shotgun") || !stricmp(Request, "sg") || !stricmp(Request, "shotty"))
+	{
+		NewRequestType = BUILD_SHOTGUN;
+	}
+	else if (!stricmp(Request, "welder"))
+	{
+		NewRequestType = BUILD_WELDER;
+	}
+	else if (!stricmp(Request, "HMG"))
+	{
+		NewRequestType = BUILD_HMG;
+	}
+	else if (!stricmp(Request, "mines"))
+	{
+		NewRequestType = BUILD_MINES;
+	}
+	else if (!stricmp(Request, "cat") || !stricmp(Request, "cats") || !stricmp(Request, "catalysts"))
+	{
+		NewRequestType = BUILD_CAT;
+	}
+	else if (!stricmp(Request, "pg") || !stricmp(Request, "phase") || !stricmp(Request, "phasegate"))
+	{
+		NewRequestType = BUILD_PHASEGATE;
+	}
+	else if (!stricmp(Request, "TF") || !stricmp(Request, "turretfactory"))
+	{
+		NewRequestType = BUILD_TURRET_FACTORY;
+	}
+	else if (!stricmp(Request, "turret"))
+	{
+		NewRequestType = BUILD_TURRET;
+	}
+	else if (!stricmp(Request, "armory") || !stricmp(Request, "armoury"))
+	{
+		NewRequestType = BUILD_ARMORY;
+	}
+
+	if (NewRequestType == MESSAGE_NULL) { return; }
+
+	ai_commander_request* ExistingRequest = AICOMM_GetExistingRequestForPlayer(Commander, Requestor);
+
+	ai_commander_request NewRequest;
+	ai_commander_request* RequestRef = (ExistingRequest) ? ExistingRequest : &NewRequest;
+
+	RequestRef->bNewRequest = true;
+	RequestRef->bResponded = false;
+	RequestRef->RequestTime = gpGlobals->time;
+	RequestRef->RequestType = NewRequestType;
+	RequestRef->Requestor = Requestor;
+
+	if (!ExistingRequest)
+	{
+		Commander->ActiveRequests.push_back(NewRequest);
+	}
 }

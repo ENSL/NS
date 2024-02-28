@@ -69,4 +69,6 @@ const AvHAIHiveDefinition* AICOMM_GetHiveSiegeOpportunityNearestLocation(AvHAIPl
 bool AICOMM_ShouldCommanderPrioritiseNodes(AvHAIPlayer* pBot);
 bool AICOMM_ShouldBeacon(AvHAIPlayer* pBot);
 
+void AICOMM_ReceiveChatRequest(AvHAIPlayer* Commander, edict_t* Requestor, const char* Request);
+
 #endif // AVH_AI_COMMANDER_H
