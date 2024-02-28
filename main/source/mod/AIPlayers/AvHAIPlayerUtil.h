@@ -161,4 +161,6 @@ Vector UTIL_GetNearestLadderTopPoint(edict_t* pEdict);
 Vector UTIL_GetNearestLadderTopPoint(const Vector SearchLocation);
 Vector UTIL_GetNearestLadderBottomPoint(edict_t* pEdict);
 
+Vector UTIL_GetNearestSurfaceNormal(Vector SearchLocation);
+
 #endif
