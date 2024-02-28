@@ -942,6 +942,8 @@ const float kCommanderHierarchyScaleFactor = .0002f;
 #define kReadyNotification			"ready"
 #define kNotReadyNotification		"notready"
 
+#define kAICommanderRequest			"comm"
+
 const int	kOverwatchBreakingVelocity					= 5;
 const float kOverwatchAcquireTime						= 6.0f;
 const float	kOverwatchLostTargetTime					= 4.0f;

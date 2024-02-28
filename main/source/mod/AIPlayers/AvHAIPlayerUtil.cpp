@@ -848,21 +848,161 @@ Vector UTIL_GetNearestLadderNormal(Vector SearchLocation)
 
 	if (closestLadderRef)
 	{
-		Vector CentrePoint = closestLadderRef->pev->absmin + ((closestLadderRef->pev->absmax - closestLadderRef->pev->absmin) * 0.5f);
-		CentrePoint.z = SearchLocation.z;
-
 		if (vPointOverlaps3D(SearchLocation, closestLadderRef->pev->absmin, closestLadderRef->pev->absmax))
 		{
-			CentrePoint = SearchLocation;
-			CentrePoint.z = closestLadderRef->pev->absmin.z;
+			Vector Trace1End, Trace2End, Trace3End, Trace4End, Trace5End, Trace6End, Trace7End, Trace8End;
+			Trace1End = Trace2End = Trace3End = Trace4End = Trace5End = Trace6End = Trace7End = Trace8End = SearchLocation;
+
+			Trace1End.x += 32.0f;
+			Trace1End.y += 32.0f;
+
+			Trace2End.x += 32.0f;
+			Trace2End.y -= 32.0f;
+
+			Trace3End.x -= 32.0f;
+			Trace3End.y -= 32.0f;
+
+			Trace4End.x -= 32.0f;
+			Trace4End.y += 32.0f;
+
+			Trace5End.x += 32.0f;
+
+			Trace6End.x -= 32.0f;
+
+			Trace7End.y -= 32.0f;
+
+			Trace8End.y += 32.0f;
+
+			Vector ClosestNormal = ZERO_VECTOR;
+			float MinDist = 0.0f;
+
+			trace_t TraceResult;
+			NS_TraceLine(SearchLocation, Trace1End, 1, PM_NORMAL, -1, true, TraceResult);
+
+			UTIL_DrawLine(INDEXENT(1), SearchLocation, Trace1End, 0.5f, 255, 0, 0);
+
+			if (TraceResult.fraction < 1.0f)
+			{
+				int PointContents = UTIL_PointContents(TraceResult.endpos);
+
+				if (vIsZero(ClosestNormal) || TraceResult.fraction < MinDist)
+				{
+					ClosestNormal = TraceResult.plane.normal;
+					MinDist = TraceResult.fraction;
+				}
+			}
+
+			UTIL_DrawLine(INDEXENT(1), SearchLocation, Trace2End, 0.5f, 0, 128, 0);
+
+			NS_TraceLine(SearchLocation, Trace2End, 1, PM_NORMAL, -1, true, TraceResult);
+
+			if (TraceResult.fraction < 1.0f)
+			{
+				int PointContents = UTIL_PointContents(TraceResult.endpos);
+
+				if (vIsZero(ClosestNormal) || TraceResult.fraction < MinDist)
+				{
+					ClosestNormal = TraceResult.plane.normal;
+					MinDist = TraceResult.fraction;
+				}
+			}
+
+			UTIL_DrawLine(INDEXENT(1), SearchLocation, Trace3End, 0.5f, 0, 0, 255);
+
+			NS_TraceLine(SearchLocation, Trace3End, 1, PM_NORMAL, -1, true, TraceResult);
+
+			if (TraceResult.fraction < 1.0f)
+			{
+				int PointContents = UTIL_PointContents(TraceResult.endpos);
+
+				if (vIsZero(ClosestNormal) || TraceResult.fraction < MinDist)
+				{
+					ClosestNormal = TraceResult.plane.normal;
+					MinDist = TraceResult.fraction;
+				}
+			}
+
+			UTIL_DrawLine(INDEXENT(1), SearchLocation, Trace4End, 0.5f, 255, 255, 0);
+
+			NS_TraceLine(SearchLocation, Trace4End, 1, PM_NORMAL, -1, true, TraceResult);
+
+			if (TraceResult.fraction < 1.0f)
+			{
+				int PointContents = UTIL_PointContents(TraceResult.endpos);
+
+				if (vIsZero(ClosestNormal) || TraceResult.fraction < MinDist)
+				{
+					ClosestNormal = TraceResult.plane.normal;
+					MinDist = TraceResult.fraction;
+				}
+			}
+
+			NS_TraceLine(SearchLocation, Trace5End, 1, PM_NORMAL, -1, true, TraceResult);
+
+			if (TraceResult.fraction < 1.0f)
+			{
+				int PointContents = UTIL_PointContents(TraceResult.endpos);
+
+				if (vIsZero(ClosestNormal) || TraceResult.fraction < MinDist)
+				{
+					ClosestNormal = TraceResult.plane.normal;
+					MinDist = TraceResult.fraction;
+				}
+			}
+
+			NS_TraceLine(SearchLocation, Trace6End, 1, PM_NORMAL, -1, true, TraceResult);
+
+			if (TraceResult.fraction < 1.0f)
+			{
+				int PointContents = UTIL_PointContents(TraceResult.endpos);
+
+				if (vIsZero(ClosestNormal) || TraceResult.fraction < MinDist)
+				{
+					ClosestNormal = TraceResult.plane.normal;
+					MinDist = TraceResult.fraction;
+				}
+			}
+
+			NS_TraceLine(SearchLocation, Trace7End, 1, PM_NORMAL, -1, true, TraceResult);
+
+			if (TraceResult.fraction < 1.0f)
+			{
+				int PointContents = UTIL_PointContents(TraceResult.endpos);
+
+				if (vIsZero(ClosestNormal) || TraceResult.fraction < MinDist)
+				{
+					ClosestNormal = TraceResult.plane.normal;
+					MinDist = TraceResult.fraction;
+				}
+			}
+
+			NS_TraceLine(SearchLocation, Trace8End, 1, PM_NORMAL, -1, true, TraceResult);
+
+			if (TraceResult.fraction < 1.0f)
+			{
+				int PointContents = UTIL_PointContents(TraceResult.endpos);
+
+				if (vIsZero(ClosestNormal) || TraceResult.fraction < MinDist)
+				{
+					ClosestNormal = TraceResult.plane.normal;
+					MinDist = TraceResult.fraction;
+				}
+			}
+
+			return ClosestNormal;
 		}
-
-		trace_t TraceResult;
-		NS_TraceLine(SearchLocation, CentrePoint, 1, PM_WORLD_ONLY, -1, true, TraceResult);
-
-		if (TraceResult.fraction < 1.0f)
+		else
 		{
-			return TraceResult.plane.normal;
+			Vector CentrePoint = closestLadderRef->pev->absmin + (closestLadderRef->pev->size * 0.5f);
+			CentrePoint.z = SearchLocation.z;
+
+			trace_t TraceResult;
+			NS_TraceLine(SearchLocation, CentrePoint, 1, PM_WORLD_ONLY, -1, true, TraceResult);
+
+			if (TraceResult.fraction < 1.0f)
+			{
+				return TraceResult.plane.normal;
+			}
 		}
 	}
 

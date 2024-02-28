@@ -189,4 +189,7 @@ int AITAC_GetNumWeaponsInPlay(AvHTeamNumber Team, AvHAIWeapon WeaponType);
 
 edict_t* AITAC_GetLastSeenLerkForTeam(AvHTeamNumber Team, float& LastSeenTime);
 
+bool AITAC_IsCompletedStructureOfTypeNearLocation(AvHTeamNumber Team, unsigned int StructureType, Vector SearchLocation, float SearchRadius);
+bool AITAC_IsStructureOfTypeNearLocation(AvHTeamNumber Team, unsigned int StructureType, Vector SearchLocation, float SearchRadius);
+
 #endif

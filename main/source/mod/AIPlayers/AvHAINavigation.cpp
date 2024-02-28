@@ -2965,28 +2965,19 @@ void NewMove(AvHAIPlayer* pBot)
 		break;
 	case SAMPLE_POLYFLAGS_WALLCLIMB:
 	{
-		if (IsPlayerSkulk(pBot->Edict))
+		if (PlayerHasWeapon(pBot->Player, WEAPON_FADE_BLINK))
 		{
-			WallClimbMove(pBot, MoveFrom, MoveTo, pBot->BotNavInfo.CurrentPathPoint->requiredZ);
+			BlinkClimbMove(pBot, MoveFrom, MoveTo, pBot->BotNavInfo.CurrentPathPoint->requiredZ);
 		}
 		else
 		{
-			BlinkClimbMove(pBot, MoveFrom, MoveTo, pBot->BotNavInfo.CurrentPathPoint->requiredZ);
+			WallClimbMove(pBot, MoveFrom, MoveTo, pBot->BotNavInfo.CurrentPathPoint->requiredZ);
 		}
 	}
 	break;
 	case SAMPLE_POLYFLAGS_LADDER:
-	{
-		if (IsPlayerSkulk(pBot->Edict))
-		{
-			LadderMove(pBot, MoveFrom, MoveTo, pBot->BotNavInfo.CurrentPathPoint->requiredZ, NextArea);
-		}
-		else
-		{
-			LadderMove(pBot, MoveFrom, MoveTo, pBot->BotNavInfo.CurrentPathPoint->requiredZ, NextArea);
-		}
-	}		
-	break;
+		LadderMove(pBot, MoveFrom, MoveTo, pBot->BotNavInfo.CurrentPathPoint->requiredZ, NextArea);	
+		break;
 	case SAMPLE_POLYFLAGS_TEAM1PHASEGATE:
 	case SAMPLE_POLYFLAGS_TEAM2PHASEGATE:
 		PhaseGateMove(pBot, MoveFrom, MoveTo);
@@ -3247,24 +3238,26 @@ void LadderMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoin
 
 	bool bIsGoingUpLadder = (EndPoint.z > StartPoint.z);
 
+	// Stop holding crouch if we're a skulk so we can climb up/down
+	if (IsPlayerSkulk(pBot->Edict))
+	{
+		pBot->Button &= ~IN_DUCK;
+	}
+
 	if (IsPlayerOnLadder(pBot->Edict))
 	{
 		// We're on the ladder and actively climbing
-		Vector CurrentLadderNormal = UTIL_GetNearestLadderNormal(pBot->Edict);
-		CurrentLadderNormal = UTIL_GetVectorNormal2D(CurrentLadderNormal);
+		Vector CurrentLadderNormal = UTIL_GetNearestLadderNormal(pBot->CollisionHullBottomLocation + Vector(0.0f, 0.0f, 5.0f));
+		//CurrentLadderNormal = UTIL_GetVectorNormal2D(CurrentLadderNormal);
 
 		if (vIsZero(CurrentLadderNormal))
 		{
-			CurrentLadderNormal = UTIL_GetVectorNormal2D(EndPoint - StartPoint);
+			CurrentLadderNormal = UTIL_GetVectorNormal2D(EndPoint - pBot->Edict->v.origin);
 		}
+
+		UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, pBot->Edict->v.origin + (CurrentLadderNormal * 100.0f), 0.5f);
 
 		const Vector LadderRightNormal = UTIL_GetVectorNormal(UTIL_GetCrossProduct(CurrentLadderNormal, UP_VECTOR));
-
-		// Stop holding crouch if we're a skulk so we can climb up/down
-		if (IsPlayerSkulk(pBot->Edict))
-		{
-			pBot->Button &= ~IN_DUCK;
-		}
 
 		Vector ClimbRightNormal = LadderRightNormal;
 
@@ -3312,7 +3305,7 @@ void LadderMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoin
 					bool bHittingHead = !UTIL_QuickTrace(pBot->Edict, HeadTraceLocation, HeadTraceLocation + Vector(0.0f, 0.0f, 10.0f));
 					bool bClimbIntoVent = (NextArea == SAMPLE_POLYAREA_CROUCH);
 
-					if (bHittingHead || bClimbIntoVent)
+					if (!IsPlayerSkulk(pBot->Edict) && (bHittingHead || bClimbIntoVent))
 					{
 						pBot->Button |= IN_DUCK;
 					}
@@ -4083,7 +4076,7 @@ void WallClimbMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndP
 
 	float ZDiff = fabs(pEdict->v.origin.z - RequiredClimbHeight);
 	Vector AdjustedTargetLocation = EndPoint + (UTIL_GetVectorNormal2D(EndPoint - StartPoint) * 1000.0f);
-	Vector DirectAheadView = pBot->CurrentEyePosition + (UTIL_GetVectorNormal2D(AdjustedTargetLocation - pEdict->v.origin) * 10.0f);
+	Vector DirectAheadView = pBot->CurrentEyePosition + (UTIL_GetVectorNormal2D(AdjustedTargetLocation - pBot->CurrentEyePosition) * 100.0f);
 
 	Vector ClimbSurfaceNormal = UTIL_GetVectorNormal(EndPoint - StartPoint);
 
@@ -4111,7 +4104,7 @@ void WallClimbMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndP
 		}
 		else
 		{
-			if (ZDiff > 32.0f)
+			if (ZDiff > 16.0f)
 			{
 				ClimbSurfaceNormal = ClimbSurfaceNormal;
 				LookLocation = pBot->CurrentEyePosition + (ClimbSurfaceNormal * 100.0f);
@@ -5069,7 +5062,15 @@ bool AbortCurrentMove(AvHAIPlayer* pBot, const Vector NewDestination)
 		}
 		else
 		{
-			WallClimbMove(pBot, MoveFrom, MoveTo, pBot->BotNavInfo.CurrentPathPoint->requiredZ);
+			if (PlayerHasWeapon(pBot->Player, WEAPON_FADE_BLINK))
+			{
+				BlinkClimbMove(pBot, MoveFrom, MoveTo, pBot->BotNavInfo.CurrentPathPoint->requiredZ);
+			}
+			else
+			{
+				WallClimbMove(pBot, MoveFrom, MoveTo, pBot->BotNavInfo.CurrentPathPoint->requiredZ);
+			}
+			
 		}
 	}
 

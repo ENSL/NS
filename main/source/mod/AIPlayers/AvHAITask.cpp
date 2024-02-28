@@ -1752,9 +1752,7 @@ void BotProgressTakeCommandTask(AvHAIPlayer* pBot)
 	}
 	else
 	{
-		float CommanderWaitTime = CONFIG_GetCommanderWaitTime();
-
-		if ((gpGlobals->time - GetGameRules()->GetTimeGameStarted()) > CommanderWaitTime)
+		if (gpGlobals->time > AIMGR_GetCommanderAllowedTime(pBot->Player->GetTeam()))
 		{
 			BotUseObject(pBot, CommChair, false);
 		}
@@ -1764,7 +1762,7 @@ void BotProgressTakeCommandTask(AvHAIPlayer* pBot)
 
 			if (FNullEnt(NearestHuman))
 			{
-				BotUseObject(pBot, CommChair, false);
+				BotGuardLocation(pBot, CommChair->v.origin);
 			}
 			else
 			{

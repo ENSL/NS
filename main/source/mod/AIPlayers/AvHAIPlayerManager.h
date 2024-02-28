@@ -49,6 +49,9 @@ void	AIMGR_UpdateAIMapData();
 
 AvHAICommanderMode AIMGR_GetCommanderMode();
 
+void AIMGR_SetCommanderAllowedTime(AvHTeamNumber Team, float NewValue);
+float AIMGR_GetCommanderAllowedTime(AvHTeamNumber Team);
+
 Vector AIDEBUG_GetDebugVector1();
 Vector AIDEBUG_GetDebugVector2();
 void AIDEBUG_SetDebugVector1(const Vector NewVector);
@@ -92,5 +95,7 @@ bool AIMGR_GetTestNavMode();
 
 void AIMGR_SetDroneMode(bool bNewValue);
 bool AIMGR_GetDroneMode();
+
+void AIMGR_ReceiveCommanderRequest(AvHTeamNumber Team, edict_t* Requestor, const char* Request);
 
 #endif

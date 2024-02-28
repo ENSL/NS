@@ -4721,3 +4721,26 @@ edict_t* AITAC_GetLastSeenLerkForTeam(AvHTeamNumber Team, float& LastSeenTime)
 		return LastSeenLerkTeamB;
 	}
 }
+
+bool AITAC_IsCompletedStructureOfTypeNearLocation(AvHTeamNumber Team, unsigned int StructureType, Vector SearchLocation, float SearchRadius)
+{
+	DeployableSearchFilter SearchFilter;
+	SearchFilter.DeployableTeam = Team;
+	SearchFilter.DeployableTypes = StructureType;
+	SearchFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+	SearchFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+	SearchFilter.MaxSearchRadius = SearchRadius;
+
+	return AITAC_DeployableExistsAtLocation(SearchLocation, &SearchFilter);
+}
+
+bool AITAC_IsStructureOfTypeNearLocation(AvHTeamNumber Team, unsigned int StructureType, Vector SearchLocation, float SearchRadius)
+{
+	DeployableSearchFilter SearchFilter;
+	SearchFilter.DeployableTeam = Team;
+	SearchFilter.DeployableTypes = StructureType;
+	SearchFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+	SearchFilter.MaxSearchRadius = SearchRadius;
+
+	return AITAC_DeployableExistsAtLocation(SearchLocation, &SearchFilter);
+}

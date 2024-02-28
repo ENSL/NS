@@ -6,6 +6,7 @@
 #include "AvHAIConfig.h"
 #include "AvHAIWeaponHelper.h"
 #include "AvHAIHelper.h"
+#include "AvHAICommander.h"
 #include "../AvHGamerules.h"
 #include "../dlls/client.h"
 #include <time.h>
@@ -32,6 +33,9 @@ bool bMapDataInitialised = false;
 
 bool bTestNavigation = false;
 bool bDroneMode = false;
+
+float NextCommanderAllowedTimeTeamA = 0.0f;
+float NextCommanderAllowedTimeTeamB = 0.0f;
 
 extern int m_spriteTexture;
 
@@ -90,6 +94,11 @@ AvHAICommanderMode AIMGR_GetCommanderMode()
 
 	return COMMANDERMODE_DISABLED;
 
+}
+
+float AIMGR_GetCommanderAllowedTime(AvHTeamNumber Team)
+{
+	return (Team == GetGameRules()->GetTeamANumber()) ? NextCommanderAllowedTimeTeamA : NextCommanderAllowedTimeTeamB;
 }
 
 void AIMGR_UpdateAIPlayerCounts()
@@ -597,6 +606,8 @@ void AIMGR_UpdateAIPlayers()
 
 	float FrameDelta = CurrTime - PrevTime;
 	float ThinkDelta = CurrTime - LastThinkTime;
+
+
 		
 	for (auto BotIt = ActiveAIPlayers.begin(); BotIt != ActiveAIPlayers.end();)
 	{
@@ -624,6 +635,31 @@ void AIMGR_UpdateAIPlayers()
 				if (bot->BotNavInfo.CurrentPath.size() > 0 && bot->BotNavInfo.CurrentPathPoint != bot->BotNavInfo.CurrentPath.end())
 				{
 					UTIL_DrawLine(INDEXENT(1), bot->Edict->v.origin, bot->BotNavInfo.CurrentPathPoint->Location, 0, 255, 255);
+				}
+			}
+
+			if (bHasRoundStarted)
+			{
+				AvHTeamNumber TeamANumber = GetGameRules()->GetTeamANumber();
+				AvHTeamNumber TeamBNumber = GetGameRules()->GetTeamBNumber();
+
+				AvHTeam* TeamA = GetGameRules()->GetTeam(TeamANumber);
+				AvHTeam* TeamB = GetGameRules()->GetTeam(TeamBNumber);
+
+				if (TeamA->GetTeamType() == AVH_CLASS_TYPE_MARINE)
+				{
+					if (TeamA->GetCommanderPlayer() && !(TeamA->GetCommanderPlayer()->pev->flags & FL_FAKECLIENT))
+					{
+						AIMGR_SetCommanderAllowedTime(TeamANumber, gpGlobals->time + 15.0f);
+					}
+				}
+
+				if (TeamB->GetTeamType() == AVH_CLASS_TYPE_MARINE)
+				{
+					if (TeamB->GetCommanderPlayer() && !(TeamB->GetCommanderPlayer()->pev->flags & FL_FAKECLIENT))
+					{
+						AIMGR_SetCommanderAllowedTime(TeamBNumber, gpGlobals->time + 15.0f);
+					}
 				}
 			}
 
@@ -877,6 +913,41 @@ void AIMGR_ResetRound()
 void AIMGR_RoundStarted()
 {
 	bHasRoundStarted = true;
+
+	AvHTeamNumber TeamANumber = GetGameRules()->GetTeamANumber();
+	AvHTeamNumber TeamBNumber = GetGameRules()->GetTeamANumber();
+
+	// If our team has no humans on it, then we can take command right away. Otherwise, wait the allotted grace period to allow the human to take command
+
+	if (AIMGR_GetNumHumanPlayersOnTeam(TeamANumber) > 0)
+	{
+		AIMGR_SetCommanderAllowedTime(TeamANumber, gpGlobals->time + CONFIG_GetCommanderWaitTime());
+	}
+	else
+	{
+		AIMGR_SetCommanderAllowedTime(TeamANumber, 0.0f);
+	}
+
+	if (AIMGR_GetNumHumanPlayersOnTeam(TeamBNumber) > 0)
+	{
+		AIMGR_SetCommanderAllowedTime(TeamBNumber, gpGlobals->time + CONFIG_GetCommanderWaitTime());
+	}
+	else
+	{
+		AIMGR_SetCommanderAllowedTime(TeamBNumber, 0.0f);
+	}
+}
+
+void AIMGR_SetCommanderAllowedTime(AvHTeamNumber Team, float NewValue)
+{
+	if (Team == GetGameRules()->GetTeamANumber())
+	{
+		NextCommanderAllowedTimeTeamA = NewValue;
+	}
+	else
+	{
+		NextCommanderAllowedTimeTeamB = NewValue;
+	}
 }
 
 void AIMGR_ClearBotData()
@@ -944,7 +1015,7 @@ AvHAIPlayer* AIMGR_GetAICommander(AvHTeamNumber Team)
 {
 	AvHPlayer* ActiveCommander = GetGameRules()->GetTeam(Team)->GetCommanderPlayer();
 
-	if (!ActiveCommander) { return nullptr; }
+	if (!ActiveCommander || !(ActiveCommander->pev->flags & FL_FAKECLIENT)) { return nullptr; }
 
 	for (auto it = ActiveAIPlayers.begin(); it != ActiveAIPlayers.end(); it++)
 	{
@@ -1113,4 +1184,21 @@ bool AIMGR_GetTestNavMode()
 bool AIMGR_GetDroneMode()
 {
 	return bTestNavigation;
+}
+
+void AIMGR_ReceiveCommanderRequest(AvHTeamNumber Team, edict_t* Requestor, const char* Request)
+{
+	AvHTeam* TeamRef = GetGameRules()->GetTeam(Team);
+
+	if (!TeamRef || TeamRef->GetTeamType() != AVH_CLASS_TYPE_MARINE)
+	{
+		return;
+	}
+
+	AvHAIPlayer* BotCommander = AIMGR_GetAICommander(Team);
+
+	if (BotCommander)
+	{
+		AICOMM_ReceiveChatRequest(BotCommander, Requestor, Request);
+	}
 }
