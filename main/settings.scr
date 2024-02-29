@@ -158,4 +158,33 @@ DESCRIPTION SERVER_OPTIONS
 		{ "0.510000" }
 	}
 
+	"mp_botsenabled"
+	{
+		"Enable Bots"
+		{ BOOL }
+		{ "1" }
+	}
+
+	"mp_botautomode"
+	{
+		"Bot Mode"
+		{
+			LIST
+			"Manual" "0"
+			"Automatic" "1"
+		}
+		{ "0.000000" }
+	}
+
+	"mp_botcommandermode"
+	{
+		"Allow AI Commander"
+		{
+			LIST
+			"Disabled" "0"
+			"Enabled" "1"
+		}
+		{ "1.000000" }
+	}
+
 }
