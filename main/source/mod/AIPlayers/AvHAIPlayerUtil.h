@@ -91,6 +91,7 @@ int GetPlayerCombatLevel(const AvHPlayer* Player);
 
 // Returns the player radius based on their current state
 float GetPlayerRadius(const AvHPlayer* Player);
+float GetPlayerRadius(const edict_t* Player);
 
 // Returns the hull index that should be used for this player when performing hull traces. Depends on if player is crouching right now or not
 int GetPlayerHullIndex(const edict_t* Player);

@@ -227,6 +227,28 @@ float GetPlayerRadius(const AvHPlayer* Player)
 	}
 }
 
+float GetPlayerRadius(const edict_t* Player)
+{
+	if (!Player) { return 0.0f; }
+
+	int hullnum = GetPlayerHullIndex(Player);
+
+	switch (hullnum)
+	{
+	case human_hull:
+	case head_hull:
+		return 16.0f;
+		break;
+	case large_hull:
+		return 32.0f;
+		break;
+	default:
+		return 16.0f;
+		break;
+
+	}
+}
+
 bool CanPlayerCrouch(const edict_t* Player)
 {
 	if (FNullEnt(Player) || Player->free || !IsEdictPlayer(Player)) { return false; }
