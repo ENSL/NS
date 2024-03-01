@@ -383,7 +383,7 @@ bool AITASK_IsMoveTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 bool AITASK_IsWeldTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
 	if (!Task) { return false; }
-	if (FNullEnt(Task->TaskTarget)) { return false; }
+	if (!Task->TaskTarget || FNullEnt(Task->TaskTarget) || (Task->TaskTarget->v.effects & EF_NODRAW) || Task->TaskTarget->v.deadflag != DEAD_NO) { return false; }
 	if (Task->TaskTarget == pBot->Edict) { return false; }
 	if (!PlayerHasWeapon(pBot->Player, WEAPON_MARINE_WELDER))
 	{
@@ -469,7 +469,9 @@ bool AITASK_IsWeaponPickupTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 
 bool AITASK_IsAttackTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
-	if (FNullEnt(Task->TaskTarget) || (vIsZero(Task->TaskTarget->v.origin) && vIsZero(Task->TaskLocation))) { return false; }
+	if (!Task->TaskTarget || FNullEnt(Task->TaskTarget) || (Task->TaskTarget->v.effects & EF_NODRAW) || Task->TaskTarget->v.deadflag != DEAD_NO) { return false; }
+
+	if ((vIsZero(Task->TaskTarget->v.origin) && vIsZero(Task->TaskLocation))) { return false; }
 
 	if ((Task->TaskTarget->v.effects & EF_NODRAW) || (Task->TaskTarget->v.deadflag != DEAD_NO)) { return false; }
 
@@ -531,7 +533,9 @@ bool AITASK_IsGuardTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 bool AITASK_IsMineStructureTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
-	if (FNullEnt(Task->TaskTarget) || UTIL_StructureIsRecycling(Task->TaskTarget)) { return false; }
+	if (!Task->TaskTarget || FNullEnt(Task->TaskTarget) || (Task->TaskTarget->v.effects & EF_NODRAW) || Task->TaskTarget->v.deadflag != DEAD_NO) { return false; }
+
+	if (UTIL_StructureIsRecycling(Task->TaskTarget)) { return false; }
 
 	if (!PlayerHasWeapon(pBot->Player, WEAPON_MARINE_MINES)) { return false; }
 
@@ -776,7 +780,7 @@ bool AITASK_IsMarineCapResNodeTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask*
 
 bool AITASK_IsDefendTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
-	if (FNullEnt(Task->TaskTarget) || Task->TaskTarget->v.deadflag != DEAD_NO) { return false; }
+	if (!Task->TaskTarget || FNullEnt(Task->TaskTarget) || (Task->TaskTarget->v.effects & EF_NODRAW) || Task->TaskTarget->v.deadflag != DEAD_NO) { return false; }
 
 	if (GetStructureTypeFromEdict(Task->TaskTarget) == STRUCTURE_NONE) { return false; }
 
@@ -797,7 +801,7 @@ bool AITASK_IsDefendTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 bool AITASK_IsReinforceStructureTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
-	if (FNullEnt(Task->TaskTarget) || Task->TaskTarget->v.deadflag != DEAD_NO) { return false; }
+	if (!Task->TaskTarget || FNullEnt(Task->TaskTarget) || (Task->TaskTarget->v.effects & EF_NODRAW) || Task->TaskTarget->v.deadflag != DEAD_NO) { return false; }
 
 	if (!FNullEnt(Task->TaskSecondaryTarget) && !UTIL_StructureIsFullyBuilt(Task->TaskSecondaryTarget)) { return true; }
 
@@ -984,7 +988,7 @@ bool AITASK_IsAlienGetHealthTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* T
 
 bool AITASK_IsAlienHealTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
-	if (FNullEnt(Task->TaskTarget) || Task->TaskTarget->v.deadflag != DEAD_NO) { return false; }
+	if (!Task->TaskTarget || FNullEnt(Task->TaskTarget) || (Task->TaskTarget->v.effects & EF_NODRAW) || Task->TaskTarget->v.deadflag != DEAD_NO) { return false; }
 
 	if (!IsPlayerGorge(pBot->Edict)) { return false; }
 
@@ -3082,7 +3086,7 @@ void AITASK_SetWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Targe
 void AITASK_SetAttackTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Target, const bool bIsUrgent)
 {
 	// Don't set the task if the target is invalid, dead or on the same team as the bot (can't picture a situation where you want them to teamkill...)
-	if (FNullEnt(Target) || (Target->v.deadflag != DEAD_NO) || Target->v.team == pBot->Edict->v.team)
+	if (!Target || FNullEnt(Target) || (Target->v.deadflag != DEAD_NO) || Target->v.team == pBot->Edict->v.team)
 	{
 		AITASK_ClearBotTask(pBot, Task);
 		return;

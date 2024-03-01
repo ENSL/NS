@@ -936,9 +936,11 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 	StructureFilter.ReachabilityTeam = TeamNumber;
 	StructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
 
+	edict_t* BaseBuilder = AITAC_GetNearestHiddenPlayerInLocation(TeamNumber, CommChair->v.origin, UTIL_MetresToGoldSrcUnits(10.0f));
+
 	int NumInfantryPortals = AITAC_GetNumDeployablesNearLocation(CommChair->v.origin, &StructureFilter);
 
-	if (NumInfantryPortals < 2)
+	if (NumInfantryPortals < 2 && !FNullEnt(BaseBuilder))
 	{
 		bool bEnemyInBase = NumInfantryPortals > 1 && AITAC_AnyPlayerOnTeamWithLOS(AIMGR_GetEnemyTeam(TeamNumber), CommChair->v.origin, UTIL_MetresToGoldSrcUnits(10.0f));
 
@@ -950,9 +952,11 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 
 	AvHAIBuildableStructure* BaseArmoury = AITAC_FindClosestDeployableToLocation(CommChair->v.origin, &StructureFilter);
 
-	if (!BaseArmoury)
-	{
+	
 
+	if (!BaseArmoury && !FNullEnt(BaseBuilder))
+	{
+		
 		StructureFilter.DeployableTypes = STRUCTURE_MARINE_INFANTRYPORTAL;
 
 		AvHAIBuildableStructure* NearestInfantryPortal = AITAC_FindClosestDeployableToLocation(CommChair->v.origin, &StructureFilter);
@@ -1014,7 +1018,7 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 
 		bool bPhaseNearBase = AITAC_DeployableExistsAtLocation(CommChair->v.origin, &StructureFilter);
 
-		if (!bPhaseNearBase)
+		if (!bPhaseNearBase && !FNullEnt(BaseBuilder))
 		{
 			Vector BuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), CommChair->v.origin, UTIL_MetresToGoldSrcUnits(10.0f));
 
@@ -1051,7 +1055,7 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 
 	bool bHasArmsLab = AITAC_DeployableExistsAtLocation(CommChair->v.origin, &StructureFilter);
 
-	if (!bHasArmsLab)
+	if (!bHasArmsLab && !FNullEnt(BaseBuilder))
 	{
 		Vector BuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), CommChair->v.origin, UTIL_MetresToGoldSrcUnits(10.0f));
 
@@ -1068,7 +1072,7 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 
 	bool bHasObservatory = AITAC_DeployableExistsAtLocation(CommChair->v.origin, &StructureFilter);
 
-	if (!bHasObservatory)
+	if (!bHasObservatory && !FNullEnt(BaseBuilder))
 	{
 		Vector BuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), CommChair->v.origin, UTIL_MetresToGoldSrcUnits(10.0f));
 
@@ -1129,7 +1133,7 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 
 	bool bHasPrototypeLab = AITAC_DeployableExistsAtLocation(CommChair->v.origin, &StructureFilter);
 
-	if (!bHasPrototypeLab && bHasAdvArmoury)
+	if (!bHasPrototypeLab && bHasAdvArmoury && !FNullEnt(BaseBuilder))
 	{
 		Vector BuildLocation = UTIL_GetRandomPointOnNavmeshInDonutIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), BaseArmoury->Location, UTIL_MetresToGoldSrcUnits(3.0f), UTIL_MetresToGoldSrcUnits(5.0f));
 
@@ -1325,7 +1329,12 @@ bool AICOMM_CheckForNextSupplyAction(AvHAIPlayer* pBot)
 	bool bNeedsMines = false;
 	int DesiredMines = 0;
 
-	if (NumMinesInPlay < 2)
+	DeployableSearchFilter MineFilter;
+	MineFilter.DeployableTypes = STRUCTURE_MARINE_DEPLOYEDMINE;
+
+	int NumDeployedMines = AITAC_GetNumDeployablesNearLocation(ZERO_VECTOR, &MineFilter);
+
+	if (NumMinesInPlay < 2 && NumDeployedMines < 32)
 	{
 		int UnminedStructures = 0;
 

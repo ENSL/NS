@@ -2138,6 +2138,13 @@ bool HasBotReachedPathPoint(const AvHAIPlayer* pBot)
 	return false;
 }
 
+bool HasBotCompletedLadderMove(AvHAIPlayer* pBot, Vector MoveStart, Vector MoveEnd)
+{
+	if (IsPlayerOnLadder(pBot->Edict)) { return false; }
+
+	return UTIL_PointIsDirectlyReachable(pBot->CollisionHullBottomLocation, MoveEnd);
+}
+
 void CheckAndHandleDoorObstruction(AvHAIPlayer* pBot)
 {
 	edict_t* BlockingDoorEdict = UTIL_GetDoorBlockingPathPoint(pBot->Edict->v.origin, pBot->BotNavInfo.CurrentPathPoint->Location, pBot->BotNavInfo.CurrentPathPoint->flag, nullptr);
@@ -3258,7 +3265,7 @@ void LadderMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoin
 			CurrentLadderNormal = UTIL_GetNearestLadderNormal(pBot->CollisionHullBottomLocation + Vector(0.0f, 0.0f, 5.0f));
 		} 
 
-		//CurrentLadderNormal = UTIL_GetVectorNormal2D(CurrentLadderNormal);
+		CurrentLadderNormal = UTIL_GetVectorNormal2D(CurrentLadderNormal);
 
 		if (vIsZero(CurrentLadderNormal))
 		{
@@ -5541,6 +5548,8 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 		}
 		else
 		{
+			BotNavInfo->CurrentPathPoint = BotNavInfo->CurrentPath.end();
+
 			pBot->BotNavInfo.StuckInfo.bPathFollowFailed = true;
 
 			if (!UTIL_PointIsOnNavmesh(pBot->CollisionHullBottomLocation, pBot->BotNavInfo.NavProfile) && !vIsZero(BotNavInfo->LastNavMeshPosition))
@@ -6385,7 +6394,8 @@ void HandlePlayerAvoidance(AvHAIPlayer* pBot, const Vector MoveDestination)
 	// Don't handle player avoidance if climbing a wall, ladder or in the air, as it will mess up the move and cause them to get stuck most likely
 	if (pBot->Player->IsOnLadder() || IsPlayerClimbingWall(pBot->Edict) || !pBot->BotNavInfo.IsOnGround) { return; }
 
-	float avoidDistSq = sqrf(50.0f);
+	float MyRadius = GetPlayerRadius(pBot->Edict);
+		
 	const Vector BotLocation = pBot->Edict->v.origin;
 	const Vector MoveDir = UTIL_GetVectorNormal2D((MoveDestination - pBot->Edict->v.origin));
 
@@ -6395,6 +6405,10 @@ void HandlePlayerAvoidance(AvHAIPlayer* pBot, const Vector MoveDestination)
 
 		if (!FNullEnt(OtherPlayer) && OtherPlayer != pBot->Edict && IsPlayerActiveInGame(OtherPlayer))
 		{
+			float OtherPlayerRadius = GetPlayerRadius(OtherPlayer);
+
+			float avoidDistSq = sqrf(MyRadius + OtherPlayerRadius + 16.0f);
+
 			// Don't do avoidance for a player if they're moving in broadly the same direction as us
 			Vector OtherMoveDir = GetPlayerAttemptedMoveDirection(OtherPlayer);
 
@@ -6418,26 +6432,41 @@ void HandlePlayerAvoidance(AvHAIPlayer* pBot, const Vector MoveDestination)
 
 					int modifier = vPointOnLine(pBot->Edict->v.origin, MoveDestination, OtherPlayer->v.origin);
 
+					float OtherPersonDistFromLine = vDistanceFromLine2D(pBot->Edict->v.origin, MoveDestination, OtherPlayer->v.origin);
+
 					if (modifier == 0) { modifier = 1; }
 
 					Vector PreferredMoveDir = (MoveRightVector * modifier);
 
+					float TraceLength = OtherPersonDistFromLine + (fmaxf(MyRadius, OtherPlayerRadius) * 2.0f);
+
+					UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, pBot->Edict->v.origin + (PreferredMoveDir * TraceLength), 0, 128, 0);
+					UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, pBot->Edict->v.origin - (PreferredMoveDir * TraceLength), 255, 0, 0);
+
+
 					// First see if we have enough room to move in our preferred avoidance direction
-					if (UTIL_TraceNav(pBot->BotNavInfo.NavProfile, BotLocation, BotLocation + (PreferredMoveDir * 32.0f), 2.0f))
+					if (UTIL_TraceNav(pBot->BotNavInfo.NavProfile, BotLocation, BotLocation + (PreferredMoveDir * TraceLength), 0.0f))
 					{
 						pBot->desiredMovementDir = PreferredMoveDir;
 						return;
 					}
 
 					// Then try the opposite direction
-					if (UTIL_TraceNav(pBot->BotNavInfo.NavProfile, BotLocation, BotLocation - (PreferredMoveDir * 32.0f), 2.0f))
+					if (UTIL_TraceNav(pBot->BotNavInfo.NavProfile, BotLocation, BotLocation - (PreferredMoveDir * TraceLength), 0.0f))
 					{
 						pBot->desiredMovementDir = -PreferredMoveDir;
 						return;
 					}
 
-					// Back up since we can't go either side
-					if (UTIL_GetDotProduct2D(MoveDir, OtherMoveDir) < 0.0f)
+					bool bCanBackUp = UTIL_TraceNav(pBot->BotNavInfo.NavProfile, BotLocation, BotLocation - (MoveDir * (MyRadius * 2.0f)), 0.0f);
+
+					if (!bCanBackUp)
+					{
+						bCanBackUp = UTIL_QuickHullTrace(pBot->Edict, pBot->Edict->v.origin, pBot->Edict->v.origin - (MoveDir * (MyRadius * 2.0f)), head_hull);
+					}
+
+					// Back up since we can't go either side, but only if we can back up. Otherwise, we push forward and demand the OTHER guy back up
+					if (UTIL_GetDotProduct2D(MoveDir, OtherMoveDir) < 0.0f && bCanBackUp)
 					{
 						pBot->desiredMovementDir = MoveDir * -1.0f;
 					}

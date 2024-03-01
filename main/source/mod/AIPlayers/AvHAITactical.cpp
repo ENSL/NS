@@ -85,6 +85,8 @@ std::vector<AvHAIBuildableStructure*> AITAC_FindAllDeployables(const Vector& Loc
 	{
 		for (auto& it : TeamAStructureMap)
 		{
+			if (FNullEnt(it.second.edict) || it.second.edict->v.deadflag != DEAD_NO || (it.second.edict->v.effects & EF_NODRAW)) { continue; }
+
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
 
@@ -116,6 +118,8 @@ std::vector<AvHAIBuildableStructure*> AITAC_FindAllDeployables(const Vector& Loc
 	{
 		for (auto& it : TeamBStructureMap)
 		{
+			if (FNullEnt(it.second.edict) || it.second.edict->v.deadflag != DEAD_NO || (it.second.edict->v.effects & EF_NODRAW)) { continue; }
+
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
 
@@ -161,6 +165,8 @@ bool AITAC_DeployableExistsAtLocation(const Vector& Location, const DeployableSe
 	{
 		for (auto& it : TeamAStructureMap)
 		{
+			if (FNullEnt(it.second.edict) || it.second.edict->v.deadflag != DEAD_NO || (it.second.edict->v.effects & EF_NODRAW)) { continue; }
+
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
 
@@ -189,6 +195,8 @@ bool AITAC_DeployableExistsAtLocation(const Vector& Location, const DeployableSe
 	{
 		for (auto& it : TeamBStructureMap)
 		{
+			if (FNullEnt(it.second.edict) || it.second.edict->v.deadflag != DEAD_NO || (it.second.edict->v.effects & EF_NODRAW)) { continue; }
+
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
 
@@ -234,6 +242,8 @@ AvHAIBuildableStructure* AITAC_FindClosestDeployableToLocation(const Vector& Loc
 	{
 		for (auto& it : TeamAStructureMap)
 		{
+			if (FNullEnt(it.second.edict) || it.second.edict->v.deadflag != DEAD_NO || (it.second.edict->v.effects & EF_NODRAW)) { continue; }
+
 			if (!(it.second.StructureType & Filter->DeployableTypes)) { continue; }
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }			
@@ -261,6 +271,8 @@ AvHAIBuildableStructure* AITAC_FindClosestDeployableToLocation(const Vector& Loc
 	{
 		for (auto& it : TeamBStructureMap)
 		{
+			if (FNullEnt(it.second.edict) || it.second.edict->v.deadflag != DEAD_NO || (it.second.edict->v.effects & EF_NODRAW)) { continue; }
+
 			if (!(it.second.StructureType & Filter->DeployableTypes)) { continue; }
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
@@ -305,6 +317,8 @@ AvHAIBuildableStructure* AITAC_FindFurthestDeployableFromLocation(const Vector& 
 	{
 		for (auto& it : TeamAStructureMap)
 		{
+			if (FNullEnt(it.second.edict) || it.second.edict->v.deadflag != DEAD_NO || (it.second.edict->v.effects & EF_NODRAW)) { continue; }
+
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
 			if (!(it.second.StructureType & Filter->DeployableTypes)) { continue; }
@@ -332,6 +346,8 @@ AvHAIBuildableStructure* AITAC_FindFurthestDeployableFromLocation(const Vector& 
 	{
 		for (auto& it : TeamBStructureMap)
 		{
+			if (FNullEnt(it.second.edict) || it.second.edict->v.deadflag != DEAD_NO || (it.second.edict->v.effects & EF_NODRAW)) { continue; }
+
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
 			if (!(it.second.StructureType & Filter->DeployableTypes)) { continue; }
@@ -382,6 +398,8 @@ AvHAIDroppedItem* AITAC_FindClosestItemToLocation(const Vector& Location, const 
 
 	for (auto& it : MarineDroppedItemMap)
 	{
+		if (FNullEnt(it.second.edict) || it.second.edict->v.deadflag != DEAD_NO || (it.second.edict->v.effects & EF_NODRAW)) { continue; }
+
 		unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
 
 		if (SearchingTeam != TEAM_IND)
@@ -418,6 +436,8 @@ int	AITAC_GetNumItemsInLocation(const Vector& Location, const AvHAIDeployableIte
 
 	for (auto& it : MarineDroppedItemMap)
 	{
+		if (FNullEnt(it.second.edict) || it.second.edict->v.deadflag != DEAD_NO || (it.second.edict->v.effects & EF_NODRAW)) { continue; }
+
 		if (it.second.ItemType != ItemType) { continue; }
 
 		unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
@@ -452,6 +472,8 @@ bool AITAC_ItemExistsInLocation(const Vector& Location, const AvHAIDeployableIte
 
 	for (auto& it : MarineDroppedItemMap)
 	{
+		if (FNullEnt(it.second.edict) || it.second.edict->v.deadflag != DEAD_NO || (it.second.edict->v.effects & EF_NODRAW)) { continue; }
+
 		unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
 
 		if (SearchingTeam != TEAM_IND)
@@ -508,6 +530,8 @@ AvHAIBuildableStructure* AITAC_GetNearestDeployableDirectlyReachable(AvHAIPlayer
 	{
 		for (auto& it : TeamAStructureMap)
 		{
+			if (FNullEnt(it.second.edict) || it.second.edict->v.deadflag != DEAD_NO || (it.second.edict->v.effects & EF_NODRAW)) { continue; }
+
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
 
@@ -539,6 +563,8 @@ AvHAIBuildableStructure* AITAC_GetNearestDeployableDirectlyReachable(AvHAIPlayer
 	{
 		for (auto& it : TeamBStructureMap)
 		{
+			if (FNullEnt(it.second.edict) || it.second.edict->v.deadflag != DEAD_NO || (it.second.edict->v.effects & EF_NODRAW)) { continue; }
+
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
 
@@ -586,6 +612,8 @@ int AITAC_GetNumDeployablesNearLocation(const Vector& Location, const Deployable
 	{
 		for (auto& it : TeamAStructureMap)
 		{
+			if (FNullEnt(it.second.edict) || it.second.edict->v.deadflag != DEAD_NO || (it.second.edict->v.effects & EF_NODRAW)) { continue; }
+
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
 
@@ -614,6 +642,8 @@ int AITAC_GetNumDeployablesNearLocation(const Vector& Location, const Deployable
 	{
 		for (auto& it : TeamBStructureMap)
 		{
+			if (FNullEnt(it.second.edict) || it.second.edict->v.deadflag != DEAD_NO || (it.second.edict->v.effects & EF_NODRAW)) { continue; }
+
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
 
@@ -948,6 +978,8 @@ Vector AITAC_GetCommChairLocation(AvHTeamNumber Team)
 
 void AITAC_RefreshReachabilityForItem(AvHAIDroppedItem* Item)
 {
+	if (FNullEnt(Item->edict) || Item->edict->v.deadflag != DEAD_NO || (Item->edict->v.effects & EF_NODRAW)) { return; }
+
 	if (Item->ItemType == DEPLOYABLE_ITEM_SCAN)
 	{
 		Item->TeamAReachabilityFlags = AI_REACHABILITY_ALL;
@@ -1634,7 +1666,7 @@ void AITAC_RefreshBuildableStructures()
 
 	for (auto it = TeamAStructureMap.begin(); it != TeamAStructureMap.end();)
 	{
-		if (it->second.LastSeen < StructureRefreshFrame)
+		if (it->second.LastSeen < StructureRefreshFrame || FNullEnt(it->second.edict) || it->second.edict->v.deadflag != DEAD_NO || (it->second.edict->v.effects & EF_NODRAW))
 		{
 			AITAC_OnStructureDestroyed(&it->second);
 			it = TeamAStructureMap.erase(it);
@@ -1652,7 +1684,7 @@ void AITAC_RefreshBuildableStructures()
 
 	for (auto it = TeamBStructureMap.begin(); it != TeamBStructureMap.end();)
 	{
-		if (it->second.LastSeen < StructureRefreshFrame)
+		if (it->second.LastSeen < StructureRefreshFrame || FNullEnt(it->second.edict) || it->second.edict->v.deadflag != DEAD_NO || (it->second.edict->v.effects & EF_NODRAW))
 		{
 			AITAC_OnStructureDestroyed(&it->second);
 			it = TeamBStructureMap.erase(it);
@@ -1777,7 +1809,7 @@ void AITAC_UpdateMarineItem(CBaseEntity* Item, AvHAIDeployableItemType ItemType)
 
 	edict_t* ItemEdict = Item->edict();
 
-	if (FNullEnt(ItemEdict)) { return; }
+	if (FNullEnt(ItemEdict) || ItemEdict->v.deadflag != DEAD_NO || (ItemEdict->v.effects & EF_NODRAW)) { return; }
 
 	// All items except scans are of interest only if they're collectable. Without this check, marines will attempt to grab weapons from other players.
 	if (ItemType != DEPLOYABLE_ITEM_SCAN)
@@ -1834,6 +1866,8 @@ void AITAC_RefreshReachabilityForStructure(AvHAIBuildableStructure* Structure)
 	{
 		AITAC_RefreshHiveData();
 	}
+
+	if (!Structure || FNullEnt(Structure->edict) || Structure->edict->v.deadflag != DEAD_NO || (Structure->edict->v.effects & EF_NODRAW)) { return; }
 
 	if (Structure->StructureType == STRUCTURE_MARINE_DEPLOYEDMINE)
 	{
@@ -2125,6 +2159,8 @@ AvHAIBuildableStructure* AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 
 void AITAC_OnStructureCreated(AvHAIBuildableStructure* NewStructure)
 {
+	if (!NewStructure || FNullEnt(NewStructure->edict) || NewStructure->edict->v.deadflag != DEAD_NO || (NewStructure->edict->v.effects & EF_NODRAW)) { return; }
+
 	UTIL_AddStructureTemporaryObstacles(NewStructure);
 
 	AvHTeamNumber StructureTeam = (AvHTeamNumber)NewStructure->edict->v.team;
@@ -2146,6 +2182,8 @@ void AITAC_OnStructureCreated(AvHAIBuildableStructure* NewStructure)
 
 void AITAC_OnStructureCompleted(AvHAIBuildableStructure* NewStructure)
 {
+	if (!NewStructure || FNullEnt(NewStructure->edict) || NewStructure->edict->v.deadflag != DEAD_NO || (NewStructure->edict->v.effects & EF_NODRAW)) { return; }
+
 	if (NewStructure->StructureType == STRUCTURE_MARINE_PHASEGATE)
 	{
 		DeployableSearchFilter Filter;
@@ -2217,6 +2255,8 @@ void AITAC_RemovePhaseGateConnections(AvHAIBuildableStructure* SourceGate, AvHAI
 
 void AITAC_OnStructureBeginRecycling(AvHAIBuildableStructure* RecyclingStructure)
 {
+	if (!RecyclingStructure || FNullEnt(RecyclingStructure->edict) || RecyclingStructure->edict->v.deadflag != DEAD_NO || (RecyclingStructure->edict->v.effects & EF_NODRAW)) { return; }
+
 	// For phase gates, treat them like they've been destroyed
 	if (RecyclingStructure->StructureType == STRUCTURE_MARINE_PHASEGATE)
 	{
@@ -2226,6 +2266,8 @@ void AITAC_OnStructureBeginRecycling(AvHAIBuildableStructure* RecyclingStructure
 
 void AITAC_OnStructureDestroyed(AvHAIBuildableStructure* DestroyedStructure)
 {
+	if (!DestroyedStructure || FNullEnt(DestroyedStructure->edict)) { return; }
+
 	UTIL_RemoveStructureTemporaryObstacles(DestroyedStructure);
 
 	if (DestroyedStructure->StructureType == STRUCTURE_MARINE_PHASEGATE)
