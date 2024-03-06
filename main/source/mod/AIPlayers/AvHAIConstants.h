@@ -563,6 +563,7 @@ typedef struct _NAV_STATUS
 
 	Vector LastNavMeshCheckPosition = g_vecZero;
 	Vector LastNavMeshPosition = g_vecZero; // Tracks the last place the bot was on the nav mesh. Useful if accidentally straying off it
+	Vector LastOpenLocation = g_vecZero; // Tracks the last place the bot had enough room to move around people. Useful if in a vent and need to back up somewhere to let another player past.
 
 	int CurrentMoveType = MOVETYPE_NONE; // Tracks the edict's current movement type
 

@@ -20,12 +20,12 @@ bool UTIL_CommanderTrace(const edict_t* pEdict, const Vector& start, const Vecto
 	return (hit.flFraction >= 1.0f);
 }
 
-bool UTIL_QuickTrace(const edict_t* pEdict, const Vector& start, const Vector& end)
+bool UTIL_QuickTrace(const edict_t* pEdict, const Vector& start, const Vector& end, bool bAllowStartSolid)
 {
 	TraceResult hit;
 	edict_t* IgnoreEdict = (!FNullEnt(pEdict)) ? pEdict->v.pContainingEntity : NULL;
 	UTIL_TraceLine(start, end, ignore_monsters, ignore_glass, IgnoreEdict, &hit);
-	return (hit.flFraction >= 1.0f && !hit.fAllSolid);
+	return (hit.flFraction >= 1.0f && !hit.fAllSolid && (bAllowStartSolid || !hit.fStartSolid));
 }
 
 bool UTIL_QuickHullTrace(const edict_t* pEdict, const Vector& start, const Vector& end, bool bAllowStartSolid)
@@ -175,12 +175,12 @@ Vector UTIL_GetFloorUnderEntity(const edict_t* Edict)
 	return Edict->v.origin;
 }
 
-Vector UTIL_GetClosestPointOnEntityToLocation(const Vector Location, edict_t* Entity)
+Vector UTIL_GetClosestPointOnEntityToLocation(const Vector Location, const edict_t* Entity)
 {
 	return Vector(clampf(Location.x, Entity->v.absmin.x, Entity->v.absmax.x), clampf(Location.y, Entity->v.absmin.y, Entity->v.absmax.y), clampf(Location.z, Entity->v.absmin.z, Entity->v.absmax.z));
 }
 
-Vector UTIL_GetClosestPointOnEntityToLocation(const Vector Location, edict_t* Entity, const Vector EntityLocation)
+Vector UTIL_GetClosestPointOnEntityToLocation(const Vector Location, const edict_t* Entity, const Vector EntityLocation)
 {
 	Vector MinVec = EntityLocation - (Entity->v.size * 0.5f);
 	Vector MaxVec = EntityLocation + (Entity->v.size * 0.5f);

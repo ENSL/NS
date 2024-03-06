@@ -131,6 +131,7 @@ cvar_t	avh_botminplayers			= { kvBotMinPlayers,"0", FCVAR_SERVER };		// If bots 
 cvar_t	avh_botskill				= { kvBotSkill,"0", FCVAR_SERVER };				// Sets the skill for the bots (0 = easiest, 3 = hardest)
 cvar_t	avh_botusemapdefaults		= { kvBotUseMapDefaults,"0", FCVAR_SERVER };	// If bot auto mode == 1 then the min players will be taken from the config
 cvar_t	avh_botcommandermode		= { kvBotCommanderMode,"0", FCVAR_SERVER };		// 0 = Bots never command, 1 = If nobody takes charge, 2 = Only if no humans on team
+cvar_t	avh_botdebugmode			= { kvBotDebugMode,"0", FCVAR_SERVER };			// 0 = Regular play, 1 = Drone mode, 2 = Test Navigation mode
 
 
 //playtest cvars
@@ -222,6 +223,7 @@ void GameDLLInit( void )
 	CVAR_REGISTER(&avh_botusemapdefaults);
 	CVAR_REGISTER(&avh_botskill);
 	CVAR_REGISTER(&avh_botcommandermode);
+	CVAR_REGISTER(&avh_botdebugmode);
 	
 	// Register AvH variables
 	CVAR_REGISTER (&avh_drawdamage);

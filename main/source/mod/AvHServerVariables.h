@@ -148,6 +148,7 @@ float	ns_cvar_float(const cvar_t *cvar);
 #define	kvBotSkill					"mp_botskill"
 #define kvBotAutoMode				"mp_botautomode"
 #define kvBotCommanderMode			"mp_botcommandermode"
+#define kvBotDebugMode				"mp_botdebugmode"
 
 #define kvEasterEggChance			"mp_eastereggchance"
 #define kvUplink					"mp_uplink"
