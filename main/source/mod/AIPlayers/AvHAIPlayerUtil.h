@@ -150,6 +150,8 @@ float GetPlayerCloakAmount(const edict_t* Player);
 
 bool IsPlayerReloading(const AvHPlayer* Player);
 
+bool IsPlayerStandingOnPlayer(const edict_t* Player);
+
 // If the player is gestating, will return the target evolution. Otherwise, returns the iuser3
 AvHUser3 GetPlayerActiveClass(const AvHPlayer* Player);
 

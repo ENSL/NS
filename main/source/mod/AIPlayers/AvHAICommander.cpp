@@ -897,6 +897,10 @@ bool AICOMM_IsRequestValid(ai_commander_request* Request)
 			return !PlayerHasWeapon(PlayerRef, WEAPON_MARINE_HMG)
 				&& !AITAC_ItemExistsInLocation(Requestor->v.origin, DEPLOYABLE_ITEM_HMG, RequestorTeam, AI_REACHABILITY_MARINE, 0.0f, UTIL_MetresToGoldSrcUnits(5.0f), false)
 				&& AITAC_IsCompletedStructureOfTypeNearLocation(RequestorTeam, STRUCTURE_MARINE_ADVARMOURY, Requestor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+		case BUILD_GRENADE_GUN:
+			return !PlayerHasWeapon(PlayerRef, WEAPON_MARINE_GL)
+				&& !AITAC_ItemExistsInLocation(Requestor->v.origin, DEPLOYABLE_ITEM_GRENADELAUNCHER, RequestorTeam, AI_REACHABILITY_MARINE, 0.0f, UTIL_MetresToGoldSrcUnits(5.0f), false)
+				&& AITAC_IsCompletedStructureOfTypeNearLocation(RequestorTeam, STRUCTURE_MARINE_ADVARMOURY, Requestor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
 		case BUILD_MINES:
 			return !PlayerHasWeapon(PlayerRef, WEAPON_MARINE_MINES)
 				&& !AITAC_ItemExistsInLocation(Requestor->v.origin, DEPLOYABLE_ITEM_MINES, RequestorTeam, AI_REACHABILITY_MARINE, 0.0f, UTIL_MetresToGoldSrcUnits(5.0f), false)
@@ -951,8 +955,6 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 	StructureFilter.DeployableTypes = (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY);
 
 	AvHAIBuildableStructure* BaseArmoury = AITAC_FindClosestDeployableToLocation(CommChair->v.origin, &StructureFilter);
-
-	
 
 	if (!BaseArmoury && !FNullEnt(BaseBuilder))
 	{
@@ -2529,7 +2531,45 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 
 		NextRequest->bResponded = bSuccess;
 		return true;
+	}
 
+	if (NextRequest->RequestType == BUILD_GRENADE_GUN)
+	{
+		if (pBot->Player->GetResources() < BALANCE_VAR(kGrenadeLauncherCost)) { return false; }
+
+		DeployableSearchFilter ArmouryFilter;
+		ArmouryFilter.DeployableTeam = CommanderTeam;
+		ArmouryFilter.DeployableTypes = STRUCTURE_MARINE_ADVARMOURY;
+		ArmouryFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+		ArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+		AvHAIBuildableStructure* NearestArmoury = AITAC_FindClosestDeployableToLocation(Requestor->v.origin, &ArmouryFilter);
+
+		if (!NearestArmoury)
+		{
+			NextRequest->bResponded = true;
+			return false;
+		}
+
+		Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(4.0f));
+
+		if (vIsZero(DeployLocation))
+		{
+			DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(4.0f));
+		}
+
+		if (vIsZero(DeployLocation))
+		{
+			NextRequest->bResponded = true;
+			return false;
+		}
+
+		bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_GRENADELAUNCHER, DeployLocation);
+
+		NextRequest->ResponseAttempts++;
+
+		NextRequest->bResponded = bSuccess;
+		return true;
 	}
 
 	if (NextRequest->RequestType == BUILD_PHASEGATE)
@@ -3002,7 +3042,6 @@ bool AICOMM_ShouldBeacon(AvHAIPlayer* pBot)
 
 	return false;
 
-
 }
 
 void AICOMM_ReceiveChatRequest(AvHAIPlayer* Commander, edict_t* Requestor, const char* Request)
@@ -3020,6 +3059,10 @@ void AICOMM_ReceiveChatRequest(AvHAIPlayer* Commander, edict_t* Requestor, const
 	else if (!stricmp(Request, "HMG"))
 	{
 		NewRequestType = BUILD_HMG;
+	}
+	else if (!stricmp(Request, "gl"))
+	{
+		NewRequestType = BUILD_GRENADE_GUN;
 	}
 	else if (!stricmp(Request, "mines"))
 	{

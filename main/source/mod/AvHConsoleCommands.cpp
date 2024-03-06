@@ -1430,6 +1430,18 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 		theSuccess = true;
 	}
+	else if (FStrEq(pcmd, "setdebugvector1"))
+	{
+		AIDEBUG_SetDebugVector1(UTIL_GetFloorUnderEntity(theAvHPlayer->edict()));
+
+		theSuccess = true;
+	}
+	else if (FStrEq(pcmd, "setdebugvector2"))
+	{
+		AIDEBUG_SetDebugVector2(UTIL_GetFloorUnderEntity(theAvHPlayer->edict()));
+
+		theSuccess = true;
+	}
 	else if (FStrEq(pcmd, "cometome"))
 	{
 		vector<AvHAIPlayer*> AIPlayers = AIMGR_GetAllAIPlayers();
@@ -1440,6 +1452,107 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 			{
 				AITASK_SetMoveTask(thisBot, &thisBot->PrimaryBotTask, theAvHPlayer->pev->origin, true);
 			}
+		}
+
+		theSuccess = true;
+	}
+	else if (FStrEq(pcmd, "showteamstarts"))
+	{
+		Vector TeamAStart = AITAC_GetTeamStartingLocation(TEAM_ONE);
+		Vector TeamBStart = AITAC_GetTeamStartingLocation(TEAM_TWO);
+
+		UTIL_DrawLine(INDEXENT(1), theAvHPlayer->pev->origin, TeamAStart, 20.0f, 0, 0, 255);
+		UTIL_DrawLine(INDEXENT(1), theAvHPlayer->pev->origin, TeamBStart, 20.0f, 0, 128, 0);
+
+		theSuccess = true;
+	}
+	else if (FStrEq(pcmd, "testoffwalknode"))
+	{
+		Vector MoveFrom = AIDEBUG_GetDebugVector1();
+		Vector MoveTo = AIDEBUG_GetDebugVector2();
+
+		if (!vIsZero(MoveFrom) && !vIsZero(MoveTo))
+		{
+			bool bOnGround = (theAvHPlayer->pev->flags & FL_ONGROUND) || IsPlayerOnLadder(theAvHPlayer->edict());
+			bool Result = false;
+
+			if (!bOnGround)
+			{
+				Result = false;
+			}
+			else
+			{
+				Vector NearestPointOnLine = vClosestPointOnLine2D(MoveFrom, MoveTo, theAvHPlayer->pev->origin);
+
+				if (vDist2DSq(theAvHPlayer->pev->origin, NearestPointOnLine) > sqrf(GetPlayerRadius(theAvHPlayer->edict()) * 3.0f)) { Result = true; }
+
+				if (vEquals2D(NearestPointOnLine, MoveFrom) && !UTIL_PointIsDirectlyReachable(GetPlayerBottomOfCollisionHull(theAvHPlayer->edict()), MoveFrom)) { Result = true; }
+				if (vEquals2D(NearestPointOnLine, MoveTo) && !UTIL_PointIsDirectlyReachable(GetPlayerBottomOfCollisionHull(theAvHPlayer->edict()), MoveTo)) { Result = true; }
+			}
+
+			if (Result)
+			{
+				UTIL_SayText("TRUE\n", theAvHPlayer);
+			}
+			else
+			{
+				UTIL_SayText("FALSE\n", theAvHPlayer);
+			}
+		}
+
+
+
+		theSuccess = true;
+	}
+	else if (FStrEq(pcmd, "testoffclimbnode"))
+	{
+		Vector MoveStart = AIDEBUG_GetDebugVector1();
+		Vector MoveEnd = AIDEBUG_GetDebugVector2();
+
+		if (!vIsZero(MoveStart) && !vIsZero(MoveEnd))
+		{
+			bool bOnGround = (theAvHPlayer->pev->flags & FL_ONGROUND) || IsPlayerOnLadder(theAvHPlayer->edict());
+			bool Result = false;
+
+			edict_t* PlayerEdict = theAvHPlayer->edict();
+
+			if (bOnGround)
+			{
+				if (!UTIL_PointIsDirectlyReachable(GetPlayerBottomOfCollisionHull(PlayerEdict), MoveStart) && !UTIL_PointIsDirectlyReachable(GetPlayerBottomOfCollisionHull(PlayerEdict), MoveEnd))
+				{
+					Result = true;
+				}
+			}
+			else
+			{
+				Vector ClosestPointOnLine = vClosestPointOnLine2D(MoveStart, MoveEnd, PlayerEdict->v.origin);
+
+				Result = vDist2DSq(PlayerEdict->v.origin, ClosestPointOnLine) > sqrf(GetPlayerRadius(PlayerEdict) * 3.0f);
+			}
+
+			if (Result)
+			{
+				UTIL_SayText("TRUE\n", theAvHPlayer);
+			}
+			else
+			{
+				UTIL_SayText("FALSE\n", theAvHPlayer);
+			}
+		}
+
+
+
+		theSuccess = true;
+	}
+	else if (FStrEq(pcmd, "amonladder"))
+	{
+		if (IsPlayerOnLadder(theAvHPlayer->edict()))
+		{
+			UTIL_SayText("TRUE\n", theAvHPlayer);
+		}
+		else
+		{
+			UTIL_SayText("FALSE\n", theAvHPlayer);
 		}
 
 		theSuccess = true;

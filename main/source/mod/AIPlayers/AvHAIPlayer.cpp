@@ -1628,6 +1628,49 @@ void StartNewBotFrame(AvHAIPlayer* pBot)
 		if (UTIL_PointIsReachable(pBot->BotNavInfo.NavProfile, AITAC_GetTeamStartingLocation(pBot->Player->GetTeam()), pBot->CurrentFloorPosition, 16.0f))
 		{
 			pBot->BotNavInfo.LastNavMeshPosition = pBot->CurrentFloorPosition;
+
+			if (pBot->BotNavInfo.IsOnGround)
+			{
+				Vector ForwardVector = UTIL_GetForwardVector2D(pBot->Edict->v.angles);
+				Vector RightVector = UTIL_GetCrossProduct(ForwardVector, UP_VECTOR);
+
+				Vector TraceEndPoints[4];
+
+				TraceEndPoints[0] = pBot->Edict->v.origin + (ForwardVector * (GetPlayerRadius(pBot->Edict) * 2.0f));
+				TraceEndPoints[1] = pBot->Edict->v.origin - (ForwardVector * (GetPlayerRadius(pBot->Edict) * 2.0f));
+				TraceEndPoints[2] = pBot->Edict->v.origin + (RightVector * (GetPlayerRadius(pBot->Edict) * 2.0f));
+				TraceEndPoints[3] = pBot->Edict->v.origin - (RightVector * (GetPlayerRadius(pBot->Edict) * 2.0f));
+
+				int NumDirectionsChecked = 0;
+				bool bHasRoom = true;
+
+				while (NumDirectionsChecked < 4 && bHasRoom)
+				{
+					Vector EndTrace = TraceEndPoints[NumDirectionsChecked];
+					Vector EndNavTrace = EndTrace;
+					EndNavTrace.z = pBot->CollisionHullBottomLocation.z;
+
+					if (!UTIL_QuickTrace(pBot->Edict, pBot->Edict->v.origin, EndTrace))
+					{
+						bHasRoom = false;
+						break;
+					}
+
+					if (!UTIL_TraceNav(pBot->BotNavInfo.NavProfile, pBot->CollisionHullBottomLocation, EndNavTrace, 0.0f))
+					{
+						bHasRoom = false;
+						break;
+					}
+
+					NumDirectionsChecked++;
+				}
+
+				if (bHasRoom)
+				{
+					pBot->BotNavInfo.LastOpenLocation = pBot->CurrentFloorPosition;
+				}
+
+			}
 		}
 
 		pBot->BotNavInfo.LastNavMeshCheckPosition = pBot->CurrentFloorPosition;
@@ -4952,7 +4995,7 @@ void TestNavThink(AvHAIPlayer* pBot)
 
 			if (!RandomNode) { return; }
 
-			Vector RandomPoint = RandomNode->Location;
+			RandomPoint = RandomNode->Location;
 		}
 		else
 		{
@@ -4965,6 +5008,10 @@ void TestNavThink(AvHAIPlayer* pBot)
 		}
 		else
 		{
+			if (!vIsZero(pBot->BotNavInfo.LastNavMeshPosition))
+			{
+				MoveToWithoutNav(pBot, pBot->BotNavInfo.LastNavMeshPosition);
+			}
 			AITASK_ClearBotTask(pBot, &pBot->PrimaryBotTask);
 		}
 	}

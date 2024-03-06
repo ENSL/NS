@@ -88,6 +88,8 @@ void AITAC_ClearMapAIData();
 // Clear out all the hive information
 void AITAC_ClearHiveInfo();
 
+void AITAC_ClearStructureNavData();
+
 bool AITAC_AlienHiveNeedsReinforcing(const AvHAIHiveDefinition* Hive);
 
 void AITAC_RefreshMarineItems();

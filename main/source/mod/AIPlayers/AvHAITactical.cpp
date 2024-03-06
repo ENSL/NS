@@ -47,7 +47,7 @@ float last_structure_refresh_time = 0.0f;
 float last_item_refresh_time = 0.0f;
 
 // Increments by 1 every time the structure list is refreshed. Used to detect if structures have been destroyed and no longer show up
-unsigned int StructureRefreshFrame = 0;
+unsigned int StructureRefreshFrame = 1;
 // Increments by 1 every time the item list is refreshed. Used to detect if items have been removed from play and no longer show up
 unsigned int ItemRefreshFrame = 0;
 
@@ -850,6 +850,7 @@ Vector AITAC_GetTeamStartingLocation(AvHTeamNumber Team)
 				{
 					Vector CommChairLocation = AITAC_GetCommChairLocation(TeamANum);
 					TeamAStartingLocation = (!vIsZero(CommChairLocation)) ? CommChairLocation : TeamStartLocation;
+					TeamAStartingLocation = UTIL_ProjectPointToNavmesh(TeamAStartingLocation, GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE));
 				}
 			}
 			else
@@ -885,12 +886,13 @@ Vector AITAC_GetTeamStartingLocation(AvHTeamNumber Team)
 
 				if (InfantryPortal)
 				{
-					TeamAStartingLocation = InfantryPortal->Location;
+					TeamBStartingLocation = InfantryPortal->Location;
 				}
 				else
 				{
 					Vector CommChairLocation = AITAC_GetCommChairLocation(TeamBNum);
-					TeamAStartingLocation = (!vIsZero(CommChairLocation)) ? CommChairLocation : TeamStartLocation;
+					TeamBStartingLocation = (!vIsZero(CommChairLocation)) ? CommChairLocation : TeamStartLocation;
+					TeamBStartingLocation = UTIL_ProjectPointToNavmesh(TeamBStartingLocation, GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE));
 				}
 			}
 			else
@@ -1507,6 +1509,9 @@ void AITAC_CheckNavMeshModified()
 
 void AITAC_OnNavMeshModified()
 {
+	TeamAStartingLocation = ZERO_VECTOR;
+	TeamBStartingLocation = ZERO_VECTOR;
+
 	for (auto it = TeamAStructureMap.begin(); it != TeamAStructureMap.end(); it++)
 	{
 		it->second.bReachabilityMarkedDirty = true;
@@ -2352,6 +2357,19 @@ void AITAC_LinkDeployedItemToAction(AvHAIPlayer* CommanderBot, const AvHAIDroppe
 
 }
 
+void AITAC_ClearStructureNavData()
+{
+	for (auto& it : TeamAStructureMap)
+	{
+		AITAC_OnStructureDestroyed(&it.second);
+	}
+
+	for (auto& it : TeamBStructureMap)
+	{
+		AITAC_OnStructureDestroyed(&it.second);
+	}
+}
+
 void AITAC_ClearMapAIData()
 {
 	UTIL_ClearLocalizations();
@@ -2360,12 +2378,19 @@ void AITAC_ClearMapAIData()
 
 	AITAC_ClearHiveInfo();
 
+	AITAC_ClearStructureNavData();
+
+	while (!bTileCacheUpToDate)
+	{
+		UTIL_UpdateTileCache();
+	}
+
 	MarineDroppedItemMap.clear();
 	TeamAStructureMap.clear();
 	TeamBStructureMap.clear();
 
-	StructureRefreshFrame = 0;
-	ItemRefreshFrame = 0;
+	StructureRefreshFrame = 1;
+	ItemRefreshFrame = 1;
 
 	last_structure_refresh_time = 0.0f;
 	last_item_refresh_time = 0.0f;

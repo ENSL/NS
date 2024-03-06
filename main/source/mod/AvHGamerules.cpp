@@ -392,39 +392,6 @@ AvHGamerules::AvHGamerules() : mTeamA(TEAM_ONE), mTeamB(TEAM_TWO)
 			AIMGR_RemoveAIPlayerFromTeam(DesiredTeam);
 		});
 
-	REGISTER_SERVER_FUNCTION("sv_testainavigation", []()
-		{
-			if (avh_botsenabled.value == 0)
-			{
-				return;
-			}
-
-			bool bNewTestValue = !AIMGR_GetTestNavMode();
-
-			AIMGR_SetTestNavMode(bNewTestValue);
-		});
-	REGISTER_SERVER_FUNCTION("sv_aidronemode", []()
-		{
-			if (avh_botsenabled.value == 0)
-			{
-				return;
-			}
-
-			bool bNewTestValue = !AIMGR_GetDroneMode();
-
-			AIMGR_SetDroneMode(bNewTestValue);
-		});
-	REGISTER_SERVER_FUNCTION("sv_stopaidebug", []()
-		{
-			if (avh_botsenabled.value == 0)
-			{
-				return;
-			}
-
-			AIMGR_SetTestNavMode(false);
-			AIMGR_SetDroneMode(false);
-		});
-
 	g_VoiceGameMgr.Init(&gVoiceHelper, gpGlobals->maxClients);
 
 	#ifdef DEBUG
@@ -2193,6 +2160,8 @@ void AvHGamerules::PlayerSpawn( CBasePlayer *pPlayer )
 		//theAvHPlayer->InitializeFromTeam();
 		//this->GetTeam(theAvHPlayer->GetTeam())->AddPlayer(theAvHPlayer->entindex(), theAvHPlayer->GetRole());
 	}
+
+	AIMGR_PlayerSpawned();
 }
 
 void AvHGamerules::PlayerThink( CBasePlayer *pPlayer )

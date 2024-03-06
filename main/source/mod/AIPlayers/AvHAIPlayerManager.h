@@ -6,8 +6,10 @@
 
 // Max rate bot can run its logic, default is 1/60th second. WARNING: Increasing the rate past 100hz causes bots to move and turn slowly due to GoldSrc limits!
 static const double BOT_MIN_FRAME_TIME = (1.0 / 60.0);
-// At map load / map restart, how long to wait before starting to add bots
+// Once the first human player has joined the game, how long to wait before adding bots
 static const float AI_GRACE_PERIOD = 5.0f;
+// Max time to wait before spawning players if none connect (e.g. empty dedicated server)
+static const float AI_MAX_START_TIMEOUT = 20.0f;
 
 void AIMGR_BotPrecache();
 
@@ -46,6 +48,7 @@ int		AIMGR_GetNumAIPlayers();
 int		AIMGR_AIPlayerExistsOnTeam(AvHTeamNumber Team);
 
 void	AIMGR_UpdateAIMapData();
+bool AIMGR_ShouldStartPlayerBalancing();
 
 AvHAICommanderMode AIMGR_GetCommanderMode();
 
@@ -90,12 +93,9 @@ void AIMGR_ClearBotData();
 AvHAIPlayer* AIMGR_GetDebugAIPlayer();
 void AIMGR_SetDebugAIPlayer(edict_t* AIPlayer);
 
-void AIMGR_SetTestNavMode(bool bNewValue);
-bool AIMGR_GetTestNavMode();
-
-void AIMGR_SetDroneMode(bool bNewValue);
-bool AIMGR_GetDroneMode();
-
 void AIMGR_ReceiveCommanderRequest(AvHTeamNumber Team, edict_t* Requestor, const char* Request);
+
+void AIMGR_ClientConnected(edict_t* NewClient);
+void AIMGR_PlayerSpawned();
 
 #endif

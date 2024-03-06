@@ -145,17 +145,10 @@ bool IsPlayerOnLadder(const edict_t* Player)
 
 		if (FNullEnt(NearestLadder)) { return false; }
 
-		if (vPointOverlaps3D(Player->v.origin, NearestLadder->v.absmin, NearestLadder->v.absmax)) { return true; }
+		Vector NearestPointOnLadder = UTIL_GetClosestPointOnEntityToLocation(Player->v.origin, NearestLadder);
+		Vector NearestPointOnPlayer = UTIL_GetClosestPointOnEntityToLocation(NearestPointOnLadder, Player);
 
-		trace_t TraceResult;
-
-		Vector TraceStart = Player->v.origin;
-		Vector TraceEnd = UTIL_GetCentreOfEntity(NearestLadder);
-		TraceEnd.z = TraceStart.z;
-
-		NS_TraceLine(TraceStart, TraceEnd, 1, PM_WORLD_ONLY, -1, true, TraceResult);
-
-		return (TraceResult.fraction < 0.01f);
+		return (vDist2DSq(NearestPointOnLadder, NearestPointOnPlayer) <= sqrf(4.0f));
 	}
 
 	return (Player->v.movetype == MOVETYPE_FLY);
@@ -782,6 +775,11 @@ bool IsPlayerReloading(const AvHPlayer* Player)
 	if (!theBasePlayerWeapon) { return false; }
 
 	return (theBasePlayerWeapon->m_fInReload > 0 || theBasePlayerWeapon->m_fInSpecialReload > 0);
+}
+
+bool IsPlayerStandingOnPlayer(const edict_t* Player)
+{
+	return (IsEdictPlayer(Player->v.groundentity));
 }
 
 AvHUser3 GetPlayerActiveClass(const AvHPlayer* Player)

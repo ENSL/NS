@@ -7,7 +7,7 @@
 #include "AvHAIConstants.h"
 
 bool UTIL_CommanderTrace(const edict_t* pEdict, const Vector& start, const Vector& end);
-bool UTIL_QuickTrace(const edict_t* pEdict, const Vector& start, const Vector& end);
+bool UTIL_QuickTrace(const edict_t* pEdict, const Vector& start, const Vector& end, bool bAllowStartSolid = false);
 bool UTIL_QuickHullTrace(const edict_t* pEdict, const Vector& start, const Vector& end, bool bAllowStartSolid = false);
 bool UTIL_QuickHullTrace(const edict_t* pEdict, const Vector& start, const Vector& end, int hullNum, bool bAllowStartSolid = false);
 edict_t* UTIL_TraceEntity(const edict_t* pEdict, const Vector& start, const Vector& end);
@@ -19,8 +19,8 @@ Vector UTIL_GetEntityGroundLocation(const edict_t* pEntity);
 Vector UTIL_GetCentreOfEntity(const edict_t* Entity);
 Vector UTIL_GetFloorUnderEntity(const edict_t* Edict);
 
-Vector UTIL_GetClosestPointOnEntityToLocation(const Vector UserLocation, edict_t* Entity);
-Vector UTIL_GetClosestPointOnEntityToLocation(const Vector Location, edict_t* Entity, const Vector EntityLocation);
+Vector UTIL_GetClosestPointOnEntityToLocation(const Vector UserLocation, const edict_t* Entity);
+Vector UTIL_GetClosestPointOnEntityToLocation(const Vector Location, const edict_t* Entity, const Vector EntityLocation);
 
 AvHAIDeployableStructureType IUSER3ToStructureType(const int inIUSER3);
 

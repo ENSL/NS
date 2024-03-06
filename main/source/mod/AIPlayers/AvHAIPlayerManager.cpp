@@ -7,6 +7,7 @@
 #include "AvHAIWeaponHelper.h"
 #include "AvHAIHelper.h"
 #include "AvHAICommander.h"
+#include "AvHAIPlayerUtil.h"
 #include "../AvHGamerules.h"
 #include "../dlls/client.h"
 #include <time.h>
@@ -21,6 +22,7 @@ extern cvar_t avh_botsenabled;
 extern cvar_t avh_botminplayers;
 extern cvar_t avh_botusemapdefaults;
 extern cvar_t avh_botcommandermode;
+extern cvar_t avh_botdebugmode;
 
 float LastAIPlayerCountUpdate = 0.0f;
 
@@ -30,9 +32,6 @@ float AIStartedTime = 0.0f; // Used to give 5-second grace period before adding 
 
 bool bHasRoundStarted = false;
 bool bMapDataInitialised = false;
-
-bool bTestNavigation = false;
-bool bDroneMode = false;
 
 float NextCommanderAllowedTimeTeamA = 0.0f;
 float NextCommanderAllowedTimeTeamB = 0.0f;
@@ -45,6 +44,10 @@ Vector DebugVector2 = ZERO_VECTOR;
 AvHAIPlayer* DebugAIPlayer = nullptr;
 
 vector<bot_path_node> DebugPath;
+
+bool bPlayerSpawned = false;
+
+float CountdownStartedTime = 0.0f;
 
 string BotNames[MAX_PLAYERS] = {	"MrRobot",
 									"Wall-E",
@@ -119,7 +122,7 @@ void AIMGR_UpdateAIPlayerCounts()
 	// Don't add or remove bots too quickly, otherwise it can cause lag or even overflows
 	if (gpGlobals->time - LastAIPlayerCountUpdate < 0.2f) { return; }
 
-	if (gpGlobals->time - AIStartedTime < AI_GRACE_PERIOD) { return; }
+	if (!AIMGR_ShouldStartPlayerBalancing()) { return; }
 
 	// If game has ended, kick bots that have dropped back to the ready room
 	if (GetGameRules()->GetVictoryTeam() != TEAM_IND)
@@ -634,8 +637,40 @@ void AIMGR_UpdateAIPlayers()
 
 				if (bot->BotNavInfo.CurrentPath.size() > 0 && bot->BotNavInfo.CurrentPathPoint != bot->BotNavInfo.CurrentPath.end())
 				{
-					UTIL_DrawLine(INDEXENT(1), bot->Edict->v.origin, bot->BotNavInfo.CurrentPathPoint->Location, 0, 255, 255);
+					UTIL_DrawLine(INDEXENT(1), bot->Edict->v.origin, bot->BotNavInfo.CurrentPathPoint->FromLocation, 255, 0, 0);
+					UTIL_DrawLine(INDEXENT(1), bot->Edict->v.origin, bot->BotNavInfo.CurrentPathPoint->Location, 0, 128, 0);
 				}
+			}
+
+			if (!vIsZero(DebugVector1) && !vIsZero(DebugVector2))
+			{
+				UTIL_DrawLine(INDEXENT(1), DebugVector1, DebugVector2);
+
+				edict_t* PlayerEdict = INDEXENT(1);
+
+				bool bOnGround = (INDEXENT(1)->v.flags & FL_ONGROUND) || IsPlayerOnLadder(PlayerEdict);
+				bool Result = false;
+
+				if (!IsPlayerOnLadder(PlayerEdict))
+				{
+
+					if (IsPlayerClimbingWall(PlayerEdict)) { Result = true; }
+
+					if (bOnGround)
+					{
+						if (!UTIL_PointIsDirectlyReachable(GetPlayerBottomOfCollisionHull(PlayerEdict), DebugVector1) && !UTIL_PointIsDirectlyReachable(GetPlayerBottomOfCollisionHull(PlayerEdict), DebugVector2)) { Result = true; }
+					}
+				}
+
+				if (Result)
+				{
+					UTIL_DrawHUDText(PlayerEdict, 0, 0.1f, 0.1f, 255, 255, 255, "TRUE");
+				}
+				else
+				{
+					UTIL_DrawHUDText(PlayerEdict, 0, 0.1f, 0.1f, 255, 255, 255, "FALSE");
+				}
+
 			}
 
 			if (bHasRoundStarted)
@@ -674,11 +709,11 @@ void AIMGR_UpdateAIPlayers()
 
 				UpdateBotChat(bot);
 
-				if (bDroneMode)
+				if (avh_botdebugmode.value == 1)
 				{
 					DroneThink(bot);
 				}
-				else if (bTestNavigation)
+				else if (avh_botdebugmode.value == 2)
 				{
 					TestNavThink(bot);
 				}
@@ -902,12 +937,19 @@ void AIMGR_ResetRound()
 
 	UTIL_UpdateDoors(true);
 
-	UTIL_UpdateTileCache();
+	bool bTileCacheFullyUpdated = UTIL_UpdateTileCache();
+
+	while (!bTileCacheFullyUpdated)
+	{
+		bTileCacheFullyUpdated = UTIL_UpdateTileCache();
+	}
 
 	ALERT(at_console, "AI Manager Reset Round\n");
 
 	bHasRoundStarted = false;
 	bMapDataInitialised = true;
+
+	CountdownStartedTime = 0.0f;
 }
 
 void AIMGR_RoundStarted()
@@ -936,6 +978,8 @@ void AIMGR_RoundStarted()
 	{
 		AIMGR_SetCommanderAllowedTime(TeamBNumber, 0.0f);
 	}
+
+	AITAC_OnNavMeshModified();
 }
 
 void AIMGR_SetCommanderAllowedTime(AvHTeamNumber Team, float NewValue)
@@ -1009,6 +1053,8 @@ void AIMGR_NewMap()
 	AIMGR_BotPrecache();
 
 	bHasRoundStarted = false;
+
+	bPlayerSpawned = false;
 }
 
 AvHAIPlayer* AIMGR_GetAICommander(AvHTeamNumber Team)
@@ -1118,9 +1164,19 @@ vector<AvHPlayer*> AIMGR_GetNonAIPlayersOnTeam(AvHTeamNumber Team)
 	return TeamPlayers;
 }
 
+bool AIMGR_ShouldStartPlayerBalancing()
+{
+	return (bPlayerSpawned && gpGlobals->time - AIStartedTime > AI_GRACE_PERIOD) || (gpGlobals->time - AIStartedTime > AI_MAX_START_TIMEOUT);
+}
+
 void AIMGR_UpdateAIMapData()
 {
-	if (bMapDataInitialised && gpGlobals->time - AIStartedTime > AI_GRACE_PERIOD)
+	if (GetGameRules()->GetCountdownStarted() && CountdownStartedTime == 0.0f)
+	{
+		CountdownStartedTime = gpGlobals->time;
+	}
+
+	if (bMapDataInitialised && (CountdownStartedTime > 0.0f && (gpGlobals->time - 1.0f) > CountdownStartedTime))
 	{
 		AITAC_UpdateMapAIData();
 		UTIL_UpdateTileCache();
@@ -1158,34 +1214,6 @@ void AIMGR_SetDebugAIPlayer(edict_t* AIPlayer)
 	DebugAIPlayer = nullptr;
 }
 
-void AIMGR_SetTestNavMode(bool bNewValue)
-{
-	if (bNewValue)
-	{
-		bDroneMode = false;
-	}
-	bTestNavigation = bNewValue;
-}
-
-void AIMGR_SetDroneMode(bool bNewValue)
-{
-	if (bNewValue)
-	{
-		bTestNavigation = false;
-	}
-	bDroneMode = bNewValue;
-}
-
-bool AIMGR_GetTestNavMode()
-{
-	return bTestNavigation;
-}
-
-bool AIMGR_GetDroneMode()
-{
-	return bTestNavigation;
-}
-
 void AIMGR_ReceiveCommanderRequest(AvHTeamNumber Team, edict_t* Requestor, const char* Request)
 {
 	AvHTeam* TeamRef = GetGameRules()->GetTeam(Team);
@@ -1201,4 +1229,14 @@ void AIMGR_ReceiveCommanderRequest(AvHTeamNumber Team, edict_t* Requestor, const
 	{
 		AICOMM_ReceiveChatRequest(BotCommander, Requestor, Request);
 	}
+}
+
+void AIMGR_ClientConnected(edict_t* NewClient)
+{
+
+}
+
+void AIMGR_PlayerSpawned()
+{
+	bPlayerSpawned = true;
 }
