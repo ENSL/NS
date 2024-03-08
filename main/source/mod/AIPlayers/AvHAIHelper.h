@@ -50,6 +50,9 @@ void UTIL_DrawLine(edict_t* pEntity, Vector start, Vector end, int r, int g, int
 // Draws a coloured line using RGB input, between start and end for the given player (pEntity) for given number of seconds
 void UTIL_DrawLine(edict_t* pEntity, Vector start, Vector end, float drawTimeSeconds, int r, int g, int b);
 
+void UTIL_DrawBox(edict_t* pEntity, Vector bMin, Vector bMax, float drawTimeSeconds);
+void UTIL_DrawBox(edict_t* pEntity, Vector bMin, Vector bMax, float drawTimeSeconds, int r, int g, int b);
+
 void UTIL_DrawHUDText(edict_t* pEntity, char channel, float x, float y, unsigned char r, unsigned char g, unsigned char b, const char* string);
 
 void UTIL_ClearLocalizations();

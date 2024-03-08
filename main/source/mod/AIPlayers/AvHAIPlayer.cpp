@@ -6725,10 +6725,12 @@ bool SkulkCombatThink(AvHAIPlayer* pBot)
 			}
 			else
 			{
-				if (pBot->BotNavInfo.CurrentPath.size() == 0 || pBot->BotNavInfo.CurrentPathPoint == pBot->BotNavInfo.CurrentPath.end()) { return true; }
+				if (pBot->BotNavInfo.CurrentPath.size() == 0 || pBot->BotNavInfo.CurrentPathPoint >= pBot->BotNavInfo.CurrentPath.size()) { return true; }
+
+				bot_path_node CurrentPathNode = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint];
 
 				// EVASIVE MANOEUVRES! Only do this if we're running along the floor and aren't approaching a path point (so we don't stray off the path)
-				if (pBot->BotNavInfo.CurrentPathPoint->flag == SAMPLE_POLYFLAGS_WALK && vDist2DSq(pBot->Edict->v.origin, pBot->BotNavInfo.CurrentPathPoint->Location) > sqrf(50.0f))
+				if (CurrentPathNode.flag == SAMPLE_POLYFLAGS_WALK && vDist2DSq(pBot->Edict->v.origin, CurrentPathNode.Location) > sqrf(50.0f))
 				{
 					Vector RightDir = UTIL_GetCrossProduct(pBot->desiredMovementDir, UP_VECTOR);
 
@@ -7286,9 +7288,15 @@ bool FadeCombatThink(AvHAIPlayer* pBot)
 				// If we're still in danger while retreating, do extra leaping to get the hell out
 				if (TrackedEnemyRef->bHasLOS)
 				{
-					if (pBot->BotNavInfo.CurrentPathPoint != pBot->BotNavInfo.CurrentPath.end() && pBot->BotNavInfo.CurrentPathPoint->flag != SAMPLE_POLYFLAGS_WALLCLIMB && pBot->BotNavInfo.CurrentPathPoint->flag != SAMPLE_POLYFLAGS_LIFT)
+					if (pBot->BotNavInfo.CurrentPath.size() > 0 && pBot->BotNavInfo.CurrentPathPoint < pBot->BotNavInfo.CurrentPath.size())
 					{
-						BotLeap(pBot, pBot->BotNavInfo.CurrentPathPoint->Location);
+						bot_path_node CurrentPathNode = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint];
+
+						if (CurrentPathNode.flag != SAMPLE_POLYFLAGS_WALLCLIMB && CurrentPathNode.flag != SAMPLE_POLYFLAGS_LIFT)
+						{							
+							BotLeap(pBot, CurrentPathNode.Location);
+						}
+						
 					}
 				}
 				else

@@ -11,6 +11,7 @@
 
 #include "../AvHSharedUtil.h"
 #include "../AvHAlienWeaponConstants.h"
+#include "../AvHMarineEquipmentConstants.h"
 #include "../AvHGamerules.h"
 #include "../AvHWeldable.h"
 #include "../AvHTurret.h"
@@ -1126,6 +1127,29 @@ void BotProgressPickupTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 void BotProgressMineStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
+	if (vIsZero(Task->TaskLocation))
+	{
+		Task->TaskLocation = UTIL_GetNextMinePosition2(Task->TaskTarget);
+
+		if (vIsZero(Task->TaskLocation))
+		{
+			AITASK_ClearBotTask(pBot, Task);
+			return;
+		}
+	}
+
+	float DistToPlaceLocation = vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation);
+
+	if (DistToPlaceLocation < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
+	{
+		pBot->DesiredCombatWeapon = WEAPON_MARINE_MINES;
+	}
+	else
+	{
+		MoveTo(pBot, Task->TaskLocation, MOVESTYLE_NORMAL);
+		return;
+	}
+
 	if (Task->ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_PENDING)
 	{
 		return;
@@ -1147,38 +1171,30 @@ void BotProgressMineStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		Task->ActiveBuildInfo.BuildStatus = BUILD_ATTEMPT_NONE;
 	}
 
-	if (vIsZero(Task->TaskLocation))
-	{
-		Task->TaskLocation = UTIL_GetNextMinePosition(Task->TaskTarget);
-
-		if (vIsZero(Task->TaskLocation))
-		{
-			AITASK_ClearBotTask(pBot, Task);
-			return;
-		}
-	}
-
-	float DistToPlaceLocation = vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation);
-
-	if (DistToPlaceLocation < sqrf(UTIL_MetresToGoldSrcUnits(3.0f)))
-	{
-		pBot->DesiredCombatWeapon = WEAPON_MARINE_MINES;
-	}
-
-
-	if (DistToPlaceLocation > sqrf(8.0f))
-	{
-		MoveTo(pBot, Task->TaskLocation, MOVESTYLE_NORMAL);
-		return;
-	}
-
-	BotDirectLookAt(pBot, Task->TaskLocation);
+	BotLookAt(pBot, Task->TaskLocation);
 
 	if (GetPlayerCurrentWeapon(pBot->Player) == WEAPON_MARINE_MINES)
 	{
-		float LookDot = UTIL_GetDotProduct(UTIL_GetForwardVector(pBot->Edict->v.v_angle), UTIL_GetVectorNormal(Task->TaskLocation - pBot->CurrentEyePosition));
+		Vector TraceStart = pBot->Player->GetGunPosition();
+		Vector TraceDir = UTIL_GetForwardVector(pBot->Edict->v.v_angle);
 
-		if (LookDot > 0.95f)
+		TraceResult tr;
+		UTIL_TraceLine(TraceStart, TraceStart + (TraceDir * kMineRange), dont_ignore_monsters, pBot->Edict->v.pContainingEntity, &tr);
+
+		bool bTraceSuccessful = false;
+
+		if (tr.flFraction < 1.0f)
+		{
+			if (tr.pHit != Task->TaskTarget)
+			{
+				if (vDist2DSq(tr.vecEndPos, Task->TaskLocation) < sqrf(8.0f))
+				{
+					bTraceSuccessful = true;
+				}
+			}
+		}
+
+		if (bTraceSuccessful)
 		{
 			pBot->Button |= IN_ATTACK;
 			Task->ActiveBuildInfo.AttemptedLocation = Task->TaskLocation;
@@ -1186,6 +1202,11 @@ void BotProgressMineStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 			Task->ActiveBuildInfo.BuildAttemptTime = gpGlobals->time;
 			Task->ActiveBuildInfo.AttemptedStructureType = STRUCTURE_MARINE_DEPLOYEDMINE;
 			Task->ActiveBuildInfo.NumAttempts++;
+		}
+		else
+		{
+			MoveTo(pBot, Task->TaskLocation, MOVESTYLE_NORMAL);
+			return;
 		}
 	}
 }
@@ -3438,7 +3459,7 @@ void AITASK_SetMineStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict
 	Task->TaskType = TASK_PLACE_MINE;
 	Task->TaskTarget = Target;
 	Task->bTaskIsUrgent = bIsUrgent;
-	Task->TaskLocation = UTIL_GetNextMinePosition(Target);
+	Task->TaskLocation = UTIL_GetNextMinePosition2(Target);
 	Task->StructureType = STRUCTURE_MARINE_DEPLOYEDMINE;
 
 

@@ -635,10 +635,11 @@ void AIMGR_UpdateAIPlayers()
 
 				AIDEBUG_DrawBotPath(bot);
 
-				if (bot->BotNavInfo.CurrentPath.size() > 0 && bot->BotNavInfo.CurrentPathPoint != bot->BotNavInfo.CurrentPath.end())
+				if (bot->BotNavInfo.CurrentPath.size() > 0 && bot->BotNavInfo.CurrentPathPoint < bot->BotNavInfo.CurrentPath.size())
 				{
-					UTIL_DrawLine(INDEXENT(1), bot->Edict->v.origin, bot->BotNavInfo.CurrentPathPoint->FromLocation, 255, 0, 0);
-					UTIL_DrawLine(INDEXENT(1), bot->Edict->v.origin, bot->BotNavInfo.CurrentPathPoint->Location, 0, 128, 0);
+					bot_path_node CurrentPathNode = bot->BotNavInfo.CurrentPath[bot->BotNavInfo.CurrentPathPoint];
+					UTIL_DrawLine(INDEXENT(1), bot->Edict->v.origin, CurrentPathNode.FromLocation, 255, 0, 0);
+					UTIL_DrawLine(INDEXENT(1), bot->Edict->v.origin, CurrentPathNode.Location, 0, 128, 0);
 				}
 			}
 
@@ -1119,6 +1120,28 @@ vector<AvHAIPlayer*> AIMGR_GetAllAIPlayers()
 		if (FNullEnt(BotIt->Edict)) { continue; }
 
 		Result.push_back(&(*BotIt));
+	}
+
+	return Result;
+}
+
+vector<AvHPlayer*> AIMGR_GetAllActivePlayers()
+{
+	vector<AvHPlayer*> Result;
+
+	for (int i = 1; i <= gpGlobals->maxClients; i++)
+	{
+		edict_t* PlayerEdict = INDEXENT(i);
+
+		if (!FNullEnt(PlayerEdict) && !PlayerEdict->free && IsPlayerActiveInGame(PlayerEdict))
+		{
+			AvHPlayer* PlayerRef = dynamic_cast<AvHPlayer*>(CBaseEntity::Instance(PlayerEdict));
+
+			if (PlayerRef)
+			{
+				Result.push_back(PlayerRef);
+			}			
+		}
 	}
 
 	return Result;

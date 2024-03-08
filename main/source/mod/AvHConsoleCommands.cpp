@@ -1456,13 +1456,29 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 		theSuccess = true;
 	}
-	else if (FStrEq(pcmd, "showteamstarts"))
+	else if (FStrEq(pcmd, "drawtempobstacles"))
 	{
-		Vector TeamAStart = AITAC_GetTeamStartingLocation(TEAM_ONE);
-		Vector TeamBStart = AITAC_GetTeamStartingLocation(TEAM_TWO);
+		AIDEBUG_DrawTemporaryObstacles(10.0f);
 
-		UTIL_DrawLine(INDEXENT(1), theAvHPlayer->pev->origin, TeamAStart, 20.0f, 0, 0, 255);
-		UTIL_DrawLine(INDEXENT(1), theAvHPlayer->pev->origin, TeamBStart, 20.0f, 0, 128, 0);
+		theSuccess = true;
+	}
+	else if (FStrEq(pcmd, "nextmineposition"))
+	{
+		DeployableSearchFilter NearestStructureFilter;
+		NearestStructureFilter.DeployableTeam = theAvHPlayer->GetTeam();
+		NearestStructureFilter.DeployableTypes = (STRUCTURE_MARINE_INFANTRYPORTAL | STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_MARINE_ARMOURY);
+
+		AvHAIBuildableStructure* Nearest = AITAC_FindClosestDeployableToLocation(theAvHPlayer->pev->origin, &NearestStructureFilter);
+
+		if (Nearest)
+		{
+			Vector MinePosition = UTIL_GetNextMinePosition2(Nearest->edict);
+
+			if (!vIsZero(MinePosition))
+			{
+				UTIL_DrawLine(INDEXENT(1), INDEXENT(1)->v.origin, MinePosition, 10.0f);
+			}
+		}
 
 		theSuccess = true;
 	}

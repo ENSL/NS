@@ -84,6 +84,8 @@ AvHTeam* AIMGR_GetTeamRef(const AvHTeamNumber Team);
 vector<AvHAIPlayer*> AIMGR_GetAllAIPlayers();
 // Returns all NS AI players on the requested team. Does not include third-party bots
 vector<AvHAIPlayer*> AIMGR_GetAIPlayersOnTeam(AvHTeamNumber Team);
+// Returns all active players (i.e. not dead, commanding, spectating or in the ready room)
+vector<AvHPlayer*> AIMGR_GetAllActivePlayers();
 
 // Returns all players on a team which are not an internal NS bot. Will still include third party bots such as Whichbot and RCBot
 vector<AvHPlayer*> AIMGR_GetNonAIPlayersOnTeam(AvHTeamNumber Team);
