@@ -555,7 +555,7 @@ typedef struct _AVH_AI_STUCK_TRACKER
 typedef struct _NAV_STATUS
 {
 	vector<bot_path_node> CurrentPath; // Bot's path nodes
-	vector<bot_path_node>::iterator CurrentPathPoint = CurrentPath.end();
+	unsigned int CurrentPathPoint = 0;
 
 	Vector TargetDestination = g_vecZero; // Desired destination
 	Vector ActualMoveDestination = g_vecZero; // Actual destination on nav mesh

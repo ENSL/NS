@@ -1232,7 +1232,7 @@ void AITAC_RefreshReachabilityForResNode(AvHAIResourceNode* ResNode)
 
 	if (GetGameRules()->GetTeamA()->GetTeamType() == AVH_CLASS_TYPE_MARINE)
 	{
-		bool bIsReachableMarine = UTIL_PointIsReachable(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), TeamAStart, ResNodeLocation, max_player_use_reach);
+		bool bIsReachableMarine = UTIL_PointIsReachable(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), TeamAStart, ResNodeLocation, 4.0f);
 
 		if (bIsReachableMarine)
 		{
@@ -1246,7 +1246,7 @@ void AITAC_RefreshReachabilityForResNode(AvHAIResourceNode* ResNode)
 
 			WelderProfile.Filters.addIncludeFlags(SAMPLE_POLYFLAGS_WELD);
 
-			bool bIsReachableWelder = UTIL_PointIsReachable(WelderProfile, TeamAStart, ResNodeLocation, max_player_use_reach);
+			bool bIsReachableWelder = UTIL_PointIsReachable(WelderProfile, TeamAStart, ResNodeLocation, 4.0f);
 
 			if (bIsReachableWelder)
 			{
@@ -1260,9 +1260,9 @@ void AITAC_RefreshReachabilityForResNode(AvHAIResourceNode* ResNode)
 	}
 	else
 	{
-		bool bIsReachableSkulk = UTIL_PointIsReachable(GetBaseNavProfile(SKULK_BASE_NAV_PROFILE), TeamAStart, ResNodeLocation, max_player_use_reach);
-		bool bIsReachableGorge = UTIL_PointIsReachable(GetBaseNavProfile(GORGE_BASE_NAV_PROFILE), TeamAStart, ResNodeLocation, max_player_use_reach);
-		bool bIsReachableOnos = UTIL_PointIsReachable(GetBaseNavProfile(ONOS_BASE_NAV_PROFILE), TeamAStart, ResNodeLocation, max_player_use_reach);
+		bool bIsReachableSkulk = UTIL_PointIsReachable(GetBaseNavProfile(SKULK_BASE_NAV_PROFILE), TeamAStart, ResNodeLocation, 4.0f);
+		bool bIsReachableGorge = UTIL_PointIsReachable(GetBaseNavProfile(GORGE_BASE_NAV_PROFILE), TeamAStart, ResNodeLocation, 4.0f);
+		bool bIsReachableOnos = UTIL_PointIsReachable(GetBaseNavProfile(ONOS_BASE_NAV_PROFILE), TeamAStart, ResNodeLocation, 4.0f);
 
 		if (bIsReachableSkulk)
 		{
@@ -1287,7 +1287,7 @@ void AITAC_RefreshReachabilityForResNode(AvHAIResourceNode* ResNode)
 
 	if (GetGameRules()->GetTeamB()->GetTeamType() == AVH_CLASS_TYPE_MARINE)
 	{
-		bool bIsReachableMarine = UTIL_PointIsReachable(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), TeamBStart, ResNodeLocation, max_player_use_reach);
+		bool bIsReachableMarine = UTIL_PointIsReachable(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), TeamBStart, ResNodeLocation, 4.0f);
 
 		if (bIsReachableMarine)
 		{
@@ -1301,7 +1301,7 @@ void AITAC_RefreshReachabilityForResNode(AvHAIResourceNode* ResNode)
 
 			WelderProfile.Filters.addIncludeFlags(SAMPLE_POLYFLAGS_WELD);
 
-			bool bIsReachableWelder = UTIL_PointIsReachable(WelderProfile, TeamBStart, ResNodeLocation, max_player_use_reach);
+			bool bIsReachableWelder = UTIL_PointIsReachable(WelderProfile, TeamBStart, ResNodeLocation, 4.0f);
 
 			if (bIsReachableWelder)
 			{
@@ -1315,9 +1315,9 @@ void AITAC_RefreshReachabilityForResNode(AvHAIResourceNode* ResNode)
 	}
 	else
 	{
-		bool bIsReachableSkulk = UTIL_PointIsReachable(GetBaseNavProfile(SKULK_BASE_NAV_PROFILE), TeamBStart, ResNodeLocation, max_player_use_reach);
-		bool bIsReachableGorge = UTIL_PointIsReachable(GetBaseNavProfile(GORGE_BASE_NAV_PROFILE), TeamBStart, ResNodeLocation, max_player_use_reach);
-		bool bIsReachableOnos = UTIL_PointIsReachable(GetBaseNavProfile(ONOS_BASE_NAV_PROFILE), TeamBStart, ResNodeLocation, max_player_use_reach);
+		bool bIsReachableSkulk = UTIL_PointIsReachable(GetBaseNavProfile(SKULK_BASE_NAV_PROFILE), TeamBStart, ResNodeLocation, 4.0f);
+		bool bIsReachableGorge = UTIL_PointIsReachable(GetBaseNavProfile(GORGE_BASE_NAV_PROFILE), TeamBStart, ResNodeLocation, 4.0f);
+		bool bIsReachableOnos = UTIL_PointIsReachable(GetBaseNavProfile(ONOS_BASE_NAV_PROFILE), TeamBStart, ResNodeLocation, 4.0f);
 
 		if (bIsReachableSkulk)
 		{
@@ -3356,6 +3356,122 @@ AvHAIWeapon UTIL_GetWeaponTypeFromDroppedItem(const AvHAIDeployableItemType Item
 	return WEAPON_INVALID;
 }
 
+Vector UTIL_GetNextMinePosition2(edict_t* StructureToMine)
+{
+	if (FNullEnt(StructureToMine)) { return ZERO_VECTOR; }
+
+	AvHTeamNumber StructureTeam = (AvHTeamNumber)StructureToMine->v.team;
+	
+	nav_profile MineCheckProfile = GetBaseNavProfile(MARINE_BASE_NAV_PROFILE);
+	MineCheckProfile.Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_BLOCKED);
+	MineCheckProfile.Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM1STRUCTURE);
+	MineCheckProfile.Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_TEAM2STRUCTURE);
+	MineCheckProfile.Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_WELD);
+	MineCheckProfile.Filters.removeIncludeFlags(SAMPLE_POLYFLAGS_DOOR);
+	MineCheckProfile.Filters.addExcludeFlags(SAMPLE_POLYFLAGS_BLOCKED);
+	MineCheckProfile.Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM1STRUCTURE);
+	MineCheckProfile.Filters.addExcludeFlags(SAMPLE_POLYFLAGS_TEAM2STRUCTURE);
+	MineCheckProfile.Filters.addExcludeFlags(SAMPLE_POLYFLAGS_WELD);
+	MineCheckProfile.Filters.addExcludeFlags(SAMPLE_POLYFLAGS_DOOR);
+
+	Vector FwdVector = UTIL_GetForwardVector2D(StructureToMine->v.angles);
+	Vector RightVector = UTIL_GetVectorNormal2D(UTIL_GetCrossProduct(FwdVector, UP_VECTOR));
+
+	bool bFwd = false;
+	bool bRight = false;
+	bool bBack = false;
+	bool bLeft = false;
+
+	DeployableSearchFilter MineFilter;
+	MineFilter.DeployableTeam = StructureTeam;
+	MineFilter.DeployableTypes = STRUCTURE_MARINE_DEPLOYEDMINE;
+	MineFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(3.0f);
+
+	vector<AvHAIBuildableStructure*> SurroundingMines = AITAC_FindAllDeployables(StructureToMine->v.origin, &MineFilter);
+
+	for (auto it = SurroundingMines.begin(); it != SurroundingMines.end(); it++)
+	{
+		AvHAIBuildableStructure* ThisMine = (*it);
+
+		Vector Dir = UTIL_GetVectorNormal2D(ThisMine->Location - StructureToMine->v.origin);
+
+		if (UTIL_GetDotProduct2D(FwdVector, Dir) > 0.7f)
+		{
+			bFwd = true;
+		}
+
+		if (UTIL_GetDotProduct2D(FwdVector, Dir) < -0.7f)
+		{
+			bBack = true;
+		}
+
+		if (UTIL_GetDotProduct2D(RightVector, Dir) > 0.7f)
+		{
+			bRight = true;
+		}
+
+		if (UTIL_GetDotProduct2D(RightVector, Dir) < -0.7f)
+		{
+			bLeft = true;
+		}
+	}
+
+	float Size = fmaxf(StructureToMine->v.size.x, StructureToMine->v.size.y);
+	Size += 8.0f;
+
+	if (!bFwd)
+	{
+		Vector SearchLocation = StructureToMine->v.origin + (FwdVector * Size);
+
+		Vector BuildLocation = UTIL_ProjectPointToNavmesh(SearchLocation, MineCheckProfile);
+
+		if (BuildLocation != ZERO_VECTOR)
+		{
+			return BuildLocation;
+		}
+	}
+
+	if (!bBack)
+	{
+		Vector SearchLocation = StructureToMine->v.origin - (FwdVector * Size);
+
+		Vector BuildLocation = UTIL_ProjectPointToNavmesh(SearchLocation, MineCheckProfile);
+
+		if (BuildLocation != ZERO_VECTOR)
+		{
+			return BuildLocation;
+		}
+	}
+
+	if (!bRight)
+	{
+		Vector SearchLocation = StructureToMine->v.origin + (RightVector * Size);
+
+		Vector BuildLocation = UTIL_ProjectPointToNavmesh(SearchLocation, MineCheckProfile);
+
+		if (BuildLocation != ZERO_VECTOR)
+		{
+			return BuildLocation;
+		}
+	}
+
+	if (!bLeft)
+	{
+		Vector SearchLocation = StructureToMine->v.origin - (RightVector * Size);
+
+		Vector BuildLocation = UTIL_ProjectPointToNavmesh(SearchLocation, MineCheckProfile);
+
+		if (BuildLocation != ZERO_VECTOR)
+		{
+			return BuildLocation;
+		}
+	}
+
+	Vector BuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(MineCheckProfile, StructureToMine->v.origin, Size);
+
+	return BuildLocation;
+}
+
 Vector UTIL_GetNextMinePosition(edict_t* StructureToMine)
 {
 	if (FNullEnt(StructureToMine)) { return ZERO_VECTOR; }
@@ -3713,19 +3829,21 @@ bool AITAC_GetNumPlayersOnTeamWithLOS(AvHTeamNumber Team, const Vector& Location
 
 bool AITAC_ShouldBotBeCautious(AvHAIPlayer* pBot)
 {
-	if (pBot->BotNavInfo.CurrentPath.size() == 0 || pBot->BotNavInfo.CurrentPathPoint == pBot->BotNavInfo.CurrentPath.end()) { return false; }
+	if (pBot->BotNavInfo.CurrentPath.size() == 0 || pBot->BotNavInfo.CurrentPathPoint >= pBot->BotNavInfo.CurrentPath.size()) { return false; }
 
-	if (pBot->BotNavInfo.CurrentPathPoint->area != SAMPLE_POLYAREA_GROUND) { return false; }
+	bot_path_node CurrentPathNode = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint];
+
+	if (CurrentPathNode.area != SAMPLE_POLYAREA_GROUND) { return false; }
 
 	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(pBot->Player->GetTeam());
 
 	if (AITAC_AnyPlayerOnTeamHasLOSToLocation(EnemyTeam, pBot->Edict->v.origin, UTIL_MetresToGoldSrcUnits(50.0f), nullptr)) { return false; }
 
-	int NumEnemiesAtDestination = AITAC_GetNumPlayersOnTeamWithLOS(EnemyTeam, pBot->BotNavInfo.CurrentPathPoint->Location, UTIL_MetresToGoldSrcUnits(50.0f), pBot->Edict);
+	int NumEnemiesAtDestination = AITAC_GetNumPlayersOnTeamWithLOS(EnemyTeam, CurrentPathNode.Location, UTIL_MetresToGoldSrcUnits(50.0f), pBot->Edict);
 
 	if (NumEnemiesAtDestination > 1)
 	{
-		return (vDist2DSq(pBot->Edict->v.origin, pBot->BotNavInfo.CurrentPathPoint->Location) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)));
+		return (vDist2DSq(pBot->Edict->v.origin, CurrentPathNode.Location) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)));
 	}
 
 	return false;
@@ -4086,7 +4204,20 @@ bool AITAC_IsAlienHarasserNeeded(AvHAIPlayer* pBot)
 	int DesiredLerks = (int)ceilf((float)NumTeamPlayers * 0.1f);
 	int NumLerks = imaxi(AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER3, nullptr), AIMGR_GetNumAIPlayersWithRoleOnTeam(BotTeam, BOT_ROLE_HARASS, pBot));
 
-	return NumLerks < DesiredLerks;
+	if (NumLerks < DesiredLerks)
+	{
+		if (DesiredLerks > 1) { return true; }
+
+		float LastSeenTime;
+		edict_t* PreviousLerk = AITAC_GetLastSeenLerkForTeam(BotTeam, LastSeenTime);
+
+		// We only go lerk if the last lerk we had in the match was either us, or we've not had another lerk in 60 seconds
+		// It avoids aliens spending all their resources on evolving lerks if they keep dying
+		// It also means that if a human was playing lerk and died, a bot doesn't immediately take over that role, and lets the human try again if they want
+		return (LastSeenTime > 60.0f || PreviousLerk == pBot->Edict);
+	}
+
+	return false;
 }
 
 bool AITAC_ShouldBotBuildHive(AvHAIPlayer* pBot, AvHAIHiveDefinition** EligibleHive)

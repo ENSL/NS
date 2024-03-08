@@ -276,13 +276,11 @@ void ClearBotStuck(AvHAIPlayer* pBot);
 // Clears all bot movement data, including the current path, their stuck status. Effectively stops all movement the bot is performing.
 void ClearBotMovement(AvHAIPlayer* pBot);
 
-// Checks if the bot has managed to make progress towards MoveDestination. Move destination should be the bot's current path point, not overall destination
-bool IsBotStuck(AvHAIPlayer* pBot, const Vector MoveDestination);
-
 // Called every bot frame (default is 60fps). Ensures the tile cache is updated after obstacles are placed
 bool UTIL_UpdateTileCache();
 
 void AIDEBUG_DrawOffMeshConnections(float DrawTime);
+void AIDEBUG_DrawTemporaryObstacles(float DrawTime);
 
 Vector UTIL_GetNearestPointOnNavWall(AvHAIPlayer* pBot, const float MaxRadius);
 Vector UTIL_GetNearestPointOnNavWall(const nav_profile& NavProfile, const Vector Location, const float MaxRadius);

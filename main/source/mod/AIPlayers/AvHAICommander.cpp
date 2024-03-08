@@ -2143,7 +2143,7 @@ bool AICOMM_CheckForNextRecycleAction(AvHAIPlayer* pBot)
 		{
 			AvHAIBuildableStructure* Structure = (*SecureIt);
 
-			if (Structure->Purpose == STRUCTURE_PURPOSE_SIEGE)
+			if (Structure->Purpose == STRUCTURE_PURPOSE_FORTIFY)
 			{
 				if (Structure->StructureType == STRUCTURE_MARINE_PHASEGATE)
 				{

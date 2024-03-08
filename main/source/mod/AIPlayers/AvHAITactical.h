@@ -15,10 +15,10 @@
 #include "AvHAIConstants.h"
 
 // How frequently to update the global list of built structures (in seconds). 0 = every frame
-static const float structure_inventory_refresh_rate = 0.0f;
+static const float structure_inventory_refresh_rate = 0.2f;
 
 // How frequently to update the global list of dropped marine items (in seconds). 0 = every frame
-static const float item_inventory_refresh_rate = 0.0f;
+static const float item_inventory_refresh_rate = 0.2f;
 
 bool						AITAC_DeployableExistsAtLocation(const Vector& Location, const DeployableSearchFilter* Filter);
 std::vector<AvHAIBuildableStructure*> AITAC_FindAllDeployables(const Vector& Location, const DeployableSearchFilter* Filter);
@@ -148,6 +148,7 @@ bool AITAC_MarineResearchIsAvailable(const AvHTeamNumber Team, const AvHMessageI
 bool AITAC_ElectricalResearchIsAvailable(edict_t* Structure);
 
 Vector UTIL_GetNextMinePosition(edict_t* StructureToMine);
+Vector UTIL_GetNextMinePosition2(edict_t* StructureToMine);
 int UTIL_GetCostOfStructureType(AvHAIDeployableStructureType StructureType);
 
 edict_t* AITAC_GetNearestHumanAtLocation(const AvHTeamNumber Team, const Vector Location, const float MaxSearchRadius);
