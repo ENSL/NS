@@ -931,7 +931,7 @@ void AIMGR_ResetRound()
 
 	LastAIPlayerCountUpdate = 0.0f;
 
-	AITAC_ClearMapAIData();
+	AITAC_ClearMapAIData(false);
 
 	UTIL_PopulateDoors();
 	UTIL_PopulateWeldableObstacles();
@@ -1035,7 +1035,7 @@ void AIMGR_NewMap()
 	LastAIPlayerCountUpdate = 0.0f;
 	ALERT(at_console, "AI Manager New Map\n");
 
-	AITAC_ClearMapAIData();
+	AITAC_ClearMapAIData(true);
 
 	if (NavmeshLoaded())
 	{

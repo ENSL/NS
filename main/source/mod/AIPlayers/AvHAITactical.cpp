@@ -2370,19 +2370,28 @@ void AITAC_ClearStructureNavData()
 	}
 }
 
-void AITAC_ClearMapAIData()
+void AITAC_ClearMapAIData(bool bInitialMapLoad)
 {
 	UTIL_ClearLocalizations();
 
 	ResourceNodes.clear();
 
-	AITAC_ClearHiveInfo();
-
-	AITAC_ClearStructureNavData();
-
-	while (!bTileCacheUpToDate)
+	// If we're clearing AI data due to a map load, then we just clear the hive data immediately since we've reloaded the nav mesh
+	// If we're clearing AI data due to a round restart, then ensure we properly clear all temp obstacles and connections since we're not reloading the mesh
+	if (!bInitialMapLoad)
 	{
-		UTIL_UpdateTileCache();
+		AITAC_ClearHiveInfo();
+
+		AITAC_ClearStructureNavData();
+
+		while (!bTileCacheUpToDate)
+		{
+			UTIL_UpdateTileCache();
+		}
+	}
+	else
+	{
+		Hives.clear();
 	}
 
 	MarineDroppedItemMap.clear();
