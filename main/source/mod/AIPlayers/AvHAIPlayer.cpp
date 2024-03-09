@@ -3457,6 +3457,7 @@ void AIPlayerSetWantsAndNeedsCOMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Ta
 		NearestArmouryFilter.DeployableTeam = pBot->Player->GetTeam();
 		NearestArmouryFilter.ReachabilityTeam = pBot->Player->GetTeam();
 		NearestArmouryFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+		NearestArmouryFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
 		NearestArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
 		NearestArmouryFilter.MaxSearchRadius = SearchRadius;
 
@@ -3515,6 +3516,7 @@ void AIPlayerSetWantsAndNeedsMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 		NearestArmouryFilter.DeployableTeam = pBot->Player->GetTeam();
 		NearestArmouryFilter.ReachabilityTeam = pBot->Player->GetTeam();
 		NearestArmouryFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+		NearestArmouryFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
 		NearestArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
 		NearestArmouryFilter.MaxSearchRadius = (bTaskIsUrgent) ? UTIL_MetresToGoldSrcUnits(20.0f) : UTIL_MetresToGoldSrcUnits(5.0f);
 

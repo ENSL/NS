@@ -84,7 +84,7 @@ vector<AvHPlayer*> AITAC_GetAllPlayersOnTeamWithLOS(AvHTeamNumber Team, const Ve
 bool AITAC_ShouldBotBeCautious(AvHAIPlayer* pBot);
 
 // Clears out the marine and alien buildable structure maps, resource node and hive lists, and the marine item list
-void AITAC_ClearMapAIData();
+void AITAC_ClearMapAIData(bool bInitialMapLoad = false);
 // Clear out all the hive information
 void AITAC_ClearHiveInfo();
 
