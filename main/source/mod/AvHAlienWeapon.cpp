@@ -271,14 +271,16 @@ BOOL AvHAlienWeapon::IsUseable(void)
 	float theLatency = 0.0f;
 #ifdef AVH_CLIENT
 	// : 991 -- added latency-based prediction for the ammount of energy available to the alien
-	//net_status_s current_status;
-	//gEngfuncs.pNetAPI->Status(&current_status);
+	net_status_s current_status;
+	gEngfuncs.pNetAPI->Status(&current_status);
+
+	/* svencoop compatibility change. Commented out to avoid conflicts with SDK TOS
 	net_status_s current_status;
 	char TestStruct[256]; // Allocate lots of memory to anticipate Svengine's larger size
 	gEngfuncs.pNetAPI->Status((net_status_s*)&TestStruct);
 
 	memcpy(&current_status, TestStruct, sizeof(net_status_s)); // Now copy back the original struct size. This only works if Svengine added to the struct rather than changed it completely
-
+	*/
 
 	theLatency = max(0.0f, current_status.latency);
 
