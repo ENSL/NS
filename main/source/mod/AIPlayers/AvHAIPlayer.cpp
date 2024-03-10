@@ -3241,10 +3241,13 @@ void AIPlayerSetMarineSweeperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 
 	if (AITAC_GetNumDeployablesNearLocation(CommChairLocation, &StructureFilter) < 2)
 	{
-		Task->TaskType = TASK_GUARD;
-		Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(pBot->BotNavInfo.NavProfile, CommChairLocation, UTIL_MetresToGoldSrcUnits(10.0f));
-		Task->bTaskIsUrgent = false;
-		Task->TaskLength = frandrange(20.0f, 30.0f);
+		if (Task->TaskType != TASK_GUARD || vDist2DSq(Task->TaskLocation, CommChairLocation) > UTIL_MetresToGoldSrcUnits(10.0f))
+		{
+			Task->TaskType = TASK_GUARD;
+			Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(pBot->BotNavInfo.NavProfile, CommChairLocation, UTIL_MetresToGoldSrcUnits(10.0f));
+			Task->bTaskIsUrgent = false;
+			Task->TaskLength = frandrange(20.0f, 30.0f);
+		}
 		return;
 	}
 
@@ -3272,10 +3275,13 @@ void AIPlayerSetMarineSweeperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 
 	if (RandomPG)
 	{
-		Task->TaskType = TASK_GUARD;
-		Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(pBot->BotNavInfo.NavProfile, RandomPG->Location, UTIL_MetresToGoldSrcUnits(5.0f));
-		Task->bTaskIsUrgent = false;
-		Task->TaskLength = frandrange(20.0f, 30.0f);
+		if (Task->TaskType != TASK_GUARD)
+		{
+			Task->TaskType = TASK_GUARD;
+			Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(pBot->BotNavInfo.NavProfile, RandomPG->Location, UTIL_MetresToGoldSrcUnits(5.0f));
+			Task->bTaskIsUrgent = false;
+			Task->TaskLength = frandrange(20.0f, 30.0f);
+		}
 		return;
 	}
 
