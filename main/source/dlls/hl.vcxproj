@@ -248,16 +248,17 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\mod\AIPlayers\AvHAIConfig.cpp" />
-    <ClCompile Include="..\mod\AIPlayers\AvHAIHelper.cpp" />
-    <ClCompile Include="..\mod\AIPlayers\AvHAIMath.cpp" />
-    <ClCompile Include="..\mod\AIPlayers\AvHAINavigation.cpp" />
-    <ClCompile Include="..\mod\AIPlayers\AvHAIPlayer.cpp" />
-    <ClCompile Include="..\mod\AIPlayers\AvHAIPlayerManager.cpp" />
-    <ClCompile Include="..\mod\AIPlayers\AvHAIPlayerUtil.cpp" />
-    <ClCompile Include="..\mod\AIPlayers\AvHAITactical.cpp" />
-    <ClCompile Include="..\mod\AIPlayers\AvHAITask.cpp" />
-    <ClCompile Include="..\mod\AIPlayers\AvHAIWeaponHelper.cpp" />
+    <ClCompile Include="..\mod\AvHAICommander.cpp" />
+    <ClCompile Include="..\mod\AvHAIConfig.cpp" />
+    <ClCompile Include="..\mod\AvHAIHelper.cpp" />
+    <ClCompile Include="..\mod\AvHAIMath.cpp" />
+    <ClCompile Include="..\mod\AvHAINavigation.cpp" />
+    <ClCompile Include="..\mod\AvHAIPlayer.cpp" />
+    <ClCompile Include="..\mod\AvHAIPlayerManager.cpp" />
+    <ClCompile Include="..\mod\AvHAIPlayerUtil.cpp" />
+    <ClCompile Include="..\mod\AvHAITactical.cpp" />
+    <ClCompile Include="..\mod\AvHAITask.cpp" />
+    <ClCompile Include="..\mod\AvHAIWeaponHelper.cpp" />
     <ClCompile Include="animating.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Server - Debug|Win32'">Disabled</Optimization>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Server - Debug|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -1367,7 +1368,6 @@
     </ClCompile>
     <ClCompile Include="..\util\Balance.cpp" />
     <ClCompile Include="..\util\Checksum.cpp" />
-    <ClCompile Include="..\util\GammaTable.cpp" />
     <ClCompile Include="..\util\LinuxSupport.cpp" />
     <ClCompile Include="..\util\Mat3.cpp" />
     <ClCompile Include="..\util\MathUtil.cpp" />
@@ -1381,17 +1381,18 @@
     <ClCompile Include="..\textrep\TRFactory.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\mod\AIPlayers\AvHAIConfig.h" />
-    <ClInclude Include="..\mod\AIPlayers\AvHAIConstants.h" />
-    <ClInclude Include="..\mod\AIPlayers\AvHAIHelper.h" />
-    <ClInclude Include="..\mod\AIPlayers\AvHAIMath.h" />
-    <ClInclude Include="..\mod\AIPlayers\AvHAINavigation.h" />
-    <ClInclude Include="..\mod\AIPlayers\AvHAIPlayer.h" />
-    <ClInclude Include="..\mod\AIPlayers\AvHAIPlayerManager.h" />
-    <ClInclude Include="..\mod\AIPlayers\AvHAIPlayerUtil.h" />
-    <ClInclude Include="..\mod\AIPlayers\AvHAITactical.h" />
-    <ClInclude Include="..\mod\AIPlayers\AvHAITask.h" />
-    <ClInclude Include="..\mod\AIPlayers\AvHAIWeaponHelper.h" />
+    <ClInclude Include="..\mod\AvHAICommander.h" />
+    <ClInclude Include="..\mod\AvHAIConfig.h" />
+    <ClInclude Include="..\mod\AvHAIConstants.h" />
+    <ClInclude Include="..\mod\AvHAIHelper.h" />
+    <ClInclude Include="..\mod\AvHAIMath.h" />
+    <ClInclude Include="..\mod\AvHAINavigation.h" />
+    <ClInclude Include="..\mod\AvHAIPlayer.h" />
+    <ClInclude Include="..\mod\AvHAIPlayerManager.h" />
+    <ClInclude Include="..\mod\AvHAIPlayerUtil.h" />
+    <ClInclude Include="..\mod\AvHAITactical.h" />
+    <ClInclude Include="..\mod\AvHAITask.h" />
+    <ClInclude Include="..\mod\AvHAIWeaponHelper.h" />
     <ClInclude Include="activity.h" />
     <ClInclude Include="activitymap.h" />
     <ClInclude Include="animation.h" />

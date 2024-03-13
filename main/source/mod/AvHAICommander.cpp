@@ -9,8 +9,8 @@
 #include "AvHAIHelper.h"
 #include "AvHAIPlayerManager.h"
 
-#include "../AvHSharedUtil.h"
-#include "../AvHServerUtil.h"
+#include "AvHSharedUtil.h"
+#include "AvHServerUtil.h"
 
 bool AICOMM_DeployStructure(AvHAIPlayer* pBot, const AvHAIDeployableStructureType StructureToDeploy, const Vector Location, StructurePurpose Purpose)
 {

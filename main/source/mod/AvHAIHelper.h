@@ -3,7 +3,7 @@
 #ifndef AVH_AI_HELPER_H
 #define AVH_AI_HELPER_H
 
-#include "../AvHPlayer.h"
+#include "AvHPlayer.h"
 #include "AvHAIConstants.h"
 
 bool UTIL_CommanderTrace(const edict_t* pEdict, const Vector& start, const Vector& end);

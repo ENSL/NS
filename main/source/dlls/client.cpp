@@ -145,7 +145,7 @@
 #include "../mod/AvHAlienAbilityConstants.h"
 #include "../mod/AvHNetworkMessages.h"
 #include "../mod/AvHNexusServer.h"
-#include "../mod/AIPlayers/AvHAIPlayerManager.h"
+#include "../mod/AvHAIPlayerManager.h"
 
 #include "../game_shared/voice_gamemgr.h"
 extern CVoiceGameMgr	g_VoiceGameMgr;

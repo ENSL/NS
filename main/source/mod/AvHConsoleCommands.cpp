@@ -106,14 +106,14 @@
 #include "AvHNetworkMessages.h"
 #include "AvHNexusServer.h"
 
-#include "AIPlayers/AvHAIPlayerUtil.h"
-#include "AIPlayers/AvHAIHelper.h"
-#include "AIPlayers/AvHAIMath.h"
-#include "AIPlayers/AvHAINavigation.h"
-#include "AIPlayers/AvHAIPlayerManager.h"
-#include "AIPlayers/AvHAITask.h"
-#include "AIPlayers/AvHAITactical.h"
-#include "AIPlayers/AvHAICommander.h"
+#include "AvHAIPlayerUtil.h"
+#include "AvHAIHelper.h"
+#include "AvHAIMath.h"
+#include "AvHAINavigation.h"
+#include "AvHAIPlayerManager.h"
+#include "AvHAITask.h"
+#include "AvHAITactical.h"
+#include "AvHAICommander.h"
 
 extern AvHParticleTemplateListServer	gParticleTemplateList;
 extern CVoiceGameMgr					g_VoiceGameMgr;

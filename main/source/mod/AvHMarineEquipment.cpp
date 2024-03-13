@@ -146,7 +146,7 @@
 #include "AvHSiegeTurret.h"
 #include "AvHHulls.h"
 
-#include "AIPlayers/AvHAIPlayerManager.h"
+#include "AvHAIPlayerManager.h"
 
 //LINK_ENTITY_TO_CLASS(kwMine, AvHMine);
 //LINK_ENTITY_TO_CLASS(kwDeployedTurret, AvHDeployedTurret);

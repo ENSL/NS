@@ -201,7 +201,7 @@
 #include "AvHNetworkMessages.h"
 #include "AvHNexusServer.h"
 #include "AvHParticleTemplateClient.h"
-#include "AIPlayers/AvHAIPlayerManager.h"
+#include "AvHAIPlayerManager.h"
 
 // : 0001073
 #ifdef USE_OLDAUTH

@@ -8,7 +8,7 @@
 #include "AvHAIHelper.h"
 #include "AvHAICommander.h"
 #include "AvHAIPlayerUtil.h"
-#include "../AvHGamerules.h"
+#include "AvHGamerules.h"
 #include "../dlls/client.h"
 #include <time.h>
 

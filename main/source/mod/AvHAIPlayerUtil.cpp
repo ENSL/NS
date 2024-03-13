@@ -3,11 +3,13 @@
 #include "AvHAIPlayer.h"
 #include "AvHAIHelper.h"
 
-#include "../AvHPlayerUpgrade.h"
+#include "AvHPlayerUpgrade.h"
 #include "AvHAIMath.h"
-#include "../AvHGamerules.h"
+#include "AvHGamerules.h"
 #include "../pm_shared/pm_shared.h"
 #include "../pm_shared/pm_defs.h"
+
+#include <cfloat>
 
 bool IsPlayerSkulk(const edict_t* Player)
 {

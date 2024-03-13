@@ -12,9 +12,9 @@
 #include "AvHAIPlayerManager.h"
 #include "AvHAIConfig.h"
 
-#include "../AvHGamerules.h"
-#include "../AvHMessage.h"
-#include "../AvHTurret.h"
+#include "AvHGamerules.h"
+#include "AvHMessage.h"
+#include "AvHTurret.h"
 
 extern nav_mesh NavMeshes[MAX_NAV_MESHES]; // Array of nav meshes. Currently only 3 are used (building, onos, and regular)
 extern nav_profile BaseNavProfiles[MAX_NAV_PROFILES]; // Array of nav profiles

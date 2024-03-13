@@ -158,7 +158,7 @@
 #include "AvHNetworkMessages.h"
 #include "AvHNexusServer.h"
 
-#include "AIPlayers/AvHAIPlayerManager.h"
+#include "AvHAIPlayerManager.h"
 
 extern int gPhaseInEventID;
 extern cvar_t avh_votecasttime;

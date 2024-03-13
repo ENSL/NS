@@ -19,11 +19,11 @@
 #include "AvHAIPlayerManager.h"
 #include "AvHAIConfig.h"
 
-#include "../AvHGamerules.h"
-#include "../AvHServerUtil.h"
-#include "../AvHSharedUtil.h"
-#include "../AvHMarineEquipment.h"
-#include "../AvHTurret.h"
+#include "AvHGamerules.h"
+#include "AvHServerUtil.h"
+#include "AvHSharedUtil.h"
+#include "AvHMarineEquipment.h"
+#include "AvHTurret.h"
 
 #include <float.h>
 

@@ -1,7 +1,7 @@
 #ifndef AVH_AI_PLAYER_MANAGER_H
 #define AVH_AI_PLAYER_MANAGER_H
 
-#include "../AvHConstants.h"
+#include "AvHConstants.h"
 #include "AvHAIPlayer.h"
 
 // The rate at which the bot will call RunPlayerMove in, default is 100hz. WARNING: Increasing the rate past 100hz causes bots to move and turn slowly due to GoldSrc limits!

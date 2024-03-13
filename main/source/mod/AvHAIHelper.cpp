@@ -4,7 +4,7 @@
 #include "AvHAITactical.h"
 #include "AvHAINavigation.h"
 
-#include "../AvHGamerules.h"
+#include "AvHGamerules.h"
 
 #include <unordered_map>
 
@@ -593,7 +593,7 @@ void UTIL_LocalizeText(const char* InputText, string& OutputText)
 		std::string line;
 		while (getline(cFile, line))
 		{
-			line.erase(std::remove_if(line.begin(), line.end(), isspace),
+			line.erase(std::remove_if(line.begin(), line.end(), ::isspace),
 				line.end());
 			if (line[0] == '/' || line.empty())
 				continue;

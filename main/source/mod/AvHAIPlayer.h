@@ -1,7 +1,7 @@
 #ifndef AVH_AI_PLAYER_H
 #define AVH_AI_PLAYER_H
 
-#include "../AvHPlayer.h"
+#include "AvHPlayer.h"
 #include "AvHAIConstants.h"
 
 

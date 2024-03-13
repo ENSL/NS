@@ -16,9 +16,9 @@
 #include "AvHAIWeaponHelper.h"
 #include "AvHAIConfig.h"
 
-#include "../AvHWeldable.h"
-#include "../AvHServerUtil.h"
-#include "../AvHGamerules.h"
+#include "AvHWeldable.h"
+#include "AvHServerUtil.h"
+#include "AvHGamerules.h"
 
 #include "../../dlls/triggers.h"
 
@@ -34,6 +34,8 @@
 #include "DetourNavMeshBuilder.h"
 #include "fastlz/fastlz.c"
 #include "DetourAlloc.h"
+
+#include <cfloat>
 
 vector<nav_door> NavDoors;
 vector<nav_weldable> NavWeldableObstacles;

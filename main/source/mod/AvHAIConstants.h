@@ -6,8 +6,8 @@
 #include "DetourStatus.h"
 #include "DetourNavMeshQuery.h"
 
-#include "../AvHHive.h"
-#include "../AvHEntities.h"
+#include "AvHHive.h"
+#include "AvHEntities.h"
 
 static const float commander_action_cooldown = 1.0f;
 static const float min_request_spam_time = 10.0f;

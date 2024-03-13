@@ -2,7 +2,7 @@
 #include "AvHAIConfig.h"
 #include "AvHAIMath.h"
 
-#include "../AvHServerUtil.h"
+#include "AvHServerUtil.h"
 
 #include <unordered_map>
 
@@ -159,7 +159,7 @@ void CONFIG_ParseConfigFile()
 
         while (getline(cFile, line))
         {
-            line.erase(std::remove_if(line.begin(), line.end(), isspace),
+            line.erase(std::remove_if(line.begin(), line.end(), ::isspace),
                 line.end());
             if (line[0] == '#' || line.empty())
                 continue;

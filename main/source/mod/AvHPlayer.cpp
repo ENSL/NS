@@ -255,7 +255,7 @@
 #include "AvHNetworkMessages.h"
 #include "AvHNexusServer.h"
 
-#include "AIPlayers/AvHAIPlayerManager.h"
+#include "AvHAIPlayerManager.h"
 
 std::string GetLogStringForPlayer( edict_t *pEntity );
 

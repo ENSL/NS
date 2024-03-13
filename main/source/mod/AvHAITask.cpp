@@ -9,12 +9,12 @@
 #include "AvHAIPlayerManager.h"
 #include "AvHAIConfig.h"
 
-#include "../AvHSharedUtil.h"
-#include "../AvHAlienWeaponConstants.h"
-#include "../AvHMarineEquipmentConstants.h"
-#include "../AvHGamerules.h"
-#include "../AvHWeldable.h"
-#include "../AvHTurret.h"
+#include "AvHSharedUtil.h"
+#include "AvHAlienWeaponConstants.h"
+#include "AvHMarineEquipmentConstants.h"
+#include "AvHGamerules.h"
+#include "AvHWeldable.h"
+#include "AvHTurret.h"
 
 extern nav_mesh NavMeshes[MAX_NAV_MESHES]; // Array of nav meshes. Currently only 3 are used (building, onos, and regular)
 extern nav_profile BaseNavProfiles[MAX_NAV_PROFILES]; // Array of nav profiles

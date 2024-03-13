@@ -3,7 +3,7 @@
 #ifndef AVH_AI_PLAYER_HELPER_H
 #define AVH_AI_PLAYER_HELPER_H
 
-#include "../AvHPlayer.h"
+#include "AvHPlayer.h"
 #include "AvHAIConstants.h"
 
 // How far a bot can be from a useable object when trying to interact with it. Used also for melee attacks
