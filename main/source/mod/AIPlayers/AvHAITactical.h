@@ -67,6 +67,8 @@ int							AITAC_GetNumItemsInLocation(const Vector& Location, const AvHAIDeploya
 
 AvHAIDroppedItem*			AITAC_GetDroppedItemRefFromEdict(edict_t* ItemEdict);
 
+Vector						AITAC_GetRandomBuildHintInLocation(const unsigned int StructureType, const Vector SearchLocation, const float SearchRadius);
+
 Vector AITAC_GetFloorLocationForHive(const AvHAIHiveDefinition* Hive);
 
 int AITAC_GetNumHives();

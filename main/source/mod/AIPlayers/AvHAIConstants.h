@@ -274,6 +274,20 @@ typedef struct _NAV_PROFILE
 	AvHAIReachabilityStatus ReachabilityFlag = AI_REACHABILITY_NONE;
 } nav_profile;
 
+typedef struct _LOAD_NAV_HINT
+{
+	unsigned int id = 0;
+	unsigned int hintType = 0;
+	float position[3] = { 0.0f, 0.0f, 0.0f };
+} LoadNavHint;
+
+typedef struct _NAV_HINT
+{
+	unsigned int hintType = 0;
+	Vector Position = g_vecZero;
+	edict_t* OccupyingBuilding = nullptr;
+} NavHint;
+
 typedef struct _DEPLOYABLE_SEARCH_FILTER
 {
 	unsigned int DeployableTypes = SEARCH_ALL_STRUCTURES;

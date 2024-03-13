@@ -811,7 +811,7 @@ void AITAC_RefreshHiveData()
 
 			it->NextFloorLocationCheck = gpGlobals->time + (5.0f + (0.1f * NextRefresh));
 
-			AITAC_RefreshReachabilityForHive(&(*it));
+			//AITAC_RefreshReachabilityForHive(&(*it));
 		}
 
 		NextRefresh++;
@@ -1398,7 +1398,7 @@ void AITAC_RefreshResourceNodes()
 
 			if (it->NextReachabilityRefreshTime == 0.0f)
 			{
-				it->NextReachabilityRefreshTime = gpGlobals->time + 1.0f;
+				it->NextReachabilityRefreshTime = gpGlobals->time + frandrange(0.5f, 1.5f);
 			}
 			else
 			{
@@ -1509,8 +1509,6 @@ void AITAC_CheckNavMeshModified()
 
 void AITAC_OnNavMeshModified()
 {
-	TeamAStartingLocation = ZERO_VECTOR;
-	TeamBStartingLocation = ZERO_VECTOR;
 
 	for (auto it = TeamAStructureMap.begin(); it != TeamAStructureMap.end(); it++)
 	{
@@ -2172,6 +2170,18 @@ void AITAC_OnStructureCreated(AvHAIBuildableStructure* NewStructure)
 
 	AITAC_RefreshReachabilityForStructure(NewStructure);
 
+	vector<NavHint*> NavHints = NAV_GetHintsOfType(STRUCTURE_NONE);
+
+	for (auto it = NavHints.begin(); it != NavHints.end(); it++)
+	{
+		NavHint* ThisHint = (*it);
+
+		if (vDist2DSq(NewStructure->edict->v.origin, ThisHint->Position) < sqrf(32.0f) && fabsf(NewStructure->Location.z - ThisHint->Position.z) < 50.0f)
+		{
+			ThisHint->OccupyingBuilding = NewStructure->edict;
+		}
+	}
+
 	if (StructureTeam == TEAM_IND) { return; }
 	
 	AvHTeam* Team = GetGameRules()->GetTeam(StructureTeam);
@@ -2319,6 +2329,18 @@ void AITAC_OnStructureDestroyed(AvHAIBuildableStructure* DestroyedStructure)
 		}
 
 		AITAC_GetTeamStartingLocation(Team); // Force refresh of reachabilities and team starting locations
+	}
+
+	vector<NavHint*> NavHints = NAV_GetHintsOfType(DestroyedStructure->StructureType);
+
+	for (auto it = NavHints.begin(); it != NavHints.end(); it++)
+	{
+		NavHint* ThisHint = (*it);
+
+		if (ThisHint->OccupyingBuilding == DestroyedStructure->edict)
+		{
+			ThisHint->OccupyingBuilding = nullptr;
+		}
 	}
 }
 
@@ -4952,4 +4974,27 @@ bool AITAC_IsStructureOfTypeNearLocation(AvHTeamNumber Team, unsigned int Struct
 	SearchFilter.MaxSearchRadius = SearchRadius;
 
 	return AITAC_DeployableExistsAtLocation(SearchLocation, &SearchFilter);
+}
+
+Vector AITAC_GetRandomBuildHintInLocation(const unsigned int StructureType, const Vector SearchLocation, const float SearchRadius)
+{
+	Vector Result = ZERO_VECTOR;
+
+	vector<NavHint*> IPHints = NAV_GetHintsOfTypeInRadius(StructureType, SearchLocation, SearchRadius, true);
+	int WinningRoll = 0;
+
+	for (auto it = IPHints.begin(); it != IPHints.end(); it++)
+	{
+		NavHint* ThisHint = (*it);
+
+		int ThisRoll = irandrange(0, 10);
+
+		if (vIsZero(Result) || ThisRoll > WinningRoll)
+		{
+			Result = ThisHint->Position;
+			WinningRoll = ThisRoll;
+		}
+	}
+
+	return Result;
 }
