@@ -14,6 +14,7 @@
 #include "AvHAITactical.h"
 #include "AvHAITask.h"
 #include "AvHAIWeaponHelper.h"
+#include "AvHAIConfig.h"
 
 #include "../AvHWeldable.h"
 #include "../AvHServerUtil.h"
@@ -5452,7 +5453,7 @@ void UpdateBotStuck(AvHAIPlayer* pBot)
 
 	if (pBot->BotNavInfo.StuckInfo.TotalStuckTime > 0.25f)
 	{
-		if (pBot->BotNavInfo.StuckInfo.TotalStuckTime > 15.0f)
+		if (pBot->BotNavInfo.StuckInfo.TotalStuckTime > CONFIG_GetMaxStuckTime())
 		{
 			BotSuicide(pBot);
 			return;

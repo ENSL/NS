@@ -4195,11 +4195,13 @@ bool AITAC_IsAlienHarasserNeeded(AvHAIPlayer* pBot)
 {
 	if (IsPlayerLerk(pBot->Edict)) { return true; }
 
+	if (!CONFIG_IsLerkAllowed()) { return false; }
+
 	if (pBot->Player->GetResources() < BALANCE_VAR(kLerkCost)) { return false; }
 
 	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
 
-	if (pBot->BotRole == BOT_ROLE_ASSAULT)
+	if (pBot->BotRole == BOT_ROLE_ASSAULT && pBot->Player->GetResources() > (BALANCE_VAR(kFadeCost) * 0.8f))
 	{
 		int NumFades = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER4, pBot->Edict);
 		int NumOnos = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER5, pBot->Edict);
@@ -4223,7 +4225,7 @@ bool AITAC_IsAlienHarasserNeeded(AvHAIPlayer* pBot)
 		// We only go lerk if the last lerk we had in the match was either us, or we've not had another lerk in 60 seconds
 		// It avoids aliens spending all their resources on evolving lerks if they keep dying
 		// It also means that if a human was playing lerk and died, a bot doesn't immediately take over that role, and lets the human try again if they want
-		return (LastSeenTime > 60.0f || PreviousLerk == pBot->Edict);
+		return (FNullEnt(PreviousLerk) || (gpGlobals->time - LastSeenTime > CONFIG_GetLerkCooldown()) || PreviousLerk == pBot->Edict);
 	}
 
 	return false;

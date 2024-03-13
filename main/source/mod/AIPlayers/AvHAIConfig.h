@@ -54,13 +54,7 @@ int CONFIG_GetTeamBSizeForMap(const char* MapName);
 // Returns the configured hive tech at that index (chamber build sequence)
 AvHMessageID CONFIG_GetHiveTechAtIndex(const int Index);
 
-bot_skill CONFIG_GetBotSkillLevel(const char* SkillName);
-
-bool CONFIG_BotSkillLevelExists(const char* SkillName);
-
-bot_skill CONFIG_GetGlobalBotSkillLevel();
-
-void CONFIG_SetGlobalBotSkillLevel(const char* NewSkillLevel);
+bot_skill CONFIG_GetBotSkillLevel();
 
 BotFillTiming CONFIG_GetBotFillTiming();
 

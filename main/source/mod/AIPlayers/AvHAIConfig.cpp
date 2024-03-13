@@ -6,56 +6,52 @@
 
 #include <unordered_map>
 
-float fCommanderWaitTime = 10.0f;
-float fLerkCooldown = 60.0f;
-float MaxStuckTime = 30.0f;
-
-bool bLerkAllowed = true;
-bool bFadeAllowed = true;
-bool bOnosAllowed = true;
-
-BotFillTiming CurrentBotFillTiming = FILLTIMING_MAPLOAD;
+BotFillTiming CurrentBotFillTiming = FILLTIMING_ALLHUMANS;
 
 std::unordered_map<std::string, TeamSizeDefinitions> TeamSizeMap;
 
-std::unordered_map<std::string, bot_skill> BotSkillLevelsMap;
-std::string CurrentSkillLevel;
-
-std::string GlobalSkillLevel = "default";
+bot_skill BotSkillLevels[4];
 
 AvHMessageID ChamberSequence[3] = { ALIEN_BUILD_DEFENSE_CHAMBER, ALIEN_BUILD_MOVEMENT_CHAMBER, ALIEN_BUILD_SENSORY_CHAMBER };
 
 char BotPrefix[32] = "";
 
+extern cvar_t avh_botskill;
+extern cvar_t avh_botallowlerk;
+extern cvar_t avh_botallowfade;
+extern cvar_t avh_botallowonos;
+extern cvar_t avh_botcommanderwait;
+extern cvar_t avh_botlerkcooldown;
+extern cvar_t avh_botmaxstucktime;
 
 float CONFIG_GetCommanderWaitTime()
 {
-    return fCommanderWaitTime;
+    return avh_botcommanderwait.value;
 }
 
 float CONFIG_GetLerkCooldown()
 {
-    return fLerkCooldown;
+    return avh_botlerkcooldown.value;
 }
 
 bool CONFIG_IsLerkAllowed()
 {
-    return bLerkAllowed;
+    return avh_botallowlerk.value > 0;
 }
 
 bool CONFIG_IsFadeAllowed()
 {
-    return bFadeAllowed;
+    return avh_botallowfade.value > 0;
 }
 
 bool CONFIG_IsOnosAllowed()
 {
-    return bOnosAllowed;
+    return avh_botallowonos.value > 0;
 }
 
 float CONFIG_GetMaxStuckTime()
 {
-    return MaxStuckTime;
+    return avh_botmaxstucktime.value;
 }
 
 string CONFIG_GetBotPrefix()
@@ -100,52 +96,55 @@ AvHMessageID CONFIG_GetHiveTechAtIndex(const int Index)
     return ChamberSequence[Index];
 }
 
-bot_skill CONFIG_GetBotSkillLevel(const char* SkillName)
+bot_skill CONFIG_GetBotSkillLevel()
 {
-    std::string s = SkillName;
-    std::unordered_map<std::string, bot_skill>::const_iterator got = BotSkillLevelsMap.find(s);
+    int index = clampi((int)avh_botskill.value, 0, 3);
 
-    if (got == BotSkillLevelsMap.end())
-    {
-        return BotSkillLevelsMap["default"];
-    }
-    else
-    {
-        return got->second;
-    }
-}
-
-bool CONFIG_BotSkillLevelExists(const char* SkillName)
-{
-    std::string s = SkillName;
-    std::unordered_map<std::string, bot_skill>::const_iterator got = BotSkillLevelsMap.find(s);
-
-    return (got != BotSkillLevelsMap.end());
-}
-
-bot_skill CONFIG_GetGlobalBotSkillLevel()
-{
-    return BotSkillLevelsMap[GlobalSkillLevel.c_str()];
+    return BotSkillLevels[index];
 }
 
 void CONFIG_ParseConfigFile()
 {
-    TeamSizeMap.clear();
-    TeamSizeMap["default"].TeamASize = 6;
-    TeamSizeMap["default"].TeamBSize = 6;
 
-    BotSkillLevelsMap.clear();
+    BotSkillLevels[0].marine_bot_reaction_time = 0.4f;
+    BotSkillLevels[0].marine_bot_aim_skill = 0.1f;
+    BotSkillLevels[0].marine_bot_motion_tracking_skill = 0.1f;
+    BotSkillLevels[0].marine_bot_view_speed = 0.5f;
 
-    BotSkillLevelsMap["default"].marine_bot_aim_skill = 0.3f;
-    BotSkillLevelsMap["default"].marine_bot_motion_tracking_skill = 0.3f;
-    BotSkillLevelsMap["default"].marine_bot_reaction_time = 0.3f;
-    BotSkillLevelsMap["default"].marine_bot_view_speed = 1.0f;
-    BotSkillLevelsMap["default"].alien_bot_aim_skill = 0.5f;
-    BotSkillLevelsMap["default"].alien_bot_motion_tracking_skill = 0.5f;
-    BotSkillLevelsMap["default"].alien_bot_reaction_time = 0.3f;
-    BotSkillLevelsMap["default"].alien_bot_view_speed = 1.5f;
+    BotSkillLevels[0].alien_bot_reaction_time = 0.4f;
+    BotSkillLevels[0].alien_bot_aim_skill = 0.2f;
+    BotSkillLevels[0].alien_bot_motion_tracking_skill = 0.2f;    
+    BotSkillLevels[0].alien_bot_view_speed = 0.75f;
 
-    CurrentSkillLevel = "default";
+    BotSkillLevels[1].marine_bot_reaction_time = 0.2f;
+    BotSkillLevels[1].marine_bot_aim_skill = 0.5f;
+    BotSkillLevels[1].marine_bot_motion_tracking_skill = 0.4f;
+    BotSkillLevels[1].marine_bot_view_speed = 1.0f;
+
+    BotSkillLevels[1].alien_bot_reaction_time = 0.2f;
+    BotSkillLevels[1].alien_bot_aim_skill = 0.5f;
+    BotSkillLevels[1].alien_bot_motion_tracking_skill = 0.5f;
+    BotSkillLevels[1].alien_bot_view_speed = 1.3f;
+
+    BotSkillLevels[2].marine_bot_reaction_time = 0.2f;
+    BotSkillLevels[2].marine_bot_aim_skill = 0.6f;
+    BotSkillLevels[2].marine_bot_motion_tracking_skill = 0.6f;
+    BotSkillLevels[2].marine_bot_view_speed = 1.5f;
+
+    BotSkillLevels[2].alien_bot_reaction_time = 0.2f;
+    BotSkillLevels[2].alien_bot_aim_skill = 0.8f;
+    BotSkillLevels[2].alien_bot_motion_tracking_skill = 0.8f;
+    BotSkillLevels[2].alien_bot_view_speed = 1.5f;
+
+    BotSkillLevels[3].marine_bot_reaction_time = 0.1f;
+    BotSkillLevels[3].marine_bot_aim_skill = 1.0f;
+    BotSkillLevels[3].marine_bot_motion_tracking_skill = 1.0f;
+    BotSkillLevels[3].marine_bot_view_speed = 2.0f;
+
+    BotSkillLevels[3].alien_bot_reaction_time = 0.1f;
+    BotSkillLevels[3].alien_bot_aim_skill = 1.0f;
+    BotSkillLevels[3].alien_bot_motion_tracking_skill = 1.0f;
+    BotSkillLevels[3].alien_bot_view_speed = 2.0f;
 
 
     string BotConfigFile = string(getModDirectory()) + "/nsbots.cfg";
@@ -156,6 +155,8 @@ void CONFIG_ParseConfigFile()
     if (cFile.is_open())
     {
         std::string line;
+        int CurrSkillIndex = 0;
+
         while (getline(cFile, line))
         {
             line.erase(std::remove_if(line.begin(), line.end(), isspace),
@@ -204,45 +205,6 @@ void CONFIG_ParseConfigFile()
                 continue;
             }
 
-            if (key.compare("CommanderWaitTime") == 0)
-            {
-                fCommanderWaitTime = (float)atoi(value.c_str());
-                fCommanderWaitTime = fmaxf(0.0f, fCommanderWaitTime);
-                continue;
-            }
-
-            if (key.compare("LerkCooldown") == 0)
-            {
-                fLerkCooldown = (float)atoi(value.c_str());
-                fLerkCooldown = fmaxf(0.0f, fLerkCooldown);
-                continue;
-            }
-
-            if (key.compare("AllowLerk") == 0)
-            {
-                bLerkAllowed = atoi(value.c_str()) > 0;
-                continue;
-            }
-
-            if (key.compare("AllowFade") == 0)
-            {
-                bFadeAllowed = atoi(value.c_str()) > 0;
-                continue;
-            }
-
-            if (key.compare("AllowOnos") == 0)
-            {
-                bOnosAllowed = atoi(value.c_str()) > 0;
-                continue;
-            }
-
-            if (key.compare("MaxStuckTime") == 0)
-            {
-                MaxStuckTime = (float)atoi(value.c_str());
-                MaxStuckTime = fmaxf(0.0f, MaxStuckTime);
-                continue;
-            }
-
             if (key.compare("BotFillTiming") == 0)
             {
                 int FillSetting = atoi(value.c_str());
@@ -251,27 +213,18 @@ void CONFIG_ParseConfigFile()
                 continue;
             }
 
-            if (key.compare("BotSkillName") == 0)
+            if (key.compare("BotSkillLevel") == 0)
             {
-                BotSkillLevelsMap[value.c_str()].marine_bot_aim_skill = 0.5f;
-                BotSkillLevelsMap[value.c_str()].marine_bot_motion_tracking_skill = 0.5f;
-                BotSkillLevelsMap[value.c_str()].marine_bot_reaction_time = 0.2f;
-                BotSkillLevelsMap[value.c_str()].marine_bot_view_speed = 1.0f;
-                BotSkillLevelsMap[value.c_str()].alien_bot_aim_skill = 0.5f;
-                BotSkillLevelsMap[value.c_str()].alien_bot_motion_tracking_skill = 0.5f;
-                BotSkillLevelsMap[value.c_str()].alien_bot_reaction_time = 0.2f;
-                BotSkillLevelsMap[value.c_str()].alien_bot_view_speed = 1.0f;
-
-                CurrentSkillLevel = value;
+                CurrSkillIndex = std::stoi(value.c_str());
+                CurrSkillIndex = clampi(CurrSkillIndex, 0, 3);
                 continue;
             }
 
             if (key.compare("MarineReactionTime") == 0)
             {
-
                 float NewValue = std::stof(value.c_str());
 
-                BotSkillLevelsMap[CurrentSkillLevel.c_str()].marine_bot_reaction_time = clampf(NewValue, 0.0f, 1.0f);
+                BotSkillLevels[CurrSkillIndex].marine_bot_reaction_time = clampf(NewValue, 0.0f, 1.0f);
 
                 continue;
             }
@@ -281,7 +234,7 @@ void CONFIG_ParseConfigFile()
 
                 float NewValue = std::stof(value.c_str());
 
-                BotSkillLevelsMap[CurrentSkillLevel.c_str()].alien_bot_reaction_time = clampf(NewValue, 0.0f, 1.0f);
+                BotSkillLevels[CurrSkillIndex].alien_bot_reaction_time = clampf(NewValue, 0.0f, 1.0f);
 
                 continue;
             }
@@ -291,7 +244,7 @@ void CONFIG_ParseConfigFile()
 
                 float NewValue = std::stof(value.c_str());
 
-                BotSkillLevelsMap[CurrentSkillLevel.c_str()].marine_bot_aim_skill = clampf(NewValue, 0.0f, 1.0f);
+                BotSkillLevels[CurrSkillIndex].marine_bot_aim_skill = clampf(NewValue, 0.0f, 1.0f);
 
                 continue;
             }
@@ -301,7 +254,7 @@ void CONFIG_ParseConfigFile()
 
                 float NewValue = std::stof(value.c_str());
 
-                BotSkillLevelsMap[CurrentSkillLevel.c_str()].alien_bot_aim_skill = clampf(NewValue, 0.0f, 1.0f);
+                BotSkillLevels[CurrSkillIndex].alien_bot_aim_skill = clampf(NewValue, 0.0f, 1.0f);
 
                 continue;
             }
@@ -311,7 +264,7 @@ void CONFIG_ParseConfigFile()
 
                 float NewValue = std::stof(value.c_str());
 
-                BotSkillLevelsMap[CurrentSkillLevel.c_str()].marine_bot_motion_tracking_skill = clampf(NewValue, 0.0f, 1.0f);
+                BotSkillLevels[CurrSkillIndex].marine_bot_motion_tracking_skill = clampf(NewValue, 0.0f, 1.0f);
 
                 continue;
             }
@@ -321,7 +274,7 @@ void CONFIG_ParseConfigFile()
 
                 float NewValue = std::stof(value.c_str());
 
-                BotSkillLevelsMap[CurrentSkillLevel.c_str()].alien_bot_motion_tracking_skill = clampf(NewValue, 0.0f, 1.0f);
+                BotSkillLevels[CurrSkillIndex].alien_bot_motion_tracking_skill = clampf(NewValue, 0.0f, 1.0f);
 
                 continue;
             }
@@ -331,7 +284,7 @@ void CONFIG_ParseConfigFile()
 
                 float NewValue = std::stof(value.c_str());
 
-                BotSkillLevelsMap[CurrentSkillLevel.c_str()].marine_bot_view_speed = clampf(NewValue, 0.0f, 5.0f);
+                BotSkillLevels[CurrSkillIndex].marine_bot_view_speed = clampf(NewValue, 0.0f, 5.0f);
 
                 continue;
             }
@@ -341,14 +294,7 @@ void CONFIG_ParseConfigFile()
 
                 float NewValue = std::stof(value.c_str());
 
-                BotSkillLevelsMap[CurrentSkillLevel.c_str()].alien_bot_view_speed = clampf(NewValue, 0.0f, 5.0f);
-
-                continue;
-            }
-
-            if (key.compare("DefaultSkillLevel") == 0)
-            {
-                GlobalSkillLevel = value;
+                BotSkillLevels[CurrSkillIndex].alien_bot_view_speed = clampf(NewValue, 0.0f, 5.0f);
 
                 continue;
             }
@@ -482,11 +428,6 @@ void CONFIG_ParseConfigFile()
                 continue;
             }
         }
-    }
-
-    if (!CONFIG_BotSkillLevelExists(GlobalSkillLevel.c_str()))
-    {
-        GlobalSkillLevel = "default";
     }
 }
 
