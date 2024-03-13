@@ -42,6 +42,8 @@ vector<AvHAIOffMeshConnection> BaseMapConnections;
 nav_mesh NavMeshes[MAX_NAV_MESHES] = { }; // Array of nav meshes. Currently only 3 are used (building, onos, and regular)
 nav_profile BaseNavProfiles[MAX_NAV_PROFILES] = { }; // Array of nav profiles
 
+vector<NavHint> MapNavHints;
+
 extern bool bNavMeshModified;
 
 bool bTileCacheUpToDate = false;
@@ -106,6 +108,9 @@ struct TileCacheBuildHeader
 
 	int NumConvexVols;
 	int ConvexVolOffset;
+
+	int NumNavHints;
+	int NavHintOffset;
 };
 
 struct TileCacheTileHeader
@@ -800,6 +805,7 @@ void UnloadNavMeshes()
 	}
 
 	BaseMapConnections.clear();
+	MapNavHints.clear();
 }
 
 void UnloadNavigationData()
@@ -819,6 +825,7 @@ bool LoadNavMesh(const char* mapname)
 {
 	memset(NavMeshes, 0, sizeof(NavMeshes));
 	BaseMapConnections.clear();
+	MapNavHints.clear();
 
 	char filename[256]; // Full path to BSP file
 
@@ -1041,6 +1048,21 @@ bool LoadNavMesh(const char* mapname)
 		}
 
 		BaseMapConnections.push_back(NewMapConnection);
+	}
+
+	fseek(savedFile, header.NavHintOffset, SEEK_SET);
+
+	for (int i = 0; i < header.NumNavHints; i++)
+	{
+		LoadNavHint LoadedHint;
+		fread(&LoadedHint, sizeof(LoadNavHint), 1, savedFile);
+
+		NavHint NewHint;
+		NewHint.hintType = LoadedHint.hintType;
+		NewHint.Position = Vector(LoadedHint.position[0], -LoadedHint.position[2], LoadedHint.position[1]);
+		NewHint.OccupyingBuilding = nullptr;
+
+		MapNavHints.push_back(NewHint);
 	}
 
 	fclose(savedFile);
@@ -7511,6 +7533,8 @@ void UTIL_UpdateDoors(bool bInitial)
 		nav_door* NavDoor = &(*it);
 		DoorActivationType PrevType = it->ActivationType;
 
+		const char* DoorName = STRING(NavDoor->DoorEdict->v.targetname);
+
 		UTIL_UpdateDoorTriggers(NavDoor);
 				
 		CBaseToggle* DoorRef = it->DoorEntity;
@@ -7596,7 +7620,25 @@ void UTIL_UpdateDoors(bool bInitial)
 
 				}
 
-				UTIL_ApplyTempObstaclesToDoor(NavDoor, DT_TILECACHE_NULL_AREA);
+				Vector DoorCentre = UTIL_GetCentreOfEntity(it->DoorEdict);
+
+				dtNavMeshQuery* Query = NavMeshes[BUILDING_NAV_MESH].navQuery;
+				nav_profile StructureProfile = GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE);
+
+				dtPolyRef Polys[8];
+				int polyCount;
+
+				float DoorHalfExtents[3] = { it->DoorEdict->v.size.x, it->DoorEdict->v.size.z, it->DoorEdict->v.size.y };
+				float DoorCentreFlt[3] = { DoorCentre.x, DoorCentre.z, -DoorCentre.y };
+
+				Query->queryPolygons(DoorCentreFlt, DoorHalfExtents, &StructureProfile.Filters, Polys, &polyCount, 8);
+
+				if (polyCount > 0)
+				{
+					UTIL_ApplyTempObstaclesToDoor(NavDoor, DT_TILECACHE_NULL_AREA);
+				}
+
+				
 			}
 			else if (it->ActivationType == DOOR_WELD)
 			{
@@ -7644,11 +7686,44 @@ void UTIL_UpdateDoors(bool bInitial)
 
 				}
 
-				UTIL_ApplyTempObstaclesToDoor(NavDoor, DT_TILECACHE_WELD_AREA);
+				Vector DoorCentre = UTIL_GetCentreOfEntity(it->DoorEdict);
+
+				dtNavMeshQuery* Query = NavMeshes[BUILDING_NAV_MESH].navQuery;
+				nav_profile StructureProfile = GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE);
+
+				dtPolyRef Polys[8];
+				int polyCount;
+
+				float DoorHalfExtents[3] = {it->DoorEdict->v.size.x, it->DoorEdict->v.size.z, it->DoorEdict->v.size.y};
+				float DoorCentreFlt[3] = { DoorCentre.x, DoorCentre.z, -DoorCentre.y };
+				
+				Query->queryPolygons(DoorCentreFlt, DoorHalfExtents, &StructureProfile.Filters, Polys, &polyCount, 8);
+
+				if (polyCount > 0)
+				{
+					UTIL_ApplyTempObstaclesToDoor(NavDoor, DT_TILECACHE_WELD_AREA);
+				}
+
 			}
 			else
 			{
-				UTIL_ApplyTempObstaclesToDoor(NavDoor, DT_TILECACHE_DOOR_AREA);
+				Vector DoorCentre = UTIL_GetCentreOfEntity(it->DoorEdict);
+
+				dtNavMeshQuery* Query = NavMeshes[BUILDING_NAV_MESH].navQuery;
+				nav_profile StructureProfile = GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE);
+
+				dtPolyRef Polys[8];
+				int polyCount;
+
+				float DoorHalfExtents[3] = { it->DoorEdict->v.size.x, it->DoorEdict->v.size.z, it->DoorEdict->v.size.y };
+				float DoorCentreFlt[3] = { DoorCentre.x, DoorCentre.z, -DoorCentre.y };
+
+				Query->queryPolygons(DoorCentreFlt, DoorHalfExtents, &StructureProfile.Filters, Polys, &polyCount, 8);
+
+				if (polyCount > 0)
+				{
+					UTIL_ApplyTempObstaclesToDoor(NavDoor, DT_TILECACHE_DOOR_AREA);
+				}				
 			}
 
 			it->CurrentState = DoorRef->m_toggle_state;
@@ -8463,4 +8538,47 @@ void NAV_SetPickupMovementTask(AvHAIPlayer* pBot, edict_t* ThingToPickup, DoorTr
 	MoveTask->TaskTarget = ThingToPickup;
 	MoveTask->TriggerToActivate = TriggerToActivate;
 	MoveTask->TaskLocation = ThingToPickup->v.origin;
+}
+
+vector<NavHint*> NAV_GetHintsOfType(unsigned int HintType, bool bUnoccupiedOnly)
+{
+	vector<NavHint*> Result;
+
+	Result.clear();
+
+	for (auto it = MapNavHints.begin(); it != MapNavHints.end(); it++)
+	{
+		if (HintType != STRUCTURE_NONE && !(it->hintType & HintType)) { continue; }
+
+		if (bUnoccupiedOnly && !FNullEnt(it->OccupyingBuilding)) { continue; }
+
+		Result.push_back(&(*it));
+	}
+
+	return Result;
+
+}
+
+vector<NavHint*> NAV_GetHintsOfTypeInRadius(unsigned int HintType, Vector SearchLocation, float Radius, bool bUnoccupiedOnly)
+{
+	vector<NavHint*> Result;
+
+	Result.clear();
+
+	float SearchRadius = sqrf(Radius);
+
+	for (auto it = MapNavHints.begin(); it != MapNavHints.end(); it++)
+	{
+		if (HintType != STRUCTURE_NONE && !(it->hintType & HintType)) { continue; }
+
+		if (bUnoccupiedOnly && !FNullEnt(it->OccupyingBuilding)) { continue; }
+
+		if (vDist3DSq(it->Position, SearchLocation) < SearchRadius)
+		{
+			Result.push_back(&(*it));
+		}
+	}
+
+	return Result;
+
 }

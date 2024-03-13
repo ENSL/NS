@@ -498,5 +498,8 @@ void NAV_ClearMovementTask(AvHAIPlayer* pBot);
 void NAV_ProgressMovementTask(AvHAIPlayer* pBot);
 bool NAV_IsMovementTaskStillValid(AvHAIPlayer* pBot);
 
+vector<NavHint*> NAV_GetHintsOfType(unsigned int HintType, bool bUnoccupiedOnly = false);
+vector<NavHint*> NAV_GetHintsOfTypeInRadius(unsigned int HintType, Vector SearchLocation, float Radius, bool bUnoccupiedOnly = false);
+
 #endif // BOT_NAVIGATION_H
 
