@@ -23,6 +23,7 @@ extern cvar_t avh_botminplayers;
 extern cvar_t avh_botusemapdefaults;
 extern cvar_t avh_botcommandermode;
 extern cvar_t avh_botdebugmode;
+extern cvar_t avh_botskill;
 
 float LastAIPlayerCountUpdate = 0.0f;
 
@@ -518,7 +519,7 @@ void AIMGR_AddAIPlayerToTeam(int Team)
 		NewAIPlayer.WantsAndNeedsTask.TaskType = TASK_NONE;
 		NewAIPlayer.CommanderTask.TaskType = TASK_NONE;
 
-		const bot_skill BotSkillSettings = CONFIG_GetGlobalBotSkillLevel();
+		const bot_skill BotSkillSettings = CONFIG_GetBotSkillLevel();
 
 		memcpy(&NewAIPlayer.BotSkillSettings, &BotSkillSettings, sizeof(bot_skill));
 
@@ -595,6 +596,8 @@ void AIMGR_UpdateAIPlayers()
 
 	static float LastThinkTime = 0.0f;
 
+	static int CurrentBotSkill = 1;
+
 	CurrTime = gpGlobals->time;
 
 	if (CurrTime < PrevTime)
@@ -610,6 +613,14 @@ void AIMGR_UpdateAIPlayers()
 	float FrameDelta = CurrTime - PrevTime;
 	float ThinkDelta = CurrTime - LastThinkTime;
 
+	int cvarBotSkill = clampi((int)avh_botskill.value, 0, 3);
+
+	bool bSkillChanged = (cvarBotSkill != CurrentBotSkill);
+
+	if (bSkillChanged)
+	{
+		CurrentBotSkill = cvarBotSkill;
+	}
 
 		
 	for (auto BotIt = ActiveAIPlayers.begin(); BotIt != ActiveAIPlayers.end();)
@@ -622,6 +633,12 @@ void AIMGR_UpdateAIPlayers()
 		}
 
 		AvHAIPlayer* bot = &(*BotIt);
+
+		if (bSkillChanged)
+		{
+			const bot_skill NewSkillSettings = CONFIG_GetBotSkillLevel();
+			memcpy(&bot->BotSkillSettings, &NewSkillSettings, sizeof(bot_skill));
+		}
 
 		BotUpdateViewRotation(bot, FrameDelta);
 
@@ -641,37 +658,6 @@ void AIMGR_UpdateAIPlayers()
 					UTIL_DrawLine(INDEXENT(1), bot->Edict->v.origin, CurrentPathNode.FromLocation, 255, 0, 0);
 					UTIL_DrawLine(INDEXENT(1), bot->Edict->v.origin, CurrentPathNode.Location, 0, 128, 0);
 				}
-			}
-
-			if (!vIsZero(DebugVector1) && !vIsZero(DebugVector2))
-			{
-				UTIL_DrawLine(INDEXENT(1), DebugVector1, DebugVector2);
-
-				edict_t* PlayerEdict = INDEXENT(1);
-
-				bool bOnGround = (INDEXENT(1)->v.flags & FL_ONGROUND) || IsPlayerOnLadder(PlayerEdict);
-				bool Result = false;
-
-				if (!IsPlayerOnLadder(PlayerEdict))
-				{
-
-					if (IsPlayerClimbingWall(PlayerEdict)) { Result = true; }
-
-					if (bOnGround)
-					{
-						if (!UTIL_PointIsDirectlyReachable(GetPlayerBottomOfCollisionHull(PlayerEdict), DebugVector1) && !UTIL_PointIsDirectlyReachable(GetPlayerBottomOfCollisionHull(PlayerEdict), DebugVector2)) { Result = true; }
-					}
-				}
-
-				if (Result)
-				{
-					UTIL_DrawHUDText(PlayerEdict, 0, 0.1f, 0.1f, 255, 255, 255, "TRUE");
-				}
-				else
-				{
-					UTIL_DrawHUDText(PlayerEdict, 0, 0.1f, 0.1f, 255, 255, 255, "FALSE");
-				}
-
 			}
 
 			if (bHasRoundStarted)
@@ -958,7 +944,7 @@ void AIMGR_RoundStarted()
 	bHasRoundStarted = true;
 
 	AvHTeamNumber TeamANumber = GetGameRules()->GetTeamANumber();
-	AvHTeamNumber TeamBNumber = GetGameRules()->GetTeamANumber();
+	AvHTeamNumber TeamBNumber = GetGameRules()->GetTeamBNumber();
 
 	// If our team has no humans on it, then we can take command right away. Otherwise, wait the allotted grace period to allow the human to take command
 

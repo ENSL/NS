@@ -5,7 +5,7 @@
 #include "AvHAIPlayer.h"
 
 // Max rate bot can run its logic, default is 1/60th second. WARNING: Increasing the rate past 100hz causes bots to move and turn slowly due to GoldSrc limits!
-static const double BOT_MIN_FRAME_TIME = (1.0 / 60.0);
+static const double BOT_MIN_FRAME_TIME = 0;// (1.0 / 60.0);
 // Once the first human player has joined the game, how long to wait before adding bots
 static const float AI_GRACE_PERIOD = 5.0f;
 // Max time to wait before spawning players if none connect (e.g. empty dedicated server)

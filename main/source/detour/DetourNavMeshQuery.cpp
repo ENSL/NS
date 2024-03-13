@@ -2389,7 +2389,7 @@ dtStatus dtNavMeshQuery::getPortalPoints(dtPolyRef from, const dtPoly* fromPoly,
 			break;
 		}
 	}
-	if (!link)
+	if (!link || fromPoly->vertCount == 0)
 		return DT_FAILURE | DT_INVALID_PARAM;
 	
 	// Handle off-mesh connections.
@@ -2672,7 +2672,7 @@ dtStatus dtNavMeshQuery::raycast(dtPolyRef startRef, const float* startPos, cons
 			const dtLink* link = &tile->links[i];
 			
 			// Find link which contains this edge.
-			if ((int)link->edge != segMax)
+			if ((int)link->edge != segMax || poly->vertCount == 0)
 				continue;
 			
 			// Get pointer to the next polygon.
@@ -3699,7 +3699,7 @@ dtStatus dtNavMeshQuery::findDistanceToWall(dtPolyRef startRef, const float* cen
 			const dtLink* link = &bestTile->links[i];
 			dtPolyRef neighbourRef = link->ref;
 			// Skip invalid neighbours and do not follow back to parent.
-			if (!neighbourRef || neighbourRef == parentRef)
+			if (!neighbourRef || neighbourRef == parentRef || bestPoly->vertCount == 0)
 				continue;
 			
 			// Expand to neighbour.

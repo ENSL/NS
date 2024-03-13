@@ -149,6 +149,12 @@ float	ns_cvar_float(const cvar_t *cvar);
 #define kvBotAutoMode				"mp_botautomode"
 #define kvBotCommanderMode			"mp_botcommandermode"
 #define kvBotDebugMode				"mp_botdebugmode"
+#define kvBotAllowLerk				"mp_botallowlerk"
+#define kvBotAllowFade				"mp_botallowfade"
+#define kvBotAllowOnos				"mp_botallowonos"
+#define kvBotCommWait				"mp_botcommanderwait"
+#define kvBotLerkCooldown			"mp_botlerkcooldown"
+#define kvBotMaxStuckTime			"mp_botmaxstucktime"
 
 #define kvEasterEggChance			"mp_eastereggchance"
 #define kvUplink					"mp_uplink"

@@ -1902,30 +1902,37 @@ void UpdateAIPlayerCORole(AvHAIPlayer* pBot)
 			return;
 		}
 
-		int NumLerks = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER3, pBot->Edict);
-		int NumHarassers = AIMGR_GetNumAIPlayersWithRoleOnTeam(BotTeam, BOT_ROLE_HARASS, pBot);
-
-		if (NumLerks + NumHarassers == 0)
+		if (CONFIG_IsLerkAllowed())
 		{
-			float LastSeenTime;
-			edict_t* PreviousLerk = AITAC_GetLastSeenLerkForTeam(BotTeam, LastSeenTime);
 
-			// We only go lerk if the last lerk we had in the match was either us, or we've not had another lerk in 30 seconds
-			// This prevents a situation where a human is lerk, gets killed, and a bot immediately takes over.
-			// This is undesireable as it pressures the human to pick something else to avoid too many lerks
-			if (LastSeenTime > 30.0f || PreviousLerk == pBot->Edict)
+			int NumLerks = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER3, pBot->Edict);
+			int NumHarassers = AIMGR_GetNumAIPlayersWithRoleOnTeam(BotTeam, BOT_ROLE_HARASS, pBot);
+
+			if (NumLerks + NumHarassers == 0)
 			{
-				SetNewAIPlayerRole(pBot, BOT_ROLE_HARASS);
-				return;
+				float LastSeenTime;
+				edict_t* PreviousLerk = AITAC_GetLastSeenLerkForTeam(BotTeam, LastSeenTime);
+
+				// We only go lerk if the last lerk we had in the match was either us, or we've not had another lerk in 30 seconds
+				// This prevents a situation where a human is lerk, gets killed, and a bot immediately takes over.
+				// This is undesireable as it pressures the human to pick something else to avoid too many lerks
+				if (FNullEnt(PreviousLerk) || (gpGlobals->time - LastSeenTime > CONFIG_GetLerkCooldown()) || PreviousLerk == pBot->Edict)
+				{
+					SetNewAIPlayerRole(pBot, BOT_ROLE_HARASS);
+					return;
+				}
 			}
 		}
 
-		int MaxOnos = (int)(ceilf((float)(AIMGR_GetNumPlayersOnTeam(BotTeam) - 2)) * 0.3f);
-
-		if (AIMGR_GetNumAIPlayersWithRoleOnTeam(BotTeam, BOT_ROLE_BOMBARDIER, pBot) < MaxOnos)
+		if (CONFIG_IsOnosAllowed())
 		{
-			SetNewAIPlayerRole(pBot, BOT_ROLE_BOMBARDIER);
-			return;
+			int MaxOnos = (int)(ceilf((float)(AIMGR_GetNumPlayersOnTeam(BotTeam) - 2)) * 0.3f);
+
+			if (AIMGR_GetNumAIPlayersWithRoleOnTeam(BotTeam, BOT_ROLE_BOMBARDIER, pBot) < MaxOnos)
+			{
+				SetNewAIPlayerRole(pBot, BOT_ROLE_BOMBARDIER);
+				return;
+			}
 		}
 	}
 
@@ -4329,7 +4336,7 @@ AvHMessageID GetNextAIPlayerCOAlienUpgrade(AvHAIPlayer* pBot)
 	// If we're going assault then make sure we've saved up enough for fade
 	if (pBot->BotRole == BOT_ROLE_ASSAULT)
 	{
-		if (NumPointsAvailable <= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_FOUR))
+		if (CONFIG_IsFadeAllowed() && NumPointsAvailable <= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_FOUR))
 		{
 			return MESSAGE_NULL;
 		}
@@ -5609,7 +5616,7 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 
 	if (Task->TaskType == TASK_EVOLVE) { return; }
 
-	if (!IsPlayerOnos(pBot->Edict) && pBot->Player->GetResources() >= BALANCE_VAR(kOnosCost))
+	if (CONFIG_IsOnosAllowed() && !IsPlayerOnos(pBot->Edict) && pBot->Player->GetResources() >= BALANCE_VAR(kOnosCost))
 	{
 		int NumOnos = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER5, pBot->Edict);
 
@@ -5625,7 +5632,7 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 		}
 	}
 
-	if (!IsPlayerFade(pBot->Edict) && pBot->Player->GetResources() >= BALANCE_VAR(kFadeCost))
+	if (CONFIG_IsFadeAllowed() && !IsPlayerFade(pBot->Edict) && pBot->Player->GetResources() >= BALANCE_VAR(kFadeCost))
 	{
 		int NumFades = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER4, pBot->Edict);
 		int NumOnos = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER5, pBot->Edict);
