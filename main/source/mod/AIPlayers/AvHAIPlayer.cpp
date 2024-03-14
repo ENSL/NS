@@ -1629,7 +1629,7 @@ void StartNewBotFrame(AvHAIPlayer* pBot)
 		{
 			pBot->BotNavInfo.LastNavMeshPosition = pBot->CurrentFloorPosition;
 
-			if (pBot->BotNavInfo.IsOnGround)
+			if (pBot->BotNavInfo.IsOnGround || IsPlayerLerk(pBot->Edict))
 			{
 				Vector ForwardVector = UTIL_GetForwardVector2D(pBot->Edict->v.angles);
 				Vector RightVector = UTIL_GetCrossProduct(ForwardVector, UP_VECTOR);
@@ -1656,7 +1656,7 @@ void StartNewBotFrame(AvHAIPlayer* pBot)
 						break;
 					}
 
-					if (!UTIL_TraceNav(pBot->BotNavInfo.NavProfile, pBot->CollisionHullBottomLocation, EndNavTrace, 0.0f))
+					if (!UTIL_TraceNav(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, EndNavTrace, 0.0f))
 					{
 						bHasRoom = false;
 						break;
@@ -5040,7 +5040,7 @@ void BotSwitchToWeapon(AvHAIPlayer* pBot, AvHAIWeapon NewWeaponSlot)
 
 bool ShouldBotThink(AvHAIPlayer* pBot)
 {
-	return GetGameRules()->GetGameStarted() && (IsPlayerActiveInGame(pBot->Edict) || IsPlayerCommander(pBot->Edict)) && !IsPlayerGestating(pBot->Edict);
+	return NavmeshLoaded() && GetGameRules()->GetGameStarted() && (IsPlayerActiveInGame(pBot->Edict) || IsPlayerCommander(pBot->Edict)) && !IsPlayerGestating(pBot->Edict);
 }
 
 void BotResumePlay(AvHAIPlayer* pBot)

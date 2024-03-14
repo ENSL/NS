@@ -107,6 +107,8 @@ float AIMGR_GetCommanderAllowedTime(AvHTeamNumber Team)
 
 void AIMGR_UpdateAIPlayerCounts()
 {
+	if (!NavmeshLoaded()) { return; }
+
 	for (auto BotIt = ActiveAIPlayers.begin(); BotIt != ActiveAIPlayers.end();)
 	{
 		// If bot has been kicked from the server then remove from active AI player list
@@ -905,7 +907,7 @@ void AIMGR_RemoveBotsInReadyRoom()
 
 void AIMGR_ResetRound()
 {
-	if (avh_botsenabled.value == 0) { return; } // Do nothing if we're not using bots
+	if (avh_botsenabled.value == 0 || !NavmeshLoaded()) { return; } // Do nothing if we're not using bots
 
 	// AI Players would be 0 if the round is being reset because a new game is starting. If the round is reset
 	// from a console command, or tournament mode readying up etc, then bot logic is unaffected
@@ -939,6 +941,14 @@ void AIMGR_ResetRound()
 	CountdownStartedTime = 0.0f;
 }
 
+void AIMGR_ReloadNavigationData()
+{
+	if (NavmeshLoaded())
+	{
+		ReloadNavMeshes();
+	}
+}
+
 void AIMGR_RoundStarted()
 {
 	bHasRoundStarted = true;
@@ -965,6 +975,8 @@ void AIMGR_RoundStarted()
 	{
 		AIMGR_SetCommanderAllowedTime(TeamBNumber, 0.0f);
 	}
+
+	AITAC_RefreshTeamStartingLocations();
 
 	AITAC_OnNavMeshModified();
 }
@@ -1180,6 +1192,8 @@ bool AIMGR_ShouldStartPlayerBalancing()
 
 void AIMGR_UpdateAIMapData()
 {
+	if (!NavmeshLoaded()) { return; }
+
 	if (GetGameRules()->GetCountdownStarted() && CountdownStartedTime == 0.0f)
 	{
 		CountdownStartedTime = gpGlobals->time;

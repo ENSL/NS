@@ -1415,7 +1415,7 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
             theSuccess = true;
         }
     }
-	else if (FStrEq(pcmd, "setdebugaiplayer"))
+	else if (FStrEq(pcmd, "ai_setdebugaiplayer"))
 	{
 		CBaseEntity* SpectatedPlayer = theAvHPlayer->GetSpectatingEntity();
 
@@ -1430,19 +1430,7 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 		theSuccess = true;
 	}
-	else if (FStrEq(pcmd, "setdebugvector1"))
-	{
-		AIDEBUG_SetDebugVector1(UTIL_GetFloorUnderEntity(theAvHPlayer->edict()));
-
-		theSuccess = true;
-	}
-	else if (FStrEq(pcmd, "setdebugvector2"))
-	{
-		AIDEBUG_SetDebugVector2(UTIL_GetFloorUnderEntity(theAvHPlayer->edict()));
-
-		theSuccess = true;
-	}
-	else if (FStrEq(pcmd, "cometome"))
+	else if (FStrEq(pcmd, "ai_cometome"))
 	{
 		vector<AvHAIPlayer*> AIPlayers = AIMGR_GetAllAIPlayers();
 
@@ -1456,120 +1444,15 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 		theSuccess = true;
 	}
-	else if (FStrEq(pcmd, "drawtempobstacles"))
+	else if (FStrEq(pcmd, "ai_drawtempobstacles"))
 	{
 		AIDEBUG_DrawTemporaryObstacles(10.0f);
 
 		theSuccess = true;
 	}
-	else if (FStrEq(pcmd, "nextmineposition"))
+	else if (FStrEq(pcmd, "ai_drawoffmeshconns"))
 	{
-		DeployableSearchFilter NearestStructureFilter;
-		NearestStructureFilter.DeployableTeam = theAvHPlayer->GetTeam();
-		NearestStructureFilter.DeployableTypes = (STRUCTURE_MARINE_INFANTRYPORTAL | STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_MARINE_ARMOURY);
-
-		AvHAIBuildableStructure* Nearest = AITAC_FindClosestDeployableToLocation(theAvHPlayer->pev->origin, &NearestStructureFilter);
-
-		if (Nearest)
-		{
-			Vector MinePosition = UTIL_GetNextMinePosition2(Nearest->edict);
-
-			if (!vIsZero(MinePosition))
-			{
-				UTIL_DrawLine(INDEXENT(1), INDEXENT(1)->v.origin, MinePosition, 10.0f);
-			}
-		}
-
-		theSuccess = true;
-	}
-	else if (FStrEq(pcmd, "testoffwalknode"))
-	{
-		Vector MoveFrom = AIDEBUG_GetDebugVector1();
-		Vector MoveTo = AIDEBUG_GetDebugVector2();
-
-		if (!vIsZero(MoveFrom) && !vIsZero(MoveTo))
-		{
-			bool bOnGround = (theAvHPlayer->pev->flags & FL_ONGROUND) || IsPlayerOnLadder(theAvHPlayer->edict());
-			bool Result = false;
-
-			if (!bOnGround)
-			{
-				Result = false;
-			}
-			else
-			{
-				Vector NearestPointOnLine = vClosestPointOnLine2D(MoveFrom, MoveTo, theAvHPlayer->pev->origin);
-
-				if (vDist2DSq(theAvHPlayer->pev->origin, NearestPointOnLine) > sqrf(GetPlayerRadius(theAvHPlayer->edict()) * 3.0f)) { Result = true; }
-
-				if (vEquals2D(NearestPointOnLine, MoveFrom) && !UTIL_PointIsDirectlyReachable(GetPlayerBottomOfCollisionHull(theAvHPlayer->edict()), MoveFrom)) { Result = true; }
-				if (vEquals2D(NearestPointOnLine, MoveTo) && !UTIL_PointIsDirectlyReachable(GetPlayerBottomOfCollisionHull(theAvHPlayer->edict()), MoveTo)) { Result = true; }
-			}
-
-			if (Result)
-			{
-				UTIL_SayText("TRUE\n", theAvHPlayer);
-			}
-			else
-			{
-				UTIL_SayText("FALSE\n", theAvHPlayer);
-			}
-		}
-
-
-
-		theSuccess = true;
-	}
-	else if (FStrEq(pcmd, "testoffclimbnode"))
-	{
-		Vector MoveStart = AIDEBUG_GetDebugVector1();
-		Vector MoveEnd = AIDEBUG_GetDebugVector2();
-
-		if (!vIsZero(MoveStart) && !vIsZero(MoveEnd))
-		{
-			bool bOnGround = (theAvHPlayer->pev->flags & FL_ONGROUND) || IsPlayerOnLadder(theAvHPlayer->edict());
-			bool Result = false;
-
-			edict_t* PlayerEdict = theAvHPlayer->edict();
-
-			if (bOnGround)
-			{
-				if (!UTIL_PointIsDirectlyReachable(GetPlayerBottomOfCollisionHull(PlayerEdict), MoveStart) && !UTIL_PointIsDirectlyReachable(GetPlayerBottomOfCollisionHull(PlayerEdict), MoveEnd))
-				{
-					Result = true;
-				}
-			}
-			else
-			{
-				Vector ClosestPointOnLine = vClosestPointOnLine2D(MoveStart, MoveEnd, PlayerEdict->v.origin);
-
-				Result = vDist2DSq(PlayerEdict->v.origin, ClosestPointOnLine) > sqrf(GetPlayerRadius(PlayerEdict) * 3.0f);
-			}
-
-			if (Result)
-			{
-				UTIL_SayText("TRUE\n", theAvHPlayer);
-			}
-			else
-			{
-				UTIL_SayText("FALSE\n", theAvHPlayer);
-			}
-		}
-
-
-
-		theSuccess = true;
-	}
-	else if (FStrEq(pcmd, "amonladder"))
-	{
-		if (IsPlayerOnLadder(theAvHPlayer->edict()))
-		{
-			UTIL_SayText("TRUE\n", theAvHPlayer);
-		}
-		else
-		{
-			UTIL_SayText("FALSE\n", theAvHPlayer);
-		}
+		AIDEBUG_DrawOffMeshConnections(10.0f);
 
 		theSuccess = true;
 	}

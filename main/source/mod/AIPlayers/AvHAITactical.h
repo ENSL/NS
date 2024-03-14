@@ -90,6 +90,8 @@ void AITAC_ClearMapAIData(bool bInitialMapLoad = false);
 // Clear out all the hive information
 void AITAC_ClearHiveInfo();
 
+void AITAC_RefreshTeamStartingLocations();
+
 void AITAC_ClearStructureNavData();
 
 bool AITAC_AlienHiveNeedsReinforcing(const AvHAIHiveDefinition* Hive);
