@@ -774,6 +774,17 @@ dtStatus dtTileCache::update(const float /*dt*/, dtNavMesh* navmesh,
 			else if (req->action == REQUEST_OFFMESH_REFRESH)
 			{
 				con->state = DT_OFFMESH_DIRTY;
+
+				navmesh->unconnectOffMeshLink(con);
+
+				if (m_nupdate < MAX_UPDATE)
+				{
+					dtCompressedTile* Tile = getTileAt(con->FromTileX, con->FromTileY, con->FromTileLayer);
+					dtCompressedTileRef TileRef = getTileRef(Tile);
+
+					if (!contains(m_update, m_nupdate, TileRef))
+						m_update[m_nupdate++] = TileRef;
+				}
 			}
 		}
 
