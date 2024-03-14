@@ -951,6 +951,8 @@ void AIMGR_ReloadNavigationData()
 
 void AIMGR_RoundStarted()
 {
+	if (avh_botsenabled.value == 0 || !NavmeshLoaded()) { return; } // Do nothing if we're not using bots
+
 	bHasRoundStarted = true;
 
 	AvHTeamNumber TeamANumber = GetGameRules()->GetTeamANumber();
