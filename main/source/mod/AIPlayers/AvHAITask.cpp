@@ -1787,7 +1787,7 @@ void BotProgressTakeCommandTask(AvHAIPlayer* pBot)
 
 			if (FNullEnt(NearestHuman))
 			{
-				BotGuardLocation(pBot, CommChair->v.origin);
+				BotLookAt(pBot, CommChair);
 			}
 			else
 			{
