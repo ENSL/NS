@@ -457,6 +457,9 @@ void AIDEBUG_DrawOffMeshConnections(float DrawTime)
 				case SAMPLE_POLYFLAGS_DISABLED:
 					UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 128, 128, 128);
 					break;
+				case SAMPLE_POLYFLAGS_WELD:
+					UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 255, 165, 0);
+					break;
 				default:
 					UTIL_DrawLine(INDEXENT(1), StartLine, EndLine, DrawTime, 0, 255, 255);
 					break;
@@ -7615,6 +7618,7 @@ void UTIL_UpdateDoors(bool bInitial)
 					MidPoint.z = fmaxf(ConnStart.z, ConnEnd.z);
 
 					Vector DoorCentre = UTIL_GetCentreOfEntity(NavDoor->DoorEdict);
+					DoorCentre.z -= 16.0f;
 
 					bool bThisConnectionAffected = false;
 
@@ -7645,6 +7649,7 @@ void UTIL_UpdateDoors(bool bInitial)
 				}
 
 				Vector DoorCentre = UTIL_GetCentreOfEntity(it->DoorEdict);
+				DoorCentre.z -= 16.0f;
 
 				dtNavMeshQuery* Query = NavMeshes[BUILDING_NAV_MESH].navQuery;
 				nav_profile StructureProfile = GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE);
@@ -7711,6 +7716,7 @@ void UTIL_UpdateDoors(bool bInitial)
 				}
 
 				Vector DoorCentre = UTIL_GetCentreOfEntity(it->DoorEdict);
+				DoorCentre.z -= 16.0f;
 
 				dtNavMeshQuery* Query = NavMeshes[BUILDING_NAV_MESH].navQuery;
 				nav_profile StructureProfile = GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE);
@@ -7732,6 +7738,7 @@ void UTIL_UpdateDoors(bool bInitial)
 			else
 			{
 				Vector DoorCentre = UTIL_GetCentreOfEntity(it->DoorEdict);
+				DoorCentre.z -= 16.0f;
 
 				dtNavMeshQuery* Query = NavMeshes[BUILDING_NAV_MESH].navQuery;
 				nav_profile StructureProfile = GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE);
