@@ -68,6 +68,8 @@ int AIMGR_GetNumAIPlayersWithRoleOnTeam(AvHTeamNumber Team, AvHAIBotRole Role, A
 
 int AIMGR_GetNumHumansOfClassOnTeam(AvHTeamNumber Team, AvHUser3 PlayerType);
 
+void AIMGR_ReloadNavigationData();
+
 AvHAIPlayer* AIMGR_GetAICommander(AvHTeamNumber Team);
 
 AvHAIPlayer* AIMGR_GetBotRefFromPlayer(AvHPlayer* PlayerRef);

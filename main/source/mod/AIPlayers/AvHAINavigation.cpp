@@ -777,8 +777,32 @@ void GetFullFilePath(char* buffer, const char* mapname)
 
 void ReloadNavMeshes()
 {
+	vector<AvHAIPlayer*> AllBots = AIMGR_GetAllAIPlayers();
+
+	for (auto it = AllBots.begin(); it != AllBots.end(); it++)
+	{
+		AvHAIPlayer* ThisPlayer = (*it);
+
+		ClearBotMovement(ThisPlayer);
+	}
+	AITAC_ClearMapAIData(false);
 	UnloadNavMeshes();
-	LoadNavMesh(STRING(gpGlobals->mapname));
+	bool bSuccess = LoadNavMesh(STRING(gpGlobals->mapname));
+
+	if (bSuccess)
+	{
+		UTIL_PopulateDoors();
+		UTIL_PopulateWeldableObstacles();
+
+		UTIL_UpdateDoors(true);
+
+		bool bTileCacheFullyUpdated = UTIL_UpdateTileCache();
+
+		while (!bTileCacheFullyUpdated)
+		{
+			bTileCacheFullyUpdated = UTIL_UpdateTileCache();
+		}
+	}
 }
 
 void UnloadNavMeshes()

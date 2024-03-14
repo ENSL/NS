@@ -1503,12 +1503,12 @@ void AITAC_CheckNavMeshModified()
 	if (bNavMeshModified)
 	{
 		AITAC_OnNavMeshModified();
-		bNavMeshModified = false;
 	}
 }
 
 void AITAC_OnNavMeshModified()
 {
+	if (!NavmeshLoaded()) { return; }
 
 	for (auto it = TeamAStructureMap.begin(); it != TeamAStructureMap.end(); it++)
 	{
@@ -1541,6 +1541,8 @@ void AITAC_OnNavMeshModified()
 			ThisPlayer->BotNavInfo.NextForceRecalc = gpGlobals->time + frandrange(0.0f, 1.0f);
 		}
 	}
+
+	bNavMeshModified = false;
 }
 
 void AITAC_RefreshBuildableStructures()
@@ -2428,6 +2430,14 @@ void AITAC_ClearMapAIData(bool bInitialMapLoad)
 
 	TeamAStartingLocation = ZERO_VECTOR;
 	TeamBStartingLocation = ZERO_VECTOR;
+}
+
+void AITAC_RefreshTeamStartingLocations()
+{
+	TeamAStartingLocation = ZERO_VECTOR;
+	TeamBStartingLocation = ZERO_VECTOR;
+
+	AITAC_GetTeamStartingLocation(GetGameRules()->GetTeamANumber());
 }
 
 void AITAC_ClearHiveInfo()
