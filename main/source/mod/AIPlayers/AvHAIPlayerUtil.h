@@ -71,6 +71,8 @@ bool IsPlayerCharging(const edict_t* Player);
 // Is the player buffed by catalysts (for marines) or primal scream (for aliens)?
 bool IsPlayerBuffed(const edict_t* Player);
 
+void AIPlayer_Say(edict_t* pEntity, int teamonly, const char* Msg);
+
 // Returns the player's max armour, based on armour research levels (marines) or class and carapace level (aliens)
 int GetPlayerMaxArmour(const edict_t* Player);
 

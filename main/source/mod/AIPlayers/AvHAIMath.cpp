@@ -276,7 +276,7 @@ Vector UTIL_GetVectorNormal(const Vector vec)
 // Returns a 2D (Z axis is 0) normalized copy of the supplied Vector. Original value is unmodified
 Vector UTIL_GetVectorNormal2D(const Vector vec)
 {
-	if (vec == ZERO_VECTOR) { return ZERO_VECTOR; }
+	if (vec.x == 0.0f && vec.y == 0.0f) { return ZERO_VECTOR; }
 
 	Vector result;
 	float len = sqrt((vec.x * vec.x) + (vec.y * vec.y));

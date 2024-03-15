@@ -690,9 +690,11 @@ typedef struct _AI_COMMANDER_REQUEST
 	bool bNewRequest = false; // Is this a new request just come in?
 	edict_t* Requestor = nullptr; // Who sent the request?
 	AvHMessageID RequestType = MESSAGE_NULL; // What did they request?
+	bool bAcknowledged = false; // If we can't satisfy the request right now, have we at least acknowledged it?
 	bool bResponded = false; // Have we already responded to this request?
 	float RequestTime = 0.0f; // When the request came in
 	int ResponseAttempts = 0; // How many times have we tried to respond to this request?
+	Vector RequestLocation = g_vecZero; // Where was the request raised? Ideal drop location for stuff
 } ai_commander_request;
 
 typedef struct AVH_AI_PLAYER

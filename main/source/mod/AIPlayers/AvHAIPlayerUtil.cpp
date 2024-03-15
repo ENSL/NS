@@ -1145,3 +1145,117 @@ Vector UTIL_GetNearestLadderCentrePoint(const Vector SearchLocation)
 
 	return SearchLocation;
 }
+
+void AIPlayer_Say(edict_t* pEntity, int teamonly, const char* Msg)
+{
+	AvHPlayer* client;
+	AvHPlayer* theTalkingPlayer = dynamic_cast<AvHPlayer*>(CBaseEntity::Instance(pEntity));
+	int			j;
+	char* p;
+	char		text[256];
+	char		szTemp[256];
+	bool		theTalkerInReadyRoom = theTalkingPlayer->GetInReadyRoom();
+
+	// We can get a raw string now, without the "say " prepended
+	if (!Msg)
+		return;
+
+	//Not yet.
+	if (theTalkingPlayer->m_flNextChatTime > gpGlobals->time)
+		return;
+
+	p = (char*)Msg;
+
+	// remove quotes if present
+	if (*p == '"')
+	{
+		p++;
+		p[strlen(p) - 1] = 0;
+	}
+
+	// make sure the text has content
+	char* pc = p;
+	for (pc = p; pc != NULL && *pc != 0; pc++)
+	{
+		if (isprint(*pc) && !isspace(*pc))
+		{
+			pc = NULL;	// we've found an alphanumeric character,  so text is valid
+			break;
+		}
+	}
+	if (pc != NULL)
+		return;  // no character found, so say nothing
+
+	// turn on color set 2  (color on,  no sound)
+	if (teamonly)
+		sprintf(text, "%c(TEAM) %s: ", 2, STRING(pEntity->v.netname));
+	else
+		sprintf(text, "%c%s: ", 2, STRING(pEntity->v.netname));
+
+	j = sizeof(text) - 2 - strlen(text);  // -2 for /n and null terminator
+	if ((int)strlen(p) > j)
+		p[j] = 0;
+
+	strcat(text, p);
+	strcat(text, "\n");
+
+	theTalkingPlayer->m_flNextChatTime = gpGlobals->time + CHAT_INTERVAL;
+	// loop through all players
+	// Start with the first player.
+	// This may return the world in single player if the client types something between levels or during spawn
+	// so check it, or it will infinite loop
+
+	client = NULL;
+	while (((client = (AvHPlayer*)UTIL_FindEntityByClassname(client, "player")) != NULL) && (!FNullEnt(client->edict())))
+	{
+		if (!client->pev)
+			continue;
+
+		if (client->edict() == pEntity)
+			continue;
+
+		if (!(client->IsNetClient()))	// Not a client ? (should never be true)
+			continue;
+
+		// Don't differentiate between team and non-team when not playing
+		bool theTalkingPlayerIsPlaying = ((theTalkingPlayer->GetPlayMode() == PLAYMODE_PLAYING) || (theTalkingPlayer->GetPlayMode() == PLAYMODE_AWAITINGREINFORCEMENT) || (theTalkingPlayer->GetPlayMode() == PLAYMODE_REINFORCING));
+		bool theClientIsPlaying = ((client->GetPlayMode() == PLAYMODE_PLAYING) || (client->GetPlayMode() == PLAYMODE_AWAITINGREINFORCEMENT) || (client->GetPlayMode() == PLAYMODE_REINFORCING));
+		bool theTalkerIsObserver = theTalkingPlayer->IsObserver();
+		bool theClientIsObserver = client->IsObserver();
+		bool theClientIsHLTV = (client->pev->flags & FL_PROXY);
+
+		bool theClientInReadyRoom = client->GetInReadyRoom();
+
+		if (theClientInReadyRoom != theTalkerInReadyRoom && !theClientIsHLTV)
+		{
+			continue;
+		}
+
+		if (!theClientIsObserver || theClientIsPlaying) // Non-playing Observers hear everything.
+		{
+
+			if (theTalkingPlayerIsPlaying && teamonly && g_pGameRules->PlayerRelationship(client, CBaseEntity::Instance(pEntity)) != GR_TEAMMATE)
+				continue;
+
+			// chat can never go between play area and non-play area
+			if (theTalkingPlayerIsPlaying != theClientIsPlaying && !theClientIsHLTV)
+				continue;
+
+			// chat of any kind doesn't go from ready room to play area in tournament mode
+			if (theTalkerInReadyRoom && GetGameRules()->GetIsTournamentMode() && theClientIsPlaying && !theClientIsHLTV)
+				continue;
+
+		}
+
+		UTIL_SayText(text, client, ENTINDEX(pEntity));
+
+	}
+
+	// print to the sending client
+	UTIL_SayText(text, CBaseEntity::Instance(ENT(pEntity)));
+
+	// echo to server console
+	g_engfuncs.pfnServerPrint(text);
+
+	//	UTIL_LogPrintf( "%s %s \"%s\"\n", GetLogStringForPlayer( pEntity ).c_str(), temp, p );
+}

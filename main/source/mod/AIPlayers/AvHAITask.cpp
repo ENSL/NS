@@ -1228,7 +1228,7 @@ void BotProgressReinforceStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
 
-	Vector ReinforceLocation = Task->TaskTarget->v.origin;
+	Vector ReinforceLocation = UTIL_ProjectPointToNavmesh(UTIL_GetEntityGroundLocation(Task->TaskTarget), pBot->BotNavInfo.NavProfile);
 	float SearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
 
 	if (Task->StructureType == STRUCTURE_ALIEN_HIVE)
@@ -1615,7 +1615,7 @@ void BotProgressAttackTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (IsPlayerGorge(pBot->Edict) && !PlayerHasWeapon(pBot->Player, WEAPON_GORGE_BILEBOMB))
 	{
-		BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_ONE);
+		BotEvolveLifeform(pBot, pBot->CurrentFloorPosition, ALIEN_LIFEFORM_ONE);
 		return;
 	}
 
@@ -2062,7 +2062,7 @@ void BotAlienPlaceChamber(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, AvHAIDeploya
 
 	if (!IsPlayerGorge(pBot->Edict))
 	{
-		BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_TWO);
+		BotEvolveLifeform(pBot, pBot->CurrentFloorPosition, ALIEN_LIFEFORM_TWO);
 		return;
 	}
 	
@@ -2117,7 +2117,7 @@ void BotAlienBuildResTower(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, const AvHAI
 
 	if (!IsPlayerGorge(pBot->Edict))
 	{
-		BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_TWO);
+		BotEvolveLifeform(pBot, pBot->CurrentFloorPosition, ALIEN_LIFEFORM_TWO);
 		return;
 	}
 
@@ -2170,7 +2170,7 @@ void BotAlienBuildHive(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, const AvHAIHive
 
 		if (!IsPlayerGorge(pBot->Edict))
 		{
-			BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_TWO);
+			BotEvolveLifeform(pBot, pBot->CurrentFloorPosition, ALIEN_LIFEFORM_TWO);
 			return;
 		}
 
@@ -2195,7 +2195,7 @@ void BotAlienHealTarget(AvHAIPlayer* pBot, edict_t* HealTarget)
 		}
 		else
 		{
-			BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_TWO);
+			BotEvolveLifeform(pBot, pBot->CurrentFloorPosition, ALIEN_LIFEFORM_TWO);
 			return;
 		}
 	}
@@ -2274,7 +2274,7 @@ void AlienProgressCapResNodeTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 			}
 			else
 			{
-				BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_ONE);
+				BotEvolveLifeform(pBot, pBot->CurrentFloorPosition, ALIEN_LIFEFORM_ONE);
 				return;
 			}
 		}
@@ -2446,12 +2446,19 @@ void BotProgressWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		// so instead aim at the closest point on the func_weldable to us.
 		if (!IsEdictPlayer(Task->TaskTarget) && !IsEdictStructure(Task->TaskTarget))
 		{
-			Vector BBMin = Task->TaskTarget->v.absmin + Vector(5.0f, 5.0f, 5.0f);
-			Vector BBMax = Task->TaskTarget->v.absmax - Vector(5.0f, 5.0f, 5.0f);
+			if (Task->TaskTarget->v.size.Length2D() < 100.0f)
+			{
+				AimLocation = UTIL_GetCentreOfEntity(Task->TaskTarget);
+			}
+			else
+			{
+				Vector BBMin = Task->TaskTarget->v.absmin + Vector(5.0f, 5.0f, 5.0f);
+				Vector BBMax = Task->TaskTarget->v.absmax - Vector(5.0f, 5.0f, 5.0f);
 
-			vScaleBB(BBMin, BBMax, 0.75f);
+				vScaleBB(BBMin, BBMax, 0.75f);
 
-			AimLocation = vClosestPointOnBB(pBot->Edict->v.origin, BBMin, BBMax);
+				AimLocation = vClosestPointOnBB(pBot->Edict->v.origin, BBMin, BBMax);
+			}
 
 		}
 
@@ -2690,12 +2697,8 @@ void BotGuardLocation(AvHAIPlayer* pBot, const Vector GuardLocation)
 
 	if (DistFromGuardLocation > sqrf(UTIL_MetresToGoldSrcUnits(10.0f)))
 	{
-		pBot->GuardInfo.GuardLocation = g_vecZero;
-		pBot->GuardInfo.GuardStartLookTime = 0.0f;
-		pBot->GuardInfo.ThisGuardLookTime = 0.0f;
-		pBot->GuardInfo.GuardStartStandTime = 0.0f;
-		pBot->GuardInfo.ThisGuardStandTime = 0.0f;
-		MoveTo(pBot, GuardLocation, MOVESTYLE_NORMAL);
+		memset(&pBot->GuardInfo, 0, sizeof(AvHAIGuardInfo));
+		MoveTo(pBot, GuardLocation, MOVESTYLE_NORMAL, UTIL_MetresToGoldSrcUnits(10.0f));
 		return;
 	}
 
@@ -3156,6 +3159,8 @@ void AITASK_SetMoveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, const Vector L
 	AITASK_ClearBotTask(pBot, Task);
 
 	if (vIsZero(Location)) { return; }
+
+	UpdateBotMoveProfile(pBot, MOVESTYLE_NORMAL);
 
 	Vector MoveStart = AdjustPointForPathfinding(pBot->CurrentFloorPosition);
 	Vector MoveEnd = AdjustPointForPathfinding(Location);
