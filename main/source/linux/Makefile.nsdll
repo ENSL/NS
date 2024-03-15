@@ -220,7 +220,6 @@ GAME_SHARED_OBJS = \
 UTIL_OBJS = \
 	$(UTIL_OBJ_DIR)/Balance.o \
 	$(UTIL_OBJ_DIR)/Checksum.o \
-	$(UTIL_OBJ_DIR)/GammaTable.o \
 	$(UTIL_OBJ_DIR)/LinuxSupport.o \
 	$(UTIL_OBJ_DIR)/Mat3.o \
 	$(UTIL_OBJ_DIR)/MathUtil.o \
@@ -233,6 +232,17 @@ TEXTREP_OBJS = \
 	$(TEXTREP_OBJ_DIR)/TRDescription.o \
 	$(TEXTREP_OBJ_DIR)/TRFactory.o \
 
+DETOUR_OBJS = \
+	$(DETOUR_OBJ_DIR)/DetourAlloc.o \
+	$(DETOUR_OBJ_DIR)/DetourAssert.o \
+	$(DETOUR_OBJ_DIR)/DetourCommon.o \
+	$(DETOUR_OBJ_DIR)/DetourNavMesh.o \
+	$(DETOUR_OBJ_DIR)/DetourNavMeshBuilder.o \
+	$(DETOUR_OBJ_DIR)/DetourNavMeshQuery.o \
+	$(DETOUR_OBJ_DIR)/DetourNode.o \
+	$(DETOUR_OBJ_DIR)/DetourTileCache.o \
+	$(DETOUR_OBJ_DIR)/DetourTileCacheBuilder.o \
+
 all: dirs ns.$(SHLIBEXT)
 
 dirs:
@@ -244,9 +254,10 @@ dirs:
 	-mkdir $(UTIL_OBJ_DIR)
 	-mkdir $(TEXTREP_OBJ_DIR)
 	-mkdir $(GAME_SHARED_OBJ_DIR)
+	-mkdir $(DETOUR_OBJ_DIR)
 
-ns.$(SHLIBEXT): $(HLDLL_OBJS) $(MOD_OBJS) $(PM_OBJS) $(GAME_SHARED_OBJS) $(UTIL_OBJS) $(TEXTREP_OBJS)
-	$(CC) $(SHLIBLDFLAGS) -o $(BUILD_DIR)/$@ $(HLDLL_OBJS) $(MOD_OBJS) $(PM_OBJS) $(GAME_SHARED_OBJS) $(UTIL_OBJS) $(TEXTREP_OBJS) $(LDFLAGS) 
+ns.$(SHLIBEXT): $(HLDLL_OBJS) $(MOD_OBJS) $(PM_OBJS) $(GAME_SHARED_OBJS) $(UTIL_OBJS) $(TEXTREP_OBJS) $(DETOUR_OBJS)
+	$(CC) $(SHLIBLDFLAGS) -o $(BUILD_DIR)/$@ $(HLDLL_OBJS) $(MOD_OBJS) $(PM_OBJS) $(GAME_SHARED_OBJS) $(UTIL_OBJS) $(TEXTREP_OBJS) $(DETOUR_OBJS) $(LDFLAGS) 
 	@echo "Done..."
 
 $(NS_MOD_OBJ_DIR)/%.o: $(NS_MOD_SRC_DIR)/%.cpp
@@ -266,6 +277,9 @@ $(UTIL_OBJ_DIR)/%.o : $(UTIL_SRC_DIR)/%.cpp
 
 $(TEXTREP_OBJ_DIR)/%.o : $(TEXTREP_SRC_DIR)/%.cpp
 	$(DO_TEXTREP_CC)
+
+$(DETOUR_OBJ_DIR)/%.o : $(DETOUR_SRC_DIR)/%.cpp
+	$(DO_DETOUR_CC)
 
 clean:
 	-rm -rf $(GAME_SHARED_OBJ_DIR)
