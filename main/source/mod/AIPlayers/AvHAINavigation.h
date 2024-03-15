@@ -344,6 +344,7 @@ void MoveToWithoutNav(AvHAIPlayer* pBot, const Vector Destination);
 void HandlePlayerAvoidance(AvHAIPlayer* pBot, const Vector MoveDestination);
 
 Vector AdjustPointForPathfinding(const Vector Point);
+Vector AdjustPointForPathfinding(const Vector Point, const nav_profile& NavProfile);
 
 // Special path finding that takes the presence of phase gates into account 
 dtStatus FindFlightPathToPoint(const nav_profile& NavProfile, Vector FromLocation, Vector ToLocation, vector<bot_path_node>& path, float MaxAcceptableDistance);

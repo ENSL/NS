@@ -1495,6 +1495,37 @@ Vector AdjustPointForPathfinding(const Vector Point)
 
 }
 
+Vector AdjustPointForPathfinding(const Vector Point, const nav_profile& NavProfile)
+{
+	Vector ProjectedPoint = UTIL_ProjectPointToNavmesh(Point, Vector(400.0f, 100.0f, 400.0f), NavProfile);
+
+	int PointContents = UTIL_PointContents(ProjectedPoint);
+
+	if (PointContents == CONTENTS_SOLID)
+	{
+		int PointContents = UTIL_PointContents(ProjectedPoint + Vector(0.0f, 0.0f, 32.0f));
+
+		if (PointContents != CONTENTS_SOLID && PointContents != CONTENTS_LADDER)
+		{
+			Vector TraceStart = ProjectedPoint + Vector(0.0f, 0.0f, 32.0f);
+			Vector TraceEnd = TraceStart - Vector(0.0f, 0.0f, 50.0f);
+			Vector NewPoint = UTIL_GetHullTraceHitLocation(TraceStart, TraceEnd, point_hull);
+
+			if (!vIsZero(NewPoint)) { return NewPoint; }
+		}
+	}
+	else
+	{
+		Vector TraceStart = ProjectedPoint + Vector(0.0f, 0.0f, 5.0f);
+		Vector TraceEnd = TraceStart - Vector(0.0f, 0.0f, 32.0f);
+		Vector NewPoint = UTIL_GetHullTraceHitLocation(TraceStart, TraceEnd, point_hull);
+
+		if (!vIsZero(NewPoint)) { return NewPoint; }
+	}
+
+	return ProjectedPoint;
+}
+
 // Special path finding that takes flight movement into account
 dtStatus FindFlightPathToPoint(const nav_profile &NavProfile, Vector FromLocation, Vector ToLocation, vector<bot_path_node>& path, float MaxAcceptableDistance)
 {
@@ -2220,7 +2251,7 @@ bool HasBotCompletedWalkMove(const AvHAIPlayer* pBot, Vector MoveStart, Vector M
 
 	if (NextMoveFlag != SAMPLE_POLYFLAGS_DISABLED)
 	{
-		bNextPointReachable = UTIL_PointIsDirectlyReachable(pBot->CollisionHullBottomLocation, NextMoveDestination);
+		bNextPointReachable = UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, NextMoveDestination);
 	}
 
 	return vPointOverlaps3D(MoveEnd, pBot->Edict->v.absmin, pBot->Edict->v.absmax) || (bNextPointReachable && vDist2DSq(pBot->Edict->v.origin, MoveEnd) < sqrf(GetPlayerRadius(pBot->Edict) * 2.0f));
@@ -3410,8 +3441,12 @@ void StructureBlockedMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vect
 
 void BlockedMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 {
-
 	Vector vForward = UTIL_GetVectorNormal2D(EndPoint - StartPoint);
+
+	if (vIsZero(vForward))
+	{
+		vForward = UTIL_GetForwardVector2D(pBot->Edict->v.angles);
+	}
 
 	pBot->desiredMovementDir = vForward;
 
@@ -4229,8 +4264,8 @@ bool IsBotOffWalkNode(const AvHAIPlayer* pBot, Vector MoveStart, Vector MoveEnd,
 
 	if (vDist2DSq(pBot->Edict->v.origin, NearestPointOnLine) > sqrf(GetPlayerRadius(pBot->Edict) * 3.0f)) { return true; }
 
-	if (vEquals2D(NearestPointOnLine, MoveStart) && !UTIL_PointIsDirectlyReachable(pBot->CollisionHullBottomLocation, MoveStart)) { return true; }
-	if (vEquals2D(NearestPointOnLine, MoveEnd) && !UTIL_PointIsDirectlyReachable(pBot->CollisionHullBottomLocation, MoveEnd)) { return true; }
+	if (vEquals2D(NearestPointOnLine, MoveStart) && !UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, MoveStart)) { return true; }
+	if (vEquals2D(NearestPointOnLine, MoveEnd) && !UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, MoveEnd)) { return true; }
 
 	return false;
 
@@ -5838,7 +5873,7 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 			Vector NavAdjustedDestination = AdjustPointForPathfinding(Destination);
 			if (vIsZero(NavAdjustedDestination)) { return false; }
 
-			PathFindingStatus = FindPathClosestToPoint(pBot, pBot->BotNavInfo.MoveStyle, pBot->CollisionHullBottomLocation, NavAdjustedDestination, BotNavInfo->CurrentPath, MaxAcceptableDist);
+			PathFindingStatus = FindPathClosestToPoint(pBot, pBot->BotNavInfo.MoveStyle, pBot->CurrentFloorPosition, NavAdjustedDestination, BotNavInfo->CurrentPath, MaxAcceptableDist);
 		}		
 
 		pBot->BotNavInfo.NextForceRecalc = 0.0f;

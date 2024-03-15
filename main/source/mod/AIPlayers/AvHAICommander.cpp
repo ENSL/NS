@@ -2470,22 +2470,77 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 		return true;
 	}
 
-	if (NextRequest->RequestType == BUILD_WELDER)
+	if (NextRequest->RequestType == BUILD_WELDER || NextRequest->RequestType == BUILD_SHOTGUN || NextRequest->RequestType == BUILD_MINES)
 	{
-		if (pBot->Player->GetResources() < BALANCE_VAR(kWelderCost)) { return false; }
+		AvHAIDeployableItemType ItemToDrop = DEPLOYABLE_ITEM_NONE;
+		float Cost = 0.0f;
+
+		switch (NextRequest->RequestType)
+		{
+			case BUILD_WELDER:
+				ItemToDrop = DEPLOYABLE_ITEM_WELDER;
+				Cost = BALANCE_VAR(kWelderCost);
+				break;
+			case BUILD_SHOTGUN:
+				ItemToDrop = DEPLOYABLE_ITEM_SHOTGUN;
+				Cost = BALANCE_VAR(kShotgunCost);
+				break;
+			case BUILD_MINES:
+				ItemToDrop = DEPLOYABLE_ITEM_MINES;
+				Cost = BALANCE_VAR(kMineCost);
+				break;
+			default:
+				ItemToDrop = DEPLOYABLE_ITEM_WELDER;
+				Cost = BALANCE_VAR(kWelderCost);
+				break;
+		}
 
 		DeployableSearchFilter ArmouryFilter;
 		ArmouryFilter.DeployableTeam = CommanderTeam;
 		ArmouryFilter.DeployableTypes = (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY);
 		ArmouryFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
 		ArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+		ArmouryFilter.MaxSearchRadius = BALANCE_VAR(kArmoryBuildDistance);
 
 		AvHAIBuildableStructure* NearestArmoury = AITAC_FindClosestDeployableToLocation(Requestor->v.origin, &ArmouryFilter);
 
 		if (!NearestArmoury)
 		{
-			NextRequest->bResponded = true;
+			if (!NextRequest->bAcknowledged)
+			{
+				char msg[128];
+				sprintf(msg, "Get to an working armory %s, and ask again.", STRING(Requestor->v.netname));
+				BotSay(pBot, true, 0.5f, msg);
+				NextRequest->bAcknowledged = true;
+			}
+
 			return false;
+		}
+
+		if (pBot->Player->GetResources() < Cost)
+		{
+			if (!NextRequest->bAcknowledged)
+			{
+				char msg[128];
+				sprintf(msg, "Wait for resources %s, I'll drop it soon.", STRING(Requestor->v.netname));
+				BotSay(pBot, true, 0.5f, msg);
+				NextRequest->bAcknowledged = true;
+			}
+			return false; 
+		}
+
+		Vector IdealDeployLocation = Requestor->v.origin + (UTIL_GetForwardVector2D(Requestor->v.angles) * 75.0f);
+		Vector ProjectedDeployLocation = AdjustPointForPathfinding(IdealDeployLocation);
+
+		if (vDist2DSq(ProjectedDeployLocation, NearestArmoury->Location) < BALANCE_VAR(kArmoryBuildDistance))
+		{
+			bool bSuccess = AICOMM_DeployItem(pBot, ItemToDrop, ProjectedDeployLocation);
+
+			if (bSuccess)
+			{
+				NextRequest->bResponded = bSuccess;
+				return true;
+			}
 		}
 
 		Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(4.0f));
@@ -2497,11 +2552,14 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 
 		if (vIsZero(DeployLocation))
 		{
+			char msg[128];
+			sprintf(msg, "I can't find a drop location, %s. Try asking again elsewhere.", STRING(Requestor->v.netname));
+			BotSay(pBot, true, 0.5f, msg);
 			NextRequest->bResponded = true;
 			return false;
 		}
 
-		bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_WELDER, DeployLocation);
+		bool bSuccess = AICOMM_DeployItem(pBot, ItemToDrop, DeployLocation);
 
 		NextRequest->ResponseAttempts++;
 
@@ -2510,102 +2568,57 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 
 	}
 
-	if (NextRequest->RequestType == BUILD_SHOTGUN)
+	if (NextRequest->RequestType == BUILD_HMG || NextRequest->RequestType == BUILD_GRENADE_GUN)
 	{
-		if (pBot->Player->GetResources() < BALANCE_VAR(kShotgunCost)) { return false; }
-
-		DeployableSearchFilter ArmouryFilter;
-		ArmouryFilter.DeployableTeam = CommanderTeam;
-		ArmouryFilter.DeployableTypes = (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY);
-		ArmouryFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
-		ArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
-
-		AvHAIBuildableStructure* NearestArmoury = AITAC_FindClosestDeployableToLocation(Requestor->v.origin, &ArmouryFilter);
-
-		if (!NearestArmoury)
-		{
-			NextRequest->bResponded = true;
-			return false;
-		}
-
-		Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(4.0f));
-
-		if (vIsZero(DeployLocation))
-		{
-			DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(4.0f));
-		}
-
-		if (vIsZero(DeployLocation))
-		{
-			NextRequest->bResponded = true;
-			return false;
-		}
-
-		bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_SHOTGUN, DeployLocation);
-
-		NextRequest->ResponseAttempts++;
-
-		NextRequest->bResponded = bSuccess;
-		return true;
-
-	}
-
-	if (NextRequest->RequestType == BUILD_MINES)
-	{
-		if (pBot->Player->GetResources() < BALANCE_VAR(kMineCost)) { return false; }
-
-		DeployableSearchFilter ArmouryFilter;
-		ArmouryFilter.DeployableTeam = CommanderTeam;
-		ArmouryFilter.DeployableTypes = (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY);
-		ArmouryFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
-		ArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
-
-		AvHAIBuildableStructure* NearestArmoury = AITAC_FindClosestDeployableToLocation(Requestor->v.origin, &ArmouryFilter);
-
-		if (!NearestArmoury)
-		{
-			NextRequest->bResponded = true;
-			return false;
-		}
-
-		Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(4.0f));
-
-		if (vIsZero(DeployLocation))
-		{
-			DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(4.0f));
-		}
-
-		if (vIsZero(DeployLocation))
-		{
-			NextRequest->bResponded = true;
-			return false;
-		}
-
-		bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_MINES, DeployLocation);
-
-		NextRequest->ResponseAttempts++;
-
-		NextRequest->bResponded = bSuccess;
-		return true;
-
-	}
-
-	if (NextRequest->RequestType == BUILD_HMG)
-	{
-		if (pBot->Player->GetResources() < BALANCE_VAR(kHMGCost)) { return false; }
+		AvHAIDeployableItemType ItemToDrop = (NextRequest->RequestType == BUILD_HMG) ? DEPLOYABLE_ITEM_HMG : DEPLOYABLE_ITEM_GRENADELAUNCHER;
+		float Cost = (NextRequest->RequestType == BUILD_HMG) ? BALANCE_VAR(kHMGCost) : BALANCE_VAR(kGrenadeLauncherCost);
 
 		DeployableSearchFilter ArmouryFilter;
 		ArmouryFilter.DeployableTeam = CommanderTeam;
 		ArmouryFilter.DeployableTypes = STRUCTURE_MARINE_ADVARMOURY;
 		ArmouryFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
 		ArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+		ArmouryFilter.MaxSearchRadius = BALANCE_VAR(kArmoryBuildDistance);
 
 		AvHAIBuildableStructure* NearestArmoury = AITAC_FindClosestDeployableToLocation(Requestor->v.origin, &ArmouryFilter);
 
 		if (!NearestArmoury)
 		{
-			NextRequest->bResponded = true;
+			if (!NextRequest->bAcknowledged)
+			{
+				char msg[128];
+				sprintf(msg, "Get to an advanced armory %s, and I'll drop it for you.", STRING(Requestor->v.netname));
+				BotSay(pBot, true, 0.5f, msg);
+				NextRequest->bAcknowledged = true;
+			}
+
 			return false;
+		}
+
+		if (pBot->Player->GetResources() < Cost)
+		{
+			if (!NextRequest->bAcknowledged)
+			{
+				char msg[128];
+				sprintf(msg, "Wait for resources %s, will drop asap.", STRING(Requestor->v.netname));
+				BotSay(pBot, true, 0.5f, msg);
+				NextRequest->bAcknowledged = true;
+			}
+			return false;
+		}
+
+		Vector IdealDeployLocation = Requestor->v.origin + (UTIL_GetForwardVector2D(Requestor->v.angles) * 75.0f);
+		Vector ProjectedDeployLocation = AdjustPointForPathfinding(IdealDeployLocation);
+
+		if (vDist2DSq(ProjectedDeployLocation, NearestArmoury->Location) < BALANCE_VAR(kArmoryBuildDistance))
+		{
+			bool bSuccess = AICOMM_DeployItem(pBot, ItemToDrop, ProjectedDeployLocation);
+
+			if (bSuccess)
+			{
+				NextRequest->bResponded = bSuccess;
+				return true;
+			}
 		}
 
 		Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(4.0f));
@@ -2617,50 +2630,14 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 
 		if (vIsZero(DeployLocation))
 		{
+			char msg[128];
+			sprintf(msg, "I can't find a drop location, %s. Try asking again elsewhere.", STRING(Requestor->v.netname));
+			BotSay(pBot, true, 0.5f, msg);
 			NextRequest->bResponded = true;
 			return false;
 		}
 
-		bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_HMG, DeployLocation);
-
-		NextRequest->ResponseAttempts++;
-
-		NextRequest->bResponded = bSuccess;
-		return true;
-	}
-
-	if (NextRequest->RequestType == BUILD_GRENADE_GUN)
-	{
-		if (pBot->Player->GetResources() < BALANCE_VAR(kGrenadeLauncherCost)) { return false; }
-
-		DeployableSearchFilter ArmouryFilter;
-		ArmouryFilter.DeployableTeam = CommanderTeam;
-		ArmouryFilter.DeployableTypes = STRUCTURE_MARINE_ADVARMOURY;
-		ArmouryFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
-		ArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
-
-		AvHAIBuildableStructure* NearestArmoury = AITAC_FindClosestDeployableToLocation(Requestor->v.origin, &ArmouryFilter);
-
-		if (!NearestArmoury)
-		{
-			NextRequest->bResponded = true;
-			return false;
-		}
-
-		Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(4.0f));
-
-		if (vIsZero(DeployLocation))
-		{
-			DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), NearestArmoury->Location, UTIL_MetresToGoldSrcUnits(4.0f));
-		}
-
-		if (vIsZero(DeployLocation))
-		{
-			NextRequest->bResponded = true;
-			return false;
-		}
-
-		bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_GRENADELAUNCHER, DeployLocation);
+		bool bSuccess = AICOMM_DeployItem(pBot, ItemToDrop, DeployLocation);
 
 		NextRequest->ResponseAttempts++;
 
@@ -3197,6 +3174,7 @@ void AICOMM_ReceiveChatRequest(AvHAIPlayer* Commander, edict_t* Requestor, const
 	RequestRef->RequestTime = gpGlobals->time;
 	RequestRef->RequestType = NewRequestType;
 	RequestRef->Requestor = Requestor;
+	RequestRef->RequestLocation = UTIL_GetFloorUnderEntity(Requestor) + (UTIL_GetForwardVector2D(Requestor->v.angles) * 75.0f);
 
 	if (!ExistingRequest)
 	{

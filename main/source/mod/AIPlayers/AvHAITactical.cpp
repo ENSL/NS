@@ -692,10 +692,18 @@ Vector AITAC_GetFloorLocationForHive(const AvHAIHiveDefinition* Hive)
 
 	if (!vIsZero(NearestNavigableLoc))
 	{
+		Vector ProjectedPoint = UTIL_ProjectPointToNavmesh(NearestNavigableLoc, Vector(500.0f, 500.0f, 500.0f), GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE));
+
+		if (!vIsZero(ProjectedPoint)) { return ProjectedPoint; }
+
 		return NearestNavigableLoc;
 	}
 	else
 	{
+		Vector ProjectedPoint = UTIL_ProjectPointToNavmesh(HiveFloorLoc, Vector(500.0f, 500.0f, 500.0f), GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE));
+
+		if (!vIsZero(ProjectedPoint)) { return ProjectedPoint; }
+
 		return HiveFloorLoc;
 	}
 
@@ -811,7 +819,7 @@ void AITAC_RefreshHiveData()
 
 			it->NextFloorLocationCheck = gpGlobals->time + (5.0f + (0.1f * NextRefresh));
 
-			//AITAC_RefreshReachabilityForHive(&(*it));
+			AITAC_RefreshReachabilityForHive(&(*it));
 		}
 
 		NextRefresh++;

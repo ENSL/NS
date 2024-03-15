@@ -660,6 +660,19 @@ void AIMGR_UpdateAIPlayers()
 					UTIL_DrawLine(INDEXENT(1), bot->Edict->v.origin, CurrentPathNode.FromLocation, 255, 0, 0);
 					UTIL_DrawLine(INDEXENT(1), bot->Edict->v.origin, CurrentPathNode.Location, 0, 128, 0);
 				}
+
+				if (bot->CurrentTask && bot->CurrentTask->TaskType != TASK_NONE)
+				{
+					if (!FNullEnt(bot->CurrentTask->TaskTarget))
+					{
+						UTIL_DrawLine(INDEXENT(1), bot->Edict->v.origin, bot->CurrentTask->TaskTarget->v.origin, 255, 0, 0);
+					}
+
+					if (!vIsZero(bot->CurrentTask->TaskLocation))
+					{
+						UTIL_DrawLine(INDEXENT(1), bot->Edict->v.origin, bot->CurrentTask->TaskLocation, 255, 0, 0);
+					}
+				}
 			}
 
 			if (bHasRoundStarted)

@@ -1032,11 +1032,16 @@ void BotEvolveLifeform(AvHAIPlayer* pBot, Vector DesiredEvolveLocation, AvHMessa
 	// We're already the target lifeform, don't do anything
 	if (TargetUser3 == pBot->Player->GetUser3()) { return; }
 
-	Vector EvolvePoint = UTIL_ProjectPointToNavmesh(DesiredEvolveLocation, GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE));
+	Vector EvolvePoint = AdjustPointForPathfinding(DesiredEvolveLocation, GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE));
 
 	if (vIsZero(EvolvePoint))
 	{
-		EvolvePoint = DesiredEvolveLocation;
+		EvolvePoint = UTIL_ProjectPointToNavmesh(DesiredEvolveLocation, Vector(400.0f, 400.0f, 400.0f), GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE));
+	}
+
+	if (vIsZero(EvolvePoint))
+	{
+		EvolvePoint = UTIL_ProjectPointToNavmesh(DesiredEvolveLocation, Vector(400.0f, 400.0f, 400.0f), GetBaseNavProfile(GORGE_BASE_NAV_PROFILE));
 	}
 
 	if (vDist2DSq(pBot->Edict->v.origin, EvolvePoint) > sqrf(32.0f))
@@ -1592,11 +1597,13 @@ void UpdateBotChat(AvHAIPlayer* pBot)
 		{
 			if (pBot->ChatMessages[i].bIsTeamSay)
 			{
-				CLIENT_COMMAND(pBot->Edict, "say_team %s", pBot->ChatMessages[i].msg);
+			 	//CLIENT_COMMAND(pBot->Edict, "say_team %s", pBot->ChatMessages[i].msg);
+				AIPlayer_Say(pBot->Edict, 1, pBot->ChatMessages[i].msg);
 			}
 			else
 			{
-				CLIENT_COMMAND(pBot->Edict, "say %s", pBot->ChatMessages[i].msg);
+				//CLIENT_COMMAND(pBot->Edict, "say %s", pBot->ChatMessages[i].msg);
+				AIPlayer_Say(pBot->Edict, 0, pBot->ChatMessages[i].msg);
 			}
 			pBot->ChatMessages[i].bIsPending = false;
 			break;
@@ -1837,7 +1844,7 @@ void CustomThink(AvHAIPlayer* pBot)
 			pBot->Player->GiveResources(70.0f);
 		}
 
-		BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_FIVE);
+		BotEvolveLifeform(pBot, pBot->CurrentFloorPosition, ALIEN_LIFEFORM_FIVE);
 
 		return;
 	}
@@ -4061,19 +4068,19 @@ void AIPlayerNSAlienThink(AvHAIPlayer* pBot)
 	{
 		if (!PlayerHasAlienUpgradeOfType(pBot->Edict, HIVE_TECH_DEFENCE) && AITAC_IsAlienUpgradeAvailableForTeam(pBot->Player->GetTeam(), HIVE_TECH_DEFENCE))
 		{
-			BotEvolveUpgrade(pBot, pBot->Edict->v.origin, AlienGetDesiredUpgrade(pBot, HIVE_TECH_DEFENCE));
+			BotEvolveUpgrade(pBot, pBot->CurrentFloorPosition, AlienGetDesiredUpgrade(pBot, HIVE_TECH_DEFENCE));
 			return;
 		}
 
 		if (!PlayerHasAlienUpgradeOfType(pBot->Edict, HIVE_TECH_MOVEMENT) && AITAC_IsAlienUpgradeAvailableForTeam(pBot->Player->GetTeam(), HIVE_TECH_MOVEMENT))
 		{
-			BotEvolveUpgrade(pBot, pBot->Edict->v.origin, AlienGetDesiredUpgrade(pBot, HIVE_TECH_MOVEMENT));
+			BotEvolveUpgrade(pBot, pBot->CurrentFloorPosition, AlienGetDesiredUpgrade(pBot, HIVE_TECH_MOVEMENT));
 			return;
 		}
 
 		if (!PlayerHasAlienUpgradeOfType(pBot->Edict, HIVE_TECH_SENSORY) && AITAC_IsAlienUpgradeAvailableForTeam(pBot->Player->GetTeam(), HIVE_TECH_SENSORY))
 		{
-			BotEvolveUpgrade(pBot, pBot->Edict->v.origin, AlienGetDesiredUpgrade(pBot, HIVE_TECH_SENSORY));
+			BotEvolveUpgrade(pBot, pBot->CurrentFloorPosition, AlienGetDesiredUpgrade(pBot, HIVE_TECH_SENSORY));
 			return;
 		}
 	}
@@ -4945,7 +4952,7 @@ void TestNavThink(AvHAIPlayer* pBot)
 		{
 			if (pBot->Player->GetResources() >= BALANCE_VAR(kGorgeCost))
 			{
-				BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_TWO);
+				BotEvolveLifeform(pBot, pBot->CurrentFloorPosition, ALIEN_LIFEFORM_TWO);
 				return;
 			}
 		}
@@ -4954,7 +4961,7 @@ void TestNavThink(AvHAIPlayer* pBot)
 		{
 			if (pBot->Player->GetResources() >= BALANCE_VAR(kLerkCost))
 			{
-				BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_THREE);
+				BotEvolveLifeform(pBot, pBot->CurrentFloorPosition, ALIEN_LIFEFORM_THREE);
 				return;
 			}
 			else
@@ -4967,7 +4974,7 @@ void TestNavThink(AvHAIPlayer* pBot)
 		{
 			if (pBot->Player->GetResources() >= BALANCE_VAR(kFadeCost))
 			{
-				BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_FOUR);
+				BotEvolveLifeform(pBot, pBot->CurrentFloorPosition, ALIEN_LIFEFORM_FOUR);
 				return;
 			}
 			else
@@ -4980,7 +4987,7 @@ void TestNavThink(AvHAIPlayer* pBot)
 		{
 			if (pBot->Player->GetResources() >= BALANCE_VAR(kOnosCost))
 			{
-				BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_FIVE);
+				BotEvolveLifeform(pBot, pBot->CurrentFloorPosition, ALIEN_LIFEFORM_FIVE);
 				return;
 			}
 			else
@@ -5084,6 +5091,7 @@ void AIPlayerReceiveBuildOrder(AvHAIPlayer* pBot, edict_t* BuildTarget)
 
 void AIPlayerReceiveMoveOrder(AvHAIPlayer* pBot, Vector Destination)
 {
+
 	Vector NavMoveLocation = AdjustPointForPathfinding(Destination);
 
 	Vector ActualMoveLocation = FindClosestNavigablePointToDestination(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, NavMoveLocation, UTIL_MetresToGoldSrcUnits(5.0f));
@@ -5610,7 +5618,7 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 
 	if (IsPlayerGorge(pBot->Edict) && gpGlobals->time - pBot->LastCombatTime > 5.0f)
 	{
-		BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_ONE);
+		AITASK_SetEvolveTask(pBot, Task, pBot->CurrentFloorPosition, ALIEN_LIFEFORM_ONE, true);
 		return;
 	}
 
@@ -6075,14 +6083,14 @@ void AIPlayerSetAlienHarasserPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 			}
 			else
 			{
-				AITASK_SetEvolveTask(pBot, Task, pBot->Edict->v.origin, ALIEN_LIFEFORM_THREE, true);
+				AITASK_SetEvolveTask(pBot, Task, pBot->CurrentFloorPosition, ALIEN_LIFEFORM_THREE, true);
 				return;
 			}
 		}
 
 		if (IsPlayerGorge(pBot->Edict))
 		{
-			BotEvolveLifeform(pBot, pBot->Edict->v.origin, ALIEN_LIFEFORM_ONE);
+			BotEvolveLifeform(pBot, pBot->CurrentFloorPosition, ALIEN_LIFEFORM_ONE);
 			return;
 		}
 
