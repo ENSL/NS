@@ -1153,7 +1153,6 @@ void AIPlayer_Say(edict_t* pEntity, int teamonly, const char* Msg)
 	int			j;
 	char* p;
 	char		text[256];
-	char		szTemp[256];
 	bool		theTalkerInReadyRoom = theTalkingPlayer->GetInReadyRoom();
 
 	// We can get a raw string now, without the "say " prepended

@@ -1046,8 +1046,7 @@ void AIMGR_NewMap()
 
 	AIStartedTime = gpGlobals->time;
 	LastAIPlayerCountUpdate = 0.0f;
-	ALERT(at_console, "AI Manager New Map\n");
-
+	
 	AITAC_ClearMapAIData(true);
 
 	if (NavmeshLoaded())
@@ -1057,18 +1056,24 @@ void AIMGR_NewMap()
 
 	CONFIG_ParseConfigFile();
 
-	const char* theCStrLevelName = STRING(gpGlobals->mapname);
-
-	if (!loadNavigationData(theCStrLevelName))
-	{
-		return;
-	}
-
 	AIMGR_BotPrecache();
 
 	bHasRoundStarted = false;
 
 	bPlayerSpawned = false;
+}
+
+void AIMGR_LoadNavigationData()
+{
+	// Don't reload the nav mesh if it's already loaded
+	if (NavmeshLoaded()) { return; }
+
+	const char* theCStrLevelName = STRING(gpGlobals->mapname);
+
+	if (!loadNavigationData(theCStrLevelName))
+	{
+		ALERT(at_console, "Failed to load navigation data for %s\n");
+	}
 }
 
 AvHAIPlayer* AIMGR_GetAICommander(AvHTeamNumber Team)

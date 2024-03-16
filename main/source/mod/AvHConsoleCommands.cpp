@@ -1456,6 +1456,21 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 		theSuccess = true;
 	}
+	else if (FStrEq(pcmd, "ai_saysomething"))
+	{
+		vector<AvHAIPlayer*> AIPlayers = AIMGR_GetAllAIPlayers();
+
+		for (auto it = AIPlayers.begin(); it != AIPlayers.end(); it++)
+		{
+			AvHAIPlayer* thisBot = (*it);
+			{
+				BotSay(thisBot, false, 1.0f, "Regular Chat");
+				BotSay(thisBot, true, 2.0f, "Team Chat");
+			}
+		}
+
+		theSuccess = true;
+	}
     else if( FStrEq( pcmd, kcRemoveUpgrade) )
     {
         // Allow even with cheats off right now, put this back in for first beta

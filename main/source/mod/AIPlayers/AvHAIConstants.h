@@ -344,6 +344,8 @@ typedef struct _AVH_AI_BUILDABLE_STRUCTURE
 	StructurePurpose Purpose = STRUCTURE_PURPOSE_NONE;
 	bool bReachabilityMarkedDirty = false; // If true, reachability flags will be recalculated for this structure
 
+	bool IsValid() { return !FNullEnt(edict) && !edict->free && !(edict->v.flags & EF_NODRAW) && edict->v.deadflag == DEAD_NO; }
+
 } AvHAIBuildableStructure;
 
 // Any kind of pickup that has been dropped either by the commander or by a player
@@ -735,7 +737,7 @@ typedef struct AVH_AI_PLAYER
 	AvHAICombatStrategy CurrentCombatStrategy = COMBAT_STRATEGY_ATTACK;
 	edict_t* CurrentEnemyRef = nullptr;
 
-	vector<AvHAIBuildableStructure*> DangerTurrets;
+	vector<AvHAIBuildableStructure> DangerTurrets;
 
 	AvHAIPlayerTask* CurrentTask = nullptr; // Bot's current task they're performing
 	AvHAIPlayerTask PrimaryBotTask;
