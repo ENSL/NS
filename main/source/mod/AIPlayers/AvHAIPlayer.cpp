@@ -1501,12 +1501,12 @@ void BotUpdateView(AvHAIPlayer* pBot)
 		EnemyTurretFilter.MaxSearchRadius = BALANCE_VAR(kTurretRange);
 	}
 
-	vector<AvHAIBuildableStructure*> EligibleTurrets = AITAC_FindAllDeployables(pBot->Edict->v.origin, &EnemyTurretFilter);
+	vector<AvHAIBuildableStructure> EligibleTurrets = AITAC_FindAllDeployables(pBot->Edict->v.origin, &EnemyTurretFilter);
 
 	for (auto it = EligibleTurrets.begin(); it != EligibleTurrets.end(); it++)
 	{
-		AvHAIBuildableStructure* ThisTurret = (*it);
-		AvHTurret* TurretRef = dynamic_cast<AvHTurret*>(ThisTurret->EntityRef);
+		AvHAIBuildableStructure ThisTurret = (*it);
+		AvHTurret* TurretRef = dynamic_cast<AvHTurret*>(ThisTurret.EntityRef);
 
 		if (TurretRef && TurretRef->GetIsValidTarget(pBot->Player))
 		{
@@ -1807,11 +1807,11 @@ void CustomThink(AvHAIPlayer* pBot)
 			MineStructureFilter.ReachabilityTeam = pBot->Player->GetTeam();
 			MineStructureFilter.ReachabilityFlags = AI_REACHABILITY_MARINE;
 
-			AvHAIBuildableStructure* NearestIP = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &MineStructureFilter);
+			AvHAIBuildableStructure NearestIP = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &MineStructureFilter);
 
-			if (NearestIP)
+			if (NearestIP.IsValid())
 			{
-				AITASK_SetMineStructureTask(pBot, &pBot->PrimaryBotTask, NearestIP->edict, true);
+				AITASK_SetMineStructureTask(pBot, &pBot->PrimaryBotTask, NearestIP.edict, true);
 			}
 		}
 
@@ -2855,20 +2855,20 @@ bool RegularMarineCombatThink(AvHAIPlayer* pBot)
 			NearestArmoury.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
 			NearestArmoury.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
 
-			AvHAIBuildableStructure* NearestArmouryRef = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &NearestArmoury);
+			AvHAIBuildableStructure NearestArmouryRef = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &NearestArmoury);
 
-			if (NearestArmouryRef && !IsAreaAffectedBySpores(NearestArmouryRef->Location))
+			if (NearestArmouryRef.IsValid() && !IsAreaAffectedBySpores(NearestArmouryRef.Location))
 			{
-				if (!TrackedEnemyRef->bHasLOS || (IsPlayerAlien(pBot->Edict) && vDist2DSq(NearestArmouryRef->Location, CurrentEnemy->v.origin) > sqrf(UTIL_MetresToGoldSrcUnits(10.0f))))
+				if (!TrackedEnemyRef->bHasLOS || (IsPlayerAlien(pBot->Edict) && vDist2DSq(NearestArmouryRef.Location, CurrentEnemy->v.origin) > sqrf(UTIL_MetresToGoldSrcUnits(10.0f))))
 				{
-					if (IsPlayerInUseRange(pBot->Edict, NearestArmouryRef->edict))
+					if (IsPlayerInUseRange(pBot->Edict, NearestArmouryRef.edict))
 					{
-						BotUseObject(pBot, NearestArmouryRef->edict, true);
+						BotUseObject(pBot, NearestArmouryRef.edict, true);
 						return true;
 					}
 				}
 
-				MoveTo(pBot, NearestArmouryRef->Location, MOVESTYLE_NORMAL);
+				MoveTo(pBot, NearestArmouryRef.Location, MOVESTYLE_NORMAL);
 
 			}
 			else
@@ -3198,22 +3198,22 @@ void AIPlayerSetMarineSweeperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 	StructureFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
 	StructureFilter.ExcludeStatusFlags = (STRUCTURE_STATUS_RECYCLING | STRUCTURE_STATUS_COMPLETED);
 
-	AvHAIBuildableStructure* UnbuiltIP = AITAC_FindClosestDeployableToLocation(CommChairLocation, &StructureFilter);
+	AvHAIBuildableStructure UnbuiltIP = AITAC_FindClosestDeployableToLocation(CommChairLocation, &StructureFilter);
 
-	if (UnbuiltIP)
+	if (UnbuiltIP.IsValid())
 	{
-		AITASK_SetBuildTask(pBot, Task, UnbuiltIP->edict, true);
+		AITASK_SetBuildTask(pBot, Task, UnbuiltIP.edict, true);
 		return;
 	}
 
 	StructureFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
 	StructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
 
-	AvHAIBuildableStructure* UnbuiltStructure = AITAC_FindClosestDeployableToLocation(CommChairLocation, &StructureFilter);
+	AvHAIBuildableStructure UnbuiltStructure = AITAC_FindClosestDeployableToLocation(CommChairLocation, &StructureFilter);
 
-	if (UnbuiltStructure)
+	if (UnbuiltStructure.IsValid())
 	{
-		AITASK_SetBuildTask(pBot, Task, UnbuiltStructure->edict, true);
+		AITASK_SetBuildTask(pBot, Task, UnbuiltStructure.edict, true);
 		return;
 	}
 
@@ -3227,11 +3227,11 @@ void AIPlayerSetMarineSweeperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 	AttackedStructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(20.0f);
 	AttackedStructureFilter.bConsiderPhaseDistance = true;
 
-	AvHAIBuildableStructure* AttackedStructure = AITAC_FindClosestDeployableToLocation(CommChairLocation, &AttackedStructureFilter);
+	AvHAIBuildableStructure AttackedStructure = AITAC_FindClosestDeployableToLocation(CommChairLocation, &AttackedStructureFilter);
 
-	if (AttackedStructure)
+	if (AttackedStructure.IsValid())
 	{
-		AITASK_SetDefendTask(pBot, Task, AttackedStructure->edict, true);
+		AITASK_SetDefendTask(pBot, Task, AttackedStructure.edict, true);
 		return;
 	}
 
@@ -3239,11 +3239,11 @@ void AIPlayerSetMarineSweeperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 	{
 		AttackedStructureFilter.IncludeStatusFlags = STRUCTURE_STATUS_DAMAGED;
 
-		AvHAIBuildableStructure* AttackedStructure = AITAC_FindClosestDeployableToLocation(CommChairLocation, &AttackedStructureFilter);
+		AvHAIBuildableStructure AttackedStructure = AITAC_FindClosestDeployableToLocation(CommChairLocation, &AttackedStructureFilter);
 
-		if (AttackedStructure)
+		if (AttackedStructure.IsValid())
 		{
-			AITASK_SetWeldTask(pBot, Task, AttackedStructure->edict, true);
+			AITASK_SetWeldTask(pBot, Task, AttackedStructure.edict, true);
 			return;
 		}
 	}
@@ -3265,34 +3265,34 @@ void AIPlayerSetMarineSweeperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 		return;
 	}
 
-	AvHAIBuildableStructure* NearestPG = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &StructureFilter);
+	AvHAIBuildableStructure NearestPG = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &StructureFilter);
 
-	vector<AvHAIBuildableStructure*> AllPG = AITAC_FindAllDeployables(pBot->Edict->v.origin, &StructureFilter);
+	vector<AvHAIBuildableStructure> AllPG = AITAC_FindAllDeployables(pBot->Edict->v.origin, &StructureFilter);
 
-	AvHAIBuildableStructure* RandomPG = nullptr;
+	AvHAIBuildableStructure RandomPG;
 	int HighestRand = 0;
 
 	for (auto it = AllPG.begin(); it != AllPG.end(); it++)
 	{
-		AvHAIBuildableStructure* ThisStruct = (*it);
+		AvHAIBuildableStructure ThisStruct = (*it);
 
-		if (ThisStruct == NearestPG) { continue; }
+		if (ThisStruct.edict == NearestPG.edict) { continue; }
 
 		int ThisRand = irandrange(0, 100);
 
-		if (!RandomPG || ThisRand > HighestRand)
+		if (FNullEnt(RandomPG.edict) || ThisRand > HighestRand)
 		{
 			RandomPG = ThisStruct;
 			HighestRand = ThisRand;
 		}
 	}
 
-	if (RandomPG)
+	if (RandomPG.IsValid())
 	{
 		if (Task->TaskType != TASK_GUARD)
 		{
 			Task->TaskType = TASK_GUARD;
-			Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(pBot->BotNavInfo.NavProfile, RandomPG->Location, UTIL_MetresToGoldSrcUnits(5.0f));
+			Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(pBot->BotNavInfo.NavProfile, RandomPG.Location, UTIL_MetresToGoldSrcUnits(5.0f));
 			Task->bTaskIsUrgent = false;
 			Task->TaskLength = frandrange(20.0f, 30.0f);
 		}
@@ -3481,15 +3481,15 @@ void AIPlayerSetWantsAndNeedsCOMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Ta
 		NearestArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
 		NearestArmouryFilter.MaxSearchRadius = SearchRadius;
 
-		AvHAIBuildableStructure* NearestArmoury = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &NearestArmouryFilter);
+		AvHAIBuildableStructure NearestArmoury = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &NearestArmouryFilter);
 
 		// We really need some health or ammo, hit the armoury
-		if (NearestArmoury)
+		if (NearestArmoury.IsValid())
 		{
 			Task->TaskType = TASK_RESUPPLY;
 			Task->bTaskIsUrgent = true;
-			Task->TaskLocation = NearestArmoury->Location;
-			Task->TaskTarget = NearestArmoury->edict;
+			Task->TaskLocation = NearestArmoury.Location;
+			Task->TaskTarget = NearestArmoury.edict;
 			return;
 		}
 	}
@@ -3540,15 +3540,15 @@ void AIPlayerSetWantsAndNeedsMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 		NearestArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
 		NearestArmouryFilter.MaxSearchRadius = (bTaskIsUrgent) ? UTIL_MetresToGoldSrcUnits(20.0f) : UTIL_MetresToGoldSrcUnits(5.0f);
 
-		AvHAIBuildableStructure* NearestArmoury = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &NearestArmouryFilter);
+		AvHAIBuildableStructure NearestArmoury = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &NearestArmouryFilter);
 
 		// We really need some health or ammo, either hit the armoury, or ask for a resupply
-		if (NearestArmoury)
+		if (NearestArmoury.IsValid())
 		{
 			Task->TaskType = TASK_RESUPPLY;
 			Task->bTaskIsUrgent = true;
-			Task->TaskLocation = NearestArmoury->Location;
-			Task->TaskTarget = NearestArmoury->edict;
+			Task->TaskLocation = NearestArmoury.Location;
+			Task->TaskTarget = NearestArmoury.edict;
 			return;
 		}
 		else
@@ -3758,24 +3758,24 @@ void AIPlayerSetSecondaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (pBot->DangerTurrets.size() > 0)
 	{
-		AvHAIBuildableStructure* NearestDangerTurret = nullptr;
+		AvHAIBuildableStructure NearestDangerTurret;
 		float MinDist = 0.0f;
 
 		for (auto it = pBot->DangerTurrets.begin(); it != pBot->DangerTurrets.end(); it++)
 		{
-			float ThisDist = vDist2DSq(pBot->Edict->v.origin, (*it)->Location);
+			float ThisDist = vDist2DSq(pBot->Edict->v.origin, (*it).Location);
 
-			if (!NearestDangerTurret || ThisDist < MinDist)
+			if (FNullEnt(NearestDangerTurret.edict) || ThisDist < MinDist)
 			{
 				NearestDangerTurret = (*it);
 			}
 		}
 
-		if (NearestDangerTurret)
+		if (NearestDangerTurret.IsValid())
 		{
 			if (AIMGR_GetTeamType(EnemyTeam) == AVH_CLASS_TYPE_ALIEN)
 			{
-				AITASK_SetAttackTask(pBot, Task, NearestDangerTurret->edict, true);
+				AITASK_SetAttackTask(pBot, Task, NearestDangerTurret.edict, true);
 				return;
 			}
 			else
@@ -3789,16 +3789,16 @@ void AIPlayerSetSecondaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 				EnemyTFFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
 				EnemyTFFilter.ReachabilityTeam = BotTeam;
 
-				AvHAIBuildableStructure* EnemyTF = AITAC_FindClosestDeployableToLocation(NearestDangerTurret->Location, &EnemyTFFilter);
+				AvHAIBuildableStructure EnemyTF = AITAC_FindClosestDeployableToLocation(NearestDangerTurret.Location, &EnemyTFFilter);
 
-				if (EnemyTF)
+				if (EnemyTF.IsValid())
 				{
-					AITASK_SetAttackTask(pBot, Task, EnemyTF->edict, true);
+					AITASK_SetAttackTask(pBot, Task, EnemyTF.edict, true);
 					return;
 				}
 				else
 				{
-					AITASK_SetAttackTask(pBot, Task, NearestDangerTurret->edict, true);
+					AITASK_SetAttackTask(pBot, Task, NearestDangerTurret.edict, true);
 					return;
 				}
 			}
@@ -3814,39 +3814,39 @@ void AIPlayerSetSecondaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	UnbuiltFilter.ExcludeStatusFlags = (STRUCTURE_STATUS_RECYCLING | STRUCTURE_STATUS_COMPLETED);
 	UnbuiltFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(20.0f);
 
-	AvHAIBuildableStructure* UnbuiltIP = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &UnbuiltFilter);
+	AvHAIBuildableStructure UnbuiltIP = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &UnbuiltFilter);
 
-	if (UnbuiltIP)
+	if (UnbuiltIP.IsValid())
 	{
-		float ThisDist = vDist2D(UnbuiltIP->Location, pBot->Edict->v.origin);
-		int NumBuilders = AITAC_GetNumPlayersOfTeamInArea(BotTeam, UnbuiltIP->Location, ThisDist - 5.0f, false, pBot->Edict, AVH_USER3_COMMANDER_PLAYER);
+		float ThisDist = vDist2D(UnbuiltIP.Location, pBot->Edict->v.origin);
+		int NumBuilders = AITAC_GetNumPlayersOfTeamInArea(BotTeam, UnbuiltIP.Location, ThisDist - 5.0f, false, pBot->Edict, AVH_USER3_COMMANDER_PLAYER);
 
 		if (NumBuilders < 1)
 		{
-			AITASK_SetBuildTask(pBot, Task, UnbuiltIP->edict, true);
+			AITASK_SetBuildTask(pBot, Task, UnbuiltIP.edict, true);
 			return;
 		}
 	}
 
 	UnbuiltFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
 
-	vector <AvHAIBuildableStructure*> BuildableStructures = AITAC_FindAllDeployables(pBot->Edict->v.origin, &UnbuiltFilter);
+	vector<AvHAIBuildableStructure> BuildableStructures = AITAC_FindAllDeployables(pBot->Edict->v.origin, &UnbuiltFilter);
 
-	AvHAIBuildableStructure* NearestStructure = nullptr;
+	AvHAIBuildableStructure NearestStructure;
 	float MinDist = 0.0f;
 
 	for (auto it = BuildableStructures.begin(); it != BuildableStructures.end(); it++)
 	{
-		float ThisDist = vDist2D((*it)->Location, pBot->Edict->v.origin);
+		float ThisDist = vDist2D((*it).Location, pBot->Edict->v.origin);
 
-		int NumBuilders = AITAC_GetNumPlayersOfTeamInArea(BotTeam, (*it)->Location, ThisDist - 5.0f, false, pBot->Edict, AVH_USER3_COMMANDER_PLAYER);
+		int NumBuilders = AITAC_GetNumPlayersOfTeamInArea(BotTeam, (*it).Location, ThisDist - 5.0f, false, pBot->Edict, AVH_USER3_COMMANDER_PLAYER);
 
 		// Two builders if we're not in the marine base, one to guard and keep lookout while the other builds
-		int NumDesiredBuilders = (vDist2DSq((*it)->Location, AITAC_GetCommChairLocation(BotTeam)) < sqrf(UTIL_MetresToGoldSrcUnits(15.0f))) ? 1 : 2;
+		int NumDesiredBuilders = (vDist2DSq((*it).Location, AITAC_GetCommChairLocation(BotTeam)) < sqrf(UTIL_MetresToGoldSrcUnits(15.0f))) ? 1 : 2;
 
 		if (NumBuilders < NumDesiredBuilders)
 		{
-			if (!NearestStructure || ThisDist < MinDist)
+			if (FNullEnt(NearestStructure.edict) || ThisDist < MinDist)
 			{
 				NearestStructure = (*it);
 				MinDist = ThisDist;
@@ -3854,9 +3854,9 @@ void AIPlayerSetSecondaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		}
 	}
 
-	if (NearestStructure)
+	if (NearestStructure.IsValid())
 	{
-		AITASK_SetBuildTask(pBot, Task, NearestStructure->edict, true);
+		AITASK_SetBuildTask(pBot, Task, NearestStructure.edict, true);
 		return;
 	}
 
@@ -3920,13 +3920,13 @@ void AIPlayerSetSecondaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		WeldableStructures.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(20.0f);
 		WeldableStructures.bConsiderPhaseDistance = true;
 
-		AvHAIBuildableStructure* NearestDamagedStructure = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &WeldableStructures);
+		AvHAIBuildableStructure NearestDamagedStructure = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &WeldableStructures);
 
-		if (NearestDamagedStructure)
+		if (NearestDamagedStructure.IsValid())
 		{
-			bool bIsUrgent = (NearestDamagedStructure->healthPercent < 0.5f);
+			bool bIsUrgent = (NearestDamagedStructure.healthPercent < 0.5f);
 
-			AITASK_SetWeldTask(pBot, Task, NearestDamagedStructure->edict, bIsUrgent);
+			AITASK_SetWeldTask(pBot, Task, NearestDamagedStructure.edict, bIsUrgent);
 			return;
 		}
 
@@ -3952,8 +3952,8 @@ void AIPlayerSetSecondaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		MineableStructures.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(20.0f);
 		MineableStructures.bConsiderPhaseDistance = true;
 
-		vector<AvHAIBuildableStructure*> AllMineableStructures = AITAC_FindAllDeployables(AITAC_GetTeamStartingLocation(BotTeam), &MineableStructures);
-		AvHAIBuildableStructure* StructureToMine = nullptr;
+		vector<AvHAIBuildableStructure> AllMineableStructures = AITAC_FindAllDeployables(AITAC_GetTeamStartingLocation(BotTeam), &MineableStructures);
+		AvHAIBuildableStructure StructureToMine;
 
 		DeployableSearchFilter MineFilter;
 		MineFilter.DeployableTypes = STRUCTURE_MARINE_DEPLOYEDMINE;
@@ -3964,15 +3964,15 @@ void AIPlayerSetSecondaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 		for (auto it = AllMineableStructures.begin(); it != AllMineableStructures.end(); it++)
 		{
-			AvHAIBuildableStructure* ThisStructure = (*it);
+			AvHAIBuildableStructure ThisStructure = (*it);
 
-			int NumMines = AITAC_GetNumDeployablesNearLocation(ThisStructure->Location, &MineFilter);
+			int NumMines = AITAC_GetNumDeployablesNearLocation(ThisStructure.Location, &MineFilter);
 
 			if (NumMines < 4)
 			{
-				float ThisDist = AITAC_GetPhaseDistanceBetweenPoints(ThisStructure->Location, AITAC_GetTeamStartingLocation(BotTeam));
+				float ThisDist = AITAC_GetPhaseDistanceBetweenPoints(ThisStructure.Location, AITAC_GetTeamStartingLocation(BotTeam));
 
-				if (!StructureToMine || ThisDist > FarDist)
+				if (FNullEnt(StructureToMine.edict) || ThisDist > FarDist)
 				{
 					StructureToMine = ThisStructure;
 					FarDist = ThisDist;
@@ -3980,9 +3980,9 @@ void AIPlayerSetSecondaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 			}
 		}
 		
-		if (StructureToMine)
+		if (StructureToMine.IsValid())
 		{
-			AITASK_SetMineStructureTask(pBot, Task, StructureToMine->edict, true);
+			AITASK_SetMineStructureTask(pBot, Task, StructureToMine.edict, true);
 		}
 	}
 
@@ -4509,11 +4509,11 @@ void AIPlayerSetPrimaryCOMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	EnemyStuffFilter.ReachabilityTeam = BotTeam;
 	EnemyStuffFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
 
-	AvHAIBuildableStructure* EnemyStructure = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &EnemyStuffFilter);
+	AvHAIBuildableStructure EnemyStructure = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &EnemyStuffFilter);
 
-	if (EnemyStructure)
+	if (EnemyStructure.IsValid())
 	{
-		AITASK_SetAttackTask(pBot, Task, EnemyStructure->edict, false);
+		AITASK_SetAttackTask(pBot, Task, EnemyStructure.edict, false);
 		return;
 	}
 	else
@@ -4575,26 +4575,26 @@ void AIPlayerSetSecondaryCOMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	AttackedStructuresFilter.IncludeStatusFlags = STRUCTURE_STATUS_UNDERATTACK;
 	AttackedStructuresFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(30.0f);
 
-	vector<AvHAIBuildableStructure*> AllAttackedStructures = AITAC_FindAllDeployables(pBot->Edict->v.origin, &AttackedStructuresFilter);
+	vector<AvHAIBuildableStructure> AllAttackedStructures = AITAC_FindAllDeployables(pBot->Edict->v.origin, &AttackedStructuresFilter);
 
-	AvHAIBuildableStructure* StructureToDefend = nullptr;
+	AvHAIBuildableStructure StructureToDefend;
 	float MinDist = 0.0f;
 
 	for (auto it = AllAttackedStructures.begin(); it != AllAttackedStructures.end(); it++)
 	{
-		AvHAIBuildableStructure* ThisStructure = (*it);
+		AvHAIBuildableStructure ThisStructure = (*it);
 
-		float ThisDist = vDist2D(pBot->Edict->v.origin, ThisStructure->edict->v.origin);
+		float ThisDist = vDist2D(pBot->Edict->v.origin, ThisStructure.edict->v.origin);
 
-		int NumAttackers = AITAC_GetNumPlayersOnTeamWithLOS(EnemyTeam, ThisStructure->Location, UTIL_MetresToGoldSrcUnits(15.0f), nullptr);
+		int NumAttackers = AITAC_GetNumPlayersOnTeamWithLOS(EnemyTeam, ThisStructure.Location, UTIL_MetresToGoldSrcUnits(15.0f), nullptr);
 
 		if (NumAttackers == 0) { continue; }
 
-		int NumExistingDefenders = AITAC_GetNumPlayersOfTeamInArea(BotTeam, ThisStructure->Location, ThisDist - 10.0f, false, pBot->Edict, AVH_USER3_COMMANDER_PLAYER);
+		int NumExistingDefenders = AITAC_GetNumPlayersOfTeamInArea(BotTeam, ThisStructure.Location, ThisDist - 10.0f, false, pBot->Edict, AVH_USER3_COMMANDER_PLAYER);
 
 		if (NumExistingDefenders < 2)
 		{
-			if (!StructureToDefend || ThisDist < MinDist)
+			if (FNullEnt(StructureToDefend.edict) || ThisDist < MinDist)
 			{
 				StructureToDefend = ThisStructure;
 				MinDist = ThisDist;
@@ -4602,9 +4602,9 @@ void AIPlayerSetSecondaryCOMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		}
 	}
 
-	if (StructureToDefend)
+	if (StructureToDefend.IsValid())
 	{
-		AITASK_SetDefendTask(pBot, Task, StructureToDefend->edict, true);
+		AITASK_SetDefendTask(pBot, Task, StructureToDefend.edict, true);
 		return;
 	}
 
@@ -4618,33 +4618,33 @@ void AIPlayerSetSecondaryCOMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		DamagedStructuresFilter.IncludeStatusFlags = STRUCTURE_STATUS_DAMAGED;
 		DamagedStructuresFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(20.0f);
 
-		AvHAIBuildableStructure* StructureToRepair = nullptr;
-		vector<AvHAIBuildableStructure*> AllDamagedStructures = AITAC_FindAllDeployables(pBot->Edict->v.origin, &DamagedStructuresFilter);
+		AvHAIBuildableStructure StructureToRepair;
+		vector<AvHAIBuildableStructure> AllDamagedStructures = AITAC_FindAllDeployables(pBot->Edict->v.origin, &DamagedStructuresFilter);
 
 		MinDist = 0.0f;
 
 		for (auto it = AllDamagedStructures.begin(); it != AllDamagedStructures.end(); it++)
 		{
-			AvHAIBuildableStructure* ThisStructure = (*it);
+			AvHAIBuildableStructure ThisStructure = (*it);
 
-			if (ThisStructure->StructureType == STRUCTURE_MARINE_COMMCHAIR && ThisStructure->healthPercent < 0.7f)
+			if (ThisStructure.StructureType == STRUCTURE_MARINE_COMMCHAIR && ThisStructure.healthPercent < 0.7f)
 			{
 				StructureToRepair = ThisStructure;
 				break;
 			}
 
-			float ThisDist = vDist2DSq(ThisStructure->Location, pBot->Edict->v.origin);
+			float ThisDist = vDist2DSq(ThisStructure.Location, pBot->Edict->v.origin);
 
-			if (!StructureToRepair || ThisDist < MinDist)
+			if (FNullEnt(StructureToRepair.edict) || ThisDist < MinDist)
 			{
 				StructureToRepair = ThisStructure;
 				MinDist = ThisDist;
 			}
 		}
 
-		if (StructureToRepair)
+		if (StructureToRepair.IsValid())
 		{
-			AITASK_SetWeldTask(pBot, Task, StructureToRepair->edict, true);
+			AITASK_SetWeldTask(pBot, Task, StructureToRepair.edict, true);
 			return;
 		}
 
@@ -4654,17 +4654,17 @@ void AIPlayerSetSecondaryCOMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		NearbyArmouryFilter.ReachabilityTeam = BotTeam;
 		NearbyArmouryFilter.ReachabilityFlags = AI_REACHABILITY_MARINE;
 
-		AvHAIBuildableStructure* NearestEasyAccessArmoury = AITAC_FindClosestDeployableToLocation(ZERO_VECTOR, &NearbyArmouryFilter);
+		AvHAIBuildableStructure NearestEasyAccessArmoury = AITAC_FindClosestDeployableToLocation(ZERO_VECTOR, &NearbyArmouryFilter);
 
-		if (!NearestEasyAccessArmoury)
+		if (!NearestEasyAccessArmoury.IsValid())
 		{
 			NearbyArmouryFilter.ReachabilityFlags = AI_REACHABILITY_WELDER;
 
-			AvHAIBuildableStructure* NearestWeldableAccessArmoury = AITAC_FindClosestDeployableToLocation(ZERO_VECTOR, &NearbyArmouryFilter);
+			AvHAIBuildableStructure NearestWeldableAccessArmoury = AITAC_FindClosestDeployableToLocation(ZERO_VECTOR, &NearbyArmouryFilter);
 
-			if (NearestWeldableAccessArmoury)
+			if (NearestWeldableAccessArmoury.IsValid())
 			{
-				AITASK_SetMoveTask(pBot, Task, NearestWeldableAccessArmoury->Location, true);
+				AITASK_SetMoveTask(pBot, Task, NearestWeldableAccessArmoury.Location, true);
 				return;
 			}
 		}
@@ -4769,11 +4769,11 @@ void AIPlayerSetPrimaryCOAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	EnemyStuffFilter.ReachabilityTeam = BotTeam;
 	EnemyStuffFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
 
-	AvHAIBuildableStructure* EnemyStructure = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &EnemyStuffFilter);
+	AvHAIBuildableStructure EnemyStructure = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &EnemyStuffFilter);
 
-	if (EnemyStructure)
+	if (EnemyStructure.IsValid())
 	{
-		AITASK_SetAttackTask(pBot, Task, EnemyStructure->edict, false);
+		AITASK_SetAttackTask(pBot, Task, EnemyStructure.edict, false);
 		return;
 	}
 
@@ -5296,7 +5296,7 @@ void AIPlayerSetAlienBuilderPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 			ExistingReinforcementFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(10.0f);
 			ExistingReinforcementFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
 
-			vector<AvHAIBuildableStructure*> AllReinforcingStructures = AITAC_FindAllDeployables(ThisHive->FloorLocation, &ExistingReinforcementFilter);
+			vector<AvHAIBuildableStructure> AllReinforcingStructures = AITAC_FindAllDeployables(ThisHive->FloorLocation, &ExistingReinforcementFilter);
 
 			int NumOCs = 0;
 			int NumDCs = 0;
@@ -5305,7 +5305,7 @@ void AIPlayerSetAlienBuilderPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 
 			for (auto it = AllReinforcingStructures.begin(); it != AllReinforcingStructures.end(); it++)
 			{
-				switch ((*it)->StructureType)
+				switch ((*it).StructureType)
 				{
 				case STRUCTURE_ALIEN_OFFENCECHAMBER:
 					NumOCs++;
@@ -5353,21 +5353,21 @@ void AIPlayerSetAlienBuilderPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 	ResNodeFilter.ReachabilityTeam = BotTeam;
 	ResNodeFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
 
-	vector<AvHAIBuildableStructure*> AllMatchingTowers = AITAC_FindAllDeployables(pBot->Edict->v.origin, &ResNodeFilter);
+	vector<AvHAIBuildableStructure> AllMatchingTowers = AITAC_FindAllDeployables(pBot->Edict->v.origin, &ResNodeFilter);
 
 	edict_t* TowerToReinforce = nullptr;
 	MinDist = 0.0f;
 
 	for (auto it = AllMatchingTowers.begin(); it != AllMatchingTowers.end(); it++)
 	{
-		AvHAIBuildableStructure* ThisResTower = (*it);
+		AvHAIBuildableStructure ThisResTower = (*it);
 
 		DeployableSearchFilter ExistingReinforcementFilter;
 		ExistingReinforcementFilter.DeployableTeam = BotTeam;
 		ExistingReinforcementFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
 		ExistingReinforcementFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
 
-		vector<AvHAIBuildableStructure*> AllReinforcingStructures = AITAC_FindAllDeployables(ThisResTower->Location, &ExistingReinforcementFilter);
+		vector<AvHAIBuildableStructure> AllReinforcingStructures = AITAC_FindAllDeployables(ThisResTower.Location, &ExistingReinforcementFilter);
 
 		int NumOCs = 0;
 		int NumDCs = 0;
@@ -5376,7 +5376,7 @@ void AIPlayerSetAlienBuilderPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 
 		for (auto it = AllReinforcingStructures.begin(); it != AllReinforcingStructures.end(); it++)
 		{
-			switch ((*it)->StructureType)
+			switch ((*it).StructureType)
 			{
 			case STRUCTURE_ALIEN_OFFENCECHAMBER:
 				NumOCs++;
@@ -5400,11 +5400,11 @@ void AIPlayerSetAlienBuilderPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 			|| (AITAC_TeamHiveWithTechExists(BotTeam, ALIEN_BUILD_MOVEMENT_CHAMBER) && NumMCs < 1)
 			|| (AITAC_TeamHiveWithTechExists(BotTeam, ALIEN_BUILD_SENSORY_CHAMBER) && NumSCs < 1))
 		{
-			float ThisDist = vDist2DSq(AITAC_GetTeamStartingLocation(EnemyTeam), ThisResTower->Location);
+			float ThisDist = vDist2DSq(AITAC_GetTeamStartingLocation(EnemyTeam), ThisResTower.Location);
 
 			if (!TowerToReinforce || ThisDist < MinDist)
 			{
-				TowerToReinforce = ThisResTower->edict;
+				TowerToReinforce = ThisResTower.edict;
 				MinDist = ThisDist;
 			}
 		}
@@ -5679,49 +5679,49 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 		EnemyStuffFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
 		EnemyStuffFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(25.0f);
 
-		vector<AvHAIBuildableStructure*> AllSiegingStructures = AITAC_FindAllDeployables(NearestSiegedHive->Location, &EnemyStuffFilter);
+		vector<AvHAIBuildableStructure> AllSiegingStructures = AITAC_FindAllDeployables(NearestSiegedHive->Location, &EnemyStuffFilter);
 
-		AvHAIBuildableStructure* StructureToTarget = nullptr;
+		AvHAIBuildableStructure StructureToTarget;
 
 		float MinDist = 0.0f;
 
 		for (auto it = AllSiegingStructures.begin(); it != AllSiegingStructures.end(); it++)
 		{
-			AvHAIBuildableStructure* ThisStructure = (*it);
+			AvHAIBuildableStructure ThisStructure = (*it);
 
 			// Always go for the phase gate first to prevent reinforcements
-			if (ThisStructure->StructureType == STRUCTURE_MARINE_PHASEGATE)
+			if (ThisStructure.StructureType == STRUCTURE_MARINE_PHASEGATE)
 			{
 				StructureToTarget = ThisStructure;
 				continue;
 			}
 
 			// Then go for any turret factories, especially advanced ones to cut off siege turrets
-			if (ThisStructure->StructureType == STRUCTURE_MARINE_ADVTURRETFACTORY)
+			if (ThisStructure.StructureType == STRUCTURE_MARINE_ADVTURRETFACTORY)
 			{
 				StructureToTarget = ThisStructure;
 				continue;
 			}
 
-			if (ThisStructure->StructureType == STRUCTURE_MARINE_TURRETFACTORY)
+			if (ThisStructure.StructureType == STRUCTURE_MARINE_TURRETFACTORY)
 			{
 				StructureToTarget = ThisStructure;
 				continue;
 			}
 
 			// Pick up anything else
-			float ThisDist = vDist2DSq(ThisStructure->Location, pBot->Edict->v.origin);
+			float ThisDist = vDist2DSq(ThisStructure.Location, pBot->Edict->v.origin);
 
-			if (!StructureToTarget || ThisDist < MinDist)
+			if (FNullEnt(StructureToTarget.edict) || ThisDist < MinDist)
 			{
 				StructureToTarget = ThisStructure;
 				MinDist = ThisDist;
 			}
 		}
 
-		if (StructureToTarget)
+		if (StructureToTarget.IsValid())
 		{
-			AITASK_SetAttackTask(pBot, Task, StructureToTarget->edict, true);
+			AITASK_SetAttackTask(pBot, Task, StructureToTarget.edict, true);
 			return;
 		}
 	}
@@ -5751,53 +5751,53 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 			EnemyStuffFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
 			EnemyStuffFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(25.0f);
 
-			vector<AvHAIBuildableStructure*> AllSiegingStructures = AITAC_FindAllDeployables(ThisHive->Location, &EnemyStuffFilter);
+			vector<AvHAIBuildableStructure> AllSiegingStructures = AITAC_FindAllDeployables(ThisHive->Location, &EnemyStuffFilter);
 
-			AvHAIBuildableStructure* StructureToTarget = nullptr;
+			AvHAIBuildableStructure StructureToTarget;
 
 			float MinDist = 0.0f;
 
 			for (auto it = AllSiegingStructures.begin(); it != AllSiegingStructures.end(); it++)
 			{
-				AvHAIBuildableStructure* ThisStructure = (*it);
+				AvHAIBuildableStructure ThisStructure = (*it);
 
 				// Always go for the phase gate first to prevent reinforcements
-				if (ThisStructure->StructureType == STRUCTURE_MARINE_PHASEGATE)
+				if (ThisStructure.StructureType == STRUCTURE_MARINE_PHASEGATE)
 				{
 					StructureToTarget = ThisStructure;
 					continue;
 				}
 
 				// Then go for any turret factories, especially advanced ones to cut off siege turrets
-				if (ThisStructure->StructureType == STRUCTURE_MARINE_ADVTURRETFACTORY)
+				if (ThisStructure.StructureType == STRUCTURE_MARINE_ADVTURRETFACTORY)
 				{
 					StructureToTarget = ThisStructure;
 					continue;
 				}
 
-				if (ThisStructure->StructureType == STRUCTURE_MARINE_TURRETFACTORY)
+				if (ThisStructure.StructureType == STRUCTURE_MARINE_TURRETFACTORY)
 				{
 					StructureToTarget = ThisStructure;
 					continue;
 				}
 
 				// Pick up anything else
-				float ThisDist = vDist2DSq(ThisStructure->Location, pBot->Edict->v.origin);
+				float ThisDist = vDist2DSq(ThisStructure.Location, pBot->Edict->v.origin);
 
-				if (!StructureToTarget || ThisDist < MinDist)
+				if (FNullEnt(StructureToTarget.edict) || ThisDist < MinDist)
 				{
 					StructureToTarget = ThisStructure;
 					MinDist = ThisDist;
 				}
 			}
 
-			if (StructureToTarget)
+			if (StructureToTarget.IsValid())
 			{
-				int NumAttackers = AITAC_GetNumPlayersOfTeamInArea(BotTeam, StructureToTarget->Location, UTIL_MetresToGoldSrcUnits(10.0f), false, pBot->Edict, AVH_USER3_ALIEN_PLAYER2);
+				int NumAttackers = AITAC_GetNumPlayersOfTeamInArea(BotTeam, StructureToTarget.Location, UTIL_MetresToGoldSrcUnits(10.0f), false, pBot->Edict, AVH_USER3_ALIEN_PLAYER2);
 
 				if (NumAttackers < 2)
 				{
-					AITASK_SetAttackTask(pBot, Task, StructureToTarget->edict, true);
+					AITASK_SetAttackTask(pBot, Task, StructureToTarget.edict, true);
 					return;
 				}
 			}
@@ -5949,48 +5949,48 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 			EnemyStuffFilter.ExcludeStatusFlags = STRUCTURE_STATUS_ELECTRIFIED;
 		}
 
-		vector<AvHAIBuildableStructure*> AllEnemyThings = AITAC_FindAllDeployables(HiveToSecure->FloorLocation, &EnemyStuffFilter);
+		vector<AvHAIBuildableStructure> AllEnemyThings = AITAC_FindAllDeployables(HiveToSecure->FloorLocation, &EnemyStuffFilter);
 
-		AvHAIBuildableStructure* StructureToAttack = nullptr;
+		AvHAIBuildableStructure StructureToAttack;
 
 		for (auto it = AllEnemyThings.begin(); it != AllEnemyThings.end(); it++)
 		{
-			AvHAIBuildableStructure* ThisStructure = (*it);
+			AvHAIBuildableStructure ThisStructure = (*it);
 
 			// First prioritise phase gates or alien OCs
-			if (ThisStructure->StructureType == STRUCTURE_MARINE_PHASEGATE || ThisStructure->StructureType == STRUCTURE_ALIEN_OFFENCECHAMBER)
+			if (ThisStructure.StructureType == STRUCTURE_MARINE_PHASEGATE || ThisStructure.StructureType == STRUCTURE_ALIEN_OFFENCECHAMBER)
 			{
-				if (!StructureToAttack || StructureToAttack->StructureType != ThisStructure->StructureType || vDist2DSq(pBot->Edict->v.origin, ThisStructure->Location) < vDist2DSq(pBot->Edict->v.origin, StructureToAttack->Location))
+				if (FNullEnt(StructureToAttack.edict) || StructureToAttack.StructureType != ThisStructure.StructureType || vDist2DSq(pBot->Edict->v.origin, ThisStructure.Location) < vDist2DSq(pBot->Edict->v.origin, StructureToAttack.Location))
 				{
 					StructureToAttack = ThisStructure;
 					continue;
 				}
 			}
 
-			if (StructureToAttack && (StructureToAttack->StructureType == STRUCTURE_MARINE_PHASEGATE || ThisStructure->StructureType == STRUCTURE_ALIEN_OFFENCECHAMBER)) { continue; }
+			if (!FNullEnt(StructureToAttack.edict) && (StructureToAttack.StructureType == STRUCTURE_MARINE_PHASEGATE || ThisStructure.StructureType == STRUCTURE_ALIEN_OFFENCECHAMBER)) { continue; }
 
 			// Then prioritise turret factories
-			if (ThisStructure->StructureType == STRUCTURE_MARINE_TURRETFACTORY || ThisStructure->StructureType == STRUCTURE_MARINE_ADVTURRETFACTORY)
+			if (ThisStructure.StructureType == STRUCTURE_MARINE_TURRETFACTORY || ThisStructure.StructureType == STRUCTURE_MARINE_ADVTURRETFACTORY)
 			{
-				if (!StructureToAttack || StructureToAttack->StructureType != ThisStructure->StructureType || vDist2DSq(pBot->Edict->v.origin, ThisStructure->Location) < vDist2DSq(pBot->Edict->v.origin, StructureToAttack->Location))
+				if (FNullEnt(StructureToAttack.edict) || StructureToAttack.StructureType != ThisStructure.StructureType || vDist2DSq(pBot->Edict->v.origin, ThisStructure.Location) < vDist2DSq(pBot->Edict->v.origin, StructureToAttack.Location))
 				{
 					StructureToAttack = ThisStructure;
 					continue;
 				}
 			}
 
-			if (StructureToAttack && (StructureToAttack->StructureType == STRUCTURE_MARINE_TURRETFACTORY || ThisStructure->StructureType == STRUCTURE_MARINE_ADVTURRETFACTORY)) { continue; }
+			if (!FNullEnt(StructureToAttack.edict) && (StructureToAttack.StructureType == STRUCTURE_MARINE_TURRETFACTORY || ThisStructure.StructureType == STRUCTURE_MARINE_ADVTURRETFACTORY)) { continue; }
 
 			// Then target any other structures
-			if (!StructureToAttack || vDist2DSq(pBot->Edict->v.origin, ThisStructure->Location) < vDist2DSq(pBot->Edict->v.origin, StructureToAttack->Location))
+			if (FNullEnt(StructureToAttack.edict) || vDist2DSq(pBot->Edict->v.origin, ThisStructure.Location) < vDist2DSq(pBot->Edict->v.origin, StructureToAttack.Location))
 			{
 				StructureToAttack = ThisStructure;
 			}
 		}
 
-		if (StructureToAttack)
+		if (StructureToAttack.IsValid())
 		{
-			AITASK_SetAttackTask(pBot, Task, StructureToAttack->edict, false);
+			AITASK_SetAttackTask(pBot, Task, StructureToAttack.edict, false);
 			return;
 		}
 	}
@@ -6003,11 +6003,11 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 	EnemyInfPortalFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
 	EnemyInfPortalFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
 
-	AvHAIBuildableStructure* EnemyInfPortal = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &EnemyInfPortalFilter);
+	AvHAIBuildableStructure EnemyInfPortal = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &EnemyInfPortalFilter);
 
-	if (EnemyInfPortal)
+	if (EnemyInfPortal.IsValid())
 	{
-		AITASK_SetAttackTask(pBot, Task, EnemyInfPortal->edict, false);
+		AITASK_SetAttackTask(pBot, Task, EnemyInfPortal.edict, false);
 		return;
 	}
 
@@ -6109,7 +6109,7 @@ void AIPlayerSetAlienHarasserPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 
 	Vector EnemyBaseLocation = AITAC_GetTeamStartingLocation(EnemyTeam);
 
-	AvHAIBuildableStructure* EnemyStructureToAttack = nullptr;
+	AvHAIBuildableStructure EnemyStructureToAttack;
 
 	bool bEnemyIsMarines = (AIMGR_GetTeamType(EnemyTeam) == AVH_CLASS_TYPE_MARINE);
 
@@ -6125,9 +6125,9 @@ void AIPlayerSetAlienHarasserPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 		EnemyStructureToAttack = AITAC_FindClosestDeployableToLocation(EnemyBaseLocation, &EnemyStructureFilter);
 	}
 
-	if (EnemyStructureToAttack)
+	if (EnemyStructureToAttack.IsValid())
 	{
-		AITASK_SetAttackTask(pBot, Task, EnemyStructureToAttack->edict, false);
+		AITASK_SetAttackTask(pBot, Task, EnemyStructureToAttack.edict, false);
 		return;
 	}
 
@@ -6188,24 +6188,24 @@ void AIPlayerSetSecondaryAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (pBot->DangerTurrets.size() > 0)
 	{
-		AvHAIBuildableStructure* NearestDangerTurret = nullptr;
+		AvHAIBuildableStructure NearestDangerTurret;
 		float MinDist = 0.0f;
 
 		for (auto it = pBot->DangerTurrets.begin(); it != pBot->DangerTurrets.end(); it++)
 		{
-			float ThisDist = vDist2DSq(pBot->Edict->v.origin, (*it)->Location);
+			float ThisDist = vDist2DSq(pBot->Edict->v.origin, (*it).Location);
 
-			if (!NearestDangerTurret || ThisDist < MinDist)
+			if (FNullEnt(NearestDangerTurret.edict) || ThisDist < MinDist)
 			{
 				NearestDangerTurret = (*it);
 			}
 		}
 
-		if (NearestDangerTurret)
+		if (NearestDangerTurret.IsValid())
 		{
 			if (AIMGR_GetTeamType(EnemyTeam) == AVH_CLASS_TYPE_ALIEN)
 			{
-				AITASK_SetAttackTask(pBot, Task, NearestDangerTurret->edict, true);
+				AITASK_SetAttackTask(pBot, Task, NearestDangerTurret.edict, true);
 				return;
 			}
 			else
@@ -6224,16 +6224,16 @@ void AIPlayerSetSecondaryAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 				EnemyTFFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
 				EnemyTFFilter.ReachabilityTeam = BotTeam;
 
-				AvHAIBuildableStructure* EnemyTF = AITAC_FindClosestDeployableToLocation(NearestDangerTurret->Location, &EnemyTFFilter);
+				AvHAIBuildableStructure EnemyTF = AITAC_FindClosestDeployableToLocation(NearestDangerTurret.Location, &EnemyTFFilter);
 
-				if (EnemyTF)
+				if (EnemyTF.IsValid())
 				{
-					AITASK_SetAttackTask(pBot, Task, EnemyTF->edict, true);
+					AITASK_SetAttackTask(pBot, Task, EnemyTF.edict, true);
 					return;
 				}
 				else
 				{
-					AITASK_SetAttackTask(pBot, Task, NearestDangerTurret->edict, true);
+					AITASK_SetAttackTask(pBot, Task, NearestDangerTurret.edict, true);
 					return;
 				}
 			}
@@ -6278,7 +6278,7 @@ void AIPlayerSetSecondaryAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		DamagedStructuresFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
 		DamagedStructuresFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
 
-		vector<AvHAIBuildableStructure*> AllNearbyStructures = AITAC_FindAllDeployables(pBot->Edict->v.origin, &DamagedStructuresFilter);
+		vector<AvHAIBuildableStructure> AllNearbyStructures = AITAC_FindAllDeployables(pBot->Edict->v.origin, &DamagedStructuresFilter);
 
 		edict_t* StructureToHeal = nullptr;
 
@@ -6286,14 +6286,14 @@ void AIPlayerSetSecondaryAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 		for (auto it = AllNearbyStructures.begin(); it != AllNearbyStructures.end(); it++)
 		{
-			AvHAIBuildableStructure* ThisStructure = (*it);
+			AvHAIBuildableStructure ThisStructure = (*it);
 
-			if (ThisStructure && ThisStructure->healthPercent < 0.99f)
+			if (!FNullEnt(ThisStructure.edict) && ThisStructure.healthPercent < 0.99f)
 			{
-				float ThisDist = vDist2DSq(pBot->Edict->v.origin, ThisStructure->Location);
+				float ThisDist = vDist2DSq(pBot->Edict->v.origin, ThisStructure.Location);
 				if (FNullEnt(StructureToHeal) || ThisDist < MinDist)
 				{
-					StructureToHeal = ThisStructure->edict;
+					StructureToHeal = ThisStructure.edict;
 					MinDist = ThisDist;
 				}
 			}
@@ -6429,26 +6429,26 @@ void AIPlayerSetSecondaryAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	AttackedStructuresFilter.IncludeStatusFlags = STRUCTURE_STATUS_UNDERATTACK;
 	AttackedStructuresFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(30.0f);
 
-	vector<AvHAIBuildableStructure*> AllAttackedStructures = AITAC_FindAllDeployables(pBot->Edict->v.origin, &AttackedStructuresFilter);
+	vector<AvHAIBuildableStructure> AllAttackedStructures = AITAC_FindAllDeployables(pBot->Edict->v.origin, &AttackedStructuresFilter);
 
-	AvHAIBuildableStructure* StructureToDefend = nullptr;
+	AvHAIBuildableStructure StructureToDefend;
 	MinDist = 0.0f;
 
 	for (auto it = AllAttackedStructures.begin(); it != AllAttackedStructures.end(); it++)
 	{
-		AvHAIBuildableStructure* ThisStructure = (*it);
+		AvHAIBuildableStructure ThisStructure = (*it);
 
-		float ThisDist = vDist2D(pBot->Edict->v.origin, ThisStructure->edict->v.origin);
+		float ThisDist = vDist2D(pBot->Edict->v.origin, ThisStructure.edict->v.origin);
 
-		int NumAttackers = AITAC_GetNumPlayersOnTeamWithLOS(EnemyTeam, ThisStructure->Location, UTIL_MetresToGoldSrcUnits(15.0f), nullptr);
+		int NumAttackers = AITAC_GetNumPlayersOnTeamWithLOS(EnemyTeam, ThisStructure.Location, UTIL_MetresToGoldSrcUnits(15.0f), nullptr);
 
 		if (NumAttackers == 0) { continue; }
 
-		int NumExistingDefenders = AITAC_GetNumPlayersOfTeamInArea(BotTeam, ThisStructure->Location, ThisDist - 10.0f, false, pBot->Edict, AVH_USER3_ALIEN_PLAYER2);
+		int NumExistingDefenders = AITAC_GetNumPlayersOfTeamInArea(BotTeam, ThisStructure.Location, ThisDist - 10.0f, false, pBot->Edict, AVH_USER3_ALIEN_PLAYER2);
 
 		if (NumExistingDefenders < 2)
 		{
-			if (!StructureToDefend || ThisDist < MinDist)
+			if (FNullEnt(StructureToDefend.edict) || ThisDist < MinDist)
 			{
 				StructureToDefend = ThisStructure;
 				MinDist = ThisDist;
@@ -6456,9 +6456,9 @@ void AIPlayerSetSecondaryAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		}
 	}
 
-	if (StructureToDefend)
+	if (StructureToDefend.IsValid())
 	{
-		AITASK_SetDefendTask(pBot, Task, StructureToDefend->edict, true);
+		AITASK_SetDefendTask(pBot, Task, StructureToDefend.edict, true);
 		return;
 	}
 

@@ -3405,28 +3405,28 @@ void StructureBlockedMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vect
 	BlockingFilter.DeployableTeam = AIMGR_GetEnemyTeam(pBot->Player->GetTeam());
 	BlockingFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(3.0f);
 
-	vector<AvHAIBuildableStructure*> BlockingStructures = AITAC_FindAllDeployables(pBot->Edict->v.origin, &BlockingFilter);
+	vector<AvHAIBuildableStructure> BlockingStructures = AITAC_FindAllDeployables(pBot->Edict->v.origin, &BlockingFilter);
 
-	AvHAIBuildableStructure* CulpritStructure = nullptr;
+	AvHAIBuildableStructure CulpritStructure;
 	float MinDist = 0.0f;
 
 	for (auto it = BlockingStructures.begin(); it != BlockingStructures.end(); it++)
 	{
-		AvHAIBuildableStructure* ThisStructure = (*it);
+		AvHAIBuildableStructure ThisStructure = (*it);
 
-		float ThisDist = vDistanceFromLine2DSq(StartPoint, EndPoint, ThisStructure->Location);
+		float ThisDist = vDistanceFromLine2DSq(StartPoint, EndPoint, ThisStructure.Location);
 
-		if (!CulpritStructure || ThisDist < MinDist)
+		if (FNullEnt(CulpritStructure.edict) || ThisDist < MinDist)
 		{
 			CulpritStructure = ThisStructure;
 		}
 	}
 
-	if (CulpritStructure)
+	if (CulpritStructure.IsValid())
 	{
-		BotMoveLookAt(pBot, CulpritStructure->Location);
+		BotMoveLookAt(pBot, CulpritStructure.Location);
 
-		AvHAIWeapon AttackWeapon = (IsPlayerAlien(pBot->Edict)) ? BotAlienChooseBestWeaponForStructure(pBot, CulpritStructure->edict) : BotMarineChooseBestWeaponForStructure(pBot, CulpritStructure->edict);
+		AvHAIWeapon AttackWeapon = (IsPlayerAlien(pBot->Edict)) ? BotAlienChooseBestWeaponForStructure(pBot, CulpritStructure.edict) : BotMarineChooseBestWeaponForStructure(pBot, CulpritStructure.edict);
 
 		if (GetPlayerCurrentWeapon(pBot->Player) != AttackWeapon)
 		{
@@ -3434,7 +3434,7 @@ void StructureBlockedMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vect
 		}
 		else
 		{
-			BotShootTarget(pBot, AttackWeapon, CulpritStructure->edict);
+			BotShootTarget(pBot, AttackWeapon, CulpritStructure.edict);
 		}
 	}
 }
@@ -4161,26 +4161,26 @@ void PhaseGateMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndP
 	PGFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(2.0f);
 	PGFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
 
-	AvHAIBuildableStructure* NearestPhaseGate = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &PGFilter);
+	AvHAIBuildableStructure NearestPhaseGate = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &PGFilter);
 
-	if (!NearestPhaseGate) { return; }
+	if (!NearestPhaseGate.IsValid()) { return; }
 
-	if (IsPlayerInUseRange(pBot->Edict, NearestPhaseGate->edict))
+	if (IsPlayerInUseRange(pBot->Edict, NearestPhaseGate.edict))
 	{
-		BotMoveLookAt(pBot, NearestPhaseGate->edict->v.origin);
+		BotMoveLookAt(pBot, NearestPhaseGate.edict->v.origin);
 		pBot->desiredMovementDir = g_vecZero;
-		BotUseObject(pBot, NearestPhaseGate->edict, false);
+		BotUseObject(pBot, NearestPhaseGate.edict, false);
 
-		if (vDist2DSq(pBot->Edict->v.origin, NearestPhaseGate->edict->v.origin) < sqrf(16.0f))
+		if (vDist2DSq(pBot->Edict->v.origin, NearestPhaseGate.edict->v.origin) < sqrf(16.0f))
 		{
-			pBot->desiredMovementDir = UTIL_GetForwardVector2D(NearestPhaseGate->edict->v.angles);
+			pBot->desiredMovementDir = UTIL_GetForwardVector2D(NearestPhaseGate.edict->v.angles);
 		}
 
 		return;
 	}
 	else
 	{
-		pBot->desiredMovementDir = UTIL_GetVectorNormal2D(NearestPhaseGate->edict->v.origin - pBot->Edict->v.origin);
+		pBot->desiredMovementDir = UTIL_GetVectorNormal2D(NearestPhaseGate.edict->v.origin - pBot->Edict->v.origin);
 	}
 }
 

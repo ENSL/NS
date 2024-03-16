@@ -91,11 +91,11 @@ void AITASK_OnCompleteCommanderTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		EnemyResTowerFilter.ReachabilityTeam = (AvHTeamNumber)pBot->Edict->v.team;
 		EnemyResTowerFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
 
-		AvHAIBuildableStructure* NearbyAlienTower = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &EnemyResTowerFilter);
+		AvHAIBuildableStructure NearbyAlienTower = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &EnemyResTowerFilter);
 
-		if (NearbyAlienTower)
+		if (NearbyAlienTower.IsValid())
 		{
-			const AvHAIResourceNode* NodeRef = AITAC_GetNearestResourceNodeToLocation(NearbyAlienTower->Location);
+			const AvHAIResourceNode* NodeRef = AITAC_GetNearestResourceNodeToLocation(NearbyAlienTower.Location);
 			if (NodeRef)
 			{
 				AITASK_SetCapResNodeTask(pBot, Task, NodeRef, false);
@@ -820,7 +820,7 @@ bool AITASK_IsReinforceStructureTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTas
 	StructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
 	StructureFilter.DeployableTeam = pBot->Player->GetTeam();
 
-	vector<AvHAIBuildableStructure*> AllNearbyStructures = AITAC_FindAllDeployables(Task->TaskTarget->v.origin, &StructureFilter);
+	vector<AvHAIBuildableStructure> AllNearbyStructures = AITAC_FindAllDeployables(Task->TaskTarget->v.origin, &StructureFilter);
 
 	bool bUnfinishedStructureExists = false;
 	int NumOffenceChambers = 0;
@@ -830,11 +830,11 @@ bool AITASK_IsReinforceStructureTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTas
 
 	for (auto it = AllNearbyStructures.begin(); it != AllNearbyStructures.end(); it++)
 	{
-		AvHAIBuildableStructure* ThisStructure = (*it);
+		AvHAIBuildableStructure ThisStructure = (*it);
 
-		if (!(ThisStructure->StructureStatusFlags & STRUCTURE_STATUS_COMPLETED)) { bUnfinishedStructureExists = true; }
+		if (!(ThisStructure.StructureStatusFlags & STRUCTURE_STATUS_COMPLETED)) { bUnfinishedStructureExists = true; }
 
-		switch (ThisStructure->StructureType)
+		switch (ThisStructure.StructureType)
 		{
 			case STRUCTURE_ALIEN_OFFENCECHAMBER:
 				NumOffenceChambers++;
@@ -909,25 +909,25 @@ bool AITASK_IsMarineSecureHiveTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask*
 	SearchFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
 	SearchFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
 
-	vector<AvHAIBuildableStructure*> HiveStructures = AITAC_FindAllDeployables(HiveToSecure->FloorLocation, &SearchFilter);
+	vector<AvHAIBuildableStructure> HiveStructures = AITAC_FindAllDeployables(HiveToSecure->FloorLocation, &SearchFilter);
 
 	for (auto it = HiveStructures.begin(); it != HiveStructures.end(); it++)
 	{
-		AvHAIBuildableStructure* Structure = (*it);
+		AvHAIBuildableStructure Structure = (*it);
 
-		if (Structure->StructureType == STRUCTURE_MARINE_TURRETFACTORY)
+		if (Structure.StructureType == STRUCTURE_MARINE_TURRETFACTORY)
 		{
 			bHasPhaseGate = true;
 		}
 
-		if (Structure->StructureType == STRUCTURE_MARINE_TURRETFACTORY || Structure->StructureType == STRUCTURE_MARINE_ADVTURRETFACTORY)
+		if (Structure.StructureType == STRUCTURE_MARINE_TURRETFACTORY || Structure.StructureType == STRUCTURE_MARINE_ADVTURRETFACTORY)
 		{
 			bHasTurretFactory = true;
 
 			SearchFilter.DeployableTypes = STRUCTURE_MARINE_TURRET;
 			SearchFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(8.0f);
 
-			NumTurrets = AITAC_GetNumDeployablesNearLocation(Structure->Location, &SearchFilter);
+			NumTurrets = AITAC_GetNumDeployablesNearLocation(Structure.Location, &SearchFilter);
 
 		}
 
@@ -1343,11 +1343,11 @@ void BotProgressReinforceStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		UnfinishedFilter.DeployableTypes = SEARCH_ALL_ALIEN_STRUCTURES;
 		UnfinishedFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(10.0f);
 
-		AvHAIBuildableStructure* UnfinishedStructure = AITAC_FindClosestDeployableToLocation(ReinforceLocation, &UnfinishedFilter);
+		AvHAIBuildableStructure UnfinishedStructure = AITAC_FindClosestDeployableToLocation(ReinforceLocation, &UnfinishedFilter);
 
-		if (UnfinishedStructure)
+		if (UnfinishedStructure.IsValid())
 		{
-			AIPlayerBuildStructure(pBot, UnfinishedStructure->edict);
+			AIPlayerBuildStructure(pBot, UnfinishedStructure.edict);
 			return;
 		}
 	}
@@ -1362,11 +1362,11 @@ void BotProgressReinforceStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		EnemyStructureFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
 		EnemyStructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(10.0f);
 
-		AvHAIBuildableStructure* EnemyStructure = AITAC_FindClosestDeployableToLocation(ReinforceLocation, &EnemyStructureFilter);
+		AvHAIBuildableStructure EnemyStructure = AITAC_FindClosestDeployableToLocation(ReinforceLocation, &EnemyStructureFilter);
 
-		if (EnemyStructure)
+		if (EnemyStructure.IsValid())
 		{
-			BotAttackNonPlayerTarget(pBot, EnemyStructure->edict);
+			BotAttackNonPlayerTarget(pBot, EnemyStructure.edict);
 			return;
 		}
 
@@ -1738,12 +1738,12 @@ void BotProgressDefendTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 			return;
 		}
 
-		AvHAIBuildableStructure* StructureRef = AITAC_GetDeployableRefFromEdict(Task->TaskTarget);
+		AvHAIBuildableStructure StructureRef = AITAC_GetDeployableFromEdict(Task->TaskTarget);
 
-		if (!StructureRef) { return; }
+		if (!StructureRef.IsValid()) { return; }
 
 		// If the structure we're defending was damaged just now, look at it so we can see who is attacking
-		if (gpGlobals->time - StructureRef->lastDamagedTime < 5.0f)
+		if (gpGlobals->time - StructureRef.lastDamagedTime < 5.0f)
 		{
 			if (UTIL_QuickTrace(pBot->Edict, pBot->CurrentEyePosition, UTIL_GetCentreOfEntity(Task->TaskTarget)))
 			{
@@ -2001,11 +2001,11 @@ void AlienProgressBuildTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 			UnfinishedFilter.ExcludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
 			UnfinishedFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(10.0f);
 
-			AvHAIBuildableStructure* UnfinishedStructure = AITAC_FindClosestDeployableToLocation(Task->TaskLocation, &UnfinishedFilter);
+			AvHAIBuildableStructure UnfinishedStructure = AITAC_FindClosestDeployableToLocation(Task->TaskLocation, &UnfinishedFilter);
 
-			if (UnfinishedStructure)
+			if (UnfinishedStructure.IsValid())
 			{
-				AIPlayerBuildStructure(pBot, UnfinishedStructure->edict);
+				AIPlayerBuildStructure(pBot, UnfinishedStructure.edict);
 				return;
 			}
 		}
@@ -2240,11 +2240,11 @@ void AlienProgressCapResNodeTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 			PGFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
 			PGFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
 
-			AvHAIBuildableStructure* PG = AITAC_FindClosestDeployableToLocation(ResNodeIndex->Location, &PGFilter);
+			AvHAIBuildableStructure PG = AITAC_FindClosestDeployableToLocation(ResNodeIndex->Location, &PGFilter);
 
-			if (PG)
+			if (PG.IsValid())
 			{
-				BotAttackNonPlayerTarget(pBot, PG->edict);
+				BotAttackNonPlayerTarget(pBot, PG.edict);
 				return;
 			}
 		}
@@ -2301,11 +2301,11 @@ void AlienProgressCapResNodeTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		EnemyStructureFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
 		EnemyStructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
 
-		AvHAIBuildableStructure* AttackTarget = AITAC_FindClosestDeployableToLocation(ResNodeIndex->Location, &EnemyStructureFilter);
+		AvHAIBuildableStructure AttackTarget = AITAC_FindClosestDeployableToLocation(ResNodeIndex->Location, &EnemyStructureFilter);
 
-		if (AttackTarget)
+		if (AttackTarget.IsValid())
 		{
-			BotAttackNonPlayerTarget(pBot, AttackTarget->edict);
+			BotAttackNonPlayerTarget(pBot, AttackTarget.edict);
 			return;
 		}
 	}
@@ -2505,43 +2505,43 @@ void MarineProgressSecureHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	StructureFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
 	StructureFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
 
-	vector<AvHAIBuildableStructure*> BuildableStructures = AITAC_FindAllDeployables(Hive->FloorLocation, &StructureFilter);
+	vector<AvHAIBuildableStructure> BuildableStructures = AITAC_FindAllDeployables(Hive->FloorLocation, &StructureFilter);
 
 	bool bKeyStructureBuilt = false;
 
-	AvHAIBuildableStructure* StructureToBuild = nullptr;
+	AvHAIBuildableStructure StructureToBuild;
 	float MinDist = 0.0f;
 
 	for (auto it = BuildableStructures.begin(); it != BuildableStructures.end(); it++)
 	{
-		AvHAIBuildableStructure* ThisStructure = (*it);
+		AvHAIBuildableStructure ThisStructure = (*it);
 
-		if ((ThisStructure->StructureStatusFlags & STRUCTURE_STATUS_COMPLETED) && (ThisStructure->StructureType & (STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_MARINE_ADVTURRETFACTORY | STRUCTURE_MARINE_PHASEGATE)))
+		if ((ThisStructure.StructureStatusFlags & STRUCTURE_STATUS_COMPLETED) && (ThisStructure.StructureType & (STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_MARINE_ADVTURRETFACTORY | STRUCTURE_MARINE_PHASEGATE)))
 		{
 			bKeyStructureBuilt = true;
 		}
 
-		if (ThisStructure->StructureStatusFlags & STRUCTURE_STATUS_COMPLETED) { continue; }
+		if (ThisStructure.StructureStatusFlags & STRUCTURE_STATUS_COMPLETED) { continue; }
 		
 		// Phase gates always take priority, so just go and build it if there is one
-		if (ThisStructure->StructureType == STRUCTURE_MARINE_PHASEGATE)
+		if (ThisStructure.StructureType == STRUCTURE_MARINE_PHASEGATE)
 		{
-			AIPlayerBuildStructure(pBot, ThisStructure->edict);
+			AIPlayerBuildStructure(pBot, ThisStructure.edict);
 			return;
 		}
 
-		float ThisDist = vDist2DSq(pBot->Edict->v.origin, ThisStructure->Location);
+		float ThisDist = vDist2DSq(pBot->Edict->v.origin, ThisStructure.Location);
 
-		if (!StructureToBuild || ThisDist < MinDist)
+		if (FNullEnt(StructureToBuild.edict) || ThisDist < MinDist)
 		{
 			StructureToBuild = ThisStructure;
 			MinDist = ThisDist;
 		}
 	}
 
-	if (StructureToBuild)
+	if (StructureToBuild.IsValid())
 	{
-		AIPlayerBuildStructure(pBot, StructureToBuild->edict);
+		AIPlayerBuildStructure(pBot, StructureToBuild.edict);
 		return;
 	}
 
@@ -2579,11 +2579,11 @@ void MarineProgressSecureHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		EnemyStructures.ReachabilityTeam = BotTeam;
 		EnemyStructures.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
 
-		AvHAIBuildableStructure* EnemyStructure = AITAC_FindClosestDeployableToLocation(Hive->FloorLocation, &EnemyStructures);
+		AvHAIBuildableStructure EnemyStructure = AITAC_FindClosestDeployableToLocation(Hive->FloorLocation, &EnemyStructures);
 
-		if (EnemyStructure)
+		if (EnemyStructure.IsValid())
 		{
-			BotAttackNonPlayerTarget(pBot, EnemyStructure->edict);
+			BotAttackNonPlayerTarget(pBot, EnemyStructure.edict);
 			return;
 		}
 	}
@@ -2638,11 +2638,11 @@ void MarineProgressCapResNodeTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 				EnemyStructureFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
 				EnemyStructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
 
-				AvHAIBuildableStructure* EnemyStructure = AITAC_FindClosestDeployableToLocation(Task->TaskLocation, &EnemyStructureFilter);
+				AvHAIBuildableStructure EnemyStructure = AITAC_FindClosestDeployableToLocation(Task->TaskLocation, &EnemyStructureFilter);
 
-				if (EnemyStructure)
+				if (EnemyStructure.IsValid())
 				{
-					BotAttackNonPlayerTarget(pBot, EnemyStructure->edict);
+					BotAttackNonPlayerTarget(pBot, EnemyStructure.edict);
 					return;
 				}
 			}
@@ -2661,13 +2661,13 @@ void MarineProgressCapResNodeTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	EnemyStructureFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
 	EnemyStructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
 
-	AvHAIBuildableStructure* EnemyStructure = AITAC_FindClosestDeployableToLocation(Task->TaskLocation, &EnemyStructureFilter);
+	AvHAIBuildableStructure EnemyStructure = AITAC_FindClosestDeployableToLocation(Task->TaskLocation, &EnemyStructureFilter);
 
-	if (EnemyStructure)
+	if (EnemyStructure.IsValid())
 	{
 		// Cancel the waiting timeout since we have something useful to do
 		Task->TaskLength = 0.0f;
-		BotAttackNonPlayerTarget(pBot, EnemyStructure->edict);
+		BotAttackNonPlayerTarget(pBot, EnemyStructure.edict);
 		return;
 	}
 	else

@@ -2323,6 +2323,11 @@ void AvHGamerules::PostWorldPrecacheReset(bool inNewMap)
 	// Must happen after processing spawn entities
 	this->RecalculateMapMode();
 
+	if (avh_botsenabled.value > 0)
+	{
+		AIMGR_LoadNavigationData();
+	}
+
 	// Loop through all players that are playing and respawn them
 
 	bool theJustResetGameAtCountdownStart = false;
