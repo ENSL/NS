@@ -153,7 +153,7 @@ bool AITASK_IsTaskUrgent(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	case TASK_GET_AMMO:
 		return (UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) == 0);
 	case TASK_GET_HEALTH:
-		return (IsPlayerMarine(pBot->Edict)) ? (pBot->Edict->v.health < 50.0f) : (GetPlayerOverallHealthPercent(pBot->Edict) < 50.0f);
+		return (IsPlayerMarine(pBot->Edict)) ? (pBot->Edict->v.health < 50.0f) : (GetPlayerOverallHealthPercent(pBot->Edict) < 0.5f);
 	case TASK_ATTACK:
 	case TASK_GET_WEAPON:
 	case TASK_GET_EQUIPMENT:
@@ -978,13 +978,20 @@ bool AITASK_IsAlienGetHealthTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* T
 {
 	if (FNullEnt(Task->TaskTarget) || (Task->TaskTarget->v.deadflag != DEAD_NO)) { return false; }
 
+	if (IsEdictHive(Task->TaskTarget))
+	{
+		AvHAIHiveDefinition* HiveRef = AITAC_GetHiveFromEdict(Task->TaskTarget);
+
+		if (!HiveRef || HiveRef->Status != HIVE_STATUS_BUILT) { return false; }
+	}
+
 	if (IsEdictStructure(Task->TaskTarget) && !UTIL_IsBuildableStructureStillReachable(pBot, Task->TaskTarget)) { return false; }
 
 	if (IsEdictPlayer(Task->TaskTarget))
 	{
 		if (!IsPlayerGorge(Task->TaskTarget)) { return false; }
 	}
-	return (pBot->Edict->v.health < pBot->Edict->v.max_health) || (!IsPlayerSkulk(pBot->Edict) && pBot->Edict->v.armorvalue < (GetPlayerMaxArmour(pBot->Edict) * 0.7f));
+	return (pBot->Edict->v.health < pBot->Edict->v.max_health) || (!IsPlayerSkulk(pBot->Edict) && pBot->Edict->v.armorvalue < (GetPlayerMaxArmour(pBot->Edict) * 0.8f));
 }
 
 bool AITASK_IsAlienHealTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)

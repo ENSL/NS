@@ -236,6 +236,8 @@ extern cvar_t							avh_botsenabled;
 extern cvar_t							avh_botautomode;
 extern cvar_t							avh_botminplayers;
 extern cvar_t							avh_botskill;
+extern cvar_t							avh_botcommandermode;
+extern cvar_t							avh_botdebugmode;
 
 BOOL IsSpawnPointValid( CBaseEntity *pPlayer, CBaseEntity *pSpot );
 inline int FNullEnt( CBaseEntity *ent ) { return (ent == NULL) || FNullEnt( ent->edict() ); }
@@ -348,15 +350,19 @@ AvHGamerules::AvHGamerules() : mTeamA(TEAM_ONE), mTeamB(TEAM_TWO)
 	RegisterServerVariable(&avh_fastjp);
 	RegisterServerVariable(&avh_randomrfk);
 	RegisterServerVariable(&avh_parasiteonmap);
+	// AI Player cvars
 	RegisterServerVariable(&avh_botsenabled);
 	RegisterServerVariable(&avh_botautomode);
 	RegisterServerVariable(&avh_botminplayers);
 	RegisterServerVariable(&avh_botskill);
+	RegisterServerVariable(&avh_botdebugmode);
+	RegisterServerVariable(&avh_botcommandermode);
 
 	REGISTER_SERVER_FUNCTION("sv_addaiplayer", []()
 		{
-			if (avh_botsenabled.value == 0)
+			if (!AIMGR_IsBotEnabled())
 			{
+				ALERT(at_console, "Bots are disabled, or the navmesh could not be loaded.");
 				return;
 			}
 
@@ -377,6 +383,12 @@ AvHGamerules::AvHGamerules() : mTeamA(TEAM_ONE), mTeamB(TEAM_TWO)
 
 	REGISTER_SERVER_FUNCTION("sv_removeaiplayer", []()
 		{
+			if (!AIMGR_IsBotEnabled())
+			{
+				ALERT(at_console, "Bots are disabled, or the navmesh could not be loaded.");
+				return;
+			}
+
 			int DesiredTeam = 0;
 
 			if (CMD_ARGC() >= 2)
@@ -394,7 +406,14 @@ AvHGamerules::AvHGamerules() : mTeamA(TEAM_ONE), mTeamB(TEAM_TWO)
 
 	REGISTER_SERVER_FUNCTION("sv_reloadnavmesh", []()
 		{
-			AIMGR_ReloadNavigationData();
+			if (avh_botsenabled.value > 0)
+			{
+				AIMGR_ReloadNavigationData();
+			}
+			else
+			{
+				ALERT(at_console, "Bots are disabled, enable first before loading the navmesh.");
+			}
 		});
 
 	g_VoiceGameMgr.Init(&gVoiceHelper, gpGlobals->maxClients);
@@ -2323,11 +2342,6 @@ void AvHGamerules::PostWorldPrecacheReset(bool inNewMap)
 	// Must happen after processing spawn entities
 	this->RecalculateMapMode();
 
-	if (avh_botsenabled.value > 0)
-	{
-		AIMGR_LoadNavigationData();
-	}
-
 	// Loop through all players that are playing and respawn them
 
 	bool theJustResetGameAtCountdownStart = false;
@@ -3615,12 +3629,16 @@ void AvHGamerules::Think(void)
 	this->UpdateGameTime();
 
     if(GET_RUN_CODE(4))
-    {
-		
+    {	
 		AIMGR_UpdateAIPlayerCounts();
 		
-		if (avh_botsenabled.value > 0)
+		if (AIMGR_IsBotEnabled())
 		{
+			if (AIMGR_GetNavMeshStatus() == NAVMESH_STATUS_PENDING)
+			{
+				AIMGR_LoadNavigationData();
+			}
+
 			AIMGR_UpdateAIMapData();
 
 			AIMGR_UpdateAIPlayers();

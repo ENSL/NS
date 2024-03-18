@@ -107,7 +107,6 @@ float AIMGR_GetCommanderAllowedTime(AvHTeamNumber Team)
 
 void AIMGR_UpdateAIPlayerCounts()
 {
-	if (!NavmeshLoaded()) { return; }
 
 	for (auto BotIt = ActiveAIPlayers.begin(); BotIt != ActiveAIPlayers.end();)
 	{
@@ -137,7 +136,7 @@ void AIMGR_UpdateAIPlayerCounts()
 	LastAIPlayerCountUpdate = gpGlobals->time;
 
 	// If bots are disabled, ensure we've removed all bots from the game
-	if (avh_botsenabled.value == 0)
+	if (!AIMGR_IsBotEnabled())
 	{
 		if (AIMGR_GetNumAIPlayers() > 0)
 		{
@@ -591,7 +590,7 @@ void AIDEBUG_TestPathFind()
 void AIMGR_UpdateAIPlayers()
 {
 	// If bots are not enabled then do nothing
-	if (avh_botsenabled.value == 0) { return; }
+	if (!AIMGR_IsBotEnabled()) { return; }
 
 	static float PrevTime = 0.0f;
 	static float CurrTime = 0.0f;
@@ -599,6 +598,8 @@ void AIMGR_UpdateAIPlayers()
 	static float LastThinkTime = 0.0f;
 
 	static int CurrentBotSkill = 1;
+
+	static bool bUpdateEven = false;
 
 	CurrTime = gpGlobals->time;
 
@@ -642,12 +643,15 @@ void AIMGR_UpdateAIPlayers()
 			memcpy(&bot->BotSkillSettings, &NewSkillSettings, sizeof(bot_skill));
 		}
 
+		int BotIndex = distance(ActiveAIPlayers.begin(), BotIt);
+
 		BotUpdateViewRotation(bot, FrameDelta);
 
 		if (IS_DEDICATED_SERVER() || ThinkDelta >= BOT_MIN_FRAME_TIME)
 		{
 			BotDeltaTime = ThinkDelta;
 
+#ifdef DEBUG
 			if (bot == AIMGR_GetDebugAIPlayer())
 			{
 				bool bBreak = true; // Add a break point here if you want to debug a specific bot
@@ -674,6 +678,7 @@ void AIMGR_UpdateAIPlayers()
 					}
 				}
 			}
+#endif
 
 			if (bHasRoundStarted)
 			{
@@ -707,25 +712,30 @@ void AIMGR_UpdateAIPlayers()
 					BotResumePlay(bot);
 				}
 
-				StartNewBotFrame(bot);
+				bool bIsEvenBot = !(BotIndex % 2);
 
-				UpdateBotChat(bot);
-
-				if (avh_botdebugmode.value == 1)
+				if (bIsEvenBot == bUpdateEven)
 				{
-					DroneThink(bot);
+					StartNewBotFrame(bot);
+
+					UpdateBotChat(bot);
+
+					if (avh_botdebugmode.value == 1)
+					{
+						DroneThink(bot);
+					}
+					else if (avh_botdebugmode.value == 2)
+					{
+						TestNavThink(bot);
+					}
+					else
+					{
+						AIPlayerThink(bot);
+					}
+
+					EndBotFrame(bot);
 				}
-				else if (avh_botdebugmode.value == 2)
-				{
-					TestNavThink(bot);
-				}
-				else
-				{
-					AIPlayerThink(bot);
-				}				
-
-				EndBotFrame(bot);
-
+				
 				BotUpdateDesiredViewRotation(bot);
 			}
 			else
@@ -763,7 +773,7 @@ void AIMGR_UpdateAIPlayers()
 	}
 
 	PrevTime = CurrTime;
-
+	bUpdateEven = !bUpdateEven;
 }
 
 float AIMGR_GetBotDeltaTime()
@@ -920,7 +930,7 @@ void AIMGR_RemoveBotsInReadyRoom()
 
 void AIMGR_ResetRound()
 {
-	if (avh_botsenabled.value == 0 || !NavmeshLoaded()) { return; } // Do nothing if we're not using bots
+	if (!AIMGR_IsBotEnabled()) { return; } // Do nothing if we're not using bots
 
 	// AI Players would be 0 if the round is being reset because a new game is starting. If the round is reset
 	// from a console command, or tournament mode readying up etc, then bot logic is unaffected
@@ -964,7 +974,7 @@ void AIMGR_ReloadNavigationData()
 
 void AIMGR_RoundStarted()
 {
-	if (avh_botsenabled.value == 0 || !NavmeshLoaded()) { return; } // Do nothing if we're not using bots
+	if (!AIMGR_IsBotEnabled()) { return; } // Do nothing if we're not using bots
 
 	bHasRoundStarted = true;
 
@@ -1038,7 +1048,12 @@ void AIMGR_ClearBotData()
 
 void AIMGR_NewMap()
 {
-	if (avh_botsenabled.value == 0) { return; } // Do nothing if we're not using bots
+	if (NavmeshLoaded())
+	{
+		UnloadNavigationData();
+	}
+
+	if (!AIMGR_IsBotEnabled()) { return; } // Do nothing if we're not using bots
 
 	bMapDataInitialised = false;
 
@@ -1049,11 +1064,6 @@ void AIMGR_NewMap()
 	
 	AITAC_ClearMapAIData(true);
 
-	if (NavmeshLoaded())
-	{
-		UnloadNavigationData();
-	}
-
 	CONFIG_ParseConfigFile();
 
 	AIMGR_BotPrecache();
@@ -1061,6 +1071,21 @@ void AIMGR_NewMap()
 	bHasRoundStarted = false;
 
 	bPlayerSpawned = false;
+}
+
+bool AIMGR_IsNavmeshLoaded()
+{
+	return NavmeshLoaded();
+}
+
+bool AIMGR_IsBotEnabled()
+{
+	return avh_botsenabled.value > 0 && NAV_GetNavMeshStatus() != NAVMESH_STATUS_FAILED;
+}
+
+AvHAINavMeshStatus AIMGR_GetNavMeshStatus()
+{
+	return NAV_GetNavMeshStatus();
 }
 
 void AIMGR_LoadNavigationData()
@@ -1072,7 +1097,7 @@ void AIMGR_LoadNavigationData()
 
 	if (!loadNavigationData(theCStrLevelName))
 	{
-		ALERT(at_console, "Failed to load navigation data for %s\n");
+		ALERT(at_console, "Failed to load navigation data for %s\n", theCStrLevelName);
 	}
 }
 

@@ -230,7 +230,8 @@ bool IsEdictStructure(const edict_t* edict)
 
 bool IsEdictHive(const edict_t* edict)
 {
-	return (GetDeployableObjectTypeFromEdict(edict) != STRUCTURE_ALIEN_HIVE);
+	if (FNullEnt(edict)) { return false; }
+	return (edict->v.iuser3 == AVH_USER3_HIVE);
 }
 
 bool IsDamagingStructure(const edict_t* StructureEdict)

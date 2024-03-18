@@ -68,6 +68,11 @@ int AIMGR_GetNumAIPlayersWithRoleOnTeam(AvHTeamNumber Team, AvHAIBotRole Role, A
 
 int AIMGR_GetNumHumansOfClassOnTeam(AvHTeamNumber Team, AvHUser3 PlayerType);
 
+bool AIMGR_IsNavmeshLoaded();
+AvHAINavMeshStatus AIMGR_GetNavMeshStatus();
+
+bool AIMGR_IsBotEnabled();
+
 void AIMGR_LoadNavigationData();
 void AIMGR_ReloadNavigationData();
 
