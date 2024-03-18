@@ -42,6 +42,8 @@ vector<AvHAIOffMeshConnection> BaseMapConnections;
 nav_mesh NavMeshes[MAX_NAV_MESHES] = { }; // Array of nav meshes. Currently only 3 are used (building, onos, and regular)
 nav_profile BaseNavProfiles[MAX_NAV_PROFILES] = { }; // Array of nav profiles
 
+AvHAINavMeshStatus NavmeshStatus = NAVMESH_STATUS_PENDING;
+
 vector<NavHint> MapNavHints;
 
 extern bool bNavMeshModified;
@@ -833,6 +835,8 @@ void UnloadNavMeshes()
 
 	BaseMapConnections.clear();
 	MapNavHints.clear();
+
+	NavmeshStatus = NAVMESH_STATUS_PENDING;
 }
 
 void UnloadNavigationData()
@@ -860,7 +864,11 @@ bool LoadNavMesh(const char* mapname)
 
 	FILE* savedFile = fopen(filename, "rb");
 
-	if (!savedFile) { return false; }
+	if (!savedFile) 
+	{ 
+		ALERT(at_console, "No nav file found for %s in the navmeshes folder.", mapname);
+		return false; 
+	}
 
 	LinearAllocator* m_talloc = new LinearAllocator(32000);
 	FastLZCompressor* m_tcomp = new FastLZCompressor;
@@ -874,6 +882,7 @@ bool LoadNavMesh(const char* mapname)
 		// Error or early EOF
 		fclose(savedFile);
 		UnloadNavigationData();
+		ALERT(at_console, "The nav file found for %s is a different version to the current bot version. Please regenerate it.", mapname);
 		return false;
 	}
 
@@ -881,6 +890,7 @@ bool LoadNavMesh(const char* mapname)
 	{
 		fclose(savedFile);
 		UnloadNavigationData();
+		ALERT(at_console, "The nav file found for %s is a different version to the current bot version. Please regenerate it.", mapname);
 		return false;
 	}
 
@@ -895,6 +905,7 @@ bool LoadNavMesh(const char* mapname)
 		{
 			fclose(savedFile);
 			UnloadNavigationData();
+			ALERT(at_console, "Unable to allocate memory for the nav mesh.", mapname);
 			return false;
 		}
 
@@ -903,6 +914,7 @@ bool LoadNavMesh(const char* mapname)
 		{
 			fclose(savedFile);
 			UnloadNavigationData();
+			ALERT(at_console, "Could not initialise nav mesh, please try regenerating the nav file.\n");
 			return false;
 		}
 
@@ -917,7 +929,7 @@ bool LoadNavMesh(const char* mapname)
 		status = NavMeshes[i].tileCache->init(TileCacheParams[i], m_talloc, m_tcomp, m_tmproc);
 		if (dtStatusFailed(status))
 		{
-			ALERT(at_console, "Could not initialise tile cache\n");
+			ALERT(at_console, "Could not initialise tile cache, please try regenerating the nav file.\n");
 			fclose(savedFile);
 			UnloadNavigationData();
 			return false;
@@ -933,6 +945,7 @@ bool LoadNavMesh(const char* mapname)
 		{
 			fclose(savedFile);
 			UnloadNavigationData();
+			ALERT(at_console, "The nav file has been corrupted or is out of date. Please try regenerating it.\n");
 			return false;
 		}
 		if (!tileHeader.tileRef || !tileHeader.dataSize)
@@ -947,6 +960,7 @@ bool LoadNavMesh(const char* mapname)
 			dtFree(data);
 			fclose(savedFile);
 			UnloadNavigationData();
+			ALERT(at_console, "The nav file has been corrupted or is out of date. Please try regenerating it.\n");
 			return false;
 		}
 
@@ -969,6 +983,7 @@ bool LoadNavMesh(const char* mapname)
 		{
 			fclose(savedFile);
 			UnloadNavigationData();
+			ALERT(at_console, "The nav file has been corrupted or is out of date. Please try regenerating it.\n");
 			return false;
 		}
 		if (!tileHeader.tileRef || !tileHeader.dataSize)
@@ -983,6 +998,7 @@ bool LoadNavMesh(const char* mapname)
 			dtFree(data);
 			fclose(savedFile);
 			UnloadNavigationData();
+			ALERT(at_console, "The nav file has been corrupted or is out of date. Please try regenerating it.\n");
 			return false;
 		}
 
@@ -1005,6 +1021,7 @@ bool LoadNavMesh(const char* mapname)
 		{
 			fclose(savedFile);
 			UnloadNavigationData();
+			ALERT(at_console, "The nav file has been corrupted or is out of date. Please try regenerating it.\n");
 			return false;
 		}
 		if (!tileHeader.tileRef || !tileHeader.dataSize)
@@ -1019,6 +1036,7 @@ bool LoadNavMesh(const char* mapname)
 			dtFree(data);
 			fclose(savedFile);
 			UnloadNavigationData();
+			ALERT(at_console, "The nav file has been corrupted or is out of date. Please try regenerating it.\n");
 			return false;
 		}
 
@@ -1103,6 +1121,7 @@ bool LoadNavMesh(const char* mapname)
 		if (dtStatusFailed(initStatus))
 		{
 			UnloadNavigationData();
+			ALERT(at_console, "The nav file has been corrupted or is out of date. Please try regenerating it.\n");
 			return false;
 		}
 	}
@@ -1254,8 +1273,11 @@ bool loadNavigationData(const char* mapname)
 
 	if (!LoadNavMesh(mapname))
 	{
+		NavmeshStatus = NAVMESH_STATUS_FAILED;
 		return false;
 	}
+
+	NavmeshStatus = NAVMESH_STATUS_SUCCESS;
 	
 	UTIL_PopulateBaseNavProfiles();
 
@@ -1265,6 +1287,11 @@ bool loadNavigationData(const char* mapname)
 bool NavmeshLoaded()
 {
 	return NavMeshes[0].navMesh != nullptr;
+}
+
+AvHAINavMeshStatus NAV_GetNavMeshStatus()
+{
+	return NavmeshStatus;
 }
 
 Vector UTIL_GetRandomPointOnNavmesh(const AvHAIPlayer* pBot)
@@ -3081,11 +3108,36 @@ DoorTrigger* UTIL_GetNearestDoorTrigger(const Vector Location, nav_door* Door, C
 
 void CheckAndHandleBreakableObstruction(AvHAIPlayer* pBot, const Vector MoveFrom, const Vector MoveTo)
 {
-	if (pBot->BotNavInfo.CurrentPathPoint > pBot->BotNavInfo.CurrentPath.size()) { return; }
+	if (pBot->BotNavInfo.CurrentPathPoint >= pBot->BotNavInfo.CurrentPath.size()) { return; }
+
+	Vector MoveDir = UTIL_GetVectorNormal2D(MoveTo - pBot->Edict->v.origin);
+
+	if (vIsZero(MoveDir))
+	{
+		MoveDir = UTIL_GetForwardVector2D(pBot->Edict->v.angles);
+	}
+
+	TraceResult breakableHit;
+
+	edict_t* BlockingBreakableEdict = nullptr;
+
+	UTIL_TraceLine(pBot->Edict->v.origin, pBot->Edict->v.origin + (MoveDir * 100.0f), dont_ignore_monsters, dont_ignore_glass, pBot->Edict->v.pContainingEntity, &breakableHit);
+
+	if (!FNullEnt(breakableHit.pHit))
+	{
+		if (strcmp(STRING(breakableHit.pHit->v.classname), "func_breakable") == 0)
+		{
+			BlockingBreakableEdict = breakableHit.pHit;
+		}
+	}
 
 	bot_path_node CurrentPathNode = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint];
 
-	edict_t* BlockingBreakableEdict = UTIL_GetBreakableBlockingPathPoint(pBot, pBot->Edict->v.origin, CurrentPathNode.Location, SAMPLE_POLYAREA_GROUND, nullptr);
+	if (FNullEnt(BlockingBreakableEdict))
+	{
+
+		BlockingBreakableEdict = UTIL_GetBreakableBlockingPathPoint(pBot, pBot->Edict->v.origin, CurrentPathNode.Location, SAMPLE_POLYAREA_GROUND, nullptr);
+	}
 
 	if (FNullEnt(BlockingBreakableEdict))
 	{
@@ -5912,13 +5964,18 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 			}
 			else
 			{
+				if (!vIsZero(BotNavInfo->UnstuckMoveLocation) && vDist2DSq(pBot->CurrentFloorPosition, BotNavInfo->UnstuckMoveLocation) < sqrf(8.0f))
+				{
+					BotNavInfo->UnstuckMoveLocation = ZERO_VECTOR;
+				}
+
 				if (vIsZero(BotNavInfo->UnstuckMoveLocation))
 				{
 					BotNavInfo->UnstuckMoveLocation = FindClosestPointBackOnPath(pBot);
 				}
 
 				if (!vIsZero(BotNavInfo->UnstuckMoveLocation))
-				{
+				{					
 					MoveDirectlyTo(pBot, BotNavInfo->UnstuckMoveLocation);
 					return true;
 				}
@@ -6020,17 +6077,17 @@ Vector FindClosestPointBackOnPath(AvHAIPlayer* pBot)
 
 	// Now we find a path backwards from the valid nav mesh point to our location, trying to get as close as we can to it
 
-	dtStatus BackwardFindingStatus = FindPathClosestToPoint(pBot->BotNavInfo.NavProfile, ValidNavmeshPoint, pBot->CurrentFloorPosition, BackwardsPath, 500.0f);
+	dtStatus BackwardFindingStatus = FindPathClosestToPoint(pBot->BotNavInfo.NavProfile, ValidNavmeshPoint, pBot->CurrentFloorPosition, BackwardsPath, UTIL_MetresToGoldSrcUnits(50.0f));
 
 	if (dtStatusSucceed(BackwardFindingStatus))
 	{
 
-		Vector NewMoveLocation = ZERO_VECTOR;
-		Vector NewMoveFromLocation = ZERO_VECTOR;
+		Vector NewMoveLocation = prev(BackwardsPath.end())->Location;
+		Vector NewMoveFromLocation = prev(BackwardsPath.end())->FromLocation;
 
 		for (auto it = BackwardsPath.rbegin(); it != BackwardsPath.rend(); it++)
 		{
-			if (UTIL_QuickTrace(pBot->Edict, pBot->Edict->v.origin, it->Location))
+			if (vDist2DSq(pBot->Edict->v.origin, it->Location) > sqrf(GetPlayerRadius(pBot->Edict)) && UTIL_QuickTrace(pBot->Edict, pBot->Edict->v.origin, it->Location))
 			{
 				NewMoveLocation = it->Location;
 				NewMoveFromLocation = it->FromLocation;

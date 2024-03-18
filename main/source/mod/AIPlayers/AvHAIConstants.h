@@ -212,6 +212,13 @@ typedef enum _AVHAICOMBATSTRATEGY
 	COMBAT_STRATEGY_ATTACK		// Attack the enemy
 } AvHAICombatStrategy;
 
+typedef enum _AVHAINAVMESHSTATUS
+{
+	NAVMESH_STATUS_PENDING = 0,	// Waiting to try loading the navmesh
+	NAVMESH_STATUS_FAILED,		// Failed to load the navmesh
+	NAVMESH_STATUS_SUCCESS		// Successfully loaded the navmesh
+} AvHAINavMeshStatus;
+
 typedef struct _OFF_MESH_CONN
 {
 	unsigned int ConnectionRefs[2];

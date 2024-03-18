@@ -152,6 +152,8 @@ bool LoadNavMesh(const char* mapname);
 // Unloads the nav meshes (UnloadNavMeshes()) and then reloads them (LoadNavMesh). Map data such as doors, hives, locations are not touched.
 void ReloadNavMeshes();
 
+AvHAINavMeshStatus NAV_GetNavMeshStatus();
+
 void SetBaseNavProfile(AvHAIPlayer* pBot);
 void UpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle);
 void MarineUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle);
