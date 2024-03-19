@@ -257,7 +257,7 @@ DoorTrigger* UTIL_GetDoorTriggerByEntity(edict_t* TriggerEntity);
 bool UTIL_TriggerHasBeenRecentlyActivated(edict_t* TriggerEntity);
 
 // Will check for any func_breakable which might be in the way (e.g. window, vent) and make the bot aim and attack it to break it. Marines will switch to knife to break it.
-void CheckAndHandleBreakableObstruction(AvHAIPlayer* pBot, const Vector MoveFrom, const Vector MoveTo);
+void CheckAndHandleBreakableObstruction(AvHAIPlayer* pBot, const Vector MoveFrom, const Vector MoveTo, unsigned int MovementFlags);
 
 void CheckAndHandleDoorObstruction(AvHAIPlayer* pBot);
 

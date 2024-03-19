@@ -28,8 +28,7 @@ void	AIMGR_RemoveAIPlayerFromTeam(int Team);
 void	AIMGR_UpdateAIPlayers();
 // Kicks all bots in the ready room (used at round end when everyone is booted back to the ready room)
 void	AIMGR_RemoveBotsInReadyRoom();
-// Delta between last bot frame and this one (default is 60hz = 0.0166666)
-float	AIMGR_GetBotDeltaTime();
+
 
 // Called every 0.2s to determine if bots need to be added/removed. Calls UpdateTeamBalance or UpdateFillTeams depending on auto-mode
 void	AIMGR_UpdateAIPlayerCounts();

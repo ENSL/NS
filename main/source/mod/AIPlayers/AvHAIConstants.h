@@ -794,6 +794,12 @@ typedef struct AVH_AI_PLAYER
 	int ExperiencePointsAvailable = 0; // How much experience the bot has to spend
 	AvHMessageID NextCombatModeUpgrade = MESSAGE_NULL;
 
+	float ThinkDelta = 0.0f; // How long since this bot last ran AIPlayerThink
+	float LastThinkTime = 0.0f; // When the bot last ran AIPlayerThink
+
+	float ServerUpdateDelta = 0.0f; // How long since we last called RunPlayerMove
+	float LastServerUpdateTime = 0.0f; // When we last called RunPlayerMove
+
 } AvHAIPlayer;
 
 
