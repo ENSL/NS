@@ -153,7 +153,7 @@ bool AITASK_IsTaskUrgent(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	case TASK_GET_AMMO:
 		return (UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) == 0);
 	case TASK_GET_HEALTH:
-		return (IsPlayerMarine(pBot->Edict)) ? (pBot->Edict->v.health < 50.0f) : (GetPlayerOverallHealthPercent(pBot->Edict) < 0.5f);
+		return Task->bTaskIsUrgent || ((IsPlayerMarine(pBot->Edict)) ? (pBot->Edict->v.health < 50.0f) : (GetPlayerOverallHealthPercent(pBot->Edict) < 0.5f));
 	case TASK_ATTACK:
 	case TASK_GET_WEAPON:
 	case TASK_GET_EQUIPMENT:
@@ -1665,6 +1665,24 @@ void BotProgressAttackTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		if (pBot->Edict->v.oldbuttons & IN_DUCK)
 		{
 			pBot->Button |= IN_DUCK;
+		}
+
+		if (PlayerHasWeapon(pBot->Player, WEAPON_LERK_PRIMALSCREAM) && !pBot->Player->GetIsScreaming())
+		{
+			int NumBuffTargets = AITAC_GetNumPlayersOfTeamInArea(pBot->Player->GetTeam(), pBot->Edict->v.origin, BALANCE_VAR(kPrimalScreamRange), false, pBot->Edict, AVH_USER3_ALIEN_PLAYER2);
+			
+			if (NumBuffTargets > 0)
+			{
+				pBot->DesiredCombatWeapon = WEAPON_LERK_PRIMALSCREAM;
+
+				if (GetPlayerCurrentWeapon(pBot->Player) == WEAPON_LERK_PRIMALSCREAM)
+				{
+					pBot->Button |= IN_ATTACK;
+				}
+
+				return;
+			}
+
 		}
 
 		BotShootTarget(pBot, Weapon, Task->TaskTarget);
