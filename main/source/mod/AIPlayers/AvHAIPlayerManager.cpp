@@ -13,7 +13,6 @@
 #include <time.h>
 
 double last_think_time = 0.0;
-float BotDeltaTime = 0.01666667f;
 
 vector<AvHAIPlayer> ActiveAIPlayers;
 
@@ -544,18 +543,15 @@ void AIMGR_AddAIPlayerToTeam(int Team)
 
 }
 
-byte BotThrottledMsec(AvHAIPlayer* inAIPlayer)
+byte BotThrottledMsec(AvHAIPlayer* inAIPlayer, float CurrentTime)
 {
 	// Thanks to The Storm (ePODBot) for this one, finally fixed the bot running speed!
-	int newmsec = (int)((gpGlobals->time - inAIPlayer->f_previous_command_time) * 1000);
+	int newmsec = (int)((CurrentTime - inAIPlayer->LastServerUpdateTime) * 1000);
 	
 	if (newmsec > 255)
 	{
 		newmsec = 255;
 	}
-
-	// save the command time
-	inAIPlayer->f_previous_command_time = gpGlobals->time;
 
 	return (byte)newmsec;
 }
@@ -595,8 +591,6 @@ void AIMGR_UpdateAIPlayers()
 	static float PrevTime = 0.0f;
 	static float CurrTime = 0.0f;
 
-	static float LastThinkTime = 0.0f;
-
 	static int CurrentBotSkill = 1;
 
 	static int UpdateIndex = 0;
@@ -609,13 +603,7 @@ void AIMGR_UpdateAIPlayers()
 		PrevTime = 0.0f;
 	}
 
-	if (CurrTime < LastThinkTime)
-	{
-		LastThinkTime = 0.0f;
-	}
-
 	float FrameDelta = CurrTime - PrevTime;
-	float ThinkDelta = CurrTime - LastThinkTime;
 
 	int cvarBotSkill = clampi((int)avh_botskill.value, 0, 3);
 
@@ -627,6 +615,31 @@ void AIMGR_UpdateAIPlayers()
 	}
 
 	bool bHasCommander = false;
+
+	if (bHasRoundStarted)
+	{
+		AvHTeamNumber TeamANumber = GetGameRules()->GetTeamANumber();
+		AvHTeamNumber TeamBNumber = GetGameRules()->GetTeamBNumber();
+
+		AvHTeam* TeamA = GetGameRules()->GetTeam(TeamANumber);
+		AvHTeam* TeamB = GetGameRules()->GetTeam(TeamBNumber);
+
+		if (TeamA->GetTeamType() == AVH_CLASS_TYPE_MARINE)
+		{
+			if (TeamA->GetCommanderPlayer() && !(TeamA->GetCommanderPlayer()->pev->flags & FL_FAKECLIENT))
+			{
+				AIMGR_SetCommanderAllowedTime(TeamANumber, gpGlobals->time + 15.0f);
+			}
+		}
+
+		if (TeamB->GetTeamType() == AVH_CLASS_TYPE_MARINE)
+		{
+			if (TeamB->GetCommanderPlayer() && !(TeamB->GetCommanderPlayer()->pev->flags & FL_FAKECLIENT))
+			{
+				AIMGR_SetCommanderAllowedTime(TeamBNumber, gpGlobals->time + 15.0f);
+			}
+		}
+	}
 		
 	for (auto BotIt = ActiveAIPlayers.begin(); BotIt != ActiveAIPlayers.end();)
 	{
@@ -654,76 +667,18 @@ void AIMGR_UpdateAIPlayers()
 
 		BotUpdateViewRotation(bot, FrameDelta);
 
-		if (IS_DEDICATED_SERVER() || ThinkDelta >= BOT_MIN_FRAME_TIME)
+		if (bHasRoundStarted)
 		{
-			BotDeltaTime = ThinkDelta;
-
-#ifdef DEBUG
-			if (bot == AIMGR_GetDebugAIPlayer())
+			if (IsPlayerCommander(bot->Edict))
 			{
-				bool bBreak = true; // Add a break point here if you want to debug a specific bot
-
-				AIDEBUG_DrawBotPath(bot);
-
-				if (bot->BotNavInfo.CurrentPath.size() > 0 && bot->BotNavInfo.CurrentPathPoint < bot->BotNavInfo.CurrentPath.size())
+				if (UpdateIndex == FrameSpread)
 				{
-					bot_path_node CurrentPathNode = bot->BotNavInfo.CurrentPath[bot->BotNavInfo.CurrentPathPoint];
-					UTIL_DrawLine(INDEXENT(1), bot->Edict->v.origin, CurrentPathNode.FromLocation, 255, 0, 0);
-					UTIL_DrawLine(INDEXENT(1), bot->Edict->v.origin, CurrentPathNode.Location, 0, 128, 0);
-				}
-
-				if (bot->CurrentTask && bot->CurrentTask->TaskType != TASK_NONE)
-				{
-					if (!FNullEnt(bot->CurrentTask->TaskTarget))
-					{
-						UTIL_DrawLine(INDEXENT(1), bot->Edict->v.origin, bot->CurrentTask->TaskTarget->v.origin, 255, 0, 0);
-					}
-
-					if (!vIsZero(bot->CurrentTask->TaskLocation))
-					{
-						UTIL_DrawLine(INDEXENT(1), bot->Edict->v.origin, bot->CurrentTask->TaskLocation, 255, 0, 0);
-					}
+					AIPlayerThink(bot);
 				}
 			}
-#endif
-
-			if (bHasRoundStarted)
+			else
 			{
-				AvHTeamNumber TeamANumber = GetGameRules()->GetTeamANumber();
-				AvHTeamNumber TeamBNumber = GetGameRules()->GetTeamBNumber();
-
-				AvHTeam* TeamA = GetGameRules()->GetTeam(TeamANumber);
-				AvHTeam* TeamB = GetGameRules()->GetTeam(TeamBNumber);
-
-				if (TeamA->GetTeamType() == AVH_CLASS_TYPE_MARINE)
-				{
-					if (TeamA->GetCommanderPlayer() && !(TeamA->GetCommanderPlayer()->pev->flags & FL_FAKECLIENT))
-					{
-						AIMGR_SetCommanderAllowedTime(TeamANumber, gpGlobals->time + 15.0f);
-					}
-				}
-
-				if (TeamB->GetTeamType() == AVH_CLASS_TYPE_MARINE)
-				{
-					if (TeamB->GetCommanderPlayer() && !(TeamB->GetCommanderPlayer()->pev->flags & FL_FAKECLIENT))
-					{
-						AIMGR_SetCommanderAllowedTime(TeamBNumber, gpGlobals->time + 15.0f);
-					}
-				}
-			}
-
-			UpdateBotChat(bot);
-
-			if (bHasRoundStarted)
-			{
-				if (IsPlayerCommander(bot->Edict))
-				{
-					if (UpdateIndex == FrameSpread)
-					{
-						AIPlayerThink(bot);
-					}
-				}
-				else
+				if (UpdateIndex != FrameSpread)
 				{
 					int BotModulo = BotIndex % FrameSpread;
 
@@ -733,32 +688,34 @@ void AIMGR_UpdateAIPlayers()
 					}
 				}
 			}
+		}
+
+		if (IS_DEDICATED_SERVER() || (CurrTime - bot->LastServerUpdateTime) >= BOT_MIN_FRAME_TIME)
+		{
+			UpdateBotChat(bot);
 
 			// Needed to correctly handle client prediction and physics calculations
-			byte adjustedmsec = BotThrottledMsec(bot);			
+			byte adjustedmsec = BotThrottledMsec(bot, CurrTime);			
 
 			// Simulate PM_PlayerMove so client prediction and stuff can be executed correctly.
 			RUN_AI_MOVE(bot->Edict, bot->Edict->v.v_angle, bot->ForwardMove,
 				bot->SideMove, bot->UpMove, bot->Button, bot->Impulse, adjustedmsec);
 
-			LastThinkTime = gpGlobals->time;
+			bot->LastServerUpdateTime = CurrTime;
 		}
 
 		BotIt++;
 	}
 
-	PrevTime = CurrTime;
 	UpdateIndex++;
 
 	if (UpdateIndex > FrameSpread || (!bHasCommander && UpdateIndex == FrameSpread))
 	{
 		UpdateIndex = 0;
 	}
-}
 
-float AIMGR_GetBotDeltaTime()
-{
-	return BotDeltaTime;
+	PrevTime = CurrTime;
+
 }
 
 int AIMGR_GetNumAIPlayers()

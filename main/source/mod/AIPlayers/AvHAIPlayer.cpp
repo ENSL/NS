@@ -1140,7 +1140,7 @@ void BotUpdateDesiredViewRotation(AvHAIPlayer* pBot)
 	// This simulates the fact that humans can't spin and lock their cross-hair exactly on the target, the further you have the spin, the more off your view will be first attempt
 	if (fabsf(maxDelta) >= 45.0f)
 	{
-		pBot->ViewInterpolationSpeed = 500.0f;
+		pBot->ViewInterpolationSpeed = 350.0f;
 
 		if (!bIsMoveLook)
 		{
@@ -1169,7 +1169,7 @@ void BotUpdateDesiredViewRotation(AvHAIPlayer* pBot)
 	}
 	else if (fabsf(maxDelta) >= 25.0f)
 	{
-		pBot->ViewInterpolationSpeed = 250.0f;
+		pBot->ViewInterpolationSpeed = 175.0f;
 
 		if (!bIsMoveLook)
 		{
@@ -1196,7 +1196,7 @@ void BotUpdateDesiredViewRotation(AvHAIPlayer* pBot)
 	}
 	else if (fabsf(maxDelta) >= 5.0f)
 	{
-		pBot->ViewInterpolationSpeed = 50.0f;
+		pBot->ViewInterpolationSpeed = 35.0f;
 
 		if (!bIsMoveLook)
 		{
@@ -4966,6 +4966,39 @@ void AIPlayerDMThink(AvHAIPlayer* pBot)
 
 void AIPlayerThink(AvHAIPlayer* pBot)
 {
+
+#ifdef DEBUG
+	if (pBot == AIMGR_GetDebugAIPlayer())
+	{
+		bool bBreak = true; // Add a break point here if you want to debug a specific bot
+
+		AIDEBUG_DrawBotPath(pBot);
+
+		if (pBot->BotNavInfo.CurrentPath.size() > 0 && pBot->BotNavInfo.CurrentPathPoint < pBot->BotNavInfo.CurrentPath.size())
+		{
+			bot_path_node CurrentPathNode = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint];
+			UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, CurrentPathNode.FromLocation, 255, 0, 0);
+			UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, CurrentPathNode.Location, 0, 128, 0);
+		}
+
+		if (pBot->CurrentTask && pBot->CurrentTask->TaskType != TASK_NONE)
+		{
+			if (!FNullEnt(pBot->CurrentTask->TaskTarget))
+			{
+				UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, pBot->CurrentTask->TaskTarget->v.origin, 255, 0, 0);
+			}
+
+			if (!vIsZero(pBot->CurrentTask->TaskLocation))
+			{
+				UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, pBot->CurrentTask->TaskLocation, 255, 0, 0);
+			}
+		}
+	}
+#endif
+
+	pBot->ThinkDelta = fminf(gpGlobals->time - pBot->LastThinkTime, 0.1f);
+	pBot->LastThinkTime = gpGlobals->time;
+
 	bool bShouldThink = ShouldBotThink(pBot);
 
 	if (bShouldThink)
