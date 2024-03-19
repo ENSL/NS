@@ -4573,6 +4573,9 @@ bool AITAC_IsAlienHarasserNeeded(AvHAIPlayer* pBot)
 
 	if (!CONFIG_IsLerkAllowed()) { return false; }
 
+	// Don't downgrade to lerk if already a fade or onos!
+	if (IsPlayerFade(pBot->Edict) || IsPlayerOnos(pBot->Edict)) { return false; }
+
 	if (pBot->Player->GetResources() < BALANCE_VAR(kLerkCost)) { return false; }
 
 	AvHTeamNumber BotTeam = pBot->Player->GetTeam();

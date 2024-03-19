@@ -599,7 +599,8 @@ void AIMGR_UpdateAIPlayers()
 
 	static int CurrentBotSkill = 1;
 
-	static bool bUpdateEven = false;
+	static int UpdateIndex = 0;
+	static int FrameSpread = 3;
 
 	CurrTime = gpGlobals->time;
 
@@ -625,6 +626,7 @@ void AIMGR_UpdateAIPlayers()
 		CurrentBotSkill = cvarBotSkill;
 	}
 
+	bool bHasCommander = false;
 		
 	for (auto BotIt = ActiveAIPlayers.begin(); BotIt != ActiveAIPlayers.end();)
 	{
@@ -636,6 +638,11 @@ void AIMGR_UpdateAIPlayers()
 		}
 
 		AvHAIPlayer* bot = &(*BotIt);
+
+		if (IsPlayerCommander(bot->Edict))
+		{
+			bHasCommander = true;
+		}
 
 		if (bSkillChanged)
 		{
@@ -705,43 +712,26 @@ void AIMGR_UpdateAIPlayers()
 				}
 			}
 
-			if (bHasRoundStarted && ShouldBotThink(bot))
+			UpdateBotChat(bot);
+
+			if (bHasRoundStarted)
 			{
-				if (bot->bIsInactive)
+				if (UpdateIndex == FrameSpread)
 				{
-					BotResumePlay(bot);
-				}
-
-				bool bIsEvenBot = !(BotIndex % 2);
-
-				if (bIsEvenBot == bUpdateEven)
-				{
-					StartNewBotFrame(bot);
-
-					UpdateBotChat(bot);
-
-					if (avh_botdebugmode.value == 1)
-					{
-						DroneThink(bot);
-					}
-					else if (avh_botdebugmode.value == 2)
-					{
-						TestNavThink(bot);
-					}
-					else
+					if (IsPlayerCommander(bot->Edict))
 					{
 						AIPlayerThink(bot);
 					}
-
-					EndBotFrame(bot);
 				}
-				
-				BotUpdateDesiredViewRotation(bot);
-			}
-			else
-			{
-				ClearBotInputs(bot);
-				bot->bIsInactive = true;
+				else
+				{
+					int BotModulo = BotIndex % FrameSpread;
+
+					if (BotModulo == UpdateIndex)
+					{
+						AIPlayerThink(bot);
+					}
+				}
 			}
 
 			// Needed to correctly handle client prediction and physics calculations
@@ -757,23 +747,13 @@ void AIMGR_UpdateAIPlayers()
 		BotIt++;
 	}
 
-	if (!vIsZero(DebugVector1) && !vIsZero(DebugVector2))
-	{
-		vector<bot_path_node> path;
-
-		nav_profile NavProfile = GetBaseNavProfile(MARINE_BASE_NAV_PROFILE);
-		NavProfile.Filters.addIncludeFlags(SAMPLE_POLYFLAGS_WELD);
-
-		dtStatus PathStatus = FindPathClosestToPoint(NavProfile, DebugVector1, DebugVector2, path, UTIL_MetresToGoldSrcUnits(10.0f));
-
-		if (dtStatusSucceed(PathStatus))
-		{
-			AIDEBUG_DrawPath(path, 0.1f);
-		}
-	}
-
 	PrevTime = CurrTime;
-	bUpdateEven = !bUpdateEven;
+	UpdateIndex++;
+
+	if (UpdateIndex > FrameSpread || (!bHasCommander && UpdateIndex == FrameSpread))
+	{
+		UpdateIndex = 0;
+	}
 }
 
 float AIMGR_GetBotDeltaTime()

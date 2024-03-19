@@ -19,6 +19,8 @@
 extern nav_mesh NavMeshes[MAX_NAV_MESHES]; // Array of nav meshes. Currently only 3 are used (building, onos, and regular)
 extern nav_profile BaseNavProfiles[MAX_NAV_PROFILES]; // Array of nav profiles
 
+extern cvar_t avh_botdebugmode;
+
 void BotJump(AvHAIPlayer* pBot)
 {
 	if (pBot->BotNavInfo.IsOnGround)
@@ -807,13 +809,13 @@ void BombardierAttackTarget(AvHAIPlayer* pBot, edict_t* Target)
 
 	if (!IsPlayerReloading(pBot->Player))
 	{
-		if (vDist3DSq(pBot->Edict->v.origin, Target->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
+		if (vDist3DSq(pBot->Edict->v.origin, Target->v.origin) < sqrf(BALANCE_VAR(kGrenadeRadius)))
 		{
 			Vector BackDir = UTIL_GetVectorNormal2D(pBot->Edict->v.origin - Target->v.origin);
 			pBot->desiredMovementDir = BackDir;
 		}
 
-		Vector GrenadeLoc = UTIL_GetGrenadeThrowTarget(pBot->Edict, Target->v.origin, UTIL_MetresToGoldSrcUnits(5.0f), true);
+		Vector GrenadeLoc = UTIL_GetGrenadeThrowTarget(pBot->Edict, Target->v.origin, BALANCE_VAR(kGrenadeRadius), true);
 
 		if (GrenadeLoc != ZERO_VECTOR)
 		{
@@ -2037,6 +2039,44 @@ void UpdateAIAlienPlayerNSRole(AvHAIPlayer* pBot)
 		return;
 	}
 
+	// If we have enough to go Fade or Onos, then always go assault if we're the only one capable of going that class.
+	// This check is to ensure we don't go lerk, or go cap resources, or build stuff when our team doesn't have any big hitters and we could fill that gap
+	if ((CONFIG_IsFadeAllowed() || CONFIG_IsOnosAllowed()) && pBot->Player->GetResources() > BALANCE_VAR(kFadeCost))
+	{
+		bool bCheckOnos = CONFIG_IsOnosAllowed() && pBot->Player->GetResources() > BALANCE_VAR(kOnosCost);
+
+		// First check we don't have any fades or onos already on our team
+		bool bOtherPlayer = AITAC_GetNumPlayersOnTeamOfClass(pBot->Player->GetTeam(), (bCheckOnos) ? AVH_USER3_ALIEN_PLAYER5 : AVH_USER3_ALIEN_PLAYER4, pBot->Edict);
+
+		if (!bOtherPlayer)
+		{
+			// If not, then check all the other bots to see if any of them plan to go fade/onos
+			vector<AvHAIPlayer*> TeamBots = AIMGR_GetAIPlayersOnTeam(pBot->Player->GetTeam());
+
+			bool bOtherPotentialPlayer = false;
+
+			float Cost = (bCheckOnos) ? BALANCE_VAR(kOnosCost) : BALANCE_VAR(kFadeCost);
+
+			for (auto it = TeamBots.begin(); it != TeamBots.end(); it++)
+			{
+				AvHAIPlayer* ThisPlayer = (*it);
+				if (ThisPlayer->Edict == pBot->Edict) { continue; }
+
+				if (ThisPlayer->Player->GetResources() > Cost && ThisPlayer->BotRole == BOT_ROLE_ASSAULT)
+				{
+					bOtherPotentialPlayer = true;
+				}
+			}
+
+			// Nobody else is planning to, let's skip all other checks and go straight for assault class (which will make us evolve to fade/onos)
+			if (!bOtherPotentialPlayer)
+			{
+				SetNewAIPlayerRole(pBot, BOT_ROLE_ASSAULT);
+				return;
+			}
+		}
+	}
+
 	if (AITAC_IsAlienCapperNeeded(pBot))
 	{
 		SetNewAIPlayerRole(pBot, BOT_ROLE_FIND_RESOURCES);
@@ -2749,7 +2789,7 @@ void MarineHuntEnemy(AvHAIPlayer* pBot, enemy_status* TrackedEnemy)
 	{
 		if (TimeSinceLastSighting < 5.0f && vDist3DSq(pBot->Edict->v.origin, TrackedEnemy->LastSeenLocation) <= sqrf(UTIL_MetresToGoldSrcUnits(10.0f)))
 		{
-			Vector GrenadeThrowLocation = UTIL_GetGrenadeThrowTarget(pBot->Edict, TrackedEnemy->LastSeenLocation, UTIL_MetresToGoldSrcUnits(5.0f), false);
+			Vector GrenadeThrowLocation = UTIL_GetGrenadeThrowTarget(pBot->Edict, TrackedEnemy->LastSeenLocation, BALANCE_VAR(kGrenadeRadius), false);
 
 			if (GrenadeThrowLocation != ZERO_VECTOR)
 			{
@@ -4926,8 +4966,36 @@ void AIPlayerDMThink(AvHAIPlayer* pBot)
 
 void AIPlayerThink(AvHAIPlayer* pBot)
 {
-	switch (GetGameRules()->GetMapMode())
+	bool bShouldThink = ShouldBotThink(pBot);
+
+	if (bShouldThink)
 	{
+		if (pBot->bIsInactive)
+		{
+			BotResumePlay(pBot);
+		}
+	}
+	else
+	{
+		ClearBotInputs(pBot);
+		pBot->bIsInactive = true;
+		return;
+	}
+
+	StartNewBotFrame(pBot);
+
+	if (avh_botdebugmode.value == 1)
+	{
+		DroneThink(pBot);
+	}
+	else if (avh_botdebugmode.value == 2)
+	{
+		TestNavThink(pBot);
+	}
+	else
+	{
+		switch (GetGameRules()->GetMapMode())
+		{
 		case MAP_MODE_NS:
 			AIPlayerNSThink(pBot);
 			break;
@@ -4937,7 +5005,12 @@ void AIPlayerThink(AvHAIPlayer* pBot)
 		default:
 			AIPlayerDMThink(pBot);
 			break;
+		}
 	}
+
+	BotUpdateDesiredViewRotation(pBot);
+
+	EndBotFrame(pBot);
 }
 
 void TestNavThink(AvHAIPlayer* pBot)
@@ -5361,6 +5434,26 @@ void AIPlayerSetAlienBuilderPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 	for (auto it = AllMatchingTowers.begin(); it != AllMatchingTowers.end(); it++)
 	{
 		AvHAIBuildableStructure ThisResTower = (*it);
+
+		AvHAIResourceNode* NodeRef = AITAC_GetNearestResourceNodeToLocation(ThisResTower.Location);
+
+		// Don't reinforce RTs in active hives, they can be defended by the aliens (or it's owned by enemy alien team, either way, don't build in there!)
+		if (NodeRef && !FNullEnt(NodeRef->ParentHive))
+		{
+			const AvHAIHiveDefinition* NearestHive = AITAC_GetHiveNearestLocation(NodeRef->Location);
+
+			if (NearestHive->Status == HIVE_STATUS_BUILT) { continue; }
+		}
+
+		// Don't reinforce RTs which have enemy stuff nearby. Would be suicide for the gorge.
+		DeployableSearchFilter EnemyStructureFilter;
+		EnemyStructureFilter.DeployableTeam = EnemyTeam;
+		EnemyStructureFilter.DeployableTypes = (STRUCTURE_MARINE_PHASEGATE | STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_ALIEN_OFFENCECHAMBER);
+		EnemyStructureFilter.ExcludeStatusFlags = (STRUCTURE_STATUS_RECYCLING);
+		EnemyStructureFilter.IncludeStatusFlags = (STRUCTURE_STATUS_COMPLETED);
+		EnemyStructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(7.5);
+
+		if (AITAC_DeployableExistsAtLocation(ThisResTower.Location, &EnemyStructureFilter)) { continue; }
 
 		DeployableSearchFilter ExistingReinforcementFilter;
 		ExistingReinforcementFilter.DeployableTeam = BotTeam;
@@ -7192,9 +7285,9 @@ bool LerkCombatThink(AvHAIPlayer* pBot)
 
 	if (pBot->CurrentCombatStrategy == COMBAT_STRATEGY_ATTACK)
 	{
-		if (PlayerHasWeapon(pBot->Player, WEAPON_LERK_PRIMALSCREAM) && !pBot->Player->GetIsScreaming())
+		if (PlayerHasWeapon(pBot->Player, WEAPON_LERK_PRIMALSCREAM) && !pBot->Player->GetIsScreaming() && GetPlayerEnergy(pBot->Edict) >= BALANCE_VAR(kPrimalScreamEnergyCost))
 		{
-			pBot->DesiredCombatWeapon = WEAPON_LERK_SPORES;
+			pBot->DesiredCombatWeapon = WEAPON_LERK_PRIMALSCREAM;
 
 			if (GetPlayerCurrentWeapon(pBot->Player) == WEAPON_LERK_PRIMALSCREAM)
 			{
@@ -7228,6 +7321,23 @@ bool LerkCombatThink(AvHAIPlayer* pBot)
 
 	if (pBot->CurrentCombatStrategy == COMBAT_STRATEGY_SKIRMISH)
 	{
+		if (PlayerHasWeapon(pBot->Player, WEAPON_LERK_PRIMALSCREAM) && !pBot->Player->GetIsScreaming() && GetPlayerEnergy(pBot->Edict) >= BALANCE_VAR(kPrimalScreamEnergyCost))
+		{
+			int NumBuffTargets = AITAC_GetNumPlayersOfTeamInArea(pBot->Player->GetTeam(), pBot->Edict->v.origin, BALANCE_VAR(kPrimalScreamRange), false, pBot->Edict, AVH_USER3_ALIEN_PLAYER2);
+
+			if (NumBuffTargets > 0)
+			{
+				pBot->DesiredCombatWeapon = WEAPON_LERK_PRIMALSCREAM;
+
+				if (GetPlayerCurrentWeapon(pBot->Player) == WEAPON_LERK_PRIMALSCREAM)
+				{
+					pBot->Button |= IN_ATTACK;
+				}
+
+				return true;
+			}
+		}
+
 		pBot->DesiredCombatWeapon = WEAPON_LERK_SPORES;
 
 		if (GetPlayerCurrentWeapon(pBot->Player) != WEAPON_LERK_SPORES) { return true; }
