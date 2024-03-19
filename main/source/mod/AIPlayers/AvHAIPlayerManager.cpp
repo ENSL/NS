@@ -716,9 +716,9 @@ void AIMGR_UpdateAIPlayers()
 
 			if (bHasRoundStarted)
 			{
-				if (UpdateIndex == FrameSpread)
+				if (IsPlayerCommander(bot->Edict))
 				{
-					if (IsPlayerCommander(bot->Edict))
+					if (UpdateIndex == FrameSpread)
 					{
 						AIPlayerThink(bot);
 					}
