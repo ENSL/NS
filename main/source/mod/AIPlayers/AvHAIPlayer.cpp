@@ -3505,7 +3505,23 @@ void AIPlayerSetMarineAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 			
 		}
 	}
-	
+
+	if (Task->TaskType != TASK_ATTACK)
+	{
+		DeployableSearchFilter AnyEnemyStuff;
+		AnyEnemyStuff.DeployableTeam = EnemyTeam;
+		AnyEnemyStuff.DeployableTypes = SEARCH_ALL_STRUCTURES;
+		AnyEnemyStuff.ReachabilityTeam = BotTeam;
+		AnyEnemyStuff.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+
+		AvHAIBuildableStructure EnemyStructure = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &AnyEnemyStuff);
+
+		if (EnemyStructure.IsValid())
+		{
+			AITASK_SetAttackTask(pBot, Task, EnemyStructure.edict, false);
+			return;
+		}
+	}
 }
 
 void AIPlayerSetMarineBombardierPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
@@ -5579,20 +5595,29 @@ void AIPlayerSetAlienCapperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	AvHAIResourceNode* NodeToCap = nullptr;
 
+	bool bCanAttackTowers = (!IsPlayerGorge(pBot->Edict) || PlayerHasWeapon(pBot->Player, WEAPON_GORGE_BILEBOMB));
+
 	// If we're already capping a node, are at the node and there is an unfinished tower on there, then finish the job and don't move on yet
 	if (Task->TaskType == TASK_CAP_RESNODE)
 	{
 		const AvHAIResourceNode* ResNodeIndex = AITAC_GetNearestResourceNodeToLocation(Task->TaskLocation);
 
-		if (ResNodeIndex && ResNodeIndex->OwningTeam == BotTeam)
+		if (ResNodeIndex && ResNodeIndex->OwningTeam != BotTeam)
 		{
-			if (!FNullEnt(ResNodeIndex->ActiveTowerEntity) && !UTIL_StructureIsFullyBuilt(ResNodeIndex->ActiveTowerEntity))
+			if (ResNodeIndex->OwningTeam != BotTeam)
 			{
-				if (vDist2DSq(pBot->Edict->v.origin, ResNodeIndex->Location) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
-				{
-					return;
-				}
+				if (!ResNodeIndex->bIsOccupied || bCanAttackTowers) { return; }
 			}
+			else
+			{
+				if (!FNullEnt(ResNodeIndex->ActiveTowerEntity) && !UTIL_StructureIsFullyBuilt(ResNodeIndex->ActiveTowerEntity))
+				{
+					if (vDist2DSq(pBot->Edict->v.origin, ResNodeIndex->Location) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
+					{
+						return;
+					}
+				}
+			}			
 		}
 	}
 
@@ -5609,8 +5634,6 @@ void AIPlayerSetAlienCapperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	{
 		bCanPlaceTower = pBot->Player->GetResources() >= 75 && AITAC_GetTeamResNodeOwnership(BotTeam, true) >= 0.5f;
 	}
-
-	bool bCanAttackTowers = (!IsPlayerGorge(pBot->Edict) || PlayerHasWeapon(pBot->Player, WEAPON_GORGE_BILEBOMB));
 
 	// If we have enough resources to cap a node, then find an empty one we can slap one down in
 	if (bCanPlaceTower || !bCanAttackTowers)
@@ -5779,38 +5802,43 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 
 	if (Task->TaskType == TASK_EVOLVE) { return; }
 
-	if (CONFIG_IsOnosAllowed() && !IsPlayerOnos(pBot->Edict) && pBot->Player->GetResources() >= BALANCE_VAR(kOnosCost))
+	if (!IsPlayerFade(pBot->Edict) && !IsPlayerOnos(pBot->Edict))
 	{
-		int NumOnos = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER5, pBot->Edict);
 
-		if (NumOnos < 2)
+		if (CONFIG_IsOnosAllowed() && !IsPlayerOnos(pBot->Edict) && pBot->Player->GetResources() >= BALANCE_VAR(kOnosCost))
 		{
-			const AvHAIHiveDefinition* NearestHive = AITAC_GetNearestTeamHive(BotTeam, pBot->Edict->v.origin, true);
+			int NumOnos = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER5, pBot->Edict);
 
-			if (NearestHive)
+			if (NumOnos < 2)
 			{
-				AITASK_SetEvolveTask(pBot, Task, NearestHive->HiveEdict, ALIEN_LIFEFORM_FIVE, true);
-				return;
+				const AvHAIHiveDefinition* NearestHive = AITAC_GetNearestTeamHive(BotTeam, pBot->Edict->v.origin, true);
+
+				if (NearestHive)
+				{
+					AITASK_SetEvolveTask(pBot, Task, NearestHive->HiveEdict, ALIEN_LIFEFORM_FIVE, true);
+					return;
+				}
 			}
 		}
-	}
 
-	if (CONFIG_IsFadeAllowed() && !IsPlayerFade(pBot->Edict) && pBot->Player->GetResources() >= BALANCE_VAR(kFadeCost))
-	{
-		int NumFades = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER4, pBot->Edict);
-		int NumOnos = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER5, pBot->Edict);
-
-		if (NumFades < 2 || NumOnos >= 2)
+		if (CONFIG_IsFadeAllowed() && !IsPlayerFade(pBot->Edict) && pBot->Player->GetResources() >= BALANCE_VAR(kFadeCost))
 		{
-			const AvHAIHiveDefinition* NearestHive = AITAC_GetNearestTeamHive(BotTeam, pBot->Edict->v.origin, true);
+			int NumFades = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER4, pBot->Edict);
+			int NumOnos = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER5, pBot->Edict);
 
-			if (NearestHive)
+			if (NumFades < 2 || NumOnos >= 2)
 			{
-				AITASK_SetEvolveTask(pBot, Task, NearestHive->HiveEdict, ALIEN_LIFEFORM_FOUR, true);
-				return;
-			}
+				const AvHAIHiveDefinition* NearestHive = AITAC_GetNearestTeamHive(BotTeam, pBot->Edict->v.origin, true);
 
+				if (NearestHive)
+				{
+					AITASK_SetEvolveTask(pBot, Task, NearestHive->HiveEdict, ALIEN_LIFEFORM_FOUR, true);
+					return;
+				}
+
+			}
 		}
+
 	}
 
 	const AvHAIHiveDefinition* NearestSiegedHive = AITAC_GetNearestHiveUnderActiveSiege(EnemyTeam, pBot->Edict->v.origin);
@@ -6683,8 +6711,18 @@ void AIPlayerSetWantsAndNeedsAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	float GetHealthThreshold = 0.6f;
 
+	if (IsPlayerOnos(pBot->Edict))
+	{
+		GetHealthThreshold = 0.33f;
+	}
+
+	if (IsPlayerFade(pBot->Edict))
+	{
+		GetHealthThreshold = 0.5f;
+	}
+
 	// If we're right by a healing source, then might as well heal up, set the "find health" threshold to 90% or less health
-	if (vDist2DSq(pBot->Edict->v.origin, NearestHealingSource->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(10.0f)))
+	if (vDist2DSq(pBot->Edict->v.origin, NearestHealingSource->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
 	{
 		GetHealthThreshold = 0.9f;
 	}

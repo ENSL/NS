@@ -1809,36 +1809,56 @@ void AITAC_UpdateMapAIData()
 	}
 
 	vector<AvHPlayer*> AllTeamAPlayers = AITAC_GetAllPlayersOnTeamOfClass(GetGameRules()->GetTeamANumber(), AVH_USER3_ALIEN_PLAYER3, nullptr);
-	edict_t* LastTeamALerk = nullptr;
+	edict_t* LastTeamALerk = LastSeenLerkTeamA;
 
-	for (auto it = AllTeamAPlayers.begin(); it != AllTeamAPlayers.end(); it++)
+	if (!FNullEnt(LastTeamALerk) && IsPlayerLerk(LastTeamALerk))
 	{
-		edict_t* PlayerEdict = (*it)->edict();
-
-		if (FNullEnt(LastTeamALerk) || IsPlayerHuman(PlayerEdict))
+		LastSeenLerkTeamATime = gpGlobals->time;
+	}
+	else
+	{
+		for (auto it = AllTeamAPlayers.begin(); it != AllTeamAPlayers.end(); it++)
 		{
-			LastTeamALerk = PlayerEdict;
-			LastSeenLerkTeamATime = gpGlobals->time;
+			edict_t* PlayerEdict = (*it)->edict();
+
+			if (FNullEnt(LastTeamALerk) || IsPlayerHuman(PlayerEdict))
+			{
+				LastTeamALerk = PlayerEdict;
+				LastSeenLerkTeamATime = gpGlobals->time;
+			}
 		}
+
+		LastSeenLerkTeamA = LastTeamALerk;
 	}
 
-	LastSeenLerkTeamA = LastTeamALerk;
+	
 
 	vector<AvHPlayer*> AllTeamBPlayers = AITAC_GetAllPlayersOnTeamOfClass(GetGameRules()->GetTeamBNumber(), AVH_USER3_ALIEN_PLAYER3, nullptr);
-	edict_t* LastTeamBLerk = nullptr;
+	edict_t* LastTeamBLerk = LastSeenLerkTeamB;
 
-	for (auto it = AllTeamBPlayers.begin(); it != AllTeamBPlayers.end(); it++)
+	if (!FNullEnt(LastTeamBLerk) && IsPlayerLerk(LastTeamBLerk))
 	{
-		edict_t* PlayerEdict = (*it)->edict();
-
-		if (FNullEnt(LastTeamBLerk) || IsPlayerHuman(PlayerEdict))
+		LastSeenLerkTeamBTime = gpGlobals->time;
+	}
+	else
+	{
+		for (auto it = AllTeamBPlayers.begin(); it != AllTeamBPlayers.end(); it++)
 		{
-			LastTeamBLerk = PlayerEdict;
-			LastSeenLerkTeamBTime = gpGlobals->time;
+			edict_t* PlayerEdict = (*it)->edict();
+
+			if (FNullEnt(LastTeamBLerk) || IsPlayerHuman(PlayerEdict))
+			{
+				LastTeamBLerk = PlayerEdict;
+				LastSeenLerkTeamBTime = gpGlobals->time;
+			}
 		}
+
+		LastSeenLerkTeamB = LastTeamBLerk;
 	}
 
-	LastSeenLerkTeamB = LastTeamALerk;
+
+
+	
 
 }
 
@@ -4604,6 +4624,8 @@ bool AITAC_IsAlienHarasserNeeded(AvHAIPlayer* pBot)
 		// We only go lerk if the last lerk we had in the match was either us, or we've not had another lerk in 60 seconds
 		// It avoids aliens spending all their resources on evolving lerks if they keep dying
 		// It also means that if a human was playing lerk and died, a bot doesn't immediately take over that role, and lets the human try again if they want
+
+
 		return (FNullEnt(PreviousLerk) || (gpGlobals->time - LastSeenTime > CONFIG_GetLerkCooldown()) || PreviousLerk == pBot->Edict);
 	}
 
@@ -4625,6 +4647,11 @@ bool AITAC_ShouldBotBuildHive(AvHAIPlayer* pBot, AvHAIHiveDefinition** EligibleH
 
 	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
 	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
+
+	// Prioritise getting at least one fade or Onos on the team before putting up a second hive, or we're likely to lose it pretty quickly
+	int NumHeavyHitters = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER4, nullptr) + AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER5, nullptr);
+
+	if (NumHeavyHitters == 0) { return false; }
 
 	// If we're a higher lifeform, ensure we can't leave this to someone else before considering losing those resources
 	// We will ignore humans and third party bots, because we don't know if they will drop the hive or not. Not everyone can be as team-spirited as us...
