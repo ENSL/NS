@@ -1038,12 +1038,12 @@ void BotEvolveLifeform(AvHAIPlayer* pBot, Vector DesiredEvolveLocation, AvHMessa
 
 	if (vIsZero(EvolvePoint))
 	{
-		EvolvePoint = UTIL_ProjectPointToNavmesh(DesiredEvolveLocation, Vector(400.0f, 400.0f, 400.0f), GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE));
+		EvolvePoint = UTIL_ProjectPointToNavmesh(DesiredEvolveLocation, Vector(500.0f, 500.0f, 500.0f), GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE));
 	}
 
 	if (vIsZero(EvolvePoint))
 	{
-		EvolvePoint = UTIL_ProjectPointToNavmesh(DesiredEvolveLocation, Vector(400.0f, 400.0f, 400.0f), GetBaseNavProfile(GORGE_BASE_NAV_PROFILE));
+		EvolvePoint = UTIL_AdjustPointAwayFromNavWall(pBot->CurrentFloorPosition, 50.0f);
 	}
 
 	if (vDist2DSq(pBot->Edict->v.origin, EvolvePoint) > sqrf(32.0f))
@@ -1051,8 +1051,6 @@ void BotEvolveLifeform(AvHAIPlayer* pBot, Vector DesiredEvolveLocation, AvHMessa
 		MoveTo(pBot, EvolvePoint, MOVESTYLE_NORMAL);
 		return;
 	}
-
-
 
 	if (pBot->Player->GetResources() >= EvolveCost)
 	{
@@ -1062,14 +1060,14 @@ void BotEvolveLifeform(AvHAIPlayer* pBot, Vector DesiredEvolveLocation, AvHMessa
 
 void BotEvolveUpgrade(AvHAIPlayer* pBot, Vector DesiredEvolveLocation, AvHMessageID TargetUpgrade)
 {
-	Vector EvolvePoint = UTIL_ProjectPointToNavmesh(DesiredEvolveLocation, GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE));
+	Vector EvolvePoint = UTIL_ProjectPointToNavmesh(DesiredEvolveLocation, Vector(500.0f, 500.0f, 500.0f), GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE));
 
 	if (vIsZero(EvolvePoint))
 	{
-		EvolvePoint = DesiredEvolveLocation;
+		EvolvePoint = UTIL_AdjustPointAwayFromNavWall(pBot->CurrentFloorPosition, (GetPlayerRadius(pBot->Edict) * 2.0f));
 	}
 
-	if (vDist2DSq(pBot->Edict->v.origin, EvolvePoint) > sqrf(32.0f))
+	if (vDist2DSq(pBot->CurrentFloorPosition, EvolvePoint) > sqrf(8.0f))
 	{
 		MoveTo(pBot, EvolvePoint, MOVESTYLE_NORMAL);
 		return;
@@ -4183,19 +4181,91 @@ void AIPlayerNSAlienThink(AvHAIPlayer* pBot)
 
 AvHMessageID AlienGetDesiredUpgrade(AvHAIPlayer* pBot, HiveTechStatus DesiredTech)
 {
+
 	if (DesiredTech == HIVE_TECH_DEFENCE)
 	{
-		return ALIEN_EVOLUTION_ONE;
+		switch (pBot->Player->GetUser3())
+		{
+		case AVH_USER3_ALIEN_PLAYER1:
+		case AVH_USER3_ALIEN_PLAYER2:
+		case AVH_USER3_ALIEN_PLAYER3: // Gorges can heal themselves so regen not worth it. Redemption probably not worth it at 10 res cost to evolve
+			return ALIEN_EVOLUTION_ONE; // Lerks are fragile so best get carapace while the bot is still not great at staying alive with them...
+		case AVH_USER3_ALIEN_PLAYER4:
+		case AVH_USER3_ALIEN_PLAYER5:
+		{
+			if (randbool())
+			{
+				return ALIEN_EVOLUTION_ONE;
+			}
+			else
+			{
+				if (!PlayerHasWeapon(pBot->Player, WEAPON_FADE_METABOLIZE) && randbool())
+				{
+					return ALIEN_EVOLUTION_TWO;
+				}
+				else
+				{
+					return ALIEN_EVOLUTION_THREE;
+				}
+
+
+			}
+		}
+		default:
+			return MESSAGE_NULL;
+		}
 	}
 
 	if (DesiredTech == HIVE_TECH_MOVEMENT)
 	{
-		return ALIEN_EVOLUTION_SEVEN;
+		switch (pBot->Player->GetUser3())
+		{
+		case AVH_USER3_ALIEN_PLAYER1:
+		{
+			if (randbool())
+			{
+				return ALIEN_EVOLUTION_SEVEN;
+			}
+			else
+			{
+				return ALIEN_EVOLUTION_NINE;
+			}
+		}
+		case AVH_USER3_ALIEN_PLAYER2:
+		case AVH_USER3_ALIEN_PLAYER3:
+		case AVH_USER3_ALIEN_PLAYER4:
+		case AVH_USER3_ALIEN_PLAYER5:
+			return ALIEN_EVOLUTION_EIGHT;
+		default:
+			return MESSAGE_NULL;
+		}
+
 	}
 
 	if (DesiredTech == HIVE_TECH_SENSORY)
 	{
-		return ALIEN_EVOLUTION_ELEVEN;
+		switch (pBot->Player->GetUser3())
+		{
+		case AVH_USER3_ALIEN_PLAYER2:
+			return ALIEN_EVOLUTION_TEN;
+		case AVH_USER3_ALIEN_PLAYER1:
+		{
+			if (randbool())
+			{
+				return ALIEN_EVOLUTION_TEN;
+			}
+			else
+			{
+				return ALIEN_EVOLUTION_ELEVEN;
+			}
+		}
+		case AVH_USER3_ALIEN_PLAYER3:
+		case AVH_USER3_ALIEN_PLAYER4:
+		case AVH_USER3_ALIEN_PLAYER5:
+			return ALIEN_EVOLUTION_ELEVEN;
+		default:
+			return MESSAGE_NULL;
+		}
 	}
 
 	return MESSAGE_NULL;

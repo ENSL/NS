@@ -2405,7 +2405,7 @@ void CheckAndHandleDoorObstruction(AvHAIPlayer* pBot)
 		{
 			bot_path_node ThisPathNode = pBot->BotNavInfo.CurrentPath[i];
 
-			BlockingDoorEdict = UTIL_GetDoorBlockingPathPoint(ThisPathNode.FromLocation, ThisPathNode.Location, SAMPLE_POLYAREA_GROUND, nullptr);
+			BlockingDoorEdict = UTIL_GetDoorBlockingPathPoint(ThisPathNode.FromLocation, ThisPathNode.Location, ThisPathNode.flag, nullptr);
 
 			NumIterations++;
 
@@ -2451,7 +2451,7 @@ void CheckAndHandleDoorObstruction(AvHAIPlayer* pBot)
 		{
 			// Wait for the door to finish opening
 			pBot->desiredMovementDir = g_vecZero;
-			BotLookAt(pBot, BlockingDoorEdict);
+			BotLookAt(pBot, CurrentPathNode.Location);
 		}
 		return;
 	}
@@ -2497,7 +2497,7 @@ void CheckAndHandleDoorObstruction(AvHAIPlayer* pBot)
 		}
 
 
-		DoorTrigger* Trigger = UTIL_GetNearestDoorTrigger(pBot->Edict->v.origin, Door, nullptr, true);
+		DoorTrigger* Trigger = UTIL_GetNearestDoorTrigger(pBot->CurrentFloorPosition, Door, nullptr, true);
 
 		if (Trigger && Trigger->NextActivationTime < gpGlobals->time)
 		{
@@ -7730,7 +7730,7 @@ void UTIL_UpdateDoors(bool bInitial)
 				}
 
 				Vector DoorCentre = UTIL_GetCentreOfEntity(it->DoorEdict);
-				DoorCentre.z -= 16.0f;
+				DoorCentre.z -= 24.0f;
 
 				dtNavMeshQuery* Query = NavMeshes[BUILDING_NAV_MESH].navQuery;
 				nav_profile StructureProfile = GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE);
@@ -7738,7 +7738,7 @@ void UTIL_UpdateDoors(bool bInitial)
 				dtPolyRef Polys[8];
 				int polyCount;
 
-				float DoorHalfExtents[3] = { it->DoorEdict->v.size.x, it->DoorEdict->v.size.z, it->DoorEdict->v.size.y };
+				float DoorHalfExtents[3] = { HalfExtents.x, HalfExtents.z, HalfExtents.y };
 				float DoorCentreFlt[3] = { DoorCentre.x, DoorCentre.z, -DoorCentre.y };
 
 				Query->queryPolygons(DoorCentreFlt, DoorHalfExtents, &StructureProfile.Filters, Polys, &polyCount, 8);
@@ -7797,7 +7797,7 @@ void UTIL_UpdateDoors(bool bInitial)
 				}
 
 				Vector DoorCentre = UTIL_GetCentreOfEntity(it->DoorEdict);
-				DoorCentre.z -= 16.0f;
+				DoorCentre.z -= 24.0f;
 
 				dtNavMeshQuery* Query = NavMeshes[BUILDING_NAV_MESH].navQuery;
 				nav_profile StructureProfile = GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE);
@@ -7805,7 +7805,7 @@ void UTIL_UpdateDoors(bool bInitial)
 				dtPolyRef Polys[8];
 				int polyCount;
 
-				float DoorHalfExtents[3] = {it->DoorEdict->v.size.x, it->DoorEdict->v.size.z, it->DoorEdict->v.size.y};
+				float DoorHalfExtents[3] = { HalfExtents.x, HalfExtents.z, HalfExtents.y};
 				float DoorCentreFlt[3] = { DoorCentre.x, DoorCentre.z, -DoorCentre.y };
 				
 				Query->queryPolygons(DoorCentreFlt, DoorHalfExtents, &StructureProfile.Filters, Polys, &polyCount, 8);
@@ -7819,7 +7819,7 @@ void UTIL_UpdateDoors(bool bInitial)
 			else
 			{
 				Vector DoorCentre = UTIL_GetCentreOfEntity(it->DoorEdict);
-				DoorCentre.z -= 16.0f;
+				DoorCentre.z -= 24.0f;
 
 				dtNavMeshQuery* Query = NavMeshes[BUILDING_NAV_MESH].navQuery;
 				nav_profile StructureProfile = GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE);

@@ -631,7 +631,7 @@ void AIMGR_UpdateAIPlayers()
 
 	int NumBotsThinkThisFrame = 0;
 
-	int BotsPerFrame = ceil(BOT_THINK_RATE_HZ * NumRegularBots * FrameDelta);
+	int BotsPerFrame = max(1.0f, round(BOT_THINK_RATE_HZ * NumRegularBots * FrameDelta));
 
 	int BotIndex = 0;
 		
@@ -896,8 +896,6 @@ void AIMGR_ResetRound()
 
 	UTIL_PopulateDoors();
 	UTIL_PopulateWeldableObstacles();
-
-	UTIL_UpdateDoors(true);
 
 	bool bTileCacheFullyUpdated = UTIL_UpdateTileCache();
 

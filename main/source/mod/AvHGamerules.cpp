@@ -358,7 +358,7 @@ AvHGamerules::AvHGamerules() : mTeamA(TEAM_ONE), mTeamB(TEAM_TWO)
 	RegisterServerVariable(&avh_botdebugmode);
 	RegisterServerVariable(&avh_botcommandermode);
 
-	REGISTER_SERVER_FUNCTION("sv_addaiplayer", []()
+	REGISTER_SERVER_FUNCTION("sv_botadd", []()
 		{
 			if (!AIMGR_IsBotEnabled())
 			{
@@ -381,7 +381,7 @@ AvHGamerules::AvHGamerules() : mTeamA(TEAM_ONE), mTeamB(TEAM_TWO)
 			AIMGR_AddAIPlayerToTeam(DesiredTeam);
 		});
 
-	REGISTER_SERVER_FUNCTION("sv_removeaiplayer", []()
+	REGISTER_SERVER_FUNCTION("sv_botremove", []()
 		{
 			if (!AIMGR_IsBotEnabled())
 			{
@@ -404,7 +404,7 @@ AvHGamerules::AvHGamerules() : mTeamA(TEAM_ONE), mTeamB(TEAM_TWO)
 			AIMGR_RemoveAIPlayerFromTeam(DesiredTeam);
 		});
 
-	REGISTER_SERVER_FUNCTION("sv_reloadnavmesh", []()
+	REGISTER_SERVER_FUNCTION("sv_botreloadnav", []()
 		{
 			if (avh_botsenabled.value > 0)
 			{
@@ -416,7 +416,7 @@ AvHGamerules::AvHGamerules() : mTeamA(TEAM_ONE), mTeamB(TEAM_TWO)
 			}
 		});
 
-	REGISTER_SERVER_FUNCTION("sv_regenbotini", []()
+	REGISTER_SERVER_FUNCTION("sv_botregenini", []()
 		{
 			AIMGR_RegenBotIni();
 		});
