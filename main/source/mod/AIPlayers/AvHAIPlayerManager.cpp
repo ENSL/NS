@@ -413,22 +413,10 @@ void AIMGR_AddAIPlayerToTeam(int Team)
 	int NewBotIndex = -1;
 	edict_t* BotEnt = nullptr;
 
-	// If game has ended, don't allow new bots to be added
-	if (GetGameRules()->GetVictoryTeam() != TEAM_IND)
+	// If bots aren't enabled or the game has ended, don't allow new bots to be added
+	if (!AIMGR_IsBotEnabled() || GetGameRules()->GetVictoryTeam() != TEAM_IND)
 	{
 		return;
-	}
-
-	if (!NavmeshLoaded())
-	{
-		CONFIG_ParseConfigFile();
-
-		const char* theCStrLevelName = STRING(gpGlobals->mapname);
-
-		if (!loadNavigationData(theCStrLevelName))
-		{
-			return;
-		}
 	}
 
 	if (ActiveAIPlayers.size() >= gpGlobals->maxClients)
@@ -594,7 +582,6 @@ void AIMGR_UpdateAIPlayers()
 	static int CurrentBotSkill = 1;
 
 	static int UpdateIndex = 0;
-	static int FrameSpread = 3;
 
 	CurrTime = gpGlobals->time;
 
@@ -613,8 +600,6 @@ void AIMGR_UpdateAIPlayers()
 	{
 		CurrentBotSkill = cvarBotSkill;
 	}
-
-	bool bHasCommander = false;
 
 	if (bHasRoundStarted)
 	{
@@ -640,6 +625,15 @@ void AIMGR_UpdateAIPlayers()
 			}
 		}
 	}
+	
+	int NumCommanders = AIMGR_GetNumAICommanders();
+	int NumRegularBots = AIMGR_GetNumAIPlayers() - NumCommanders;
+
+	int NumBotsThinkThisFrame = 0;
+
+	int BotsPerFrame = ceil(BOT_THINK_RATE_HZ * NumRegularBots * FrameDelta);
+
+	int BotIndex = 0;
 		
 	for (auto BotIt = ActiveAIPlayers.begin(); BotIt != ActiveAIPlayers.end();)
 	{
@@ -652,18 +646,11 @@ void AIMGR_UpdateAIPlayers()
 
 		AvHAIPlayer* bot = &(*BotIt);
 
-		if (IsPlayerCommander(bot->Edict))
-		{
-			bHasCommander = true;
-		}
-
 		if (bSkillChanged)
 		{
 			const bot_skill NewSkillSettings = CONFIG_GetBotSkillLevel();
 			memcpy(&bot->BotSkillSettings, &NewSkillSettings, sizeof(bot_skill));
 		}
-
-		int BotIndex = distance(ActiveAIPlayers.begin(), BotIt);
 
 		BotUpdateViewRotation(bot, FrameDelta);
 
@@ -671,26 +658,23 @@ void AIMGR_UpdateAIPlayers()
 		{
 			if (IsPlayerCommander(bot->Edict))
 			{
-				if (UpdateIndex == FrameSpread)
+				if (UpdateIndex == -1)
 				{
 					AIPlayerThink(bot);
 				}
 			}
 			else
 			{
-				if (UpdateIndex != FrameSpread)
+				if (UpdateIndex > -1 && BotIndex >= UpdateIndex && NumBotsThinkThisFrame < BotsPerFrame)
 				{
-					int BotModulo = BotIndex % FrameSpread;
-
-					if (BotModulo == UpdateIndex)
-					{
-						AIPlayerThink(bot);
-					}
+					AIPlayerThink(bot);
+					NumBotsThinkThisFrame++;
 				}
+				BotIndex++;
 			}
 		}
 
-		if (IS_DEDICATED_SERVER() || (CurrTime - bot->LastServerUpdateTime) >= BOT_MIN_FRAME_TIME)
+		if (IS_DEDICATED_SERVER() || (CurrTime - bot->LastServerUpdateTime) >= BOT_SERVER_UPDATE_RATE)
 		{
 			UpdateBotChat(bot);
 
@@ -707,11 +691,25 @@ void AIMGR_UpdateAIPlayers()
 		BotIt++;
 	}
 
-	UpdateIndex++;
-
-	if (UpdateIndex > FrameSpread || (!bHasCommander && UpdateIndex == FrameSpread))
+	if (UpdateIndex < 0) 
+	{ 
+		UpdateIndex = 0; 
+	}
+	else
 	{
-		UpdateIndex = 0;
+		UpdateIndex += NumBotsThinkThisFrame;
+	}	
+
+	if (UpdateIndex >= NumRegularBots)
+	{
+		if (NumCommanders > 0)
+		{
+			UpdateIndex = -1;
+		}
+		else
+		{
+			UpdateIndex = 0;
+		}
 	}
 
 	PrevTime = CurrTime;
@@ -721,6 +719,21 @@ void AIMGR_UpdateAIPlayers()
 int AIMGR_GetNumAIPlayers()
 {
 	return ActiveAIPlayers.size();
+}
+
+int AIMGR_GetNumAICommanders()
+{
+	int Result = 0;
+
+	for (auto it = ActiveAIPlayers.begin(); it != ActiveAIPlayers.end(); it++)
+	{
+		if (it->Player->GetUser3() == AVH_USER3_COMMANDER_PLAYER)
+		{
+			Result++;
+		}
+	}
+
+	return Result;
 }
 
 AvHTeamNumber AIMGR_GetTeamANumber()
@@ -1001,8 +1014,6 @@ void AIMGR_NewMap()
 	
 	AITAC_ClearMapAIData(true);
 
-	CONFIG_ParseConfigFile();
-
 	AIMGR_BotPrecache();
 
 	bHasRoundStarted = false;
@@ -1029,6 +1040,8 @@ void AIMGR_LoadNavigationData()
 {
 	// Don't reload the nav mesh if it's already loaded
 	if (NavmeshLoaded()) { return; }
+
+	CONFIG_ParseConfigFile();
 
 	const char* theCStrLevelName = STRING(gpGlobals->mapname);
 
@@ -1187,6 +1200,11 @@ void AIMGR_UpdateAIMapData()
 		UTIL_UpdateTileCache();
 		AITAC_CheckNavMeshModified();
 	}
+}
+
+void AIMGR_RegenBotIni()
+{
+	CONFIG_RegenerateIniFile();
 }
 
 void AIMGR_BotPrecache()

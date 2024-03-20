@@ -147,7 +147,7 @@ void CONFIG_ParseConfigFile()
     BotSkillLevels[3].alien_bot_view_speed = 2.0f;
 
 
-    string BotConfigFile = string(getModDirectory()) + "/nsbots.cfg";
+    string BotConfigFile = string(getModDirectory()) + "/nsbots.ini";
 
     const char* filename = BotConfigFile.c_str();
 
@@ -429,9 +429,117 @@ void CONFIG_ParseConfigFile()
             }
         }
     }
+    else
+    {
+        ALERT(at_console, "nsbots.ini was not found in the NS mod folder. You can regenerate it with the console command 'sv_regenbotini'");
+    }
 }
 
 BotFillTiming CONFIG_GetBotFillTiming()
 {
     return CurrentBotFillTiming;
+}
+
+void CONFIG_RegenerateIniFile()
+{
+    string BotConfigFile = string(getModDirectory()) + "/nsbots.ini";
+
+    const char* filename = BotConfigFile.c_str();
+
+    FILE* NewConfigFile = fopen(filename, "w+");
+
+    if (!NewConfigFile)
+    {
+        ALERT(at_console, "Unable to write to %s, please ensure the user has privileges\n", filename);
+        return;
+    }
+
+    fprintf(NewConfigFile, "### General bot settings ###\n\n");
+
+    fprintf(NewConfigFile, "# What prefix to put in front of a bot's name (can leave blank)\n");
+    fprintf(NewConfigFile, "prefix=[BOT]\n\n");
+
+    fprintf(NewConfigFile, "# When should the server start adding bots? Note: bots will always be added after round start regardless\n");
+    fprintf(NewConfigFile, "# 0 = On map load (after 5 second grace period)\n");
+    fprintf(NewConfigFile, "# 1 = When all humans have joined a team (i.e. no more humans left in ready room)\n");
+    fprintf(NewConfigFile, "# 2 = When the round has started (after countdown)\n");
+    fprintf(NewConfigFile, "BotFillTiming = 1\n\n\n");
+
+
+    fprintf(NewConfigFile, "### Skill Settings ###\n\n");
+
+    fprintf(NewConfigFile, "# Bot skill settings. You can define as many settings as you like and reference them by name\n");
+    fprintf(NewConfigFile, "# Format is BotSkillName = name, followed by one of the following:\n");
+    fprintf(NewConfigFile, "# ReactionTime = How quickly in seconds the bot will react to sighting enemies\n");
+    fprintf(NewConfigFile, "# AimSkill = How accurately the bot can lock sights on you after seeing you (0.0 - 1.0)\n");
+    fprintf(NewConfigFile, "# MovementTracking = How accurately the bot can follow a moving target (0.0 - 1.0)\n");
+    fprintf(NewConfigFile, "# ViewSpeed = How fast the bot can swivel its view (0.1 - 2.0)\n");
+    fprintf(NewConfigFile, "# Set the difficulty using the 'mp_botskill' cvar (0 - 3)\n\n");
+
+    fprintf(NewConfigFile, "BotSkillLevel=0\n");
+    fprintf(NewConfigFile, "MarineReactionTime=0.5\n");
+    fprintf(NewConfigFile, "MarineAimSkill=0.1\n");
+    fprintf(NewConfigFile, "MarineMovementTracking=0.1\n");
+    fprintf(NewConfigFile, "MarineViewSpeed=0.5\n");
+    fprintf(NewConfigFile, "AlienReactionTime=0.5\n");
+    fprintf(NewConfigFile, "AlienAimSkill=0.2\n");
+    fprintf(NewConfigFile, "AlienMovementTracking=0.2\n");
+    fprintf(NewConfigFile, "AlienViewSpeed=0.75\n\n");
+
+    fprintf(NewConfigFile, "BotSkillLevel=1\n");
+    fprintf(NewConfigFile, "MarineReactionTime=0.2\n");
+    fprintf(NewConfigFile, "MarineAimSkill=0.5\n");
+    fprintf(NewConfigFile, "MarineMovementTracking=0.4\n");
+    fprintf(NewConfigFile, "MarineViewSpeed=1.0\n");
+    fprintf(NewConfigFile, "AlienReactionTime=0.2\n");
+    fprintf(NewConfigFile, "AlienAimSkill=0.5\n");
+    fprintf(NewConfigFile, "AlienMovementTracking=0.5\n");
+    fprintf(NewConfigFile, "AlienViewSpeed=1.3\n\n");
+
+    fprintf(NewConfigFile, "BotSkillLevel=2\n");
+    fprintf(NewConfigFile, "MarineReactionTime=0.2\n");
+    fprintf(NewConfigFile, "MarineAimSkill=0.6\n");
+    fprintf(NewConfigFile, "MarineMovementTracking=0.6\n");
+    fprintf(NewConfigFile, "MarineViewSpeed=1.5\n");
+    fprintf(NewConfigFile, "AlienReactionTime=0.2\n");
+    fprintf(NewConfigFile, "AlienAimSkill=0.8\n");
+    fprintf(NewConfigFile, "AlienMovementTracking=0.8\n");
+    fprintf(NewConfigFile, "AlienViewSpeed=1.5\n\n");
+
+    fprintf(NewConfigFile, "BotSkillLevel=3\n");
+    fprintf(NewConfigFile, "MarineReactionTime=0.1\n");
+    fprintf(NewConfigFile, "MarineAimSkill=1.0\n");
+    fprintf(NewConfigFile, "MarineMovementTracking=1.0\n");
+    fprintf(NewConfigFile, "MarineViewSpeed=2.0\n");
+    fprintf(NewConfigFile, "AlienReactionTime=0.1\n");
+    fprintf(NewConfigFile, "AlienAimSkill=1.0\n");
+    fprintf(NewConfigFile, "AlienMovementTracking=1.0\n");
+    fprintf(NewConfigFile, "AlienViewSpeed=2.0\n\n");
+
+    fprintf(NewConfigFile, "# Desired team sizes. Only used if bot fill mode is 'fillteams'\n");
+    fprintf(NewConfigFile, "# Format is TeamSize=mapname:nummarines/numaliens\n");
+    fprintf(NewConfigFile, "# 'default' will be used if playing a map not listed below\n");
+    fprintf(NewConfigFile, "TeamSize=default:7/7\n");
+    fprintf(NewConfigFile, "TeamSize=ns_machina:8/8\n");
+    fprintf(NewConfigFile, "TeamSize=ns_ragnarok:8/8\n");
+    fprintf(NewConfigFile, "TeamSize=co_faceoff:4/4\n");
+    fprintf(NewConfigFile, "TeamSize=co_core:4/4\n");
+    fprintf(NewConfigFile, "TeamSize=co_pulse:6/6\n");
+    fprintf(NewConfigFile, "TeamSize=co_ulysses:6/6\n");
+    fprintf(NewConfigFile, "TeamSize=co_niveus:5/5\n");
+    fprintf(NewConfigFile, "TeamSize=co_kestrel:5/5\n\n\n");
+
+
+    fprintf(NewConfigFile, "### Alien Settings ###\n\n");
+
+    fprintf(NewConfigFile, "# Preferred chamber sequence. Valid entries are 'defense', 'movement' and 'sensory'. Separate sequence with forward slash\n");
+    fprintf(NewConfigFile, "# You can also use ? for random, so if you want movement always first but then defense and sensory at random, use\n");
+    fprintf(NewConfigFile, "# ChamberSequence:movement/?/?\n");
+    fprintf(NewConfigFile, "# Or if you want sensory always last, but movement and defence random, use\n");
+    fprintf(NewConfigFile, "# ChamberSequence=?/?/sensory\n");
+    fprintf(NewConfigFile, "ChamberSequence=defense/movement/sensory\n");
+
+    fflush(NewConfigFile);
+    fclose(NewConfigFile);
+
 }

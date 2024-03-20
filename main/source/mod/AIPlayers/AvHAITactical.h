@@ -86,7 +86,7 @@ AvHMessageID UTIL_ItemTypeToImpulseCommand(const AvHAIDeployableItemType ItemTyp
 
 edict_t* AITAC_GetClosestPlayerOnTeamWithLOS(AvHTeamNumber Team, const Vector& Location, float SearchRadius, edict_t* IgnorePlayer);
 bool AITAC_AnyPlayerOnTeamHasLOSToLocation(AvHTeamNumber Team, const Vector& Location, float SearchRadius, edict_t* IgnorePlayer);
-bool AITAC_GetNumPlayersOnTeamWithLOS(AvHTeamNumber Team, const Vector& Location, float SearchRadius, edict_t* IgnorePlayer);
+int AITAC_GetNumPlayersOnTeamWithLOS(AvHTeamNumber Team, const Vector& Location, float SearchRadius, edict_t* IgnorePlayer);
 vector<AvHPlayer*> AITAC_GetAllPlayersOnTeamWithLOS(AvHTeamNumber Team, const Vector& Location, float SearchRadius, edict_t* IgnorePlayer);
 bool AITAC_ShouldBotBeCautious(AvHAIPlayer* pBot);
 

@@ -915,7 +915,7 @@ bool AITASK_IsMarineSecureHiveTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask*
 	{
 		AvHAIBuildableStructure Structure = (*it);
 
-		if (Structure.StructureType == STRUCTURE_MARINE_TURRETFACTORY)
+		if (Structure.StructureType == STRUCTURE_MARINE_PHASEGATE)
 		{
 			bHasPhaseGate = true;
 		}
@@ -2806,7 +2806,7 @@ void AITASK_GenerateGuardWatchPoints(AvHAIPlayer* pBot, const Vector& GuardLocat
 
 		dtStatus SearchResult = FindPathClosestToPoint(NavProfile, ThisHive->FloorLocation, GuardLocation, path, 500.0f);
 
-		if (dtStatusSucceed(SearchResult))
+		if (dtStatusSucceed(SearchResult) && path.size() > 0)
 		{
 			Vector FinalApproachDir = UTIL_GetVectorNormal2D(path.back().Location - prev(prev(path.end()))->Location);
 			Vector ProspectiveNewGuardLoc = GuardLocation - (FinalApproachDir * 300.0f);
@@ -2822,7 +2822,7 @@ void AITASK_GenerateGuardWatchPoints(AvHAIPlayer* pBot, const Vector& GuardLocat
 
 		dtStatus SearchResult = FindPathClosestToPoint(NavProfile, AITAC_GetTeamStartingLocation(EnemyTeam), GuardLocation, path, 500.0f);
 
-		if (dtStatusSucceed(SearchResult))
+		if (dtStatusSucceed(SearchResult) && path.size() > 0)
 		{
 			Vector FinalApproachDir = UTIL_GetVectorNormal2D(path.back().Location - prev(prev(path.end()))->Location);
 			Vector ProspectiveNewGuardLoc = GuardLocation - (FinalApproachDir * 300.0f);
@@ -2839,7 +2839,7 @@ void AITASK_GenerateGuardWatchPoints(AvHAIPlayer* pBot, const Vector& GuardLocat
 		{
 			dtStatus SearchResult = FindPathClosestToPoint(NavProfile, AITAC_GetTeamStartingLocation(pBot->Player->GetTeam()), GuardLocation, path, 500.0f);
 
-			if (dtStatusSucceed(SearchResult))
+			if (dtStatusSucceed(SearchResult) && path.size() > 0)
 			{
 				Vector FinalApproachDir = UTIL_GetVectorNormal2D(path.back().Location - prev(prev(path.end()))->Location);
 				Vector ProspectiveNewGuardLoc = GuardLocation - (FinalApproachDir * 300.0f);
@@ -3264,19 +3264,20 @@ void AITASK_SetBuildTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, edict_t* Stru
 
 	if (FNullEnt(StructureToBuild) || UTIL_StructureIsFullyBuilt(StructureToBuild)) { return; }
 
-	if (Task->TaskType == TASK_BUILD && Task->TaskTarget == StructureToBuild) { return; }
+	if (Task->TaskType == TASK_BUILD && Task->TaskTarget == StructureToBuild) 
+	{
+		Task->bTaskIsUrgent = bIsUrgent;
+		return; 
+	}
 
 	// Get as close as possible to desired location
-	Vector BuildLocation = FindClosestNavigablePointToDestination(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, UTIL_GetEntityGroundLocation(StructureToBuild), 80.0f);
+	Vector BuildLocation = UTIL_ProjectPointToNavmesh(StructureToBuild->v.origin);
 
-	if (BuildLocation != g_vecZero)
-	{
-		Task->TaskType = TASK_BUILD;
-		Task->TaskTarget = StructureToBuild;
-		Task->TaskLocation = BuildLocation;
-		Task->bTaskIsUrgent = bIsUrgent;
-		Task->StructureType = GetStructureTypeFromEdict(StructureToBuild);
-	}
+	Task->TaskType = TASK_BUILD;
+	Task->TaskTarget = StructureToBuild;
+	Task->TaskLocation = (!vIsZero(BuildLocation)) ? BuildLocation : UTIL_GetFloorUnderEntity(StructureToBuild);
+	Task->bTaskIsUrgent = bIsUrgent;
+	Task->StructureType = GetStructureTypeFromEdict(StructureToBuild);
 }
 
 void AITASK_SetCapResNodeTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, const AvHAIResourceNode* NodeRef, const bool bIsUrgent)

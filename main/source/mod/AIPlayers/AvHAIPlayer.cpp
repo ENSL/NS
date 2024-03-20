@@ -3413,8 +3413,11 @@ void AIPlayerSetMarineCapperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 
 void AIPlayerSetMarineAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
+
 	// Go attack sieged hive
-	const AvHAIHiveDefinition* ActiveSiegeHive = AITAC_GetNearestHiveUnderActiveSiege(pBot->Player->GetTeam(), pBot->Edict->v.origin);
+	const AvHAIHiveDefinition* ActiveSiegeHive = AITAC_GetNearestHiveUnderActiveSiege(BotTeam, pBot->Edict->v.origin);
 
 	if (ActiveSiegeHive)
 	{
@@ -3434,7 +3437,9 @@ void AIPlayerSetMarineAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 		AvHAIHiveDefinition* ThisHive = (*it);
 		if (ThisHive->Status != HIVE_STATUS_UNBUILT) { continue; }
 
-		int NumMarinesSecuring = AITAC_GetNumPlayersOfTeamInArea(pBot->Player->GetTeam(), ThisHive->Location, UTIL_MetresToGoldSrcUnits(15.0f), false, pBot->Edict, AVH_USER3_COMMANDER_PLAYER);
+		if (AICOMM_IsHiveFullySecured(pBot, ThisHive, false)) { continue; }
+
+		int NumMarinesSecuring = AITAC_GetNumPlayersOfTeamInArea(BotTeam, ThisHive->Location, UTIL_MetresToGoldSrcUnits(15.0f), false, pBot->Edict, AVH_USER3_COMMANDER_PLAYER);
 
 		if (NumMarinesSecuring < 2)
 		{
@@ -3461,15 +3466,39 @@ void AIPlayerSetMarineAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 
 	// Go to a good siege location if phase gates available
 
-	if (AITAC_PhaseGatesAvailable(pBot->Player->GetTeam()))
+	if (AITAC_PhaseGatesAvailable(BotTeam))
 	{
-		const AvHAIHiveDefinition* ActiveHive = AITAC_GetActiveHiveNearestLocation(AIMGR_GetEnemyTeam(pBot->Player->GetTeam()), pBot->Edict->v.origin);
+		const AvHAIHiveDefinition* ActiveHive = AITAC_GetActiveHiveNearestLocation(AIMGR_GetEnemyTeam(BotTeam), pBot->Edict->v.origin);
 
 		if (ActiveHive)
 		{
-			if (Task->TaskType != TASK_MOVE)
+			DeployableSearchFilter EnemyDefences;
+			EnemyDefences.DeployableTeam = EnemyTeam;
+			EnemyDefences.DeployableTypes = STRUCTURE_ALIEN_OFFENCECHAMBER;
+			EnemyDefences.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+			EnemyDefences.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
+
+			if (!AITAC_DeployableExistsAtLocation(ActiveHive->FloorLocation, &EnemyDefences) && AITAC_GetNumPlayersOnTeamWithLOS(EnemyTeam, ActiveHive->Location, UTIL_MetresToGoldSrcUnits(10.0f), nullptr) < 3)
 			{
-				AITASK_SetMoveTask(pBot, Task, UTIL_GetRandomPointOnNavmeshInDonut(pBot->BotNavInfo.NavProfile, ActiveHive->FloorLocation, UTIL_MetresToGoldSrcUnits(10.0f), UTIL_MetresToGoldSrcUnits(20.0f)), false);
+				AITASK_SetAttackTask(pBot, Task, ActiveHive->HiveEdict, false);
+				return;
+			}
+
+			if (Task->TaskType != TASK_GUARD || vDist2DSq(Task->TaskLocation, ActiveHive->Location) > sqrf(UTIL_MetresToGoldSrcUnits(20.0f)))
+			{
+				Vector GuardLocation = UTIL_GetRandomPointOnNavmeshInDonut(pBot->BotNavInfo.NavProfile, ActiveHive->FloorLocation, UTIL_MetresToGoldSrcUnits(15.0f), UTIL_MetresToGoldSrcUnits(25.0f));
+
+				if (!vIsZero(GuardLocation))
+				{
+
+					Task->TaskType = TASK_GUARD;
+					Task->TaskLength = 60.0f;
+					Task->TaskLocation = GuardLocation;
+					Task->bTaskIsUrgent = false;
+					Task->TaskStartedTime = 0.0f;
+					return;
+				}
+				
 			}
 
 			return;

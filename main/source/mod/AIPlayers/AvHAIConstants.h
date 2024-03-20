@@ -352,6 +352,7 @@ typedef struct _AVH_AI_BUILDABLE_STRUCTURE
 	bool bReachabilityMarkedDirty = false; // If true, reachability flags will be recalculated for this structure
 
 	bool IsValid() { return !FNullEnt(edict) && !edict->free && !(edict->v.flags & EF_NODRAW) && edict->v.deadflag == DEAD_NO; }
+	bool IsCompleted() { return (StructureStatusFlags & STRUCTURE_STATUS_COMPLETED); }
 
 } AvHAIBuildableStructure;
 

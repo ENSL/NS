@@ -416,6 +416,11 @@ AvHGamerules::AvHGamerules() : mTeamA(TEAM_ONE), mTeamB(TEAM_TWO)
 			}
 		});
 
+	REGISTER_SERVER_FUNCTION("sv_regenbotini", []()
+		{
+			AIMGR_RegenBotIni();
+		});
+
 	g_VoiceGameMgr.Init(&gVoiceHelper, gpGlobals->maxClients);
 
 	#ifdef DEBUG

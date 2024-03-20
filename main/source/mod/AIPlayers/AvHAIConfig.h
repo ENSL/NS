@@ -58,6 +58,6 @@ bot_skill CONFIG_GetBotSkillLevel();
 
 BotFillTiming CONFIG_GetBotFillTiming();
 
-
+void CONFIG_RegenerateIniFile();
 
 #endif
