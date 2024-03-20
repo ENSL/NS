@@ -1379,7 +1379,7 @@ void BotProgressReinforceStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	}
 
-	BotGuardLocation(pBot, ReinforceLocation);
+	BotGuardLocation(pBot, (!vIsZero(Task->TaskLocation)) ? Task->TaskLocation : ReinforceLocation);
 
 
 }
@@ -1653,6 +1653,7 @@ void BotProgressAttackTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 				}
 
 				MoveTo(pBot, pBot->LastSafeLocation, MOVESTYLE_NORMAL);
+				return;
 			}
 		}
 	}
@@ -1687,7 +1688,7 @@ void BotProgressAttackTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 		BotShootTarget(pBot, Weapon, Task->TaskTarget);
 
-		if (IsDamagingStructure(Task->TaskTarget))
+		if (IsDamagingStructure(Task->TaskTarget) && !IsMeleeWeapon(Weapon))
 		{
 			Vector EnemyOrientation = UTIL_GetVectorNormal2D(Task->TaskTarget->v.origin - pBot->Edict->v.origin);
 
