@@ -4,8 +4,10 @@
 #include "../AvHConstants.h"
 #include "AvHAIPlayer.h"
 
-// Max rate bot can run its logic, default is 1/60th second. WARNING: Increasing the rate past 100hz causes bots to move and turn slowly due to GoldSrc limits!
-static const double BOT_MIN_FRAME_TIME = (1.0 / 100.0);
+// The rate at which the bot will call RunPlayerMove in, default is 100hz. WARNING: Increasing the rate past 100hz causes bots to move and turn slowly due to GoldSrc limits!
+static const double BOT_SERVER_UPDATE_RATE = (1.0 / 100.0);
+// The rate in hz (times per second) at which the bot will call AIPlayerThink, default is 10 times per second.
+static const int BOT_THINK_RATE_HZ = 10;
 // Once the first human player has joined the game, how long to wait before adding bots
 static const float AI_GRACE_PERIOD = 5.0f;
 // Max time to wait before spawning players if none connect (e.g. empty dedicated server)
@@ -43,8 +45,12 @@ vector<AvHPlayer*> AIMGR_GetAllPlayersOnTeam(AvHTeamNumber Team);
 int AIMGR_GetNumPlayersOnTeam(AvHTeamNumber Team);
 // How many AI players are in the game (does NOT include third-party bots like RCBot/Whichbot)
 int		AIMGR_GetNumAIPlayers();
+// How many bot commanders we have (across both teams)
+int AIMGR_GetNumAICommanders();
 // Returns true if an AI player is on the requested team (does NOT include third-party bots like RCBot/Whichbot)
 int		AIMGR_AIPlayerExistsOnTeam(AvHTeamNumber Team);
+
+void AIMGR_RegenBotIni();
 
 void	AIMGR_UpdateAIMapData();
 bool AIMGR_ShouldStartPlayerBalancing();

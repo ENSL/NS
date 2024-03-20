@@ -1706,7 +1706,7 @@ dtStatus FindFlightPathToPoint(const nav_profile &NavProfile, Vector FromLocatio
 
 		if (CurrFlags == SAMPLE_POLYFLAGS_JUMP || CurrFlags == SAMPLE_POLYFLAGS_WALLCLIMB || CurrFlags == SAMPLE_POLYFLAGS_FLY)
 		{
-			float MaxHeight = (CurrFlags == SAMPLE_POLYFLAGS_JUMP) ? fmaxf(PrevPoint.z, NextPathPoint.z) + 60.0f : UTIL_FindZHeightForWallClimb(path.back().Location, NextPathPoint, head_hull);
+			float MaxHeight = (CurrFlags == SAMPLE_POLYFLAGS_JUMP) ? fmaxf(PrevPoint.z, NextPathPoint.z) + 60.0f : UTIL_FindZHeightForWallClimb(PrevPoint, NextPathPoint, head_hull);
 
 			NextPathNode.requiredZ = MaxHeight;
 			NextPathNode.Location = PrevPoint;
@@ -1752,7 +1752,7 @@ dtStatus FindFlightPathToPoint(const nav_profile &NavProfile, Vector FromLocatio
 	}
 
 	bot_path_node FinalInitialPathNode;
-	FinalInitialPathNode.FromLocation = path.back().Location;
+	FinalInitialPathNode.FromLocation = (path.size() > 0) ? path.back().Location : FromLocation;
 	FinalInitialPathNode.Location = ToLocation;
 	FinalInitialPathNode.area = SAMPLE_POLYAREA_GROUND;
 	FinalInitialPathNode.flag = SAMPLE_POLYFLAGS_WALLCLIMB;
@@ -5920,7 +5920,7 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 		pBot->BotNavInfo.NextForceRecalc = 0.0f;
 		pBot->BotNavInfo.bNavProfileChanged = false;
 
-		if (dtStatusSucceed(PathFindingStatus))
+		if (dtStatusSucceed(PathFindingStatus) && BotNavInfo->CurrentPath.size() > 0)
 		{		
 			pBot->BotNavInfo.StuckInfo.bPathFollowFailed = false;
 			ClearBotStuckMovement(pBot);
@@ -6107,7 +6107,7 @@ Vector FindClosestNavigablePointToDestination(const nav_profile& NavProfile, con
 
 	dtStatus PathFindingResult = FindPathClosestToPoint(NavProfile, FromLocation, ToLocation, Path, MaxAcceptableDistance);
 
-	if (dtStatusSucceed(PathFindingResult))
+	if (dtStatusSucceed(PathFindingResult) && Path.size() > 0)
 	{
 		return Path.back().Location;
 	}
@@ -6897,7 +6897,7 @@ bool BotRecalcPath(AvHAIPlayer* pBot, const Vector Destination)
 
 	dtStatus FoundPath = FindPathClosestToPoint(pBot, pBot->BotNavInfo.MoveStyle, pBot->CurrentFloorPosition, ValidNavmeshPoint, pBot->BotNavInfo.CurrentPath, max_ai_use_reach);
 
-	if (dtStatusSucceed(FoundPath))
+	if (dtStatusSucceed(FoundPath) && pBot->BotNavInfo.CurrentPath.size() > 0)
 	{
 		pBot->BotNavInfo.TargetDestination = Destination;
 		pBot->BotNavInfo.ActualMoveDestination = pBot->BotNavInfo.CurrentPath.back().Location;
@@ -8433,7 +8433,7 @@ void NAV_SetMoveMovementTask(AvHAIPlayer* pBot, Vector MoveLocation, DoorTrigger
 	vector<bot_path_node> Path;
 	dtStatus PathStatus = FindPathClosestToPoint(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, MoveLocation, Path, 200.0f);
 
-	if (dtStatusSucceed(PathStatus))
+	if (dtStatusSucceed(PathStatus) && Path.size() > 0)
 	{
 		MoveTask->TaskLocation = Path.back().Location;
 	}
@@ -8452,7 +8452,7 @@ void NAV_SetTouchMovementTask(AvHAIPlayer* pBot, edict_t* EntityToTouch, DoorTri
 	vector<bot_path_node> Path;
 	dtStatus PathStatus = FindPathClosestToPoint(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, UTIL_GetCentreOfEntity(EntityToTouch), Path, 200.0f);
 
-	if (dtStatusSucceed(PathStatus))
+	if (dtStatusSucceed(PathStatus) && Path.size() > 0)
 	{
 		MoveTask->TaskLocation = Path.back().Location;
 	}

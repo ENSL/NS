@@ -4188,7 +4188,7 @@ vector<AvHPlayer*> AITAC_GetAllPlayersOnTeamWithLOS(AvHTeamNumber Team, const Ve
 	return Results;
 }
 
-bool AITAC_GetNumPlayersOnTeamWithLOS(AvHTeamNumber Team, const Vector& Location, float SearchRadius, edict_t* IgnorePlayer)
+int AITAC_GetNumPlayersOnTeamWithLOS(AvHTeamNumber Team, const Vector& Location, float SearchRadius, edict_t* IgnorePlayer)
 {
 	int Result = 0;
 
