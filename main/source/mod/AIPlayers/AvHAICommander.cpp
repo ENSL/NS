@@ -354,18 +354,7 @@ bool AICOMM_IsOrderStillValid(AvHAIPlayer* pBot, ai_commander_order* Order)
 			const AvHAIHiveDefinition* Hive = AITAC_GetHiveFromEdict(Order->OrderTarget);
 
 			// Hive has been destroyed, no longer needs sieging
-			if (!Hive || Hive->Status == HIVE_STATUS_UNBUILT) { return false; }
-
-			DeployableSearchFilter StructureFilter;
-			StructureFilter.DeployableTeam = pBot->Player->GetTeam();
-			StructureFilter.DeployableTypes = STRUCTURE_MARINE_PHASEGATE | STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_MARINE_ADVTURRETFACTORY;
-			StructureFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
-			StructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(25.0f);
-
-			// Check that any siege structure exists. This will avoid situations where commander keeps ordering marines to a hive that is too well defended
-			bool bSiegeStructureExists = AITAC_DeployableExistsAtLocation(Hive->Location, &StructureFilter);
-
-			return bSiegeStructureExists;
+			return (Hive && Hive->Status != HIVE_STATUS_UNBUILT);
 
 		}
 		break;
