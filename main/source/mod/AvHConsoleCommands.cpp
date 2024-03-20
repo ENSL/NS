@@ -1415,7 +1415,7 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
             theSuccess = true;
         }
     }
-	else if (FStrEq(pcmd, "ai_setdebugaiplayer"))
+	else if (FStrEq(pcmd, "bot_setdebugaiplayer"))
 	{
 		CBaseEntity* SpectatedPlayer = theAvHPlayer->GetSpectatingEntity();
 
@@ -1430,7 +1430,7 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 		theSuccess = true;
 	}
-	else if (FStrEq(pcmd, "ai_cometome"))
+	else if (FStrEq(pcmd, "bot_cometome"))
 	{
 		vector<AvHAIPlayer*> AIPlayers = AIMGR_GetAllAIPlayers();
 
@@ -1444,30 +1444,15 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 
 		theSuccess = true;
 	}
-	else if (FStrEq(pcmd, "ai_drawtempobstacles"))
+	else if (FStrEq(pcmd, "bot_drawtempobstacles"))
 	{
 		AIDEBUG_DrawTemporaryObstacles(10.0f);
 
 		theSuccess = true;
 	}
-	else if (FStrEq(pcmd, "ai_drawoffmeshconns"))
+	else if (FStrEq(pcmd, "bot_drawoffmeshconns"))
 	{
 		AIDEBUG_DrawOffMeshConnections(10.0f);
-
-		theSuccess = true;
-	}
-	else if (FStrEq(pcmd, "ai_saysomething"))
-	{
-		vector<AvHAIPlayer*> AIPlayers = AIMGR_GetAllAIPlayers();
-
-		for (auto it = AIPlayers.begin(); it != AIPlayers.end(); it++)
-		{
-			AvHAIPlayer* thisBot = (*it);
-			{
-				BotSay(thisBot, false, 1.0f, "Regular Chat");
-				BotSay(thisBot, true, 2.0f, "Team Chat");
-			}
-		}
 
 		theSuccess = true;
 	}
