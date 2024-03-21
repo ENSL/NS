@@ -534,7 +534,7 @@ void AIMGR_AddAIPlayerToTeam(int Team)
 byte BotThrottledMsec(AvHAIPlayer* inAIPlayer, float CurrentTime)
 {
 	// Thanks to The Storm (ePODBot) for this one, finally fixed the bot running speed!
-	int newmsec = (int)((CurrentTime - inAIPlayer->LastServerUpdateTime) * 1000);
+	int newmsec = (int)roundf((CurrentTime - inAIPlayer->LastServerUpdateTime) * 1000.0f);
 	
 	if (newmsec > 255)
 	{
@@ -674,19 +674,16 @@ void AIMGR_UpdateAIPlayers()
 			}
 		}
 
-		if (IS_DEDICATED_SERVER() || (CurrTime - bot->LastServerUpdateTime) >= BOT_SERVER_UPDATE_RATE)
-		{
-			UpdateBotChat(bot);
+		UpdateBotChat(bot);
 
-			// Needed to correctly handle client prediction and physics calculations
-			byte adjustedmsec = BotThrottledMsec(bot, CurrTime);			
+		// Needed to correctly handle client prediction and physics calculations
+		byte adjustedmsec = BotThrottledMsec(bot, CurrTime);			
 
-			// Simulate PM_PlayerMove so client prediction and stuff can be executed correctly.
-			RUN_AI_MOVE(bot->Edict, bot->Edict->v.v_angle, bot->ForwardMove,
-				bot->SideMove, bot->UpMove, bot->Button, bot->Impulse, adjustedmsec);
+		// Simulate PM_PlayerMove so client prediction and stuff can be executed correctly.
+		RUN_AI_MOVE(bot->Edict, bot->Edict->v.v_angle, bot->ForwardMove,
+			bot->SideMove, bot->UpMove, bot->Button, bot->Impulse, adjustedmsec);
 
-			bot->LastServerUpdateTime = CurrTime;
-		}
+		bot->LastServerUpdateTime = CurrTime;
 
 		BotIt++;
 	}
