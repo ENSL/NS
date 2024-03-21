@@ -31,6 +31,7 @@ class CHudCrosshairs : public CHudBase
 	cvar_t* cl_cross_line_bottom;
 	cvar_t* cl_cross_line_left;
 	cvar_t* cl_cross_line_right;
+	cvar_t* cl_cross_scaling;
 
 	float old_circle_radius;
 	std::vector<Vector2D> circle_points;

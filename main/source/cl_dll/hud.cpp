@@ -209,9 +209,9 @@ void CHud :: Init( void )
 	m_pCvarDraw = CVAR_CREATE( "hud_draw", "1", FCVAR_ARCHIVE );
 	cl_lw = gEngfuncs.pfnGetCvarPointer( "cl_lw" );
 
-    CVAR_CREATE( "cl_showspeed", "0", 0);
+    CVAR_CREATE( "cl_showspeed", "0", FCVAR_ARCHIVE);
 	CVAR_CREATE( kvLabelMaps, "3", FCVAR_ARCHIVE);
-	CVAR_CREATE( kvGammaRamp, "0", FCVAR_ARCHIVE);
+	//CVAR_CREATE( kvGammaRamp, "0", FCVAR_ARCHIVE);
 	CVAR_CREATE( kvCustomCrosshair, "1", FCVAR_ARCHIVE);
 	CVAR_CREATE( kvHudMapZoom, "3", FCVAR_ARCHIVE);
 	CVAR_CREATE( kvLabelHivesight, "1", FCVAR_ARCHIVE);
@@ -219,6 +219,7 @@ void CHud :: Init( void )
 	CVAR_CREATE( "cl_icong", "149", FCVAR_ARCHIVE);
 	CVAR_CREATE( "cl_iconb", "221", FCVAR_ARCHIVE);
 
+	CVAR_CREATE("hud_style", "1", FCVAR_ARCHIVE);
 	CVAR_CREATE("cl_weaponswap", "2", FCVAR_ARCHIVE | FCVAR_USERINFO);
 	CVAR_CREATE("hud_teamhealthalert", "95", FCVAR_ARCHIVE);
 	CVAR_CREATE("hud_mapnames", "5", FCVAR_ARCHIVE);
@@ -326,6 +327,21 @@ void CHud :: VidInit( void )
 
 	gHUD.SetViewport(theViewPort);
 
+	//Determine if we're playing in windowed mode so we can do mouse centering correctly later.
+	for (Uint32 id = 0; id < UINT32_MAX; ++id)
+	{
+		SDL_Window* theWindow = SDL_GetWindowFromID(id);
+		if (theWindow)
+		{
+			if (!(SDL_GetWindowFlags(theWindow) & SDL_WINDOW_FULLSCREEN))
+			{
+				m_bWindowed = true;
+			}
+
+			break;
+		}
+	}
+
 	if (CVAR_GET_FLOAT("hud_style") == 2.0f)
 	{
 		mFont.Load("sprites/nl/font_arial");
@@ -351,7 +367,7 @@ void CHud :: VidInit( void )
 		m_iRes = 640;
 
 	// Only load this once
-	if ( !m_pSpriteList )
+	if ( !m_pSpriteList || gHUD.GetReInitHUD())
 	{
 		// we need to load the hud.txt, and all sprites within
 		if (CVAR_GET_FLOAT("hud_style") == 2.0f)

@@ -75,7 +75,7 @@ public:
 
     bool                InMouseMode(void) const;
 
-	void				NotifyGammaChange(float inGammaSlope);
+	//void				NotifyGammaChange(float inGammaSlope);
 
     // Saves the current UI layout back out the file that it was read in from. This is only meaningful after
     // the layout has been edited by the player.  Returns false if the file couldn't be opened, if a write fails.
@@ -145,7 +145,7 @@ private:
 	Cursor*				mBlankCursor;
 
     UIFactory*          mFactory;
-	float				mGammaSlope;
+	//float				mGammaSlope;
 
     // List of text representations associated with UIComponents.
     // These are all currently loaded in the game.

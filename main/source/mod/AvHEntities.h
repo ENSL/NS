@@ -344,10 +344,13 @@ public:
 
 	virtual float	GetGamma() const;
 
+	virtual float	GetGammaAlt() const;
+
 	virtual void	Spawn();
 					
 private:
 	float			mGammaScalar;
+	float			mGammaScalarAlt;
 
 };
 

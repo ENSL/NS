@@ -177,7 +177,7 @@ public:
 
 	virtual void    Precache();
 
-	virtual void    PrimaryAttack();
+	virtual void    PrimaryAttack(bool fireOnAttackUp = false);
 
     virtual void    Reload();
 
@@ -261,6 +261,8 @@ protected:
 	
     // sounds               
     CStringList				mFireSounds;
+
+	bool					mFireOnAttackUp;
 };
 
 #endif

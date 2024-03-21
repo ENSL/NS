@@ -525,63 +525,82 @@ void CBasePlayerWeapon::ItemPostFrame( void )
 		}
 	}
 
-	if ( (m_pPlayer->pev->button & IN_ATTACK) && !(m_pPlayer->pev->button & IN_ATTACK2))
+	bool pistolAttackUp = ((CVAR_GET_FLOAT("cl_pistoltrigger") != 0) && m_pPlayer->m_afButtonLast & IN_ATTACK && m_pPlayer->m_afButtonReleased & IN_ATTACK && ii.iId == AVH_WEAPON_PISTOL);
+
+	if ((m_pPlayer->pev->button & IN_ATTACK || this->m_bAttackQueued || pistolAttackUp) && (!(m_pPlayer->pev->button & IN_ATTACK2) || gHUD.GetHUDUser3() == AVH_USER3_ALIEN_PLAYER3))
 	{
-		if ((m_fInSpecialReload == 1 || m_fInSpecialReload == 2) && m_iClip != 0)
-		{
-			m_fInSpecialReload = 3;
-			Reload();
-		}
-        else if (GetCanUseWeapon() && (m_flNextPrimaryAttack <= 0.0))
+        if (GetCanUseWeapon())
         {
-		    if ( (m_iClip == 0 && ii.pszAmmo1) || 
-			    (ii.iMaxClip == -1 && !m_pPlayer->m_rgAmmo[PrimaryAmmoIndex()] ) )
-		    {
-			    m_fFireOnEmpty = TRUE;
-		    }
-
-
-			if ((gHUD.GetHUDUser3() == AVH_USER3_ALIEN_PLAYER1) 
-				&& (gHUD.GetCurrentWeaponID() == AVH_ABILITY_LEAP)
-				&& (this->m_flLastAnimationPlayed + (float)BALANCE_VAR(kLeapROF) <= gpGlobals->time))
+			if ((m_fInSpecialReload == 1 || m_fInSpecialReload == 2) && m_iClip != 0)
 			{
-				// : 0001151 predict energy too
-				AvHAlienWeapon* theWeapon = dynamic_cast<AvHAlienWeapon *>(g_pWpns[AVH_ABILITY_LEAP]);
-				if ( theWeapon && theWeapon->IsUseable() ) {
-					float theVolumeScalar = 1.0f;
-					cl_entity_t *player = gEngfuncs.GetLocalPlayer();
-					int theSilenceLevel = AvHGetAlienUpgradeLevel(player->curstate.iuser4, MASK_UPGRADE_6);
-					switch(theSilenceLevel)
-					{
-					case 1:
-						theVolumeScalar = (float)BALANCE_VAR(kSilenceLevel1Volume);
-						break;
-					case 2:
-						theVolumeScalar = (float)BALANCE_VAR(kSilenceLevel2Volume);
-						break;
-					case 3:
-						theVolumeScalar = (float)BALANCE_VAR(kSilenceLevel3Volume);
-						break;
-					}
-					HUD_PlaySound( kLeapSound,  theVolumeScalar);
-					AvHMUDeductAlienEnergy(m_pPlayer->pev->fuser3, theWeapon->GetEnergyForAttack() );
-					gEngfuncs.pEventAPI->EV_WeaponAnimation(3, 2);
-					this->m_flLastAnimationPlayed = gpGlobals->time;
-				}
+				m_fInSpecialReload = 3;
+				Reload();
 			}
-			//#ifdef AVH_CLIENT
-		    //if((m_iClip == 0) && ?
-		    //#endif
-			PrimaryAttack();
-			//return;
+			else if (m_flNextPrimaryAttack <= 0.0)
+			{
+				if ( (m_iClip == 0 && ii.pszAmmo1) ||
+					(ii.iMaxClip == -1 && !m_pPlayer->m_rgAmmo[PrimaryAmmoIndex()] ) )
+				{
+					m_fFireOnEmpty = TRUE;
+				}
+
+
+				if ((gHUD.GetHUDUser3() == AVH_USER3_ALIEN_PLAYER1)
+					&& (gHUD.GetCurrentWeaponID() == AVH_ABILITY_LEAP)
+					&& (this->m_flLastAnimationPlayed + (float)BALANCE_VAR(kLeapROF) <= gpGlobals->time))
+				{
+					// : 0001151 predict energy too
+					AvHAlienWeapon* theWeapon = dynamic_cast<AvHAlienWeapon *>(g_pWpns[AVH_ABILITY_LEAP]);
+					if ( theWeapon && theWeapon->IsUseable() ) {
+						float theVolumeScalar = 1.0f;
+						cl_entity_t *player = gEngfuncs.GetLocalPlayer();
+						int theSilenceLevel = AvHGetAlienUpgradeLevel(player->curstate.iuser4, MASK_UPGRADE_6);
+						switch(theSilenceLevel)
+						{
+						case 1:
+							theVolumeScalar = (float)BALANCE_VAR(kSilenceLevel1Volume);
+							break;
+						case 2:
+							theVolumeScalar = (float)BALANCE_VAR(kSilenceLevel2Volume);
+							break;
+						case 3:
+							theVolumeScalar = (float)BALANCE_VAR(kSilenceLevel3Volume);
+							break;
+						}
+						HUD_PlaySound( kLeapSound,  theVolumeScalar);
+						AvHMUDeductAlienEnergy(m_pPlayer->pev->fuser3, theWeapon->GetEnergyForAttack() );
+						gEngfuncs.pEventAPI->EV_WeaponAnimation(3, 2);
+						this->m_flLastAnimationPlayed = gpGlobals->time;
+					}
+				}
+				//#ifdef AVH_CLIENT
+				//if((m_iClip == 0) && ?
+				//#endif
+				PrimaryAttack(pistolAttackUp);
+				//return;
+			}
+			else
+			{
+				QueueAttack(pistolAttackUp);
+			}
 		}
 	}
 	// +movement: Rewritten to allow us to use +attack2 for movement abilities
 	else if ((m_pPlayer->pev->button & IN_ATTACK2) && (gHUD.GetIsAlien()))
 	{
+		AvHUser3 theUser3 = gHUD.GetHUDUser3();
+
 		//m_flNextSecondaryAttack
 		// Find out what kind of special movement we are using, and execute the animation for it
-		if (this->PrevAttack2Status == false)
+
+		if (theUser3 == AVH_USER3_ALIEN_PLAYER2)
+		{
+			if (GetCanUseWeapon() && m_flNextPrimaryAttack <= 0.0)
+			{
+				SecondaryAttack();
+			}
+		}
+		else if (this->PrevAttack2Status == false)
 		{
 			bool enabled=false;
 			// : 0001151 predict energy too
@@ -589,7 +608,7 @@ void CBasePlayerWeapon::ItemPostFrame( void )
 			if ( theWeapon ) 
 				enabled=theWeapon->IsUseable();
 
-			switch (gHUD.GetHUDUser3())
+			switch (theUser3)
 			{
 			case AVH_USER3_ALIEN_PLAYER1:
 
@@ -644,8 +663,7 @@ void CBasePlayerWeapon::ItemPostFrame( void )
 			}
 		}
 
-		if ((gHUD.GetHUDUser3() == AVH_USER3_ALIEN_PLAYER1) 
-			&& (this->m_flLastAnimationPlayed + BALANCE_VAR(kLeapROF) < gpGlobals->time))
+		if ((theUser3 == AVH_USER3_ALIEN_PLAYER1) && (this->m_flLastAnimationPlayed + BALANCE_VAR(kLeapROF) < gpGlobals->time))
 			this->PrevAttack2Status = false;
 		else
 			this->PrevAttack2Status = true;

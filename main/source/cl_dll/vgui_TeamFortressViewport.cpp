@@ -157,15 +157,15 @@ public:
         case PLAYERCLASS_DEAD_MARINE:
         case PLAYERCLASS_DEAD_ALIEN:
         case PLAYERCLASS_REINFORCING:
-            r = 255 / gHUD.GetGammaSlope();
-            g = 0 / gHUD.GetGammaSlope();
-            b = 0 / gHUD.GetGammaSlope();
+            r = 255/* / gHUD.GetGammaSlope()*/;
+            g = 0/* / gHUD.GetGammaSlope()*/;
+            b = 0/* / gHUD.GetGammaSlope()*/;
             break;
 
         default:
-            r = kTeamColors[theTeamNumber][0] / gHUD.GetGammaSlope();
-            g = kTeamColors[theTeamNumber][1] / gHUD.GetGammaSlope();
-            b = kTeamColors[theTeamNumber][2] / gHUD.GetGammaSlope();
+            r = kTeamColors[theTeamNumber][0]/* / gHUD.GetGammaSlope()*/;
+            g = kTeamColors[theTeamNumber][1]/* / gHUD.GetGammaSlope()*/;
+            b = kTeamColors[theTeamNumber][2]/* / gHUD.GetGammaSlope()*/;
             break;
 
         }
@@ -1524,8 +1524,14 @@ void TeamFortressViewport::HideOptionsMenu()
 
 		gHUD.GetManager().SetMouseVisibility(false);
 
-		//gEngfuncs.pfnSetMousePos(gEngfuncs.GetWindowCenterX(), gEngfuncs.GetWindowCenterY());
-		gEngfuncs.pfnSetMousePos(ScreenWidth() / 2, ScreenHeight() / 2);
+		if (gHUD.m_bWindowed)
+		{
+			gEngfuncs.pfnSetMousePos(ScreenWidth() / 2, ScreenHeight() / 2);
+		}
+		else
+		{
+			gEngfuncs.pfnSetMousePos(gEngfuncs.GetWindowCenterX(), gEngfuncs.GetWindowCenterY());
+		}
 	}
 }
 

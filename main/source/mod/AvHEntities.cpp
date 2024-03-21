@@ -1035,9 +1035,16 @@ AvHGamma::AvHGamma()
 	
 void AvHGamma::KeyValue(KeyValueData* pkvd)
 {
-	if(FStrEq(pkvd->szKeyName, "desiredgamma"))
+	if (FStrEq(pkvd->szKeyName, "desiredgamma"))
 	{
 		this->mGammaScalar = atof(pkvd->szValue);
+		// Set alt value as well in case the map doesn't have one.
+		this->mGammaScalarAlt = atof(pkvd->szValue);
+		pkvd->fHandled = TRUE;
+	}
+	else if (FStrEq(pkvd->szKeyName, "desiredgammaalt"))
+	{
+		this->mGammaScalarAlt = atof(pkvd->szValue);
 		pkvd->fHandled = TRUE;
 	}
 	else
@@ -1050,7 +1057,11 @@ float AvHGamma::GetGamma() const
 {
 	return this->mGammaScalar;
 }
-
+// Alternative gamma for NS 3.3 lighting
+float AvHGamma::GetGammaAlt() const
+{
+	return this->mGammaScalarAlt;
+}
 
 void AvHGamma::Spawn()
 {
@@ -1738,13 +1749,23 @@ void AvHWebStrand::StrandThink()
 
 	if (!FNullEnt(Hit.pHit))
 	{
-		edict_t* webbedEdict = Hit.pHit;
-		AvHPlayer* theWebbedPlayer = dynamic_cast<AvHPlayer*>(CBaseEntity::Instance(webbedEdict));
-
-		if (theWebbedPlayer)
+		while (!FNullEnt(Hit.pHit) && Hit.flFraction < 0.99f)
 		{
-			StrandTouch(theWebbedPlayer);
+			edict_t* webbedEdict = Hit.pHit;
+			AvHPlayer* theWebbedPlayer = dynamic_cast<AvHPlayer*>(CBaseEntity::Instance(webbedEdict));
+
+			if (theWebbedPlayer && theWebbedPlayer->pev->team != this->pev->team && theWebbedPlayer->GetCanBeAffectedByEnemies())
+			{
+				StrandTouch(theWebbedPlayer);
+				break;
+			}
+			else
+			{
+				UTIL_TraceLine(Hit.vecEndPos, EndTrace, dont_ignore_monsters, Hit.pHit, &Hit);
+			}
 		}
+
+		
 	}
 
 	if (!this->mSolid)

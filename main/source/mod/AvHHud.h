@@ -128,7 +128,7 @@
 #include "AvHVisibleBlipList.h"
 #include "AvHMapExtents.h"
 #include "AvHSpecials.h"
-#include "GammaTable.h"
+//#include "GammaTable.h"
 #include "AvHBaseInfoLocation.h"
 #include "AvHTooltip.h"
 #include "AvHTechSlotManager.h"
@@ -430,9 +430,9 @@ public:
     // This function should be used instead of the global SetCrosshair.
     void            SetCurrentCrosshair(AVHHSPRITE hspr, wrect_t rc, int r, int g, int b);
 
-	static void		ResetGammaAtExit();
-	static int		ResetGammaAtExitForOnExit();
-	static void		ResetGammaAtExit(int inSig);
+	//static void		ResetGammaAtExit();
+	//static int		ResetGammaAtExitForOnExit();
+	//static void		ResetGammaAtExit(int inSig);
  
     void            SetViewport(const int inViewport[4]);
     void            GetViewport(int outViewport[4]) const;
@@ -450,6 +450,9 @@ public:
 
 	bool			GetDrawOrderOverlay() const;
 	void			SetDrawOrderOverlay(bool drawOverlay);
+
+	bool			GetReInitHUD() const;
+	void			SetReInitHUD(bool setInit);
 
 private:
 
@@ -501,7 +504,7 @@ private:
 	bool			GetEntityInfoString(int inEntityID, string& outEntityInfoString, bool& outIsEnemy);
 	void			ModifyAmbientSoundEntryIfChanged(bool inSoundOn, int inSoundIndex, int inEntIndex, float inTimeStarted, int inVolume, int inFadeDistance, int inFlags, Vector inOrigin);
 	void			ResetTopDownUI();
-	bool			SetGamma(float inSlope);
+	bool			SetGamma(float inSlope, float inSlopeAlt);
 	void			SetReinforcements(int inReinforcements);
 	void			SetHelpMessage(const string& inHelpText, bool inForce = false, float inNormX = -1, float inNormY = -1);
 	void			SetActionButtonHelpMessage(const string& inHelpText);
@@ -676,12 +679,13 @@ private:
 	int						mFramesSinceEnteredTopdownMode;
 	int						mNumLocalSelectEvents;
 	AvHMapMode				mMapMode;
-	//@2014 make this work for linux
-	static GammaTable		sPregameGammaTable;
-	static GammaTable		sGameGammaTable;
+	//// 2024 - Replaced gamma ramp with shader.
+	//static GammaTable		sPregameGammaTable;
+	//static GammaTable		sGameGammaTable;
 	
 	
 	float					mDesiredGammaSlope;
+	float					mDesiredGammaSlopeAlt;
 
 	typedef vector<AvHAmbientSound>	AmbientSoundListType;
 	AmbientSoundListType	mAmbientSounds;
@@ -876,6 +880,23 @@ private:
 
     static bool             sShowMap;
 
+	bool					mWideScreen;
+	bool					mWideScreenChanged;
+
+	bool					mReInitHUD;
+	float					mLastHudStyle;
+
+	float					mShaderGamma;
+	float					mShaderGammaAlt;
+
+};
+
+class CPostProcessShader
+{
+public:
+	void	Init();
+	void	ClearFrameBuffer();
+	void	DrawShader();
 };
 
 #endif

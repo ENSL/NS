@@ -174,6 +174,26 @@ void AvHPistol::Precache()
 	this->mEvent = PRECACHE_EVENT(1, kHGEventName);
 }
 
+void AvHPistol::PrimaryAttack(bool fireOnAttackUp)
+{
+	this->m_bAttackQueued = false;
+	this->mFireOnAttackUp = fireOnAttackUp;
+	if (fireOnAttackUp)
+	{
+		this->m_iPlayEmptySound = true;
+	}
+	AvHMarineWeapon::PrimaryAttack();
+	this->mFireOnAttackUp = false;
+}
+
+void AvHPistol::QueueAttack(bool fireOnAttackUp)
+{
+	if (!this->mAttackButtonDownLastFrame || fireOnAttackUp)
+	{
+		this->m_bAttackQueued = true;
+		this->mAttackButtonDownLastFrame = false;
+	}
+}
 
 void AvHPistol::Spawn()
 {

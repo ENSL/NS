@@ -228,10 +228,14 @@ public:
 	virtual int		GetReloadAnimation() const;
 
 	virtual int		GetShootAnimation() const;
-		
-	virtual int		iItemSlot(void);
 	
+	virtual int		iItemSlot(void);
+
 	virtual void	Precache(void);
+
+	virtual void	PrimaryAttack(bool fireOnAttackUp = false);
+
+	virtual void	QueueAttack(bool fireOnAttackUp);
 	
 	virtual void	Spawn();
 	
@@ -620,7 +624,7 @@ public:
 
     virtual void    WeaponIdle();
 
-    virtual void    PrimaryAttack(void);
+    virtual void    PrimaryAttack(bool fireOnAttackUp = false);
     
 protected: 
 

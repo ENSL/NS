@@ -425,6 +425,8 @@ public:
 	virtual int		iItemSlot(void);
 	
 	virtual void	Precache(void);
+
+	virtual void	SecondaryAttack();
 	
 	virtual void	Spawn();
 	

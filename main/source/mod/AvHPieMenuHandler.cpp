@@ -79,7 +79,7 @@ PieMenu* AvHPieMenuHandler::GetActivePieMenu()
 
 void AvHPieMenuHandler::ClosePieMenu(void)
 {
-	
+
     //if (!sPieMenuOpen)
     //{
      //   return;
@@ -138,7 +138,7 @@ void AvHPieMenuHandler::InternalClosePieMenu(void)
 		if(!gHUD.GetInTopDownMode())
 		{
 			gHUD.GetManager().SetMouseVisibility(false);
-
+			
 			// OS cursor displaying over in game cursor fix. Remove if showcursor code in SetMouseVisibility is made bug free.
 			#ifdef WIN32
 			if(sPieMenuOpen)
@@ -153,11 +153,12 @@ void AvHPieMenuHandler::InternalClosePieMenu(void)
         }
         sLastNodeHighlighted = NULL;
 
-		// Return to raw input after menu closes
-		if (CVAR_GET_FLOAT("m_rawinput") != 0 && sPieMenuOpen)
-		{
-			SDL_SetRelativeMouseMode(SDL_TRUE);
-		}
+		//// Not needed post-HL25.
+		//// Return to raw input after menu closes
+		//if (CVAR_GET_FLOAT("m_rawinput") != 0 && sPieMenuOpen)
+		//{
+		//	SDL_SetRelativeMouseMode(SDL_TRUE);
+		//}
 
 //        if(sTheDebugBool)
 //        {
@@ -199,12 +200,20 @@ void AvHPieMenuHandler::OpenPieMenu(void)
 
                 gHUD.HideCrosshair();
 
-				// Workaround for not being able to center mouse with raw input enabled.
+				// Center mouse for raw input.
 				if (CVAR_GET_FLOAT("m_rawinput") != 0 && !sPieMenuOpen)
 				{
-					SDL_SetRelativeMouseMode(SDL_FALSE);
-					//gEngfuncs.pfnSetMousePos(gEngfuncs.GetWindowCenterX(), gEngfuncs.GetWindowCenterY());
-					gEngfuncs.pfnSetMousePos(ScreenWidth() / 2, ScreenHeight() / 2);
+					//// Not needed post-HL25.
+					//SDL_SetRelativeMouseMode(SDL_FALSE);
+
+					if (gHUD.m_bWindowed)
+					{
+						gEngfuncs.pfnSetMousePos(ScreenWidth() / 2, ScreenHeight() / 2);
+					}
+					else
+					{
+						gEngfuncs.pfnSetMousePos(gEngfuncs.GetWindowCenterX(), gEngfuncs.GetWindowCenterY());
+					}
 				}
 
 				// Only do this when in full screen
@@ -292,13 +301,15 @@ void AvHPieMenuHandler::cursorMoved(int x,int y,Panel* panel)
 //	char theMessage[128];
 //	sprintf(theMessage, "AvHPieMenuHandler::cursorMoved %d, %d (panel ptr: %d).\n", x, y, (int)panel);
 //	CenterPrint(theMessage);
-	if (sPieMenuOpen && CVAR_GET_FLOAT("m_rawinput") != 0)
-	{
-		if (SDL_GetRelativeMouseMode() != SDL_TRUE)
-		{
-			SDL_SetRelativeMouseMode(SDL_TRUE);
-		}
-	}
+
+	//// Not needed post-HL25.
+	//if (sPieMenuOpen && CVAR_GET_FLOAT("m_rawinput") != 0)
+	//{
+	//	if (SDL_GetRelativeMouseMode() != SDL_TRUE)
+	//	{
+	//		SDL_SetRelativeMouseMode(SDL_TRUE);
+	//	}
+	//}
 }
 
 void AvHPieMenuHandler::cursorEntered(Panel* panel)

@@ -2,18 +2,18 @@
 #define SPRITEPANEL_H
 
 #include "VGUI_Panel.h"
-#include "ui/GammaAwareComponent.h"
+//#include "ui/GammaAwareComponent.h"
 #include "ui/ReloadableComponent.h"
 #include "../types.h"
 
 typedef int AVHHSPRITE;
 
-class SpritePanel : public vgui::Panel, public ReloadableComponent, public GammaAwareComponent
+class SpritePanel : public vgui::Panel, public ReloadableComponent//, public GammaAwareComponent
 {
 public:
 					SpritePanel(const string& inBaseSpriteName, const string& inRenderMode);
 
-	virtual void	NotifyGammaChange(float inGammaSlope);
+	//virtual void	NotifyGammaChange(float inGammaSlope);
 					
 	virtual void	SetVAlignment(const string& inAlignment);
 
@@ -30,7 +30,7 @@ private:
 	string			mRenderMode;
 	string			mVAlignment;
 	AVHHSPRITE		mSpriteHandle;
-	float			mGammaSlope;
+	//float			mGammaSlope;
 
 };
 

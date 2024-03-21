@@ -353,7 +353,8 @@ public:
 
 	virtual void ItemPostFrame( void );	// called each frame by the player PostThink
 	// called by CBasePlayerWeapons ItemPostFrame()
-	virtual void PrimaryAttack( void ) { return; }				// do "+ATTACK"
+	virtual void PrimaryAttack( bool fireOnAttackUp = false ) { return; }	// do "+ATTACK"
+	virtual void QueueAttack( bool fireOnAttackUp = false ) { return; }		// queue an attack
 	virtual void SecondaryAttack( void ) { return; }			// do "+ATTACK2"
 	virtual void Reload( void ) { return; }						// do "+RELOAD"
 	virtual void WeaponIdle( void ) { return; }					// called when no buttons pressed
@@ -384,7 +385,8 @@ public:
 	int		m_iDefaultAmmo;// how much ammo you get when you pick up this weapon as placed by a level designer.
 
 	bool	PrevAttack2Status;									// HACK: For +movement weapon animations
-	float	m_flLastAnimationPlayed;							
+	float	m_flLastAnimationPlayed;	
+	bool	m_bAttackQueued;
 };
 
 

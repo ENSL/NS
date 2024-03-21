@@ -2295,7 +2295,7 @@ void EV_WelderGeneralEffects(struct event_args_s* inArgs, const Vector& thePos)
 	cl_entity_t* thePlayer = GetEntity(theIndex);
 	
 	// Don't play flashing effects if player is photosensitive
-	if(CVAR_GET_FLOAT(kvDynamicLights))
+	if(CVAR_GET_FLOAT(kvDynamicLights) >= 2.0f)
 	{
 		// Make flashing lights
 		int theLightIndex = 20; /* TODO: What do to about this index? */

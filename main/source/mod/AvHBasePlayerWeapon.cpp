@@ -180,6 +180,8 @@ AvHBasePlayerWeapon::AvHBasePlayerWeapon()
 	this->mIsPersistent = false;
 	this->mLifetime = -1;
 #endif
+
+	this->mFireOnAttackUp = false;
 }
 void AvHBasePlayerWeapon::PrintWeaponToClient(CBaseEntity *theAvHPlayer) {
 	char msg[1024];
@@ -675,6 +677,8 @@ void AvHBasePlayerWeapon::Holster( int skiplocal)
 	#ifdef AVH_SERVER
 	this->mInOverwatch = false;
 	#endif
+
+	this->m_bAttackQueued = false;
 }
 
 float AvHBasePlayerWeapon::GetTimePassedThisTick() const
@@ -777,7 +781,7 @@ bool AvHBasePlayerWeapon::ProcessValidAttack(void)
 			{
 				if((this->m_flNextPrimaryAttack <= 0) && !this->m_fInSpecialReload)
 				{
-					if(!this->GetMustPressTriggerForEachShot() || (!this->mAttackButtonDownLastFrame))
+					if(!this->GetMustPressTriggerForEachShot() || !this->mAttackButtonDownLastFrame || this->mFireOnAttackUp)
 					{
 							//ALERT(at_console, "trueattack1 primammo:%d primatype:%d secammo:%d secatype:%d\n", this->m_pPlayer->m_rgAmmo[this->m_iPrimaryAmmoType], this->m_iPrimaryAmmoType, this->m_pPlayer->m_rgAmmo[this->m_iSecondaryAmmoType], this->m_iSecondaryAmmoType);
 							theAttackIsValid = true;
@@ -1023,11 +1027,11 @@ void AvHBasePlayerWeapon::SetNextAttack(void)
 }
 
 
-void AvHBasePlayerWeapon::PrimaryAttack(void)
+void AvHBasePlayerWeapon::PrimaryAttack(bool fireOnAttackUp)
 {
     if (this->ProcessValidAttack())
     {
-        
+
         if (!this->mAttackButtonDownLastFrame)
         {
             this->PlaybackEvent(this->mStartEvent);

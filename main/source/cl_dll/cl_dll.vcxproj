@@ -95,8 +95,8 @@
       <Optimization>Full</Optimization>
       <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
       <IntrinsicFunctions>false</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\particles;$(SolutionDir)\includes\lpng1251;$(SolutionDir)\includes\zlib-1.2.8;$(SolutionDir)\includes\fmod\inc;$(SolutionDir)\includes\vgui\include;../public;../common;../external;../pm_shared;../game_shared;../mod;../util;../ui;../engine;../cl_dll;../dlls</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;WIN32;_WINDOWS;AVH_CLIENT;USE_OLDAUTH;_X86_;AVH_PLAYTEST_BUILD;BALANCE_ENABLED;PLAYTEST_BUILD</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\particles;$(SolutionDir)\includes\lpng1251;$(SolutionDir)\includes\zlib-1.2.8;$(SolutionDir)\includes\fmod\inc;$(SolutionDir)\includes\vgui\include;$(SolutionDir)\includes\glew;../public;../common;../external;../pm_shared;../game_shared;../mod;../util;../ui;../engine;../cl_dll;../dlls</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;WIN32;_WINDOWS;AVH_CLIENT;USE_OLDAUTH;_X86_;AVH_PLAYTEST_BUILD;BALANCE_ENABLED;PLAYTEST_BUILD;GLEW_STATIC</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <PrecompiledHeader>
@@ -158,8 +158,8 @@
       <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\particles;$(SolutionDir)\includes\lpng1251;$(SolutionDir)\includes\zlib-1.2.8;$(SolutionDir)\includes\fmod\inc;$(SolutionDir)\includes\vgui\include;../public;../common;../external;../pm_shared;../game_shared;../mod;../util;../ui;../engine;../cl_dll;../dlls</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;WIN32;_WINDOWS;AVH_CLIENT;USE_OLDAUTH;_X86_</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\particles;$(SolutionDir)\includes\lpng1251;$(SolutionDir)\includes\zlib-1.2.8;$(SolutionDir)\includes\fmod\inc;$(SolutionDir)\includes\vgui\include;$(SolutionDir)\includes\glew;../public;../common;../external;../pm_shared;../game_shared;../mod;../util;../ui;../engine;../cl_dll;../dlls</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;NDEBUG;WIN32;_WINDOWS;AVH_CLIENT;USE_OLDAUTH;_X86_;GLEW_STATIC</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <PrecompiledHeader>
@@ -221,8 +221,8 @@
       <Optimization>Disabled</Optimization>
       <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <IntrinsicFunctions>false</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\particles;$(SolutionDir)\includes\lpng1251;$(SolutionDir)\includes\zlib-1.2.8;$(SolutionDir)\includes\fmod\inc;$(SolutionDir)\includes\vgui\include;../public;../common;../external;../pm_shared;../game_shared;../mod;../util;../ui;../engine;../cl_dll;../dlls</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_ALLOW_ITERATOR_DEBUG_LEVEL_MISMATCH;_ITERATOR_DEBUG_LEVEL=2;_DEBUG;DEBUG;WIN32;_WINDOWS;AVH_CLIENT;USE_OLDAUTH;_X86_;AVH_PLAYTEST_BUILD;BALANCE_ENABLED;PLAYTEST_BUILD</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)\particles;$(SolutionDir)\includes\lpng1251;$(SolutionDir)\includes\zlib-1.2.8;$(SolutionDir)\includes\fmod\inc;$(SolutionDir)\includes\vgui\include;$(SolutionDir)\includes\glew;../public;../common;../external;../pm_shared;../game_shared;../mod;../util;../ui;../engine;../cl_dll;../dlls</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_DEPRECATE;_ALLOW_ITERATOR_DEBUG_LEVEL_MISMATCH;_ITERATOR_DEBUG_LEVEL=2;_DEBUG;DEBUG;WIN32;_WINDOWS;AVH_CLIENT;USE_OLDAUTH;_X86_;AVH_PLAYTEST_BUILD;BALANCE_ENABLED;PLAYTEST_BUILD;GLEW_STATIC</PreprocessorDefinitions>
       <StringPooling>
       </StringPooling>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
@@ -281,6 +281,22 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\includes\glew\GL\glew.c">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Client - Playtest|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Client - Release|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Client - Debug|Win32'">MaxSpeed</Optimization>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Client - Playtest|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Client - Release|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Client - Debug|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <ClCompile Include="..\util\ShaderUtil.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Client - Playtest|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Client - Release|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Client - Debug|Win32'">MaxSpeed</Optimization>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Client - Playtest|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Client - Release|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Client - Debug|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
     <ClCompile Include="ammo.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Client - Playtest|Win32'">MaxSpeed</Optimization>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Client - Release|Win32'">MaxSpeed</Optimization>
@@ -557,6 +573,14 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Client - Debug|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <ClCompile Include="saytext.cpp">
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Client - Playtest|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Client - Release|Win32'">MaxSpeed</Optimization>
+      <Optimization Condition="'$(Configuration)|$(Platform)'=='Client - Debug|Win32'">MaxSpeed</Optimization>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Client - Playtest|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Client - Release|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Client - Debug|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <ClCompile Include="shader.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Client - Playtest|Win32'">MaxSpeed</Optimization>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Client - Release|Win32'">MaxSpeed</Optimization>
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Client - Debug|Win32'">MaxSpeed</Optimization>
@@ -1615,7 +1639,6 @@
     </ClCompile>
     <ClCompile Include="..\util\Balance.cpp" />
     <ClCompile Include="..\util\Checksum.cpp" />
-    <ClCompile Include="..\util\GammaTable.cpp" />
     <ClCompile Include="..\util\LinuxSupport.cpp" />
     <ClCompile Include="..\util\Mat3.cpp" />
     <ClCompile Include="..\util\MathUtil.cpp" />
@@ -1627,6 +1650,10 @@
     <ClCompile Include="..\textrep\TRFactory.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\includes\glew\GL\eglew.h" />
+    <ClInclude Include="..\includes\glew\GL\glew.h" />
+    <ClInclude Include="..\includes\glew\GL\glxew.h" />
+    <ClInclude Include="..\includes\glew\GL\wglew.h" />
     <ClInclude Include="..\mod\AvHAlienAbilities.h" />
     <ClInclude Include="..\mod\AvHAlienWeaponConstants.h" />
     <ClInclude Include="..\mod\AvHAlienWeapons.h" />
@@ -1634,6 +1661,7 @@
     <ClInclude Include="..\mod\AvHMarineWeapon.h" />
     <ClInclude Include="..\mod\AvHMarineWeaponConstants.h" />
     <ClInclude Include="..\mod\AvHMarineWeapons.h" />
+    <ClInclude Include="..\util\ShaderUtil.h" />
     <ClInclude Include="ammo.h" />
     <ClInclude Include="ammohistory.h" />
     <ClInclude Include="..\game_shared\bitvec.h" />
@@ -1763,7 +1791,6 @@
     <ClInclude Include="..\util\Balance.h" />
     <ClInclude Include="..\util\Checksum.h" />
     <ClInclude Include="..\util\CString.h" />
-    <ClInclude Include="..\util\GammaTable.h" />
     <ClInclude Include="..\util\LinuxSupport.h" />
     <ClInclude Include="..\util\Mat3.h" />
     <ClInclude Include="..\util\MathUtil.h" />

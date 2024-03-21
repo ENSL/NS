@@ -182,7 +182,14 @@ void CreatePickingRay( int mousex, int mousey, Vector& outVecPickingRay )
 
 //	char gDebugMessage[256];
 
-	float fovDegrees = gHUD.m_wsFOV;
+	//float fovDegrees = gHUD.m_wsFOV;
+	bool wideScreen = CVAR_GET_FLOAT("gl_widescreen_yfov");
+	float fovDegrees = gHUD.m_iFOV;
+	//Adjust for widescreen FOV
+	if (wideScreen)
+	{
+		fovDegrees = atanf(tan(gHUD.m_iFOV * M_PI / 360) * 0.75f * ScreenWidth() / ScreenHeight()) * 360 / M_PI;
+	}
 
 	//cl_entity_s* theLocalEntity = gEngfuncs.GetLocalPlayer();
 	//Vector vecRenderOrigin = theLocalEntity->origin;

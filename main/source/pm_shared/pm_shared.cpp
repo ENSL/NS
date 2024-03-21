@@ -2653,7 +2653,8 @@ int PM_ClipVelocity (vec3_t in, vec3_t normal, vec3_t out, float overbounce)
     float   change;
     float angle;
     int     i, blocked;
-    
+#define DIST_EPSILON 0.125f
+
     angle = normal[ 2 ];
 
     blocked = 0x00;            // Assume unblocked.
@@ -2661,7 +2662,7 @@ int PM_ClipVelocity (vec3_t in, vec3_t normal, vec3_t out, float overbounce)
         blocked |= 0x01;        // 
     if (!angle)         // If the plane has no Z, it is vertical (wall/step)
         blocked |= 0x02;        // 
-    
+
     // Determine how far along plane to slide based on incoming direction.
     // Scale by overbounce factor.
     backoff = DotProduct (in, normal) * overbounce;
@@ -2670,11 +2671,21 @@ int PM_ClipVelocity (vec3_t in, vec3_t normal, vec3_t out, float overbounce)
     {
         change = normal[i]*backoff;
         out[i] = in[i] - change;
-        // If out velocity is too small, zero it out.
-        if (out[i] > -STOP_EPSILON && out[i] < STOP_EPSILON)
-            out[i] = 0;
+        //// If out velocity is too small, zero it out.
+        //if (out[i] > -STOP_EPSILON && out[i] < STOP_EPSILON)
+        //    out[i] = 0;
     }
-    
+
+    // iterate once to make sure we aren't still moving through the plane
+    float adjust = DotProduct(out, normal);
+    if (adjust <= 0.0f)
+    {
+        // min this against a small number (but no further from zero than -DIST_EPSILON) to account for crossing a plane with a near-parallel normal
+        adjust = min(adjust, -DIST_EPSILON);
+        for (i = 0; i < 3; i++)
+            out[i] -= normal[i] * adjust;
+    }
+
     // Return blocking flags.
     return blocked;
 }

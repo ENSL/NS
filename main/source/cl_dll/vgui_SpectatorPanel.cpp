@@ -148,13 +148,13 @@ void SpectatorPanel::Initialize()
 	CSchemeManager * pSchemes = gViewPort->GetSchemeManager();
 
 
-    int colorR = 128 / gHUD.GetGammaSlope();
-    int colorG = 128 / gHUD.GetGammaSlope();
-    int colorB = 128 / gHUD.GetGammaSlope();
+    int colorR = 128/* / gHUD.GetGammaSlope()*/;
+    int colorG = 128/* / gHUD.GetGammaSlope()*/;
+    int colorB = 128/* / gHUD.GetGammaSlope()*/;
 
-    int armedColorR = 255 / gHUD.GetGammaSlope();
-    int armedColorG = 255 / gHUD.GetGammaSlope();
-    int armedColorB = 255 / gHUD.GetGammaSlope();
+    int armedColorR = 255/* / gHUD.GetGammaSlope()*/;
+    int armedColorG = 255/* / gHUD.GetGammaSlope()*/;
+    int armedColorB = 255/* / gHUD.GetGammaSlope()*/;
 
 
 	SchemeHandle_t hSmallScheme = pSchemes->getSchemeHandle( /*"Team Info Text"*/ "PieMenuScheme" );

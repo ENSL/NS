@@ -137,6 +137,11 @@ void AvHHealingSpray::Precache()
 	this->mEvent = PRECACHE_EVENT(1, kHealingSprayEventName);
 }
 
+// Use secondary attack to call primary attack so client predicted ghost spit attacks don't occur on the first frame of +movement use, as the weapon also switches that frame.
+void AvHHealingSpray::SecondaryAttack(void)
+{
+	AvHHealingSpray::PrimaryAttack();
+}
 
 void AvHHealingSpray::Spawn() 
 { 

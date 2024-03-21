@@ -779,6 +779,7 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
 		if(this->GetCheatsEnabled())
 		{
 			sscanf(CMD_ARGV(1), "%f", &this->mMapGamma);
+			sscanf(CMD_ARGV(1), "%f", &this->mMapGammaAlt);
 		}
 		theSuccess = true;
 	}

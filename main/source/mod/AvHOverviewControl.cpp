@@ -73,7 +73,7 @@ void AvHOverviewControl::paint()
 
         gEngfuncs.pTriAPI->SpriteTexture((struct model_s*)(gEngfuncs.GetSpritePointer(m_hsprWhite)), 0);
 
-        float gammaScale = 1.0f / gHUD.GetGammaSlope();
+        float gammaScale = 1.0f/* / gHUD.GetGammaSlope()*/;
         
         // Draw the background.
         

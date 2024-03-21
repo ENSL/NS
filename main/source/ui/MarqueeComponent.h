@@ -20,13 +20,13 @@
 #define MARQUEECOMPONENT_H
 
 #include "VGUI_Panel.h"
-#include "GammaAwareComponent.h"
+//#include "GammaAwareComponent.h"
 
-class MarqueeComponent : public vgui::Panel, public GammaAwareComponent
+class MarqueeComponent : public vgui::Panel//, public GammaAwareComponent
 {
 public:
 					MarqueeComponent();
-	virtual void	NotifyGammaChange(float inGammaSlope);
+	//virtual void	NotifyGammaChange(float inGammaSlope);
 	void			SetStartPos(int inX, int inY);
 	void			SetEndPos(int inX, int inY);
 	
@@ -39,7 +39,7 @@ private:
 	int				mX0, mY0;
 	int				mX1, mY1;
 
-	float			mGammaSlope;
+	//float			mGammaSlope;
 };
 
 #endif

@@ -61,6 +61,7 @@ extern "C"
 #include "mod/AvHScrollHandler.h"
 #include "mod/AvHCommanderModeHandler.h"
 #include "util/Mat3.h"
+#include "mod/AvHBasePlayerWeaponConstants.h"
 
 #include "engine/APIProxy.h"
 #include "Exports.h"
@@ -135,16 +136,15 @@ cvar_t	*cl_highdetail;
 cvar_t	*cl_cmhotkeys;
 //cvar_t	*cl_forcedefaultfov;
 cvar_t	*cl_dynamiclights;
-cvar_t	*r_dynamic;
 cvar_t	*cl_buildmessages;
 cvar_t	*cl_particleinfo;
-cvar_t	*cl_widescreen;
+//cvar_t	*cl_widescreen;
 cvar_t	*cl_ambientsound;
 cvar_t	*senslock;
-cvar_t	*hud_style;
 cvar_t	*cl_chatbeep;
 cvar_t	*cl_mutemenu;
 cvar_t	*cl_weaponcfgs;
+cvar_t	*cl_pistoltrigger;
 
 /*
 ===============================================================================
@@ -808,7 +808,7 @@ void IN_AttackUp(void)
 	in_cancel = 0;
 
 	// Attack2up only for onos so it can end +attack onos charges.  Attack2up for all causes blink and leap to cancel if you release attack while blinking or leaping.
-	if (g_iUser3 == AVH_USER3_ALIEN_PLAYER5)
+	if (gHUD.GetCurrentWeaponID() == AVH_ABILITY_CHARGE)
 	{
 		IN_Attack2Up();
 	}
@@ -1530,6 +1530,86 @@ void EchoDev(void)
 	gEngfuncs.Con_Printf("%s\n", gEngfuncs.Cmd_Argv(1));
 }
 
+void NsPreset(void)
+{
+	int presetChoice = atoi(gEngfuncs.Cmd_Argv(1));
+	bool printToChat = gViewPort;
+	char execText[1024];
+	//char localizedText[1024];
+
+	switch (presetChoice)
+	{
+	case 1:
+		ClientCmd("exec presetcfgs/AV/ns32.cfg");
+
+		if (printToChat)
+		{
+			// Localize later.
+			//sprintf(localizedText, CHudTextMessage::BufferedLocaliseTextString("#Preset1"));
+			snprintf(execText, 1024, "%c** %s\n", HUD_PRINTTALK, "Classic NS audio/visual presets applied. Left click once to fix bug. See console for details.");
+			gHUD.m_TextMessage.MsgFunc_TextMsg(NULL, (int)strlen(execText) + 1, execText);
+			ClientCmd("echo \"NOTE: Left click once after applying these settings, or your next left click won't register. It's an HL engine bug.\""); // Use echo or it's out of order.
+		}
+		else
+		{
+			ClientCmd("toggleconsole");
+		}
+		break;
+	case 2:
+		ClientCmd("exec presetcfgs/AV/newdefault.cfg");
+
+		if (printToChat)
+		{
+			// Localize later.
+			//sprintf(localizedText, CHudTextMessage::BufferedLocaliseTextString("#Preset2"));
+			snprintf(execText, 1024, "%c** %s\n", HUD_PRINTTALK, "NS 3.3 audio/visual presets applied. Left click once to fix bug. See console for details. ");
+			gHUD.m_TextMessage.MsgFunc_TextMsg(NULL, (int)strlen(execText) + 1, execText);
+			ClientCmd("echo \"NOTE: Left click once after applying these settings, or your next left click won't register. It's an HL engine bug.\""); // Use echo or it's out of order.
+		}
+		else
+		{
+			ClientCmd("toggleconsole");
+		}
+		break;
+	case 3:
+		ClientCmd("exec presetcfgs/AV/competitive.cfg");
+
+		if (printToChat)
+		{
+			// Localize later.
+			//sprintf(localizedText, CHudTextMessage::BufferedLocaliseTextString("#Preset3"));
+			snprintf(execText, 1024, "%c** %s\n", HUD_PRINTTALK, "Competive audio/visual presets applied. Left click once to fix bug. See console for details.");
+			gHUD.m_TextMessage.MsgFunc_TextMsg(NULL, (int)strlen(execText) + 1, execText);
+			ClientCmd("echo \"NOTE: Left click once after applying these settings, or your next left click won't register. It's an HL engine bug.\""); // Use echo or it's out of order.
+		}
+		else
+		{
+			ClientCmd("toggleconsole");
+		}
+		break;
+	default:
+		gEngfuncs.Con_Printf("NS configuration preset selector. Useage:\n1: apply NS 3.2 settings\n2: apply NS 3.3 settings\n3: apply competitive settings\n");
+	}
+}
+
+void NsRates(void)
+{
+	int ratesChoice = atoi(gEngfuncs.Cmd_Argv(1));
+	char execText[30];
+
+	if (ratesChoice >= 1 && ratesChoice <= 20)
+	{
+		snprintf(execText, 30, "exec presetcfgs/rates/%d.cfg", ratesChoice);
+		ClientCmd(execText);
+	}
+	// Don't show this if 0 is entered as an arg, as it's the normal behavior for the blank default setting in options.
+	else if (gEngfuncs.Cmd_Argc() <= 1 || ratesChoice != 0)
+	{
+		gEngfuncs.Con_Printf("nsrates selects from preset network rate commands. Start from \"nsrates 1\" and increase the number until your connection feels stable.\n");
+	}
+}
+
+
 /*
 ============
 InitInput
@@ -1604,6 +1684,8 @@ void InitInput (void)
 
 	gEngfuncs.pfnAddCommand("nsversion", NsVersion);
 	gEngfuncs.pfnAddCommand("echodev", EchoDev);
+	gEngfuncs.pfnAddCommand("nspreset", NsPreset);
+	gEngfuncs.pfnAddCommand("nsrates", NsRates);
 
 	lookstrafe			= gEngfuncs.pfnRegisterVariable ( "lookstrafe", "0", FCVAR_ARCHIVE );
 	lookspring			= gEngfuncs.pfnRegisterVariable ( "lookspring", "0", FCVAR_ARCHIVE );
@@ -1627,8 +1709,8 @@ void InitInput (void)
 
 	cl_autohelp			= gEngfuncs.pfnRegisterVariable ( kvAutoHelp, "1.0", FCVAR_ARCHIVE );
 	cl_centerentityid	= gEngfuncs.pfnRegisterVariable ( kvCenterEntityID, "0.0", FCVAR_ARCHIVE );
-	cl_musicenabled		= gEngfuncs.pfnRegisterVariable ( kvMusicEnabled, "0", FCVAR_ARCHIVE );
-	cl_musicvolume		= gEngfuncs.pfnRegisterVariable ( kvMusicVolume, "1", FCVAR_ARCHIVE );
+	cl_musicenabled		= gEngfuncs.pfnRegisterVariable ( kvMusicEnabled, "1", FCVAR_ARCHIVE );
+	cl_musicvolume		= gEngfuncs.pfnRegisterVariable ( kvMusicVolume, "0.6", FCVAR_ARCHIVE );
 	cl_musicdir			= gEngfuncs.pfnRegisterVariable ( kvMusicDirectory, "", FCVAR_ARCHIVE);
 	cl_musicdelay		= gEngfuncs.pfnRegisterVariable ( kvMusicDelay, "90", FCVAR_ARCHIVE);
 	cl_dynamiclights	= gEngfuncs.pfnRegisterVariable ( kvDynamicLights, "1", FCVAR_ARCHIVE );
@@ -1638,13 +1720,13 @@ void InitInput (void)
 	cl_cmhotkeys		= gEngfuncs.pfnRegisterVariable ( kvCMHotkeys, "qwerasdfzxcv", FCVAR_ARCHIVE );
 	//cl_forcedefaultfov	= gEngfuncs.pfnRegisterVariable ( kvForceDefaultFOV, "0", FCVAR_ARCHIVE );
 	cl_particleinfo		= gEngfuncs.pfnRegisterVariable ( kvParticleInfo, "0", FCVAR_ARCHIVE );
-	cl_widescreen		= gEngfuncs.pfnRegisterVariable	( kvWidescreen, "1", FCVAR_ARCHIVE );
-	cl_ambientsound		= gEngfuncs.pfnRegisterVariable	( kvAmbientSound, "0", FCVAR_ARCHIVE);
+	//cl_widescreen		= gEngfuncs.pfnRegisterVariable	( kvWidescreen, "1", FCVAR_ARCHIVE );
+	cl_ambientsound		= gEngfuncs.pfnRegisterVariable	( kvAmbientSound, "0.6", FCVAR_ARCHIVE);
 	senslock			= gEngfuncs.pfnRegisterVariable	("senslock", "0", FCVAR_ARCHIVE);
-	hud_style			= gEngfuncs.pfnRegisterVariable	("hud_style", "1", FCVAR_ARCHIVE);
 	cl_chatbeep			= gEngfuncs.pfnRegisterVariable	("cl_chatbeep", "1", FCVAR_ARCHIVE);
 	cl_mutemenu			= gEngfuncs.pfnRegisterVariable ("cl_mutemenu", "3", FCVAR_ARCHIVE);
 	cl_weaponcfgs		= gEngfuncs.pfnRegisterVariable ("cl_weaponcfgs", "1", FCVAR_ARCHIVE);
+	cl_pistoltrigger	= gEngfuncs.pfnRegisterVariable ("cl_pistoltrigger", "1", FCVAR_ARCHIVE | FCVAR_USERINFO);
 
 	// Initialize third person camera controls.
 	CAM_Init();

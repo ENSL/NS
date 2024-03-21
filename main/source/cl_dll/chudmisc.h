@@ -121,6 +121,7 @@ private:
 	int	m_HUD_bucket0;
 	int m_HUD_selection;
 	int m_customCrosshair;
+	int m_crossLastWeapId;
 	
 };
 

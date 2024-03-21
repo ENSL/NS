@@ -2991,7 +2991,8 @@ bool AvHSUClientTraceTangible(const vec3_t& inStartPos, const vec3_t& inEndPos, 
 
 		if(pEntity)
 		{
-			if(pEntity->iuser3 != AVH_USER3_NONE)
+			// 2024 - Also skip nobuilds on client since clients can now see them.
+			if(pEntity->iuser3 != AVH_USER3_NONE && pEntity->iuser3 != AVH_USER3_NOBUILD)
 			{
 				VectorCopy(tr.endpos, outLocation);
 				outIndex = theFoundEntity;

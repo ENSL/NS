@@ -120,9 +120,11 @@ cvar_t	avh_votepercentneeded		= {kvVotePercentNeeded, ".3", FCVAR_SERVER};
 cvar_t	avh_autoconcede				= {kvAutoConcede, "4", FCVAR_SERVER};
 cvar_t	avh_combattime				= {kvCombatTime, "10", FCVAR_SERVER};
 cvar_t  avh_mapvoteratio            = {kvMapVoteRatio, ".6", FCVAR_SERVER};
-cvar_t  avh_blockscripts            = {kvBlockScripts, "1", FCVAR_SERVER};
+cvar_t  avh_blockscripts            = {kvBlockScripts, "0", FCVAR_SERVER};
 cvar_t  avh_jumpmode				= {kvJumpMode, "1", FCVAR_SERVER};
 cvar_t  avh_version					= {kvVersion, "330", FCVAR_SERVER};
+cvar_t  avh_widescreenclamp			= {kvWidescreenClamp, "0", FCVAR_SERVER};
+cvar_t  avh_randomrfk				= {kvRandomRfk, "0", FCVAR_SERVER};
 
 // AI Player Settings
 cvar_t	avh_botsenabled				= { kvBotsEnabled,"0", FCVAR_SERVER };			// Bots can be added to the server Y/N
@@ -141,7 +143,6 @@ cvar_t	avh_botmaxstucktime			= { kvBotMaxStuckTime,"15", FCVAR_SERVER };		// If 
 
 //playtest cvars
 cvar_t  avh_fastjp					= {kvfastjp, "0", FCVAR_SERVER};
-cvar_t  avh_randomrfk				= {kvRandomRfk, "1", FCVAR_SERVER};
 cvar_t  avh_parasiteonmap			= {kvParasiteOnMap, "0", FCVAR_SERVER };
 
 #ifdef DEBUG
@@ -185,6 +186,11 @@ cvar_t	avh_killdelay				= {kvKillDelay, "0", FCVAR_SERVER};
 cvar_t 	*g_psv_gravity = NULL;
 cvar_t	*g_psv_aim = NULL;
 cvar_t	*g_footsteps = NULL;
+cvar_t* sv_maxupdaterate = NULL;
+cvar_t* sv_maxunlag = NULL;
+cvar_t* sv_rollangle = NULL;
+cvar_t* sv_allow_shaders = NULL;
+
 
 // END Cvars for Skill Level settings
 
@@ -270,6 +276,7 @@ void GameDLLInit( void )
     CVAR_REGISTER (&avh_blockscripts);
 	CVAR_REGISTER (&avh_jumpmode);
 	CVAR_REGISTER (&avh_version);
+	CVAR_REGISTER (&avh_widescreenclamp);
 	//playtest cvars
 	CVAR_REGISTER (&avh_fastjp);
 	CVAR_REGISTER (&avh_randomrfk);
@@ -300,6 +307,35 @@ void GameDLLInit( void )
 	CVAR_REGISTER (&avh_eastereggchance);
 	CVAR_REGISTER (&avh_uplink);
 	CVAR_REGISTER (&avh_killdelay);
+
+	// Initialize rates for servers that have old configs without them.
+	sv_maxupdaterate = CVAR_GET_POINTER("sv_maxupdaterate");
+	if(sv_maxupdaterate)
+	{
+		//sv_maxupdaterate->value = 102.0f;
+		CVAR_SET_FLOAT("sv_maxupdaterate", 102.0f);
+	}
+
+	sv_maxunlag = CVAR_GET_POINTER("sv_maxunlag");
+	if (sv_maxunlag)
+	{
+		//sv_maxunlag->value = 0.3f;
+		CVAR_SET_FLOAT("sv_maxunlag", 0.3f);
+	}
+	// Remove HL25 addition of roll angle and overbright shader in code so servers don't need to update configs.
+	sv_rollangle = CVAR_GET_POINTER("sv_rollangle");
+	if (sv_rollangle)
+	{
+		//sv_rollangle->value = 0.0f;
+		CVAR_SET_FLOAT("sv_rollangle", 0.0f);
+	}
+
+	sv_allow_shaders = CVAR_GET_POINTER("sv_allow_shaders");
+	if (sv_allow_shaders)
+	{
+		//sv_allow_shaders->value = 0.0f;
+		CVAR_SET_FLOAT("sv_allow_shaders", 0.0f);
+	}
 
 }
 

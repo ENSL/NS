@@ -31,6 +31,9 @@
     <Filter Include="textrep">
       <UniqueIdentifier>{ad5bbb2c-1092-4ba3-ab5b-fdfa0a33f1f5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\glew">
+      <UniqueIdentifier>{57cad65d-80b8-4d06-abb5-8ff8dc1d60cc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ammo.cpp">
@@ -552,9 +555,6 @@
     <ClCompile Include="..\util\Checksum.cpp">
       <Filter>util</Filter>
     </ClCompile>
-    <ClCompile Include="..\util\GammaTable.cpp">
-      <Filter>util</Filter>
-    </ClCompile>
     <ClCompile Include="..\util\LinuxSupport.cpp">
       <Filter>util</Filter>
     </ClCompile>
@@ -599,6 +599,15 @@
     </ClCompile>
     <ClCompile Include="hudgl.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="shader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\util\ShaderUtil.cpp">
+      <Filter>util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\includes\glew\GL\glew.c">
+      <Filter>Source Files\glew</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1004,9 +1013,6 @@
     <ClInclude Include="..\util\CString.h">
       <Filter>util</Filter>
     </ClInclude>
-    <ClInclude Include="..\util\GammaTable.h">
-      <Filter>util</Filter>
-    </ClInclude>
     <ClInclude Include="..\util\LinuxSupport.h">
       <Filter>util</Filter>
     </ClInclude>
@@ -1051,6 +1057,21 @@
     </ClInclude>
     <ClInclude Include="hudgl.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\util\ShaderUtil.h">
+      <Filter>util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\includes\glew\GL\glxew.h">
+      <Filter>Source Files\glew</Filter>
+    </ClInclude>
+    <ClInclude Include="..\includes\glew\GL\wglew.h">
+      <Filter>Source Files\glew</Filter>
+    </ClInclude>
+    <ClInclude Include="..\includes\glew\GL\eglew.h">
+      <Filter>Source Files\glew</Filter>
+    </ClInclude>
+    <ClInclude Include="..\includes\glew\GL\glew.h">
+      <Filter>Source Files\glew</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

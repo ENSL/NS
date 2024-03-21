@@ -185,9 +185,16 @@ void ScorePanel::HitTestPanel::internalMousePressed(MouseCode code)
 			if (SDL_GetRelativeMouseMode() == SDL_TRUE)
 			{
 				SDL_SetRelativeMouseMode(SDL_FALSE);
-				//gEngfuncs.pfnSetMousePos(gEngfuncs.GetWindowCenterX(), gEngfuncs.GetWindowCenterY());
+
 				//Fix for windowed mode centering being incorrect.
-				gEngfuncs.pfnSetMousePos(ScreenWidth() / 2, ScreenHeight() / 2);
+				if (gHUD.m_bWindowed)
+				{
+					gEngfuncs.pfnSetMousePos(ScreenWidth() / 2, ScreenHeight() / 2);
+				}
+				else
+				{
+					gEngfuncs.pfnSetMousePos(gEngfuncs.GetWindowCenterX(), gEngfuncs.GetWindowCenterY());
+				}
 
 				//#ifdef WIN32
 				//ShowCursor(FALSE);
@@ -205,8 +212,11 @@ void ScorePanel::HitTestPanel::internalMousePressed(MouseCode code)
 
 vgui::Color BuildColor( int R, int G, int B, float gamma )
 {
-	ASSERT( gamma != 0 );
-	return vgui::Color( R/gamma, G/gamma, B/gamma, 0 );
+	// 2024 - remove old gamma ramp compensation
+	//ASSERT( gamma != 0 );
+	//return vgui::Color( R/gamma, G/gamma, B/gamma, 0 );
+
+	return vgui::Color(R, G, B, 0);
 }
 
 //-----------------------------------------------------------------------------

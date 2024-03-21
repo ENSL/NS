@@ -10,13 +10,13 @@ int CHudCrosshairs::Init()
 {
 	m_iFlags = HUD_ACTIVE;
 
-	cl_cross = CVAR_CREATE("cl_cross", "0", FCVAR_ARCHIVE);
+	cl_cross = CVAR_CREATE("cl_cross", "1", FCVAR_ARCHIVE);
 	cl_cross_color = CVAR_CREATE("cl_cross_color", "255 255 255", FCVAR_ARCHIVE);
 	cl_cross_alpha = CVAR_CREATE("cl_cross_alpha", "255", FCVAR_ARCHIVE);
 	cl_cross_thickness = CVAR_CREATE("cl_cross_thickness", "2", FCVAR_ARCHIVE);
 	cl_cross_size = CVAR_CREATE("cl_cross_size", "6", FCVAR_ARCHIVE);
 	cl_cross_gap = CVAR_CREATE("cl_cross_gap", "3", FCVAR_ARCHIVE);
-	cl_cross_outline = CVAR_CREATE("cl_cross_outline", "2", FCVAR_ARCHIVE);
+	cl_cross_outline = CVAR_CREATE("cl_cross_outline", "1", FCVAR_ARCHIVE);
 	cl_cross_outline_alpha = CVAR_CREATE("cl_cross_outline_alpha", "", FCVAR_ARCHIVE);
 	cl_cross_outline_inner = CVAR_CREATE("cl_cross_outline_inner", "0", FCVAR_ARCHIVE);
 	cl_cross_circle_radius = CVAR_CREATE("cl_cross_circle_radius", "0", FCVAR_ARCHIVE);
@@ -35,6 +35,7 @@ int CHudCrosshairs::Init()
 	cl_cross_line_bottom = CVAR_CREATE("cl_cross_line_bottom", "1", FCVAR_ARCHIVE);
 	cl_cross_line_left = CVAR_CREATE("cl_cross_line_left", "1", FCVAR_ARCHIVE);
 	cl_cross_line_right = CVAR_CREATE("cl_cross_line_right", "1", FCVAR_ARCHIVE);
+	cl_cross_scaling = CVAR_CREATE("cl_cross_scaling", "1", FCVAR_ARCHIVE);
 
 	gHUD.AddHudElem(this);
 	return 0;
@@ -62,9 +63,33 @@ int CHudCrosshairs::Draw(float time)
 
 	unsigned char r, g, b;
 	if (sscanf(cl_cross_color->string, "%hhu %hhu %hhu", &r, &g, &b) != 3) {
-		r = 0;
+		r = 255;
 		g = 255;
-		b = 0;
+		b = 255;
+	}
+
+	unsigned char outalpha;
+	if (sscanf(cl_cross_outline_alpha->string, "%hhu", &outalpha) != 1)
+		outalpha = alpha;
+
+
+	float scalar = 1.0f;
+	if (cl_cross_scaling->value != 0)
+	{
+		// Scale from 1080 Y res, as it's what the default crosshairs are designed for, but don't scale when resolution is close to 1080, as it looks bad.
+		const float screenscale = ScreenHeight() / 1080.0f; //ScreenHeight() * 0.000926f
+		// Lowering scale looks like junk, don't bother.
+		//if (screenscale < 0.75f)
+		//{
+		//	scalar = 1.0f / round(1080.0f / ScreenHeight());
+		//	//scalar = 0.5f;
+		//}
+		if (screenscale > 1.0f)
+		{
+			scalar = screenscale;
+		}
+		// Additional scaling with the cvar value if desired.
+		scalar *= cl_cross_scaling->value;
 	}
 
 
@@ -73,38 +98,35 @@ int CHudCrosshairs::Draw(float time)
 	HudGL gl;
 
 	// Draw the outline.
-	// TODO: this contains a terrible amount of repeating complex code.
-	//
-	// Possible solution: can be changed to this with the one downside being in rare cases where cl_cross_thickness is high AND its alpha is <255, the center of each line will be slightly darker.
-	// Example below is for bottom line. Would also cause certain crosshairs that have outlines on invisible cross lines to not look right.
-	// gl.rectangle(Vector2D(center.x + offset, center.y + gap - half_width), Vector2D(center.x - offset, center.y + gap + size + half_width));
-	if (cl_cross_outline->value > 0.0f) {
-		unsigned char outalpha;
-		if (sscanf(cl_cross_outline_alpha->string, "%hhu", &outalpha) != 1)
-			outalpha = alpha;
+	// TODO: Swap out lines for rectangles to fix the line thickness limit of 10.
+	// The lines can also be changed to one rectangle with the one downside being in cases where the cross alpha is <255, the center of each line will be slightly darker.
+	// Example below is for bottom line. It would also cause certain crosshairs that have outlines on invisible cross lines to not look right.
+	// gl.rectangle(Vector2D(center.x + offset, center.y + gap /*- outline_width*/), Vector2D(center.x - offset, center.y + gap + size + outline_width));
+	if (cl_cross_outline->value > 0.0f && cl_cross_thickness->value > 0.0f && cl_cross_size->value > 0.0f) {
+
+
+		float size = cl_cross_size->value * scalar;
+		float gap = cl_cross_gap->value * scalar;
+		float half_thickness = min(cl_cross_thickness->value * scalar, ScreenHeight() * 0.3f) * 0.5f;
+		float outline_width = cl_cross_outline->value * scalar;
+		float offset = half_thickness + outline_width;
 
 		gl.color(0, 0, 0, outalpha);
-		gl.line_width(cl_cross_outline->value);
-
-		float size = cl_cross_size->value;
-		float gap = cl_cross_gap->value;
-		float half_thickness = cl_cross_thickness->value / 2.0f;
-		float half_width = cl_cross_outline->value / 2.0f;
-		float offset = half_thickness + half_width;
+		gl.line_width(outline_width * 2.0f);
 
 		// Top line
 		if (cl_cross_line_top->value) {
 			gl.line(Vector2D(center.x - offset, center.y - gap - size), Vector2D(center.x + offset, center.y - gap - size));
 			if (cl_cross_outline_inner->value == 0.0f)
 			{
-				gl.line(Vector2D(center.x + half_thickness, center.y - gap - size + half_width), Vector2D(center.x + half_thickness, center.y - gap));
-				gl.line(Vector2D(center.x - half_thickness, center.y - gap), Vector2D(center.x - half_thickness, center.y - gap - size + half_width));
+				gl.line(Vector2D(center.x + half_thickness, center.y - gap - size + outline_width), Vector2D(center.x + half_thickness, center.y - gap));
+				gl.line(Vector2D(center.x - half_thickness, center.y - gap), Vector2D(center.x - half_thickness, center.y - gap - size + outline_width));
 			}
 			else
 			{
-				gl.line(Vector2D(center.x + half_thickness, center.y - gap - size + half_width), Vector2D(center.x + half_thickness, center.y - gap - half_width));
+				gl.line(Vector2D(center.x + half_thickness, center.y - gap - size + outline_width), Vector2D(center.x + half_thickness, center.y - gap - outline_width));
 				gl.line(Vector2D(center.x + offset, center.y - gap), Vector2D(center.x - offset, center.y - gap));
-				gl.line(Vector2D(center.x - half_thickness, center.y - gap - half_width), Vector2D(center.x - half_thickness, center.y - gap - size + half_width));
+				gl.line(Vector2D(center.x - half_thickness, center.y - gap - outline_width), Vector2D(center.x - half_thickness, center.y - gap - size + outline_width));
 			}
 		}
 
@@ -113,14 +135,14 @@ int CHudCrosshairs::Draw(float time)
 			gl.line(Vector2D(center.x - offset, center.y + gap + size), Vector2D(center.x + offset, center.y + gap + size));
 			if (cl_cross_outline_inner->value == 0.0f)
 			{
-				gl.line(Vector2D(center.x + half_thickness, center.y + gap + size - half_width), Vector2D(center.x + half_thickness, center.y + gap));
-				gl.line(Vector2D(center.x - half_thickness, center.y + gap), Vector2D(center.x - half_thickness, center.y + gap + size - half_width));
+				gl.line(Vector2D(center.x + half_thickness, center.y + gap + size - outline_width), Vector2D(center.x + half_thickness, center.y + gap));
+				gl.line(Vector2D(center.x - half_thickness, center.y + gap), Vector2D(center.x - half_thickness, center.y + gap + size - outline_width));
 			}
 			else
 			{
-				gl.line(Vector2D(center.x + half_thickness, center.y + gap + size - half_width), Vector2D(center.x + half_thickness, center.y + gap + half_width));
+				gl.line(Vector2D(center.x + half_thickness, center.y + gap + size - outline_width), Vector2D(center.x + half_thickness, center.y + gap + outline_width));
 				gl.line(Vector2D(center.x + offset, center.y + gap), Vector2D(center.x - offset, center.y + gap));
-				gl.line(Vector2D(center.x - half_thickness, center.y + gap + half_width), Vector2D(center.x - half_thickness, center.y + gap + size - half_width));
+				gl.line(Vector2D(center.x - half_thickness, center.y + gap + outline_width), Vector2D(center.x - half_thickness, center.y + gap + size - outline_width));
 			}
 		}
 
@@ -129,14 +151,14 @@ int CHudCrosshairs::Draw(float time)
 			gl.line(Vector2D(center.x - gap - size, center.y - offset), Vector2D(center.x - gap - size, center.y + offset));
 			if (cl_cross_outline_inner->value == 0.0f)
 			{
-				gl.line(Vector2D(center.x - gap - size + half_width, center.y + half_thickness), Vector2D(center.x - gap, center.y + half_thickness));
-				gl.line(Vector2D(center.x - gap, center.y - half_thickness), Vector2D(center.x - gap - size + half_width, center.y - half_thickness));
+				gl.line(Vector2D(center.x - gap - size + outline_width, center.y + half_thickness), Vector2D(center.x - gap, center.y + half_thickness));
+				gl.line(Vector2D(center.x - gap, center.y - half_thickness), Vector2D(center.x - gap - size + outline_width, center.y - half_thickness));
 			}
 			else
 			{
-				gl.line(Vector2D(center.x - gap - size + half_width, center.y + half_thickness), Vector2D(center.x - gap - half_width, center.y + half_thickness));
+				gl.line(Vector2D(center.x - gap - size + outline_width, center.y + half_thickness), Vector2D(center.x - gap - outline_width, center.y + half_thickness));
 				gl.line(Vector2D(center.x - gap, center.y + offset), Vector2D(center.x - gap, center.y - offset));
-				gl.line(Vector2D(center.x - gap - half_width, center.y - half_thickness), Vector2D(center.x - gap - size + half_width, center.y - half_thickness));
+				gl.line(Vector2D(center.x - gap - outline_width, center.y - half_thickness), Vector2D(center.x - gap - size + outline_width, center.y - half_thickness));
 			}
 		}
 
@@ -145,64 +167,72 @@ int CHudCrosshairs::Draw(float time)
 			gl.line(Vector2D(center.x + gap + size, center.y - offset), Vector2D(center.x + gap + size, center.y + offset));
 			if (cl_cross_outline_inner->value == 0.0f)
 			{
-				gl.line(Vector2D(center.x + gap + size - half_width, center.y + half_thickness), Vector2D(center.x + gap, center.y + half_thickness));
-				gl.line(Vector2D(center.x + gap, center.y - half_thickness), Vector2D(center.x + gap + size - half_width, center.y - half_thickness));
+				gl.line(Vector2D(center.x + gap + size - outline_width, center.y + half_thickness), Vector2D(center.x + gap, center.y + half_thickness));
+				gl.line(Vector2D(center.x + gap, center.y - half_thickness), Vector2D(center.x + gap + size - outline_width, center.y - half_thickness));
 			}
 			else
 			{
-				gl.line(Vector2D(center.x + gap + size - half_width, center.y + half_thickness), Vector2D(center.x + gap + half_width, center.y + half_thickness));
+				gl.line(Vector2D(center.x + gap + size - outline_width, center.y + half_thickness), Vector2D(center.x + gap + outline_width, center.y + half_thickness));
 				gl.line(Vector2D(center.x + gap, center.y + offset), Vector2D(center.x + gap, center.y - offset));
-				gl.line(Vector2D(center.x + gap + half_width, center.y - half_thickness), Vector2D(center.x + gap + size - half_width, center.y - half_thickness));
+				gl.line(Vector2D(center.x + gap + outline_width, center.y - half_thickness), Vector2D(center.x + gap + size - outline_width, center.y - half_thickness));
 			}
 		}
 	}
 
-	unsigned char dotout;
-	if (sscanf(cl_cross_dot_outline->string, "%hhu", &dotout) != 1)
-		dotout = cl_cross_outline->value;
+	float dotout;
+
+	if (cl_cross_dot_outline->string[0] == 0)
+	{
+		dotout = cl_cross_outline->value * scalar;
+	}
+	else
+	{
+		dotout = cl_cross_dot_outline->value * scalar;
+	}
 	// Dot outline
 	if (cl_cross_dot_size->value > 0.0f && dotout > 0.0f) {
 		unsigned char dotoutalpha;
-		if (sscanf(cl_cross_circle_outline_alpha->string, "%hhu", &dotoutalpha) != 1)
-			dotoutalpha = alpha;
+		if (sscanf(cl_cross_dot_outline_alpha->string, "%hhu", &dotoutalpha) != 1)
+			dotoutalpha = outalpha;
 
 		gl.color(0, 0, 0, dotoutalpha);
 
-		float size = cl_cross_dot_size->value;
+		float size = min(cl_cross_dot_size->value * scalar, ScreenHeight() * 0.2f) + (dotout * 2.0f);
 		Vector2D offset = Vector2D(size / 2.0f, size / 2.0f);
-		float dot_half_width = dotout / 2.0f;
 
-		gl.line(Vector2D(center.x - offset.x - dot_half_width, center.y - offset.y), Vector2D(center.x + offset.x + dot_half_width, center.y - offset.y));
-		gl.line(Vector2D(center.x + offset.x, center.y - offset.y + dot_half_width), Vector2D(center.x + offset.x, center.y + offset.y - dot_half_width));
-		gl.line(Vector2D(center.x - offset.x, center.y - offset.y + dot_half_width), Vector2D(center.x - offset.x, center.y + offset.y - dot_half_width));
-		gl.line(Vector2D(center.x - offset.x - dot_half_width, center.y + offset.y), Vector2D(center.x + offset.x + dot_half_width, center.y + offset.y));
+		gl.rectangle(center - offset, center + offset);
 	}
 
-	unsigned char circleout;
-	if (sscanf(cl_cross_circle_outline->string, "%hhu", &circleout) != 1)
-		circleout = cl_cross_outline->value;
+	float circleout;
+	if (cl_cross_circle_outline->string[0] == 0)
+	{
+		circleout = cl_cross_outline->value * scalar;
+	}
+	else
+	{
+		circleout = cl_cross_circle_outline->value * scalar;
+	}
 	// Circle outline
 	if (cl_cross_circle_radius->value > 0.0f && cl_cross_circle_thickness->value > 0.0f && circleout > 0.0f) {
 
 		unsigned char circleoutalpha;
 		if (sscanf(cl_cross_circle_outline_alpha->string, "%hhu", &circleoutalpha) != 1)
-			circleoutalpha = alpha;
-		unsigned char circleoutinner;
-		if (sscanf(cl_cross_circle_outline_inner->string, "%hhu", &circleoutinner) != 1)
-			circleoutinner = cl_cross_outline_inner->value;
+			circleoutalpha = outalpha;
+
+		bool circleoutinner = cl_cross_outline_inner->value;
 
 		gl.color(0, 0, 0, circleoutalpha);
 
-		auto radius = cl_cross_circle_radius->value;
+		auto radius = cl_cross_circle_radius->value * scalar;
 
-		if (circleoutinner == 0.0f)
+		if (!circleoutinner)
 		{
-			radius += (cl_cross_circle_thickness->value * 0.5f) + (circleout * 0.5f);
+			radius += cl_cross_circle_thickness->value * scalar * 0.5f;
 			gl.line_width(circleout);
 		}
 		else
 		{
-			gl.line_width(cl_cross_circle_thickness->value + circleout);
+			gl.line_width(cl_cross_circle_thickness->value * scalar + (circleout * 2.0f));
 		}
 
 		if (old_circle_radius != radius) {
@@ -216,22 +246,41 @@ int CHudCrosshairs::Draw(float time)
 	gl.color(r, g, b, alpha);
 
 	// Draw the crosshairs.
-	if (cl_cross_thickness->value > 0.0f) {
-		//gl.line_width(cl_cross_thickness->value);
-		//clamp dot size to prevent using it as a full screen transparent mask for highlighting eneimies like with the /nvg night vision server plugin.
-		gl.line_width(min(cl_cross_thickness->value, ScreenHeight() * 0.3f));
+	if (cl_cross_thickness->value > 0.0f && cl_cross_size->value > 0.0f) {
+		
+		float size;
+		float gap = cl_cross_gap->value * scalar;
 
-		float size = cl_cross_size->value;
-		float gap = cl_cross_gap->value;
+		// Box crosshair. This is needed since line thickness seems to cap out at 10 on my system.
+		if (cl_cross_thickness->value > cl_cross_size->value) {
+			gl.line_width(cl_cross_size->value * scalar);
+			float half_size = cl_cross_size->value * scalar * 0.5f;
+			float half_thickness = cl_cross_thickness->value * scalar * 0.5f;
 
-		if (cl_cross_line_top->value)
-			gl.line(Vector2D(center.x, center.y - gap - size), Vector2D(center.x, center.y - gap));
-		if (cl_cross_line_bottom->value)
-			gl.line(Vector2D(center.x, center.y + gap + size), Vector2D(center.x, center.y + gap));
-		if (cl_cross_line_left->value)
-			gl.line(Vector2D(center.x - gap - size, center.y), Vector2D(center.x - gap, center.y));
-		if (cl_cross_line_right->value)
-			gl.line(Vector2D(center.x + gap + size, center.y), Vector2D(center.x + gap, center.y));
+			if (cl_cross_line_top->value)
+				gl.line(Vector2D(center.x - half_thickness, center.y - gap - half_size), Vector2D(center.x + half_thickness, center.y - gap - half_size));
+			if (cl_cross_line_bottom->value)
+				gl.line(Vector2D(center.x - half_thickness, center.y + gap + half_size), Vector2D(center.x + half_thickness, center.y + gap + half_size));
+			if (cl_cross_line_left->value)
+				gl.line(Vector2D(center.x - gap - half_size, center.y + half_thickness), Vector2D(center.x - gap - half_size, center.y - half_thickness));
+			if (cl_cross_line_right->value)
+				gl.line(Vector2D(center.x + gap + half_size, center.y + half_thickness), Vector2D(center.x + gap + half_size, center.y - half_thickness));
+		}
+		// Normal cross.
+		else {
+			gl.line_width(cl_cross_thickness->value * scalar);
+			size = cl_cross_size->value * scalar;
+
+			if (cl_cross_line_top->value)
+				gl.line(Vector2D(center.x, center.y - gap - size), Vector2D(center.x, center.y - gap));
+			if (cl_cross_line_bottom->value)
+				gl.line(Vector2D(center.x, center.y + gap + size), Vector2D(center.x, center.y + gap));
+			if (cl_cross_line_left->value)
+				gl.line(Vector2D(center.x - gap - size, center.y), Vector2D(center.x - gap, center.y));
+			if (cl_cross_line_right->value)
+				gl.line(Vector2D(center.x + gap + size, center.y), Vector2D(center.x + gap, center.y));
+		}
+
 	}
 
 	// Draw the circle.
@@ -250,9 +299,9 @@ int CHudCrosshairs::Draw(float time)
 			gl.color(r, g, b, circlealpha);
 		}
 		
-		gl.line_width(cl_cross_circle_thickness->value);
+		gl.line_width(cl_cross_circle_thickness->value * scalar);
 
-		float radius = cl_cross_circle_radius->value;
+		float radius = cl_cross_circle_radius->value * scalar;
 		if (old_circle_radius != radius) {
 			// Recompute the circle points.
 			circle_points = HudGL::compute_circle(radius);
@@ -278,9 +327,9 @@ int CHudCrosshairs::Draw(float time)
 			gl.color(r, g, b, dotalpha);
 		}
 
-		//float size = cl_cross_dot_size->value;
+		//float size = cl_cross_dot_size->value * scalar;
 		//clamp dot size to prevent using it as a full screen transparent mask for highlighting eneimies like with the /nvg night vision server plugin.
-		float size = min(cl_cross_dot_size->value, ScreenHeight() * 0.2f);
+		float size = min(cl_cross_dot_size->value * scalar, ScreenHeight() * 0.2f);
 		Vector2D offset = Vector2D(size / 2.0f, size / 2.0f);
 
 		gl.rectangle(center - offset, center + offset);

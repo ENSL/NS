@@ -96,13 +96,17 @@ int			old_mouse_x, old_mouse_y, mx_accum, my_accum;
 float		mouse_x, mouse_y;
 
 static int	restore_spi;
-//// Previous code from HL SDK windows98 for era paramaters. See comments in IN_StartupMouse.
+//// Previous code from Quake era forced mouse accel. Also adjusted launch params in IN_StartupMouse.
 //static int	originalmouseparms[3], newmouseparms[3] = {0, 0, 1};
+////Mouse accel forced off.
 static int	originalmouseparms[3], newmouseparms[3] = { 0, 0, 0};
 static int	mouseactive = 0;
 int			mouseinitialized;
 static int	mouseparmsvalid;
 static int	mouseshowtoggle = 1;
+
+////2024 - Added to fix view spin when disabling the cursor.
+static bool cursorDisabledThisFrame = false;
 
 // joystick defines and variables
 // where should defines be moved?
@@ -311,7 +315,21 @@ void IN_SetVisibleMouse(bool visible)
 
 	g_iVisibleMouse = visible;
 
-	IN_SetMouseMode(!visible);
+	////2024 - Disabled this as SDL mouse mode is handled per use of UIManager::SetMouseVisibility to fix edge case bugs with centering and showing/not showing cursor in game and in the escape menu.
+	//IN_SetMouseMode(!visible);
+
+	//2024 - Added to fix view spin when disabling the cursor. Reassess after new SDK is released.
+	cursorDisabledThisFrame = (!visible);
+
+	////2024 - Move centering here?
+	//if (visible && gHUD.m_bWindowed)
+	//{
+	//	gEngfuncs.pfnSetMousePos(ScreenWidth() / 2, ScreenHeight() / 2);
+	//}
+	//else
+	//{
+	//	gEngfuncs.pfnSetMousePos(gEngfuncs.GetWindowCenterX(), gEngfuncs.GetWindowCenterY());
+	//}
 
 #ifdef _WIN32
 	UpdateMouseThreadActive();
@@ -389,12 +407,7 @@ void IN_StartupMouse (void)
 
 	if (mouseparmsvalid)
 	{
-		//// Original mouse parameter code. SPI_GETMOUSE windows parameters changed either in win2000 or winxp and these launch parameters haven't made sense since.
-		//// The newmouseparms[2] (mouse accel on/off in newer windows) was also hardcoded to 1 previously, forcing acceleration on for players without noforcemspd or noforcemparms parameters. This was done so to make mouse speed = 1 in win98.
-		//// SPI_GETMOUSE documentation:
-		//// Win10: https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-systemparametersinfoa 
-		////		https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-mouse_event
-		//// Win98: Retrieve the x-axis and y-axis threshold values for the mouse as well as the mouse speed. uiParam must be 0. pvParam is a 3-element array of Long-type variables which receives the x-threshold, y-threshold, and mouse speed.
+		//// Original mouse parameter code before disabling forced mouse acceleration.
 		//if ( gEngfuncs.CheckParm ("-noforcemspd", NULL ) ) 
 		//	newmouseparms[2] = originalmouseparms[2];
 		//
@@ -646,6 +659,14 @@ void IN_GetMouseDelta( int *pOutX, int *pOutY)
 			mx = deltaX + mx_accum;
 			my = deltaY + my_accum;
 		}
+		//2024 - Added to fix view spin when disabling the cursor.
+		if (cursorDisabledThisFrame)
+		{
+			mx = 0;
+			my = 0;
+
+			cursorDisabledThisFrame = false;
+		}
 		
 		mx_accum = 0;
 		my_accum = 0;
@@ -760,7 +781,7 @@ void IN_MouseMove ( float frametime, usercmd_t *cmd)
 			}
 		}
 	}
-
+	
 	gEngfuncs.SetViewAngles( (float *)viewangles );
 
 /*
@@ -805,7 +826,7 @@ void CL_DLLEXPORT IN_Accumulate (void)
 				int deltaX, deltaY;
 				SDL_GetRelativeMouseState( &deltaX, &deltaY );
 				mx_accum += deltaX;
-				my_accum += deltaY;	
+				my_accum += deltaY;
 			}
 
 			// force the mouse to the center, so there's room to move

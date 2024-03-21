@@ -93,10 +93,10 @@ void FadingImageLabel::DoPaint()
 		int r, g, b, a;
 		this->getBgColor(r, g, b, a);
 
-		float theGammaSlope = gHUD.GetGammaSlope();
-		r = r/theGammaSlope;
-		g = g/theGammaSlope;
-		b = b/theGammaSlope;
+		//float theGammaSlope = gHUD.GetGammaSlope();
+		//r = r/theGammaSlope;
+		//g = g/theGammaSlope;
+		//b = b/theGammaSlope;
 		
 		// Don't take gamma slope into account for alpha
 		a = 255 - a;

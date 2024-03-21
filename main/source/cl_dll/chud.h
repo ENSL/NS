@@ -24,7 +24,7 @@ public:
 	AVHHSPRITE					m_hsprCursor;
 	float m_flTime;	   // the current client time
 	float m_fOldTime;  // the time at which the HUD was last redrawn
-	float m_wsFOV; //fov recalc corrected for widescreen
+	//float m_wsFOV; //fov recalc corrected for widescreen
 	double m_flTimeDelta; // the difference between flTime and fOldTime
 	Vector	m_vecOrigin;
 	Vector	m_vecAngles;
@@ -34,6 +34,7 @@ public:
 	int		m_iRes;
 	cvar_t  *m_pCvarStealMouse;
 	cvar_t	*m_pCvarDraw;
+	bool	m_bWindowed;
 
 	int m_iFontHeight;
 	int DrawHudNumber(int x, int y, int iFlags, int iNumber, int r, int g, int b );

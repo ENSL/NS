@@ -227,10 +227,9 @@ extern void	__CmdFunc_Close(void);
 extern int CL_ButtonBits(int);
 extern int g_iVisibleMouse;
 
-//@2014 make this work for linux
-
-GammaTable AvHHud::sPregameGammaTable;
-GammaTable AvHHud::sGameGammaTable;
+//// 2024 - replaced windows gamma table with shader
+//GammaTable AvHHud::sPregameGammaTable;
+//GammaTable AvHHud::sGameGammaTable;
 
 
 bool AvHHud::sShowMap = false;
@@ -312,7 +311,7 @@ void NumericalInfoEffect::SetPosition(float inPosition[3])
 void AvHHud::OnActivateSteamUI()
 {
     // Set the normal gamma so the Steam UI looks correct.
-	/*
+/*
 #ifdef _WIN32
     sPregameGammaTable.InitializeToVideoState();
 #endif*/
@@ -323,7 +322,7 @@ void AvHHud::OnDeactivateSteamUI()
 {
 
     // Set the special NS gamma. //@2014 no more gamma
-	/*
+/*
 	#ifdef _WIN32
     SetGamma(mDesiredGammaSlope);
 	#endif */
@@ -695,7 +694,7 @@ AvHHud::~AvHHud(void)
 	//this->ResetGamma();
 	//delete [] sOriginalGammaTable;
 	//delete [] sGammaTable;
-	AvHHud::ResetGammaAtExit();
+	//AvHHud::ResetGammaAtExit();
 }
 
 void DummyFunction()
@@ -1395,6 +1394,12 @@ bool AvHHud::Update(float inCurrentTime, string& outErrorString)
 
         this->mTimeOfCurrentUpdate = inCurrentTime;
 
+		if (CVAR_GET_FLOAT("hud_style") != this->mLastHudStyle)
+		{
+			this->mReInitHUD = true;
+			gHUD.VidInit();
+		}
+
 		// Predict game time
 		if(this->GetGameStarted())
 		{
@@ -1781,7 +1786,18 @@ AvHMessageID AvHHud::HotKeyHit(char inChar)
 //@2014 make this work for linux
 float AvHHud::GetGammaSlope() const
 {	
-	return sGameGammaTable.GetGammaSlope();
+	//gEngfuncs.Con_DPrintf("Map gamma set to %f\n", this->mShaderGamma);
+
+	if (CVAR_GET_FLOAT("cl_intensityalt") <= 0)
+	{
+		return this->mShaderGamma;
+	}
+	else
+	{
+		return this->mShaderGammaAlt;
+	}
+
+	//return sGameGammaTable.GetGammaSlope();
 }
 string AvHHud::GetMapName(bool inLocalOnly) const
 {
@@ -1840,59 +1856,68 @@ int AvHHud::GetMaxAlienResources() const
 	return theMaxAlienResources;
 }
 
-bool AvHHud::SetGamma(float inSlope)
+bool AvHHud::SetGamma(float inSlope, float inSlopeAlt)
 {
-    bool theSuccess = false;
+	bool theSuccess = true;
 
-	// Disable gamma stuff in debug for sanity
-//	#ifndef DEBUG
+	this->mShaderGamma = inSlope;
+	this->mShaderGammaAlt = inSlopeAlt;
 
-//@2014 
-	/*
-#ifdef _WIN32 	
-	HDC theDC = GetDC(NULL); // this is a windows func call
-	if(theDC != 0)
-	{
-		const float kGammaIncrement = 0.05f;
-		float theGammaToTry = inSlope + kGammaIncrement;
-		while(!theSuccess && (theGammaToTry > 1.0f))
-		{
-			theGammaToTry -= kGammaIncrement;
+	//sGameGammaTable.ProcessSlope(inSlope);
 
-			sGameGammaTable.ProcessSlope(theGammaToTry);
-			// : fakes a successful gamma ramp change if cl_gammaramp is set to 0
-			if((CVAR_GET_FLOAT(kvGammaRamp) == 0) || sGameGammaTable.InitializeToVideoState())
-			{
-				// Tell UI components so they can change shading to look the same
-				this->GetManager().NotifyGammaChange(theGammaToTry);
-				
-				// aww yeah
-				theSuccess = true;
-			}
-		}
-		
-		char theMessage[256];
-		if(theSuccess)
-		{
-			sprintf(theMessage, "Gamma set to %f.", theGammaToTry);
-		}
-		else
-		{
-			sprintf(theMessage, "Display doesn't support downloadable gamma ramps.");
-		}
-
-		if(!theSuccess || (gEngfuncs.GetMaxClients() == 1))
-		{
-			CenterPrint(theMessage);
-		}
-		
-		if(!ReleaseDC(NULL, theDC))
-		{
-			// emit error about leak
-		}
-	}
-
-#endif */
+// 2024 - Replaced windows gamma ramp with shader
+//
+//    bool theSuccess = false;
+//
+//	// Disable gamma stuff in debug for sanity
+////	#ifndef DEBUG
+//
+////@2014 
+//	
+//#ifdef _WIN32 	
+//	HDC theDC = GetDC(NULL); // this is a windows func call
+//	if(theDC != 0)
+//	{
+//		const float kGammaIncrement = 0.05f;
+//		float theGammaToTry = inSlope + kGammaIncrement;
+//		while(!theSuccess && (theGammaToTry > 1.0f))
+//		{
+//			theGammaToTry -= kGammaIncrement;
+//
+//			sGameGammaTable.ProcessSlope(theGammaToTry);
+//			// : fakes a successful gamma ramp change if cl_gammaramp is set to 0
+//			if((CVAR_GET_FLOAT(kvGammaRamp) == 0) || sGameGammaTable.InitializeToVideoState())
+//			{
+//				// Tell UI components so they can change shading to look the same
+//				this->GetManager().NotifyGammaChange(theGammaToTry);
+//				
+//				// aww yeah
+//				theSuccess = true;
+//			}
+//		}
+//		
+//		char theMessage[256];
+//		if(theSuccess)
+//		{
+//			sprintf(theMessage, "Gamma set to %f.", theGammaToTry);
+//		}
+//		else
+//		{
+//			sprintf(theMessage, "Display doesn't support downloadable gamma ramps.");
+//		}
+//
+//		if(!theSuccess || (gEngfuncs.GetMaxClients() == 1))
+//		{
+//			CenterPrint(theMessage);
+//		}
+//		
+//		if(!ReleaseDC(NULL, theDC))
+//		{
+//			// emit error about leak
+//		}
+//	}
+//
+//#endif
     return theSuccess;
 }
 
@@ -1938,25 +1963,25 @@ int AvHHud::Redraw( float flTime, int intermission )
     return theRC;
 }
 
-void AvHHud::ResetGammaAtExit()
-{
-/*#ifdef _WIN32	
-sPregameGammaTable.InitializeToVideoState();
-#endif*/
-}
-
-int AvHHud::ResetGammaAtExitForOnExit()
-{	
-/*#ifdef _WIN32
-	sPregameGammaTable.InitializeToVideoState();
-#endif*/
-	return TRUE;
-}
-
-void AvHHud::ResetGammaAtExit(int inSig)
-{
-	AvHHud::ResetGammaAtExit();
-}
+//void AvHHud::ResetGammaAtExit()
+//{
+//#ifdef _WIN32	
+//sPregameGammaTable.InitializeToVideoState();
+//#endif
+//}
+//
+//int AvHHud::ResetGammaAtExitForOnExit()
+//{	
+//#ifdef _WIN32
+//	sPregameGammaTable.InitializeToVideoState();
+//#endif
+//	return TRUE;
+//}
+//
+//void AvHHud::ResetGammaAtExit(int inSig)
+//{
+//	AvHHud::ResetGammaAtExit();
+//}
 
 void AvHHud::ResetTopDownUI()
 {
@@ -2585,7 +2610,9 @@ void AvHHud::ResetGame(bool inMapChanged)
 
 	this->mHiveInfoList.clear();
 
+	this->mShaderGamma = kDefaultMapGamma;
 	this->mDesiredGammaSlope = kDefaultMapGamma;
+	this->mDesiredGammaSlopeAlt = kDefaultMapGamma;
 	this->mRecordingLastFrame = false;
 	this->mTimeOfLastHelpText = -1;
 	this->mDisplayedToolTipList.clear();
@@ -2660,10 +2687,10 @@ void AvHHud::ResetGame(bool inMapChanged)
 BIND_MESSAGE(SetGmma);
 int	AvHHud::MsgFunc_SetGmma(const char* pszName, int iSize, void* pbuf)
 {
-	NetMsg_SetGammaRamp( pbuf, iSize, this->mDesiredGammaSlope );
+	NetMsg_SetGammaRamp( pbuf, iSize, this->mDesiredGammaSlope, this->mDesiredGammaSlopeAlt);
     if (!mSteamUIActive)
     {
-	    this->SetGamma(this->mDesiredGammaSlope);
+	    this->SetGamma(this->mDesiredGammaSlope, this->mDesiredGammaSlopeAlt);
     }
 	
 	return 1;
@@ -2892,8 +2919,15 @@ int	AvHHud::MsgFunc_SetTopDown(const char* pszName, int iSize, void* pbuf)
 			if (CVAR_GET_FLOAT("m_rawinput") != 0)
 			{
 				SDL_SetRelativeMouseMode(SDL_FALSE);
-				//gEngfuncs.pfnSetMousePos(gEngfuncs.GetWindowCenterX(), gEngfuncs.GetWindowCenterY());
-				gEngfuncs.pfnSetMousePos(ScreenWidth() / 2, ScreenHeight() / 2);
+
+				if (gHUD.m_bWindowed)
+				{
+					gEngfuncs.pfnSetMousePos(ScreenWidth() / 2, ScreenHeight() / 2);
+				}
+				else
+				{
+					gEngfuncs.pfnSetMousePos(gEngfuncs.GetWindowCenterX(), gEngfuncs.GetWindowCenterY());
+				}
 
 #ifdef WIN32
 				//Hide windows OS cursor while raw input is momentarily off.
@@ -3778,6 +3812,7 @@ void AvHHud::Init(void)
 	signal(SIGBREAK, AvHHud::ResetGammaAtExit);
 	signal(SIGABRT, AvHHud::ResetGammaAtExit);
 #endif	*/
+	this->mShaderGamma = 1.0f;
 	//memset(this->mAlienUILifeforms, 0, sizeof(HSPRITE)*kNumAlienLifeforms);
 	this->mAlienUIUpgrades = 0;
 	this->mAlienUIUpgradeCategories = 0;
@@ -3821,6 +3856,7 @@ void AvHHud::Init(void)
 	this->mSelectingWeaponID = -1;
 	this->mSelectingNodeID = MESSAGE_NULL;
 	this->mDesiredGammaSlope = 1;
+	this->mDesiredGammaSlopeAlt = 1;
 	this->mTimeOfLastHelpText = -1;
 	this->mCurrentWeaponID = -1;
 	this->mCurrentWeaponEnabled = false;
@@ -3839,6 +3875,9 @@ void AvHHud::Init(void)
 
 	this->mDrawCombatUpgradeMenu = false;
 	this->mDrawOrderOverlay = true;
+
+	this->mReInitHUD = false;
+	this->mLastHudStyle = 0;
 
 	// Initialize viewport
 	this->mViewport[0] = this->mViewport[1] = this->mViewport[2] = this->mViewport[3] = 0;
@@ -4167,10 +4206,11 @@ int AvHHud::InitializeDemoPlayback(int inSize, unsigned char* inBuffer)
 	
 	// Read in gamma
 	LoadData(&this->mDesiredGammaSlope, inBuffer, sizeof(this->mDesiredGammaSlope), theBytesRead);
+	LoadData(&this->mDesiredGammaSlopeAlt, inBuffer, sizeof(this->mDesiredGammaSlopeAlt), theBytesRead);
 
     if (!mSteamUIActive)
     {
-        this->SetGamma(this->mDesiredGammaSlope);
+        this->SetGamma(this->mDesiredGammaSlope, this->mDesiredGammaSlopeAlt);
     }
 
 	// Read in resources
@@ -4311,6 +4351,7 @@ void AvHHud::InitializeDemoRecording()
 
 	// Gamma, resources
 	int theGammaSize = sizeof(this->mDesiredGammaSlope);
+	int theGammaAltSize = sizeof(this->mDesiredGammaSlopeAlt);
 	int theResourcesSizes = sizeof(this->mResources);
     
     // Save commander index (TODO: REMOVE)
@@ -4328,7 +4369,7 @@ void AvHHud::InitializeDemoRecording()
 	
 	int theSelectedSize = sizeof(int) + (int)this->mSelected.size()*sizeof(EntityInfo);
 
-	int theTotalSize = theUpgradesSize + theGammaSize + theResourcesSizes + theCommanderSize + theHiveInfoSize + theCurrentPieMenuControlSize + theSelectedSize;
+	int theTotalSize = theUpgradesSize + theGammaSize + theGammaAltSize + theResourcesSizes + theCommanderSize + theHiveInfoSize + theCurrentPieMenuControlSize + theSelectedSize;
 
 	// New a char array of this size
 	int theCounter = 0;
@@ -4342,6 +4383,7 @@ void AvHHud::InitializeDemoRecording()
 
 		// Write out gamma
 		SaveData(theCharArray, &this->mDesiredGammaSlope, theGammaSize, theCounter);
+		SaveData(theCharArray, &this->mDesiredGammaSlopeAlt, theGammaAltSize, theCounter);
 		SaveData(theCharArray, &this->mResources, theResourcesSizes, theCounter);
 		SaveData(theCharArray, &theCommanderIndex, theCommanderSize, theCounter);
 
@@ -4876,6 +4918,7 @@ cvar_t *lightgamma = NULL;
 cvar_t *texgamma = NULL;
 cvar_t *r_detailtextures = NULL;
 cvar_t *gl_max_size = NULL;
+cvar_t *gl_widescreen_yfov = NULL;
 
 void AvHHud::InitExploitPrevention() {
 	gl_monolights = gEngfuncs.pfnGetCvarPointer("gl_monolights");
@@ -4890,6 +4933,7 @@ void AvHHud::InitExploitPrevention() {
 	texgamma = gEngfuncs.pfnGetCvarPointer("texgamma");
 	r_detailtextures = gEngfuncs.pfnGetCvarPointer("r_detailtextures");
 	gl_max_size = gEngfuncs.pfnGetCvarPointer("gl_max_size");
+	gl_widescreen_yfov = gEngfuncs.pfnGetCvarPointer("gl_widescreen_yfov");
 
 	ForceCvar("gl_monolights", gl_monolights, 0.0f);
 	ForceCvar("gl_overbright", gl_overbright, 0.0f);
@@ -4901,19 +4945,25 @@ void AvHHud::InitExploitPrevention() {
 	ForceCvar("r_detailtextures", r_detailtextures, 0.0f);
 	ForceCvar("gl_max_size", gl_max_size, 512.0f);
 
-	RemoveAlias("lightgamma");
-	if(lightgamma && lightgamma->value < 2.0) {
-		ForceCvar("lightgamma", lightgamma, 2.0f);
+	//2024 - Lighting changes: lower min lightgamma to engine limit. Engine crashes below 1.81, so enforce the limit.
+	//RemoveAlias("lightgamma");
+	if(lightgamma && lightgamma->value < 1.81f) {
+		ForceCvar("lightgamma", lightgamma, 1.81f);
 	}
-	if(lightgamma && lightgamma->value > 5.0) {
-		ForceCvar("lightgamma", lightgamma, 5.0f);
-	}
+	//if(lightgamma && lightgamma->value > 5.0) {
+	//	ForceCvar("lightgamma", lightgamma, 5.0f);
+	//}
 	RemoveAlias("texgamma");
 	if(texgamma && texgamma->value < 1.0) {
 		ForceCvar("texgamma", texgamma, 1.0f);
 	}
 	if(texgamma && texgamma->value > 5.0) {
 		ForceCvar("texgamma", texgamma, 5.0f);
+	}
+	RemoveAlias("gl_widescreen_yfov");
+	if (gl_widescreen_yfov)
+	{
+		mWideScreen = gl_widescreen_yfov->value;
 	}
 }
 
@@ -4933,18 +4983,60 @@ void AvHHud::UpdateExploitPrevention()
 	ForceCvar("r_detailtextures", r_detailtextures, 0.0f);
 	ForceCvar("gl_max_size", gl_max_size, 512.0f);
 
-	if(lightgamma && lightgamma->value < 2.0) {
-		ForceCvar("lightgamma", lightgamma, 2.0f);
+	if(lightgamma && lightgamma->value < 1.81f) {
+		ForceCvar("lightgamma", lightgamma, 1.81f);
 	}
-	if(lightgamma && lightgamma->value > 5.0) {
-		ForceCvar("lightgamma", lightgamma, 5.0f);
-	}
+	//if(lightgamma && lightgamma->value > 5.0) {
+	//	ForceCvar("lightgamma", lightgamma, 5.0f);
+	//}
 	if(texgamma && texgamma->value < 1.0) {
 		ForceCvar("texgamma", texgamma, 1.0f);
 	}
 	if(texgamma && texgamma->value > 5.0) {
 		ForceCvar("texgamma", texgamma, 5.0f);
 	}
+	//Widescreen exploit prevention
+	if (gViewPort)
+	{
+		if (gHUD.GetIsAlive(false))
+		{
+			if (gl_widescreen_yfov && gl_widescreen_yfov->value == 0 && mWideScreen) {
+				ForceCvar("gl_widescreen_yfov", gl_widescreen_yfov, 1.0f);
+				mWideScreenChanged = true;
+				gEngfuncs.pfnCenterPrint("The Widescreen FOV\n will change after death\n");
+			}
+			if (gl_widescreen_yfov && gl_widescreen_yfov->value != 0 && !mWideScreen) {
+				ForceCvar("gl_widescreen_yfov", gl_widescreen_yfov, 0);
+				mWideScreenChanged = true;
+				gEngfuncs.pfnCenterPrint("The Widescreen FOV\n will change after death\n");
+			}
+		}
+		else if (mWideScreenChanged)
+		{
+			mWideScreen = !mWideScreen;
+			ForceCvar("gl_widescreen_yfov", gl_widescreen_yfov, (float)mWideScreen);
+			mWideScreenChanged = false;
+		}
+		else
+		{
+			mWideScreen = gl_widescreen_yfov->value;
+		}
+
+		//sv_widescreenclamp is to prevent abuse of ultra-widescreen FOVs in competitive play.
+		if ((ScreenWidth() / ScreenHeight()) > 1.8f)
+		{
+			if (this->GetServerVariableFloat(kvWidescreenClamp) != 0 && gl_widescreen_yfov && gl_widescreen_yfov->value != 0)
+			{
+				ForceCvar("gl_widescreen_yfov", gl_widescreen_yfov, 0);
+				gEngfuncs.pfnCenterPrint("This aspect ratio is not allowed\n on this server\n");
+			}
+		}
+	}
+	//else if (gl_widescreen_yfov)
+	//{
+	//	mWideScreen = gl_widescreen_yfov->value;
+	//	gEngfuncs.Con_Printf("init mwidescreen from update %d\n", mWideScreen);
+	//}
 }
 
 void AvHHud::UpdateAlienUI(float inCurrentTime)
@@ -7351,6 +7443,15 @@ void AvHHud::SetDrawOrderOverlay(bool drawOverlay)
 	mDrawOrderOverlay = drawOverlay;
 }
 
+bool AvHHud::GetReInitHUD() const
+{
+	return this->mReInitHUD;
+}
+
+void AvHHud::SetReInitHUD(bool setInit)
+{
+	mReInitHUD = setInit;
+}
 
 /**
  * Prints the call stack when an unhandled exception occurs.
@@ -7380,7 +7481,7 @@ LONG WINAPI ExceptionFilter(EXCEPTION_POINTERS* pExp)
     }    
     */
 
-    AvHHud::ResetGammaAtExit();
+    //AvHHud::ResetGammaAtExit();
 
     return EXCEPTION_EXECUTE_HANDLER;
 
@@ -7400,7 +7501,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL,
     }
 	else if (fdwReason == DLL_PROCESS_DETACH)
     {
-		AvHHud::ResetGammaAtExit();
+		//AvHHud::ResetGammaAtExit();
     }
 	return TRUE;
 }

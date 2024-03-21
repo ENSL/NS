@@ -11,7 +11,7 @@
 #include "VGUI_TextPanel.h"
 #include "VGUI_Label.h"
 #include "cl_dll/vgui_TeamFortressViewport.h"
-#include "ui/GammaAwareComponent.h"
+//#include "ui/GammaAwareComponent.h"
 #include "ui/ReloadableComponent.h"
 
 //using vgui::Label;
@@ -27,6 +27,7 @@ extern "C"
     void* VGui_GetPanel();
 }
 extern int g_iVisibleMouse;
+void IN_SetVisibleMouse(bool visible);
 
 UIManager::UIManager(UIFactory* inFactory)
 {
@@ -41,7 +42,7 @@ UIManager::UIManager(UIFactory* inFactory)
 	this->mBlankCursor = NULL;
 
     this->mFactory = inFactory;
-	this->mGammaSlope = 1.0f;
+	//this->mGammaSlope = 1.0f;
 }
 
 UIManager::~UIManager(void)
@@ -221,12 +222,12 @@ bool UIManager::Initialize(const TRDescriptionList& inDesc, CSchemeManager* inSc
 				this->TranslateComponent(theCurrentComponent->GetComponentPointer(), true);
 			}
 			
-			// If gamma aware, tell it immediately
-			GammaAwareComponent* theGammaAwareComponent = dynamic_cast<GammaAwareComponent*>(theCurrentComponent->GetComponentPointer());
-			if(theGammaAwareComponent)
-			{
-				theGammaAwareComponent->NotifyGammaChange(this->mGammaSlope);
-			}
+			//// If gamma aware, tell it immediately
+			//GammaAwareComponent* theGammaAwareComponent = dynamic_cast<GammaAwareComponent*>(theCurrentComponent->GetComponentPointer());
+			//if(theGammaAwareComponent)
+			//{
+			//	theGammaAwareComponent->NotifyGammaChange(this->mGammaSlope);
+			//}
 
             // Save it. It is now part of the world.
 			this->mComponentList.push_back(theCurrentComponent);
@@ -250,20 +251,20 @@ bool UIManager::InMouseMode(void) const
     return (g_iVisibleMouse ? true : false);
 }
 
-void UIManager::NotifyGammaChange(float inGammaSlope)
-{
-	UIComponentListType::iterator theCompIter;
-	for(theCompIter = this->mComponentList.begin(); theCompIter != this->mComponentList.end(); theCompIter++)
-    {
-		GammaAwareComponent* theGammaAwareComponent = dynamic_cast<GammaAwareComponent*>((*theCompIter)->GetComponentPointer());
-		if(theGammaAwareComponent)
-		{
-			theGammaAwareComponent->NotifyGammaChange(inGammaSlope);
-		}
-    }
-
-	this->mGammaSlope = inGammaSlope;
-}
+//void UIManager::NotifyGammaChange(float inGammaSlope)
+//{
+//	UIComponentListType::iterator theCompIter;
+//	for(theCompIter = this->mComponentList.begin(); theCompIter != this->mComponentList.end(); theCompIter++)
+//    {
+//		GammaAwareComponent* theGammaAwareComponent = dynamic_cast<GammaAwareComponent*>((*theCompIter)->GetComponentPointer());
+//		if(theGammaAwareComponent)
+//		{
+//			theGammaAwareComponent->NotifyGammaChange(inGammaSlope);
+//		}
+//    }
+//
+//	this->mGammaSlope = inGammaSlope;
+//}
 
 bool UIManager::Save(const string& outFilename, const string& outHeader)
 {
@@ -295,12 +296,14 @@ bool UIManager::SetLMBActionRelative(const TRTag& inTag)
 void UIManager::SetMouseVisibility(bool inState)
 {
 	//  2021 - Check if we need to run code. Prevents showcursor from incrementing or decrementing outside of useful range.
-    int NewDesiredState = (inState) ? 1 : 0;
+    int newDesiredState = (inState) ? 1 : 0;
 
-	if (g_iVisibleMouse != NewDesiredState)
+	if (g_iVisibleMouse != newDesiredState)
 	{
 		// To change whether the mouse is visible, just change this variable
-		g_iVisibleMouse = NewDesiredState;
+		//g_iVisibleMouse = newDesiredState;
+        //2024 - Using this to fix view spin on reactivation in HL25. SDL mouse modes are changed alongside the use of SetMouseVisibility instead of in this function so the cursor doesn't disappear in the escape menu.
+        IN_SetVisibleMouse(newDesiredState);
 
 		// Update cursor
 		if(g_iVisibleMouse)
@@ -326,7 +329,7 @@ void UIManager::SetMouseVisibility(bool inState)
 			// Move mouse to center of screen so mouse look isn't changed
 
 			// Only do this when in full screen
-			App::getInstance()->setCursorPos(ScreenWidth()/2, ScreenHeight()/2);
+		    App::getInstance()->setCursorPos(ScreenWidth()/2, ScreenHeight()/2);
 
 			// Hide cursor again
 			App::getInstance()->setCursorOveride( App::getInstance()->getScheme()->getCursor(Scheme::scu_none) );

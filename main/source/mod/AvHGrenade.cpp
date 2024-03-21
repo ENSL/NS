@@ -238,7 +238,7 @@ BOOL AvHGrenade::IsUseable(void)
 }
 
 
-void AvHGrenade::PrimaryAttack(void)
+void AvHGrenade::PrimaryAttack(bool fireOnAttackUp)
 {
  
     if (this->ProcessValidAttack())

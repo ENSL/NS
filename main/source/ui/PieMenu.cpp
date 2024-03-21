@@ -130,11 +130,11 @@ void PieMenu::ResetToDefaults()
 	this->mNodeList->ResetToDefaults();
 }
 
-void PieMenu::NotifyGammaChange(float inGammaSlope)
-{
-	// TODO: Adjust font color?
-	this->mNodeList->GetRoot()->SetColorBias(1.0f/inGammaSlope);
-}
+//void PieMenu::NotifyGammaChange(float inGammaSlope)
+//{
+//	// TODO: Adjust font color?
+//	this->mNodeList->GetRoot()->SetColorBias(1.0f/inGammaSlope);
+//}
 
 void PieMenu::SetConnectorName(const string& inConnectorName)
 {

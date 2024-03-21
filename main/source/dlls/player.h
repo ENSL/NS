@@ -361,6 +361,9 @@ public:
     // Added by mmcguire.
     virtual bool    GetCanUseWeapon() const { return true; }
 
+	// Networked user options
+	int m_iAutoWeaponSwap;
+	int m_iPistolTrigger;
 };
 
 #define AUTOAIM_2DEGREES  0.0348994967025

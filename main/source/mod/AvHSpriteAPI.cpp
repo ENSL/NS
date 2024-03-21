@@ -404,7 +404,7 @@ void AvHSpriteDraw(AVHHSPRITE spriteHandle, int frame, float x1, float y1, float
 
     // Compensate for the overbrightening effect.
 
-	float gammaScale = 1.0f / gHUD.GetGammaSlope();
+	float gammaScale = 1.0f/* / gHUD.GetGammaSlope()*/;
 	gEngfuncs.pTriAPI->Color4f(gammaScale * gColor[0], gammaScale * gColor[1], gammaScale * gColor[2], gColor[3]);
 
     // Output the vertices.

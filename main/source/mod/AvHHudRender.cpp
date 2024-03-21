@@ -511,8 +511,8 @@ void DrawScaledHUDSprite(AVHHSPRITE inSpriteHandle, int inMode, int inRowsInSpri
 				}
 	
 				// Compensate for gamma
-				float theGammaSlope = gHUD.GetGammaSlope();
-				float theColorComponent = 1.0f/theGammaSlope;
+				//float theGammaSlope = gHUD.GetGammaSlope();
+				float theColorComponent = 1.0f/* / theGammaSlope*/;
 				gEngfuncs.pTriAPI->Color4f(theColorComponent, theColorComponent, theColorComponent, 1.0f);
 				
 				Vector thePoint;
@@ -627,9 +627,9 @@ void DrawSpriteOnGroundAtPoint(vec3_t inOrigin, int inRadius, AVHHSPRITE inSprit
 		// Draw one quad
 		vec3_t thePoint = inOrigin;
 		
-		float theGammaSlope = gHUD.GetGammaSlope();
-		ASSERT(theGammaSlope > 0.0f);
-		float theColorComponent = 1.0f/theGammaSlope;
+		//float theGammaSlope = gHUD.GetGammaSlope();
+		//ASSERT(theGammaSlope > 0.0f);
+		float theColorComponent = 1.0f/* / theGammaSlope*/;
 		
 		gEngfuncs.pTriAPI->Color4f(theColorComponent, theColorComponent, theColorComponent, inAlpha);
 		gEngfuncs.pTriAPI->Brightness(1.6f);
@@ -1707,8 +1707,8 @@ void AvHHud::DrawMouseCursor(int inBaseX, int inBaseY)
 
 		if (theCursorSprite > 0)
 		{
-			float theGammaSlope = this->GetGammaSlope();
-			ASSERT(theGammaSlope > 0.0f);
+			//float theGammaSlope = this->GetGammaSlope();
+			//ASSERT(theGammaSlope > 0.0f);
 
             /*
 			int theColorComponent = 255/theGammaSlope;
@@ -2025,15 +2025,15 @@ void AvHHud::GetPrimaryHudColor(int& outR, int& outG, int& outB, bool inIgnoreUp
 			UnpackRGB(outR, outG, outB, RGB_YELLOWISH);
 		//}
 	}
-
-    if (gammaCorrect)
-    {
-	    // Take into account current gamma?
-	    float theGammaSlope = this->GetGammaSlope();
-	    outR /= theGammaSlope;
-	    outG /= theGammaSlope;
-	    outB /= theGammaSlope;
-    }
+	// 2024 - Remove old gamma ramp correction.
+    //if (gammaCorrect)
+    //{
+	   // // Take into account current gamma?
+	   // float theGammaSlope = this->GetGammaSlope();
+	   // outR /= theGammaSlope;
+	   // outG /= theGammaSlope;
+	   // outB /= theGammaSlope;
+    //}
 
 }
 
@@ -2533,7 +2533,7 @@ void AvHHud::DrawBuildHealthEffectsForEntity(int inEntityIndex, float inAlpha)
 		{
 			const int kDrawEnemyBuildingDistance = 200;
 			bool healthLowEnough = theHealthPercentage < (CVAR_GET_FLOAT("hud_teamhealthalert") * 0.01f);
-			bool isSpectating = this->GetPlayMode() == PLAYMODE_AWAITINGREINFORCEMENT || this->GetPlayMode() == PLAYMODE_OBSERVER;
+			bool isSpectating = (this->GetPlayMode() == PLAYMODE_AWAITINGREINFORCEMENT || this->GetPlayMode() == PLAYMODE_REINFORCING || this->GetPlayMode() == PLAYMODE_OBSERVER);
 			bool theEntityIsSpecTarget = inEntityIndex == theLocalPlayer->curstate.iuser2;
 
 			// Draw effects if we are in top-down mode OR
@@ -2638,10 +2638,10 @@ void AvHHud::DrawHUDNumber(int inX, int inY, int inFlags, int inNumber)
 	int theR, theG, theB;
 	this->GetPrimaryHudColor(theR, theG, theB, false, false);
 
-	int theGammaSlope = this->GetGammaSlope();
-	theR /= theGammaSlope;
-	theG /= theGammaSlope;
-	theB /= theGammaSlope;
+	//int theGammaSlope = this->GetGammaSlope();
+	//theR /= theGammaSlope;
+	//theG /= theGammaSlope;
+	//theB /= theGammaSlope;
 
 	this->DrawHudNumber(inX, inY, inFlags, inNumber, theR, theG, theB);
 }
@@ -2740,7 +2740,7 @@ void AvHHud::Render()
         int theWidth;
         int theHeight;
 
-	    float gammaScale = 1.0f / GetGammaSlope();
+	    float gammaScale = 1.0f/* / GetGammaSlope()*/;
 
         gEngfuncs.pfnDrawSetTextColor(0, gammaScale, 0);    
         gEngfuncs.pfnDrawConsoleStringLen(theMessage, &theWidth, &theHeight);
@@ -4211,7 +4211,17 @@ void AvHHud::RenderAlienUI()
 						float xdiff = fabs(theScreenPos[0] - screenWidth/2);
 						float ydiff = fabs(theScreenPos[1] - screenHeight/2);
 						float quadrance = xdiff * xdiff + ydiff * ydiff;
-						float alpha = max(0.0f, 0.9f - quadrance / (screenHeight * screenHeight));
+						float alpha;
+
+						if (theBlipStatus == kVulnerableFriendlyBlipStatus)
+						{
+							alpha = max(0.0f, 0.9f - (quadrance) / (screenHeight * screenHeight));
+						}
+						// 2024 - Reduce HUD visibility for unimportant blips.
+						else 
+						{
+							alpha = max(0.0f, 0.75f - (quadrance * 8.0f) / (screenHeight * screenHeight));
+						}
 						alpha *= alpha * alpha * alpha;
 
 						// "MonsieurEvil is under attack"
@@ -4455,7 +4465,15 @@ void AvHHud::VidInit(void)
 {
 	UIHud::VidInit();
 
-    mOverviewMap.VidInit();
+	// Don't reinitialize the minimap when swapping hud styles.
+	if (!this->mReInitHUD)
+	{
+		mOverviewMap.VidInit();
+	}
+
+	float hudStyle = CVAR_GET_FLOAT("hud_style");
+	this->mLastHudStyle = hudStyle;
+	this->mReInitHUD = false;
 
 	int theScreenWidth = ScreenWidth();
 	string theSpriteName;
@@ -4466,7 +4484,7 @@ void AvHHud::VidInit(void)
 	//	theSpriteName = UINameToSprite(kHiveSprite, theScreenWidth);
 	//	this->mAlienUIHiveSprite = SPR_Load(theSpriteName.c_str());
 	
-	int i = 0;
+	// int i = 0;
 	//	for(i = 0; i < kNumAlienLifeforms; i++)
 	//	{
 	//		char theBaseName[128];
@@ -4475,7 +4493,7 @@ void AvHHud::VidInit(void)
 	//		this->mAlienUILifeforms[i] = SPR_Load(theSpriteName.c_str());
 	//	}
 
-	if (CVAR_GET_FLOAT("hud_style") == 2.0f)
+	if (hudStyle == 2.0f)
 	{
 		this->mAlienUIUpgrades = SPR_Load(kAlienUpgradeSpriteNL);
 		this->mAlienUIEnergySprite = SPR_Load(kAlienEnergySpriteNL);
@@ -4494,7 +4512,7 @@ void AvHHud::VidInit(void)
 		this->mMarineOrderIndicator = SPR_Load(kMarineOrderSpriteNL);
 		this->mMarineUpgradesSprite = SPR_Load(kMarineUpgradesSpriteNL);
 	}
-	else if (CVAR_GET_FLOAT("hud_style") == 1.0f)
+	else if (hudStyle == 1.0f)
 	{
 		char theBaseName[128];
 		sprintf(theBaseName, "%s", kAlienUpgradeSprite);

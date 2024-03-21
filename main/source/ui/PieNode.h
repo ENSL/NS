@@ -24,7 +24,7 @@
 #define PIENODE_H
 
 #include "ui/FadingImageLabel.h"
-#include "ui/GammaAwareComponent.h"
+//#include "ui/GammaAwareComponent.h"
 #include "mod/AvHSharedTypes.h"
 #include "string"
 using std::string;

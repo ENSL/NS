@@ -96,7 +96,7 @@
 	void NetMsg_PlayHUDNotification_Research(entvars_t* const pev, const int flags, const ResearchInfoListType& researching);
 	void NetMsg_ProgressBar( entvars_t* const pev, const int entity_number, const int progress, int percent=0 );
 	void NetMsg_ServerVar( entvars_t* const pev, const string& name, const int& value );
-	void NetMsg_SetGammaRamp( entvars_t* const pev, const float gamma );
+	void NetMsg_SetGammaRamp( entvars_t* const pev, const float gamma, const float gammaAlt);
 	void NetMsg_SetOrder( entvars_t* const pev, const AvHOrder& order );
 	void NetMsg_DelParts( entvars_t* const pev);
 	void NetMsg_SetParticleTemplate( entvars_t* const pev, const int index, const AvHParticleTemplate& particle_template );
@@ -128,7 +128,7 @@
 	//SPECTATOR MESSAGE TRANSMISSION
 	void NetMsgSpec_TeamInfo( const int player_index, const string& team_id );
 	void NetMsgSpec_TextMsg( const int destination, const vector<string>& message );
-	void NetMsgSpec_SetGammaRamp( const float gamma );
+	void NetMsgSpec_SetGammaRamp( const float gamma, const float gammaAlt);
 
 #else //!AVH_SERVER
 
@@ -189,7 +189,7 @@
 	void NetMsg_ProgressBar( void* const buffer, const int size, int& entity_number, int& progress, int &percent);
 	//45
 	void NetMsg_ServerVar( void* const buffer, const int size, string& name, int& value );
-	void NetMsg_SetGammaRamp( void* const buffer, const int size, float& gamma );
+	void NetMsg_SetGammaRamp( void* const buffer, const int size, float& gamma, float& gammaAlt);
 	void NetMsg_SetOrder( void* const buffer, const int size, AvHOrder& order );
 	void NetMsg_SetParticleTemplate( void* const buffer, const int size, int &index, AvHParticleTemplate& particle_template );
 	void NetMsg_DelParts( void* const buffer, const int size);

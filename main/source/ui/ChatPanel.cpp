@@ -243,31 +243,34 @@ void ChatPanel::KeyEvent(int iKeydown)
 	}
 	if (state[SDL_SCANCODE_RETURN])
 	{
-		std::string theCommand;
+        if (iKeydown && !bTextinput)
+        {
+            std::string theCommand;
 
-		theCommand += mChatMode;
+            theCommand += mChatMode;
 
-		theCommand += " \"";
+            theCommand += " \"";
 
-		// Replace all ';' characters with ':' characters since we can't have
-		// ';' characters on a console message.
+            // Replace all ';' characters with ':' characters since we can't have
+            // ';' characters on a console message.
 
-		for (unsigned int i = 0; i < mText.length(); ++i)
-		{
-			if (mText[i] == ';')
-			{
-				mText[i] = ':';
-			}
-		}
+            for (unsigned int i = 0; i < mText.length(); ++i)
+            {
+                if (mText[i] == ';')
+                {
+                    mText[i] = ':';
+                }
+            }
 
-		theCommand += mText;
+            theCommand += mText;
 
-		theCommand += "\"";
+            theCommand += "\"";
 
-		//say_x "the message here" instead of 
-		//say_x the message here (ever word was treated as another argument)
-		gEngfuncs.pfnClientCmd((char*)theCommand.c_str());
+            //say_x "the message here" instead of 
+            //say_x the message here (ever word was treated as another argument)
+            gEngfuncs.pfnClientCmd((char*)theCommand.c_str());
 
-		CancelChat();
+            CancelChat();
+        }
 	}
 }

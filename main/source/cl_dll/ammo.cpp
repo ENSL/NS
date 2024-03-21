@@ -380,13 +380,18 @@ void WeaponsResource::UserCmd_MovementOn()
 	// Find out which weapon we want to trigger
 	AvHUser3 theUser3 = gHUD.GetHUDUser3();
 	int wID = -1;
+	bool lerkFlap = false;
 	switch(theUser3)
 	{
 	case AVH_USER3_ALIEN_PLAYER1:
 		wID = AVH_ABILITY_LEAP;
 		break;
+	//TODO: Make healspray work with attack2
+	case AVH_USER3_ALIEN_PLAYER2:
+		wID = AVH_WEAPON_HEALINGSPRAY;
+		break;
 	case AVH_USER3_ALIEN_PLAYER3:
-		// TODO: Add flap
+		lerkFlap = true;
 		break;
 	case AVH_USER3_ALIEN_PLAYER4:
 		wID = AVH_WEAPON_BLINK;
@@ -399,7 +404,24 @@ void WeaponsResource::UserCmd_MovementOn()
 		return;
 	}	
 
-	if (wID > -1)
+	if (wID == AVH_WEAPON_HEALINGSPRAY)
+	{
+		WEAPON* healWeapon = this->GetWeapon(AVH_WEAPON_HEALINGSPRAY);
+		WEAPON* currentWeapon = this->GetWeapon(gHUD.GetCurrentWeaponID());
+
+		if (healWeapon != NULL && currentWeapon != NULL)
+		{
+			//if (healWeapon != currentWeapon)
+			//{
+				healSprayLastWeapon = currentWeapon;
+				healSprayAttack2Active = true;
+				SetCurrentWeapon(healWeapon);
+			//}
+
+			IN_Attack2Down();
+		}
+	}
+	else if (wID > -1)
 	{
 		// Fetch the needed movement weapon
 		WEAPON *p = this->GetWeapon(wID);
@@ -408,6 +430,10 @@ void WeaponsResource::UserCmd_MovementOn()
 			// Send activation of ability asap
 			IN_Attack2Down();
 		}
+	}
+	else if (lerkFlap)
+	{
+		IN_Attack2Down();
 	}
 }
 
@@ -418,6 +444,24 @@ void WeaponsResource::UserCmd_MovementOff()
 	// Ensure that we're not activating any weapons when selected
 	IN_Attack2Up();
 	IN_ReloadUp();
+
+	// Check if we're in game.
+	if (gEngfuncs.pfnGetLevelName()[0] != 0)
+	{ 
+		if (gHUD.GetHUDUser3() == AVH_USER3_ALIEN_PLAYER2)
+		{
+			WEAPON* healWeapon = this->GetWeapon(AVH_WEAPON_HEALINGSPRAY);
+			if (healWeapon != NULL && healSprayLastWeapon != NULL)
+			{
+				//if (healSprayLastWeapon != healWeapon)
+				//{
+					SetCurrentWeapon(healSprayLastWeapon);
+				//}
+				
+				healSprayAttack2Active = false;
+			}
+		}
+	}
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -461,7 +505,15 @@ void WeaponsResource::SetCurrentWeapon(WEAPON* newWeapon)
 	if( newWeapon != NULL )
 	{ 
 		if( newWeapon != currentWeapon )
-		{ lastWeapon = currentWeapon; }
+		{ 
+			lastWeapon = currentWeapon; 
+
+			if (gHUD.GetHUDUser3() == AVH_USER3_ALIEN_PLAYER2 && !healSprayAttack2Active)
+			{
+				healSprayLastWeapon = newWeapon;
+			}
+		}
+
 		ServerCmd(newWeapon->szName);
 		g_weaponselect = newWeapon->iId;
 	}
@@ -694,38 +746,46 @@ void CHudAmmo::Think(void)
 
 	}
 
-	if (gHUD.GetCurrentWeaponID() != gWR.lastWeaponId)
-	{
-		gWR.lastWeaponId = gHUD.GetCurrentWeaponID();
-
-		float wCfgCvar = CVAR_GET_FLOAT("cl_weaponcfgs");
-
-		if (wCfgCvar == 1)
-		{
-			ClientCmd("exec weaponcfgs/default.cfg");
-
-			WEAPON* currentWeapon = gWR.GetWeapon(gHUD.GetCurrentWeaponID());
-			char weapcfg[128];
-			sprintf(weapcfg, "exec weaponcfgs/%s.cfg", currentWeapon->szName);
-			ClientCmd(weapcfg);
-		}
-		//else if (wCfgCvar == 2.0f)
-		//{
-		//	ClientCmd("exec weaponcfgs/nsdefaults/default.cfg");
-
-		//	WEAPON* currentWeapon = gWR.GetWeapon(gHUD.GetCurrentWeaponID());
-		//	char weapcfg[128];
-		//	sprintf(weapcfg, "exec weaponcfgs/nsdefaults/%s.cfg", currentWeapon->szName);
-		//	ClientCmd(weapcfg);
-		//}
-	}
+	WEAPON* currentWeapon = gWR.GetWeapon(gHUD.GetCurrentWeaponID());
 
 	if(gHUD.GetIsAlien()) //check for hive death causing loss of current weapon
 	{
-		WEAPON* currentWeapon = gWR.GetWeapon(gHUD.GetCurrentWeaponID());
 		if(!gWR.IsSelectable(currentWeapon)) //current weapon isn't valid
 		{
 			gWR.SetValidWeapon(); //get best option
+		}
+	}
+
+	if (gHUD.GetCurrentWeaponID() != m_crossLastWeapId)
+	{
+		m_crossLastWeapId = gHUD.GetCurrentWeaponID();
+		const float wCfgCvar = CVAR_GET_FLOAT("cl_weaponcfgs");
+		char weapCfg[128];
+
+		if (wCfgCvar == 1.0f)
+		{
+			ClientCmd("exec weaponcfgs/default.cfg");
+			if (!currentWeapon)
+			{
+				ClientCmd("exec weaponcfgs/noweapon.cfg");
+			}
+			else 
+			{
+				snprintf(weapCfg, 128, "exec weaponcfgs/%s.cfg", currentWeapon->szName);
+				ClientCmd(weapCfg);
+			}
+		}
+		else if (wCfgCvar == 2.0f)
+		{
+			if (!currentWeapon)
+			{
+				ClientCmd("exec weaponcfgs/nsdefaults/noweapon.cfg");
+			}
+			else
+			{
+				snprintf(weapCfg, 128, "exec weaponcfgs/nsdefaults/%s.cfg", currentWeapon->szName);
+				ClientCmd(weapCfg);
+			}
 		}
 	}
 

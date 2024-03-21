@@ -75,7 +75,7 @@ bool UIHud::GetIsTimeForSong(float inCurrentTime) const
 	if(this->mMusicEnabled && this->mMusicAllowed && !this->mSongIsPlaying)
 	{
 		float theTimeElapsedSinceSongStopped = inCurrentTime - this->mTimeSongEnded;
-		if((this->mTimeSongEnded == -1) || (theTimeElapsedSinceSongStopped > this->mRandomSecondsBetweenSongs))
+		if((this->mTimeSongEnded == -1) || (theTimeElapsedSinceSongStopped > this->mRandomSecondsBetweenSongs && cl_musicdelay->value != -1.0f))
 		{
 			theTimeForNewSong = true;
 		}
@@ -233,7 +233,11 @@ bool UIHud::PickRandomSong(string& outRelativeSongName) const
 	{
 		do
 		{
-			theSongList.push_back(thePath + kDelimiter + string(theFindData.cFileName));
+			// Remove title track from in-game music here so people updating don't have to remove the file.
+			if (string(theFindData.cFileName) != string("ns_titlescreen.mp3"))
+			{
+				theSongList.push_back(thePath + kDelimiter + string(theFindData.cFileName));
+			}
 		} 
 		while(FindNextFile(theFileHandle, &theFindData));
 	

@@ -2,17 +2,42 @@
 {
 	"1"
 	{
+		"label" "Apply classic NS preset"
+		"command" "engine nspreset 1"
+	}
+	"2"
+	{
+		"label" "Apply NS 3.3 preset"
+		"command" "engine nspreset 2"
+	}
+	"3"
+	{
+		"label" "Apply competitive preset"
+		"command" "engine nspreset 3"
+	}
+	"4"
+	{
+		"label" ""
+		"command" ""
+	}
+	"5"
+	{
+		"label" ""
+		"command" ""
+	}
+	"6"
+	{
 		"label" "#GameUI_GameMenu_ResumeGame"
 		"command" "ResumeGame"
 		"OnlyInGame" "1"
 	}
-	"2"
+	"7"
 	{
 		"label" "#Menu_ReadyRoom"
 		"command" "engine menureadyroom"
 		"OnlyInGame" "1"
 	}
-	"3"
+	"8"
 	{
 		"label" "#GameUI_GameMenu_Disconnect"
 		"command" "Disconnect"
@@ -37,25 +62,25 @@
 //	"notmulti" "1"
 //	"OnlyInGame" "1"
 //	}
-	"7"
+	"9"
 	{
 		"label" ""
 		"command" ""
 		"notmulti" "1"
 	}
-	"8"
+	"10"
 	{
  		"label" "#GameUI_GameMenu_PlayerList"
  		"command" "OpenPlayerListDialog"
  		"OnlyInGame" "1"
  		"notmulti" "0"
 	}
-	"9"
+	"11"
 	{
 		"label" "#GameUI_GameMenu_CreateServer"
 		"command" "OpenCreateMultiplayerGameDialog"
 	}
-	"10"
+	"12"
 	{
 		"label" "#GameUI_GameMenu_FindServers"
 		"command" "OpenServerBrowser"
@@ -66,23 +91,23 @@
 		//"label" "#GameUI_GameMenu_PlayDemo"
 		//"command" "OpenLoadDemoDialog"
 	//}
-	"11"
+	"13"
 	{
 		"label" ""
 		"command" ""
 	}
-	"12"
+	"14"
 	{
 		"label" "#GameUI_GameMenu_ChangeGame"
 		"command" "OpenChangeGameDialog"
 		"notsteam" "1"
 	}
-	"13"
+	"15"
 	{
 		"label" "#GameUI_GameMenu_Options"
 		"command" "OpenOptionsDialog"
 	}
-	"14"
+	"16"
 	{
 		"label" "#GameUI_GameMenu_Quit"
 		"command" "Quit"

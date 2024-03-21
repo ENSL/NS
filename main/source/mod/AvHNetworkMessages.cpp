@@ -77,7 +77,7 @@ void Net_InitializeMessages(void)
 	g_msgHUDSetUpgrades = REG_USER_MSG( "SetUpgrades", 1);
 	g_msgProgressBar = REG_USER_MSG( "Progress", -1 );
 	g_msgServerVar = REG_USER_MSG( "ServerVar", -1 );
-	g_msgSetGammaRamp = REG_USER_MSG( "SetGmma", 1 );
+	g_msgSetGammaRamp = REG_USER_MSG( "SetGmma", 2 );
 	g_msgSetOrder = REG_USER_MSG( "SetOrder", -1 );
 	g_msgSetParticleTemplates = REG_USER_MSG( "Particles", -1 );
 	g_msgDelParts = REG_USER_MSG( "DelParts", 0);
@@ -1617,24 +1617,27 @@ union float_converter
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 #ifndef AVH_SERVER
-	void NetMsg_SetGammaRamp( void* const buffer, const int size, float& gamma )
+	void NetMsg_SetGammaRamp( void* const buffer, const int size, float& gamma, float& gammaAlt)
 	{
 		BEGIN_READ( buffer, size );
 			gamma = READ_BYTE() / 128.0f;
+			gammaAlt = READ_BYTE() / 128.0f;
 		END_READ();
 	}
 #else
-	void NetMsg_SetGammaRamp( entvars_t* const pev, const float gamma )
+	void NetMsg_SetGammaRamp( entvars_t* const pev, const float gamma, const float gammaAlt)
 	{
 		MESSAGE_BEGIN( MSG_ONE, g_msgSetGammaRamp, NULL, pev );
 			WRITE_BYTE( floor( min( max(gamma, 0.0f), 1.992f) * 128.0f) );
+			WRITE_BYTE( floor (min( max(gammaAlt, 0.0f), 1.992f) * 128.0f) );
 		MESSAGE_END();
 	}
 
-	void NetMsgSpec_SetGammaRamp( const float gamma )
+	void NetMsgSpec_SetGammaRamp( const float gamma, const float gammaAlt)
 	{
 		MESSAGE_BEGIN( MSG_SPEC, g_msgSetGammaRamp );
 			WRITE_BYTE( floor( min( max(gamma, 0.0f), 1.992f) * 128.0f) );
+			WRITE_BYTE( floor( min( max(gammaAlt, 0.0f), 1.992f) * 128.0f) );
 		MESSAGE_END();
 	}
 #endif

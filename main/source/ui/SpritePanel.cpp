@@ -12,7 +12,7 @@ SpritePanel::SpritePanel(const string& inBaseSpriteName, const string& inRenderM
 	
 	this->mRenderMode = inRenderMode;
 	this->mSpriteHandle = 0;
-	this->mGammaSlope = 1.0f;
+	//this->mGammaSlope = 1.0f;
 }
 
 int	SpritePanel::GetNumSpritesAcross() 
@@ -48,10 +48,10 @@ int	SpritePanel::GetNumSpritesDown()
 	
 }
 
-void SpritePanel::NotifyGammaChange(float inGammaSlope)
-{
-	this->mGammaSlope = inGammaSlope;
-}
+//void SpritePanel::NotifyGammaChange(float inGammaSlope)
+//{
+//	this->mGammaSlope = inGammaSlope;
+//}
 
 void SpritePanel::paint()
 {
@@ -118,8 +118,9 @@ void SpritePanel::paint()
 			{
 				if(theCurrentFrame < theNumFrames)
 				{
-					int theGammaAwareColorComponent = (int)(255.0f/this->mGammaSlope);
-					SPR_Set(this->mSpriteHandle, theGammaAwareColorComponent, theGammaAwareColorComponent, theGammaAwareColorComponent);
+					//int theGammaAwareColorComponent = (int)(255.0f/this->mGammaSlope);
+					//SPR_Set(this->mSpriteHandle, theGammaAwareColorComponent, theGammaAwareColorComponent, theGammaAwareColorComponent);
+					SPR_Set(this->mSpriteHandle, 255, 255, 255);
 					int theFinalX = theX*theSpriteWidth;
 					int theFinalY = theY*theSpriteHeight + theAlignBottomOffset;
 					//if(!theAlignmentIsTop)

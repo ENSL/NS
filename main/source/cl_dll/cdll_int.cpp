@@ -69,6 +69,8 @@ TeamFortressViewport *gViewPort = NULL;
 HINTERFACEMODULE g_hTrackerModule = NULL;
 //ITrackerUser *g_pTrackerUser = NULL;
 
+CPostProcessShader g_PostProcessShader;
+
 void InitInput (void);
 void EV_HookEvents( void );
 void IN_Commands( void );
@@ -216,6 +218,8 @@ void CL_DLLEXPORT HUD_Init( void )
 	InitInput();
 	gHUD.Init();
 	Scheme_Init();
+	g_PostProcessShader.Init();
+	//gEngfuncs.Con_Printf("waterrenderer init %d", success);
 }
 
 /*
@@ -261,6 +265,8 @@ HUD_Redraw
 
 int CL_DLLEXPORT HUD_Redraw( float time, int intermission )
 {
+	g_PostProcessShader.DrawShader();
+
 //	RecClHudRedraw(time, intermission);
 
 	gHUD.Redraw( time, intermission );

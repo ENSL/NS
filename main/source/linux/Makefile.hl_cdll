@@ -26,9 +26,9 @@ GAME_SHARED_OBJ_DIR=$(HL1_OBJ_DIR)/game_shared
 PM_SHARED_OBJ_DIR=$(HL1_OBJ_DIR)/pm_shared
 HL1_SERVER_OBJ_DIR=$(HL1_OBJ_DIR)/server
 
-CFLAGS=$(BASE_CFLAGS) $(ARCH_CFLAGS) -DCLIENT_DLL -I/usr/include/malloc -D_snwprintf=swprintf -DAVH_CLIENT -DUSE_OLDAUTH -DAVH_NO_NEXUS -DNDEBUG -DASSERT=assert -Dsprintf_s=snprintf -DDISABLE_VEC_FUNCS -DDISABLE_VEC_ORIGIN
+CFLAGS=$(BASE_CFLAGS) $(ARCH_CFLAGS) -DCLIENT_DLL -I/usr/include/malloc -D_snwprintf=swprintf -DAVH_CLIENT -DUSE_OLDAUTH -DAVH_NO_NEXUS -DNDEBUG -DASSERT=assert -Dsprintf_s=snprintf -DDISABLE_VEC_FUNCS -DDISABLE_VEC_ORIGIN -DGLEW_STATIC -DGLEW_NO_GLU
 		 
-INCLUDEDIRS= -I$(HL_SRC_DIR) -I$(NS_MOD_SRC_DIR) -I$(COMMON_SRC_DIR) -I$(PUBLIC_SRC_DIR) -I$(PM_SHARED_SRC_DIR) -I../engine -I$(GAME_SHARED_SRC_DIR) -I../external/ -I../particles -I../includes/fmodapi375linux/api/inc -I$(HL_SERVER_SRC_DIR) -I$(HL_SRC_DIR)/cl_dll -I$(VGUI_INCLUDE_DIR) -I$(UI_INCLUDE_DIR) -I$(UTIL_SRC_DIR) -I../ -I../includes/fmodapi375linux/api -I../includes/lpng1251
+INCLUDEDIRS= -I$(HL_SRC_DIR) -I$(NS_MOD_SRC_DIR) -I$(COMMON_SRC_DIR) -I$(PUBLIC_SRC_DIR) -I$(PM_SHARED_SRC_DIR) -I../engine -I$(GAME_SHARED_SRC_DIR) -I../external/ -I../particles -I../includes/fmodapi375linux/api/inc -I$(HL_SERVER_SRC_DIR) -I$(HL_SRC_DIR)/cl_dll -I$(VGUI_INCLUDE_DIR) -I$(UI_INCLUDE_DIR) -I$(UTIL_SRC_DIR) -I../ -I../includes/fmodapi375linux/api -I../includes/lpng1251 -I../includes/glew
 
 ifeq ($(OS),Darwin)
 LDFLAGS=$(SHLIBLDFLAGS) $(CPP_LIB) -framework Carbon -framework OpenGL vgui.dylib -L. -lSDL2-2.0.0 -L. libparticleMP.a
@@ -86,6 +86,7 @@ HL1_OBJS = \
 	$(HL1_OBJ_DIR)/view.o \
 	$(HL1_OBJ_DIR)/message.o \
 	$(HL1_OBJ_DIR)/parsemsg.o \
+	$(HL1_OBJ_DIR)/shader.o \
 	$(HL1_OBJ_DIR)/saytext.o \
 	$(HL1_OBJ_DIR)/status_icons.o \
 	$(HL1_OBJ_DIR)/statusbar.o \
@@ -246,11 +247,12 @@ UI_OBJS = \
 UTIL_OBJS = \
 	$(UTIL_OBJ_DIR)/Balance.o \
 	$(UTIL_OBJ_DIR)/Checksum.o \
-	$(UTIL_OBJ_DIR)/GammaTable.o \
+	#$(UTIL_OBJ_DIR)/GammaTable.o \
 	$(UTIL_OBJ_DIR)/LinuxSupport.o \
 	$(UTIL_OBJ_DIR)/Mat3.o \
 	$(UTIL_OBJ_DIR)/MathUtil.o \
 	$(UTIL_OBJ_DIR)/Quat.o \
+	$(UTIL_OBJ_DIR)/ShaderUtil.o \
 	$(UTIL_OBJ_DIR)/Stacktrace.o \
 	$(UTIL_OBJ_DIR)/STLUtil.o \
 	$(UTIL_OBJ_DIR)/Tokenizer.o \

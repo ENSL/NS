@@ -1,0 +1,14 @@
+#version 330 core
+
+in vec2 texCoord;
+out vec4 fragColor;
+
+uniform sampler2D textureSampler;
+uniform float colorMultiplier; // Uniform float to multiply color by
+
+void main() {
+	// Sample the texture
+	vec4 texColor = texture(textureSampler, texCoord);
+	// Multiply the color
+	fragColor = vec4(texColor.rgb * colorMultiplier, 1.0f);
+}

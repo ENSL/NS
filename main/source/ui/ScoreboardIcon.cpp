@@ -115,8 +115,10 @@ vgui::Color gammaAdjustColor( vgui::Color& color, const float gamma_slope )
 {
 	int components[4];
 	color.getColor( components[0], components[1], components[2], components[3] );
-	ASSERT( gamma_slope != 0 );
-	vgui::Color returnVal = vgui::Color( components[0]/gamma_slope, components[1]/gamma_slope, components[2]/gamma_slope, 0 );
+	////2024 - replace gamma ramp with shader
+	//ASSERT( gamma_slope != 0 );
+	//vgui::Color returnVal = vgui::Color( components[0]/gamma_slope, components[1]/gamma_slope, components[2]/gamma_slope, 0 );
+	vgui::Color returnVal = vgui::Color(components[0], components[1], components[2], 0);
 	return returnVal;
 }
 

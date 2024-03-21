@@ -1206,10 +1206,13 @@ void ClientPrecache( void )
 	PRECACHE_UNMODIFIED_GENERIC("ns_shiva.wad");
 	PRECACHE_UNMODIFIED_GENERIC("ns_tanith.wad");
 
+	// Waste of memory, but files must be precached for the hash check to work.
 	PRECACHE_UNMODIFIED_GENERIC("dlls/ns.dll");
 	PRECACHE_UNMODIFIED_GENERIC("cl_dlls/client.dll");
 	PRECACHE_UNMODIFIED_GENERIC("dlls/ns.so");
 	PRECACHE_UNMODIFIED_GENERIC("cl_dlls/client.so");
+	//PRECACHE_UNMODIFIED_GENERIC("gl_shaders/fs_world.frag");
+	//PRECACHE_UNMODIFIED_GENERIC("gl_shaders/vs_world.vert");
 
 /*	PRECACHE_UNMODIFIED_GENERIC("maps/co_angst_detail.txt");
 	PRECACHE_UNMODIFIED_GENERIC("maps/co_core_detail.txt");
@@ -2378,7 +2381,7 @@ int	InconsistentFile( const edict_t *player, const char *filename, char *disconn
 		return 1;
 	}
 	// Cheating prone files that aren't commonly used for customization.
-	if ( (strstr(filename, "player/pl_") != NULL) || (strstr(filename, "player/role") != NULL) || (strstr(filename, ".wad") != NULL) || (strstr(filename, "misc/egg_idle.wav") != NULL)){
+	if ( (strstr(filename, "player/pl_") != NULL) || (strstr(filename, "player/role") != NULL) || (strstr(filename, ".wad") != NULL) || (strstr(filename, "misc/egg_idle.wav") != NULL) || (strstr(filename, "gl_shaders/") != NULL)){
 		// Default behavior is to kick the player
 		sprintf(disconnect_message, "Server is enforcing file consistency for %s. Files available at github.com/ENSL/NS#downloads\n", filename);
 		// Kick now with specified disconnect message.

@@ -332,6 +332,7 @@ AvHGamerules::AvHGamerules() : mTeamA(TEAM_ONE), mTeamB(TEAM_TWO)
 	this->mTimeOfLastPlaytestUpdate = -1;
 	this->mTimeOfLastHandicapUpdate = -1;
 	this->mMapGamma = kDefaultMapGamma;
+	this->mMapGammaAlt = kDefaultMapGamma;
 	this->mCombatAttackingTeamNumber = TEAM_IND;
 	this->mCheats.clear();
 	this->mSpawnEntity = NULL;
@@ -346,6 +347,8 @@ AvHGamerules::AvHGamerules() : mTeamA(TEAM_ONE), mTeamB(TEAM_TWO)
     RegisterServerVariable(avh_cheats);
     RegisterServerVariable(&avh_structurelimit);
 	RegisterServerVariable(&avh_version);
+	RegisterServerVariable(&avh_widescreenclamp);
+
 	//playtest cvars
 	RegisterServerVariable(&avh_fastjp);
 	RegisterServerVariable(&avh_randomrfk);
@@ -722,9 +725,7 @@ BOOL AvHGamerules::CanHavePlayerItem(CBasePlayer *pPlayer, CBasePlayerItem *pWea
 			int playerAutoSwapWeapon = 1;
 			bool newWeaponCanFire = true;
 
-			AvHPlayer* thePlayer = dynamic_cast<AvHPlayer*>(pPlayer);
-			if(thePlayer)
-				playerAutoSwapWeapon = thePlayer->GetAutoWeapSwapValue();
+			playerAutoSwapWeapon = pPlayer->m_iAutoWeaponSwap;
 
 			AvHBasePlayerWeapon* theNewWeapon = dynamic_cast<AvHBasePlayerWeapon*>(pWeapon);
 			if (theNewWeapon)
@@ -774,6 +775,7 @@ void AvHGamerules::CalculateMapGamma()
 	// Fetch from map extents entity if the map has one
 	FOR_ALL_ENTITIES(kwsGammaClassName, AvHGamma*)
 		this->mMapGamma = theEntity->GetGamma();
+		this->mMapGammaAlt = theEntity->GetGammaAlt();
 	END_FOR_ALL_ENTITIES(kwsGammaClassName)
 
 	this->mCalculatedMapGamma = true;
@@ -945,13 +947,15 @@ void AvHGamerules::ClientUserInfoChanged(CBasePlayer *pPlayer, char *infobuffer)
 	// NOTE: Not currently calling down to parent CHalfLifeTeamplay 
 
 	const char* theAutoWeapSwapValue = g_engfuncs.pfnInfoKeyValue(infobuffer, "cl_weaponswap");
+	if (theAutoWeapSwapValue) 
+	{
+		pPlayer->m_iAutoWeaponSwap = atoi(theAutoWeapSwapValue);
+	}
 
-	if (theAutoWeapSwapValue) {
-
-		AvHPlayer* thePlayer = dynamic_cast<AvHPlayer*>(pPlayer);
-		if (thePlayer) {
-			thePlayer->SetAutoWeapSwapValue(atoi(theAutoWeapSwapValue));
-		}
+	const char* thePistolTriggerValue = g_engfuncs.pfnInfoKeyValue(infobuffer, "cl_pistoltrigger");
+	if (thePistolTriggerValue) 
+	{
+		pPlayer->m_iPistolTrigger = atoi(thePistolTriggerValue);
 	}
 }
 
@@ -1486,6 +1490,16 @@ float AvHGamerules::GetMapGamma()
 	}
 
 	return this->mMapGamma;
+}
+
+float AvHGamerules::GetMapGammaAlt()
+{
+	if (!this->mCalculatedMapGamma)
+	{
+		this->CalculateMapGamma();
+	}
+
+	return this->mMapGammaAlt;
 }
 
 const AvHGameplay& AvHGamerules::GetGameplay() const
@@ -3298,7 +3312,7 @@ void AvHGamerules::UpdateHLTVProxy()
 				}
 
 				// Resend the gammaramp
-				NetMsgSpec_SetGammaRamp( GetGameRules()->GetMapGamma() );
+				NetMsgSpec_SetGammaRamp( GetGameRules()->GetMapGamma(), GetGameRules()->GetMapGammaAlt());
 
 				HiveInfoListType theTeamHiveInfo = this->mTeamB.GetHiveInfoList();
 				const HiveInfoListType tmp;

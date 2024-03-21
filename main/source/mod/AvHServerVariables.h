@@ -96,6 +96,7 @@ extern cvar_t *violence_agibs;
 extern cvar_t avh_killdelay;
 extern cvar_t *showtriggers;
 extern cvar_t avh_version;
+extern cvar_t avh_widescreenclamp;
 //playtest cvars
 extern cvar_t avh_fastjp;
 extern cvar_t avh_randomrfk;
@@ -163,6 +164,8 @@ float	ns_cvar_float(const cvar_t *cvar);
 #define kvBlockScripts              "mp_blockscripts"
 #define kvJumpMode					"sv_jumpmode"
 #define kvVersion					"sv_nsversion"
+#define kvWidescreenClamp			"sv_widescreenclamp"
+
 //playtest cvars
 #define kvfastjp					"sv_fastjp"
 #define kvRandomRfk					"mp_randomresfromkill"

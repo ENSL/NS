@@ -31,7 +31,7 @@ void UIDrawVariableBarSpriteHoles(AVHHSPRITE inSprite, int inX, int inY, float i
 	int theSpriteWidth = SPR_Width(inSprite, kFullFrame);
 	int theSpriteHeight = SPR_Height(inSprite, kFullFrame);
 
-	int theColorComponent = 255/inGammaSlope;
+	int theColorComponent = 255/*/inGammaSlope*/;
 	
 	// Draw empty sprite
 	SPR_Set(inSprite, theColorComponent, theColorComponent, theColorComponent);

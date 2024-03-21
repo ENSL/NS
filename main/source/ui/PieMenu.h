@@ -27,13 +27,13 @@
 #include "cl_dll/chud.h"
 #include "ui/FadingImageLabel.h"
 #include "ui/PieNode.h"
-#include "ui/GammaAwareComponent.h"
+//#include "ui/GammaAwareComponent.h"
 #include "ui/ReloadableComponent.h"
 
 using std::string;
 using vgui::Font;
 
-class PieMenu : public vgui::Panel, public ReloadableComponent, public GammaAwareComponent
+class PieMenu : public vgui::Panel, public ReloadableComponent//, public GammaAwareComponent
 {
 public:
     PieMenu(const string& inRootName, int x, int y, int wide, int tall);
@@ -59,7 +59,7 @@ public:
     // is how it determines which item was selected.
     virtual void mouseReleased(MouseCode code, Panel* panel);
 
-	virtual void NotifyGammaChange(float inGammaSlope);
+	//virtual void NotifyGammaChange(float inGammaSlope);
 	
 	void RecomputeVisibleSize(void);
 

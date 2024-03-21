@@ -1,0 +1,10 @@
+#version 330 core
+
+layout(location = 0) in vec2 vertexPosition;
+out vec2 texCoord;
+
+void main() {
+    // Pass the vertex position to the fragment shader
+    texCoord = (vertexPosition + 1.0) * 0.5; // Convert vertex position to texture coordinates
+    gl_Position = vec4(vertexPosition, 0.0, 1.0);
+}

@@ -25,17 +25,17 @@ MarqueeComponent::MarqueeComponent()
 {
 	this->mX0 = this->mY0 = 0;
 	this->mX1 = this->mY1 = 0;
-	this->mGammaSlope = 1.0f;
+	//this->mGammaSlope = 1.0f;
 
 	// Default color scheme
 	this->setFgColor(0, 255, 0, 0);
 	this->setBgColor(0, 255, 0, 230);
 }
 
-void MarqueeComponent::NotifyGammaChange(float inGammaSlope)
-{
-	this->mGammaSlope = inGammaSlope;
-}
+//void MarqueeComponent::NotifyGammaChange(float inGammaSlope)
+//{
+//	this->mGammaSlope = inGammaSlope;
+//}
 
 void MarqueeComponent::paint()
 {
@@ -49,8 +49,8 @@ void MarqueeComponent::paint()
 	int theWidth, theHeight;
 	this->getSize(theWidth, theHeight);
 
-	//vguiSimpleBox(0, 0, theWidth, theHeight, r/this->mGammaSlope, g/this->mGammaSlope, b/this->mGammaSlope, a/this->mGammaSlope);
-	vguiSimpleBox(0, 0, theWidth, theHeight, r/this->mGammaSlope, g/this->mGammaSlope, b/this->mGammaSlope, a);
+	//vguiSimpleBox(0, 0, theWidth, theHeight, r/this->mGammaSlope, g/this->mGammaSlope, b/this->mGammaSlope, a);
+	vguiSimpleBox(0, 0, theWidth, theHeight, r, g, b, a);
 
 	// Top
 //	vguiSimpleLine(0, 0, theWidth, 0, r, g, b, a);
@@ -76,8 +76,8 @@ void MarqueeComponent::paintBackground()
 	int theWidth, theHeight;
 	this->getSize(theWidth, theHeight);
 
-	//FillRGBA(0, 0, theWidth, theHeight, r/this->mGammaSlope, g/this->mGammaSlope, b/this->mGammaSlope, a/this->mGammaSlope);
-	FillRGBA(0, 0, theWidth, theHeight, r/this->mGammaSlope, g/this->mGammaSlope, b/this->mGammaSlope, a);
+	//FillRGBA(0, 0, theWidth, theHeight, r/this->mGammaSlope, g/this->mGammaSlope, b/this->mGammaSlope, a);
+	FillRGBA(0, 0, theWidth, theHeight, r, g, b, a);
 }
 
 void MarqueeComponent::ResetDimensions()

@@ -30,6 +30,7 @@ class TeamFortressViewport;
 class AvHHud;
 #include "AvHHud.h"
 extern AvHHud gHUD;
+extern CPostProcessShader g_PostProcessShader;
 
 #include "wrect.h"
 #include "cl_dll.h"

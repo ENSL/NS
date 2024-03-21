@@ -194,6 +194,7 @@ public:
 
 	void				ComputeWorldChecksum(Checksum& outChecksum) const;
 	float				GetMapGamma();
+	float				GetMapGammaAlt();
 	int					GetNumCommandersOnTeam(AvHTeamNumber inTeam);
     int                 GetNumActiveHives(AvHTeamNumber inTeam) const;
 	int					GetNumEntities() const;
@@ -411,6 +412,7 @@ private:
 
 	bool				mCalculatedMapGamma;
 	float				mMapGamma;
+	float				mMapGammaAlt;
 
 	typedef map<int, float>		EntityUnderAttackListType;
 	EntityUnderAttackListType	mEntitiesUnderAttack;
