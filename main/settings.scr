@@ -32,7 +32,7 @@
 
 
 // Half-Life Server Configuration Layout Script (stores last settings chosen, too)
-// File generated:  Sun May 07 10:30:06 AM
+// File generated:  Thu Mar 14 10:53:31 AM
 //
 //
 // Cvar	-	Setting
@@ -45,7 +45,7 @@ DESCRIPTION SERVER_OPTIONS
 	{
 		"LAN Game"
 		{ BOOL }
-		{ "0" }
+		{ "1" }
 	}
 
 	"hostname"
@@ -59,7 +59,7 @@ DESCRIPTION SERVER_OPTIONS
 	{
 		"#Valve_Max_Players"
 		{ NUMBER 2.000000 32.000000 }
-		{ "2.000000" }
+		{ "24.000000" }
 	}
 
 	"sv_password"
@@ -162,7 +162,20 @@ DESCRIPTION SERVER_OPTIONS
 	{
 		"Enable Bots"
 		{ BOOL }
-		{ "1" }
+		{ "0" }
+	}
+
+	"mp_botskill"
+	{
+		"Bot Difficulty"
+		{
+			LIST
+			"Easy" "0"
+			"Medium" "1"
+			"Hard" "2"
+			"Godlike" "3"
+		}
+		{ "1.000000" }
 	}
 
 	"mp_botautomode"
@@ -173,7 +186,7 @@ DESCRIPTION SERVER_OPTIONS
 			"Manual" "0"
 			"Automatic" "1"
 		}
-		{ "0.000000" }
+		{ "1.000000" }
 	}
 
 	"mp_botcommandermode"
