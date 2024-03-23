@@ -39,7 +39,7 @@ DO_COMMON_CC=$(CPLUS) -std=c++11 -stdlib=libc++ $(INCLUDEDIRS)  $(CFLAGS) $(SHLI
 DO_PM_SHARED_CC=$(CPLUS) -std=c++11 -stdlib=libc++ $(INCLUDEDIRS)  $(CFLAGS) $(SHLIBCFLAGS) -o $@ -c $<
 
 else
-LDFLAGS=$(SHLIBLDFLAGS) $(CPP_LIB) -lfmod-3.75 -L$(CFG) vgui.so -L. libSDL2-2.0.so.0 -L. libparticleMP.a 
+LDFLAGS=$(SHLIBLDFLAGS) $(CPP_LIB) -lfmod-3.75 -L$(CFG) vgui.so -L. libSDL2-2.0.so.0 -L. libparticleMP.a
 # -lpng -lz
 DO_CC=$(CPLUS) $(INCLUDEDIRS) $(CFLAGS) -o $@ -c $<
 DO_PUBLIC_CC=$(CPLUS) $(COMMON_INCLUDEDIRS) $(CFLAGS) $(SHLIBCFLAGS) -o $@ -c $<
@@ -109,6 +109,7 @@ HL1_OBJS = \
 	$(HL1_OBJ_DIR)/util.o \
 	$(HL1_OBJ_DIR)/health.o \
 	$(HL1_OBJ_DIR)/demo.o \
+	$(HL1_OBJ_DIR)/glew.o \
 
 MOD_OBJS = \
 	$(NS_MOD_OBJ_DIR)/AvHAcidRocketGun.o \
@@ -247,7 +248,6 @@ UI_OBJS = \
 UTIL_OBJS = \
 	$(UTIL_OBJ_DIR)/Balance.o \
 	$(UTIL_OBJ_DIR)/Checksum.o \
-	#$(UTIL_OBJ_DIR)/GammaTable.o \
 	$(UTIL_OBJ_DIR)/LinuxSupport.o \
 	$(UTIL_OBJ_DIR)/Mat3.o \
 	$(UTIL_OBJ_DIR)/MathUtil.o \
@@ -317,6 +317,9 @@ $(HL1_OBJ_DIR)/%.o: $(HL_SRC_DIR)/dlls/wpn_shared/%.cpp $(filter-out $(wildcard 
 	$(DO_CC)
 
 $(HL1_OBJ_DIR)/%.o: $(HL_SRC_DIR)/VGUI/%.cpp $(filter-out $(wildcard  $(HL1_OBJ_DIR)),  $(HL1_OBJ_DIR))
+	$(DO_CC)
+
+$(HL1_OBJ_DIR)/%.o: $(SOURCE_DIR)/includes/glew/GL/%.c $(filter-out $(wildcard  $(HL1_OBJ_DIR)),  $(HL1_OBJ_DIR))
 	$(DO_CC)
 
 $(PUBLIC_OBJ_DIR)/%.o : $(PUBLIC_SRC_DIR)/%.cpp $(filter-out $(wildcard  $(PUBLIC_OBJ_DIR)),  $(PUBLIC_OBJ_DIR))
