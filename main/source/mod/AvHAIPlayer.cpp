@@ -4655,6 +4655,7 @@ void AIPlayerCOAlienThink(AvHAIPlayer* pBot)
 
 void AIPlayerSetPrimaryCOMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
+
 	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
 	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
 
@@ -4666,10 +4667,11 @@ void AIPlayerSetPrimaryCOMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	AvHAIBuildableStructure EnemyStructure = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &EnemyStuffFilter);
 
+	edict_t* StructureToAttack = nullptr;
+
 	if (EnemyStructure.IsValid())
 	{
-		AITASK_SetAttackTask(pBot, Task, EnemyStructure.edict, false);
-		return;
+		StructureToAttack = EnemyStructure.edict;
 	}
 	else
 	{
@@ -4679,40 +4681,73 @@ void AIPlayerSetPrimaryCOMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 			if (EnemyHive)
 			{
-				AITASK_SetAttackTask(pBot, Task, EnemyHive->HiveEdict, false);
-				return;
+				StructureToAttack = EnemyHive->HiveEdict;
 			}
 		}
 	}
 
-	vector<AvHPlayer*> AllEnemyPlayers = AIMGR_GetAllPlayersOnTeam(EnemyTeam);
-	edict_t* TargetPlayer = nullptr;
-
-	float MinDist = 0.0f;
-
-	for (auto it = AllEnemyPlayers.begin(); it != AllEnemyPlayers.end(); it++)
+	// Nothing to attack, just hunt down remaining enemy players. Shouldn't happen in vanilla combat mode, but a plugin might change behaviour
+	if (FNullEnt(StructureToAttack))
 	{
-		AvHPlayer* ThisPlayer = (*it);
 
-		if (!ThisPlayer) { continue; }
+		vector<AvHPlayer*> AllEnemyPlayers = AIMGR_GetAllPlayersOnTeam(EnemyTeam);
+		edict_t* TargetPlayer = nullptr;
 
-		edict_t* PlayerEdict = ThisPlayer->edict();
+		float MinDist = 0.0f;
 
-		if (!IsPlayerActiveInGame(PlayerEdict)) { continue; }
-
-		float ThisDist = vDist2DSq(PlayerEdict->v.origin, pBot->Edict->v.origin);
-
-		if (FNullEnt(TargetPlayer) || ThisDist < MinDist)
+		for (auto it = AllEnemyPlayers.begin(); it != AllEnemyPlayers.end(); it++)
 		{
-			TargetPlayer = PlayerEdict;
-			MinDist = ThisDist;
+			AvHPlayer* ThisPlayer = (*it);
+
+			if (!ThisPlayer) { continue; }
+
+			edict_t* PlayerEdict = ThisPlayer->edict();
+
+			if (!IsPlayerActiveInGame(PlayerEdict)) { continue; }
+
+			float ThisDist = vDist2DSq(PlayerEdict->v.origin, pBot->Edict->v.origin);
+
+			if (FNullEnt(TargetPlayer) || ThisDist < MinDist)
+			{
+				TargetPlayer = PlayerEdict;
+				MinDist = ThisDist;
+			}
+		}
+
+		if (!FNullEnt(TargetPlayer))
+		{
+			MoveTo(pBot, UTIL_GetEntityGroundLocation(TargetPlayer), MOVESTYLE_NORMAL);
+		}
+
+		return;
+	}
+
+	// If we're close to the enemy base then just attack. We don't want bots marching through the enemy base and ignoring the hive/comm chair
+	if (vDist2DSq(pBot->Edict->v.origin, StructureToAttack->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(15.0f)))
+	{
+		AITASK_SetAttackTask(pBot, Task, StructureToAttack, false);
+		return;
+	}
+
+	// At this point we already know what we want to do, just crack on
+	if (Task->TaskType != TASK_NONE) { return; }
+
+	// Decide if we're going to attack right away, or take a little detour first. Helps mix things up and prevents all bots just gang-rushing the base endlessly
+
+	if (randbool())
+	{
+		Vector RandomVisitPoint = UTIL_GetRandomPointOnNavmeshInDonut(pBot->BotNavInfo.NavProfile, StructureToAttack->v.origin, UTIL_MetresToGoldSrcUnits(20.0f), UTIL_MetresToGoldSrcUnits(40.0f));
+
+		if (!vIsZero(RandomVisitPoint))
+		{
+			AITASK_SetMoveTask(pBot, Task, RandomVisitPoint, false);
+			return;
 		}
 	}
 
-	if (!FNullEnt(TargetPlayer))
-	{
-		MoveTo(pBot, UTIL_GetEntityGroundLocation(TargetPlayer), MOVESTYLE_NORMAL);
-	}
+	AITASK_SetAttackTask(pBot, Task, StructureToAttack, false);
+
+
 }
 
 void AIPlayerSetSecondaryCOMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
@@ -4765,6 +4800,51 @@ void AIPlayerSetSecondaryCOMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (PlayerHasWeapon(pBot->Player, WEAPON_MARINE_WELDER))
 	{
+		vector<AvHPlayer*> NearbyPlayers = AITAC_GetAllPlayersOfTeamInArea(BotTeam, pBot->Edict->v.origin, UTIL_MetresToGoldSrcUnits(5.0f), false, pBot->Edict, AVH_USER3_COMMANDER_PLAYER);
+		AvHPlayer* NearestWeldablePlayer = nullptr;
+		AvHPlayer* NearestBadlyDamagedPlayer = nullptr;
+		float MinDist = 0.0f;
+		float MinBadDist = 0.0f;
+
+		for (auto it = NearbyPlayers.begin(); it != NearbyPlayers.end(); it++)
+		{
+			AvHPlayer* ThisPlayer = (*it);
+			edict_t* PlayerEdict = ThisPlayer->edict();
+
+			float ArmourPercent = PlayerEdict->v.armorvalue / (float)GetPlayerMaxArmour(PlayerEdict);
+
+			if (ArmourPercent < 1.0f)
+			{
+				float ThisDist = vDist2DSq(pBot->Edict->v.origin, PlayerEdict->v.origin);
+
+				if (ArmourPercent < 0.75f)
+				{
+					if (!NearestBadlyDamagedPlayer || ThisDist < MinBadDist)
+					{
+						NearestBadlyDamagedPlayer = ThisPlayer;
+						MinBadDist = ThisDist;
+					}
+				}
+				else
+				{
+					if (!NearestWeldablePlayer || ThisDist < MinDist)
+					{
+						NearestWeldablePlayer = ThisPlayer;
+						MinDist = ThisDist;
+					}
+				}
+			}
+		}
+
+		// Basically, we won't prioritise welding players over structures unless they're low on armour, otherwise we prefer structures. This avoids
+		// situations where the bot constantly keeps topping up nearby players when there are more important weld targets to worry about
+		if (NearestBadlyDamagedPlayer)
+		{
+			AITASK_SetWeldTask(pBot, Task, NearestBadlyDamagedPlayer->edict(), false);
+			return;
+		}
+
+
 		DeployableSearchFilter DamagedStructuresFilter;
 		DamagedStructuresFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
 		DamagedStructuresFilter.DeployableTeam = BotTeam;
@@ -4800,6 +4880,13 @@ void AIPlayerSetSecondaryCOMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		if (StructureToRepair.IsValid())
 		{
 			AITASK_SetWeldTask(pBot, Task, StructureToRepair.edict, true);
+			return;
+		}
+
+
+		if (NearestWeldablePlayer)
+		{
+			AITASK_SetWeldTask(pBot, Task, NearestWeldablePlayer->edict(), false);
 			return;
 		}
 
@@ -4926,40 +5013,84 @@ void AIPlayerSetPrimaryCOAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	AvHAIBuildableStructure EnemyStructure = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &EnemyStuffFilter);
 
+	edict_t* StructureToAttack = nullptr;
+
 	if (EnemyStructure.IsValid())
 	{
-		AITASK_SetAttackTask(pBot, Task, EnemyStructure.edict, false);
-		return;
+		StructureToAttack = EnemyStructure.edict;
 	}
-
-	vector<AvHPlayer*> AllEnemyPlayers = AIMGR_GetAllPlayersOnTeam(EnemyTeam);
-	edict_t* TargetPlayer = nullptr;
-
-	float MinDist = 0.0f;
-
-	for (auto it = AllEnemyPlayers.begin(); it != AllEnemyPlayers.end(); it++)
+	else
 	{
-		AvHPlayer* ThisPlayer = (*it);
-
-		if (!ThisPlayer) { continue; }
-
-		edict_t* PlayerEdict = ThisPlayer->edict();
-
-		if (!IsPlayerActiveInGame(PlayerEdict)) { continue; }
-
-		float ThisDist = vDist2DSq(PlayerEdict->v.origin, pBot->Edict->v.origin);
-
-		if (FNullEnt(TargetPlayer) || ThisDist < MinDist)
+		if (AIMGR_GetTeamType(EnemyTeam) == AVH_CLASS_TYPE_ALIEN)
 		{
-			TargetPlayer = PlayerEdict;
-			MinDist = ThisDist;
+			const AvHAIHiveDefinition* EnemyHive = AITAC_GetActiveHiveNearestLocation(EnemyTeam, pBot->Edict->v.origin);
+
+			if (EnemyHive)
+			{
+				StructureToAttack = EnemyHive->HiveEdict;
+			}
 		}
 	}
 
-	if (!FNullEnt(TargetPlayer))
+	// Nothing to attack, just hunt down remaining enemy players. Shouldn't happen in vanilla combat mode, but a plugin might change behaviour
+	if (FNullEnt(StructureToAttack))
 	{
-		MoveTo(pBot, UTIL_GetEntityGroundLocation(TargetPlayer), MOVESTYLE_NORMAL);
+		vector<AvHPlayer*> AllEnemyPlayers = AIMGR_GetAllPlayersOnTeam(EnemyTeam);
+		edict_t* TargetPlayer = nullptr;
+
+		float MinDist = 0.0f;
+
+		for (auto it = AllEnemyPlayers.begin(); it != AllEnemyPlayers.end(); it++)
+		{
+			AvHPlayer* ThisPlayer = (*it);
+
+			if (!ThisPlayer) { continue; }
+
+			edict_t* PlayerEdict = ThisPlayer->edict();
+
+			if (!IsPlayerActiveInGame(PlayerEdict)) { continue; }
+
+			float ThisDist = vDist2DSq(PlayerEdict->v.origin, pBot->Edict->v.origin);
+
+			if (FNullEnt(TargetPlayer) || ThisDist < MinDist)
+			{
+				TargetPlayer = PlayerEdict;
+				MinDist = ThisDist;
+			}
+		}
+
+		if (!FNullEnt(TargetPlayer))
+		{
+			MoveTo(pBot, UTIL_GetEntityGroundLocation(TargetPlayer), MOVESTYLE_NORMAL);
+		}
+
+		return;
 	}
+
+	// If we're close to the enemy base then just attack. We don't want bots marching through the enemy base and ignoring the hive/comm chair
+	if (vDist2DSq(pBot->Edict->v.origin, StructureToAttack->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(15.0f)))
+	{
+		AITASK_SetAttackTask(pBot, Task, StructureToAttack, false);
+		return;
+	}
+
+	// At this point we already know what we want to do, just crack on
+	if (Task->TaskType != TASK_NONE) { return; }
+
+	// Decide if we're going to attack right away, or take a little detour first. Helps mix things up and prevents all bots just gang-rushing the base endlessly
+
+	if (randbool())
+	{
+		Vector RandomVisitPoint = UTIL_GetRandomPointOnNavmeshInDonut(pBot->BotNavInfo.NavProfile, StructureToAttack->v.origin, UTIL_MetresToGoldSrcUnits(20.0f), UTIL_MetresToGoldSrcUnits(40.0f));
+
+		if (!vIsZero(RandomVisitPoint))
+		{
+			AITASK_SetMoveTask(pBot, Task, RandomVisitPoint, false);
+			return;
+		}
+	}
+
+	AITASK_SetAttackTask(pBot, Task, StructureToAttack, false);
 	
 }
 
@@ -5277,6 +5408,12 @@ void BotResumePlay(AvHAIPlayer* pBot)
 	SetBaseNavProfile(pBot);
 
 	pBot->bIsInactive = false;
+
+	// Keep things nicely randomized in Combat mode
+	if (GetGameRules()->GetMapMode() == MAP_MODE_CO)
+	{
+		AITASK_ClearBotTask(pBot, &pBot->PrimaryBotTask);
+	}
 }
 
 void UpdateCommanderOrders(AvHAIPlayer* pBot)

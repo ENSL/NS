@@ -159,7 +159,7 @@ void CONFIG_ParseConfigFile()
 
         while (getline(cFile, line))
         {
-            line.erase(std::remove_if(line.begin(), line.end(), ::isspace),
+            line.erase(std::remove_if(line.begin(), line.end(), isspace),
                 line.end());
             if (line[0] == '#' || line.empty())
                 continue;
@@ -468,8 +468,8 @@ void CONFIG_RegenerateIniFile()
 
     fprintf(NewConfigFile, "### Skill Settings ###\n\n");
 
-    fprintf(NewConfigFile, "# Bot skill settings. You can define as many settings as you like and reference them by name\n");
-    fprintf(NewConfigFile, "# Format is BotSkillName = name, followed by one of the following:\n");
+    fprintf(NewConfigFile, "# Bot skill settings. There are 4 settings from 0 - 3 for easiest - hardest\n");
+    fprintf(NewConfigFile, "# Use BotSkillName=<index> to start defining a skill level, then the following:\n");
     fprintf(NewConfigFile, "# ReactionTime = How quickly in seconds the bot will react to sighting enemies\n");
     fprintf(NewConfigFile, "# AimSkill = How accurately the bot can lock sights on you after seeing you (0.0 - 1.0)\n");
     fprintf(NewConfigFile, "# MovementTracking = How accurately the bot can follow a moving target (0.0 - 1.0)\n");
@@ -514,7 +514,8 @@ void CONFIG_RegenerateIniFile()
     fprintf(NewConfigFile, "AlienReactionTime=0.1\n");
     fprintf(NewConfigFile, "AlienAimSkill=1.0\n");
     fprintf(NewConfigFile, "AlienMovementTracking=1.0\n");
-    fprintf(NewConfigFile, "AlienViewSpeed=2.0\n\n");
+    fprintf(NewConfigFile, "AlienViewSpeed=2.0\n\n\n");
+
 
     fprintf(NewConfigFile, "# Desired team sizes. Only used if bot fill mode is 'fillteams'\n");
     fprintf(NewConfigFile, "# Format is TeamSize=mapname:nummarines/numaliens\n");

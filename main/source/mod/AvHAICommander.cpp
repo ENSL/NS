@@ -276,7 +276,7 @@ void AICOMM_IssueOrderForAssignedJob(AvHAIPlayer* pBot, ai_commander_order* Orde
 			}
 			else
 			{
-				Vector MoveLoc = (bIsSiegeHiveOrder) ? UTIL_GetRandomPointOnNavmeshInDonutIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), Hive->FloorLocation, UTIL_MetresToGoldSrcUnits(10.0f), UTIL_MetresToGoldSrcUnits(25.0f)) : Hive->FloorLocation;
+				Vector MoveLoc = (bIsSiegeHiveOrder) ? UTIL_GetRandomPointOnNavmeshInDonutIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), Hive->FloorLocation, UTIL_MetresToGoldSrcUnits(10.0f), UTIL_MetresToGoldSrcUnits(20.0f)) : Hive->FloorLocation;
 
 				AICOMM_IssueMovementOrder(pBot, Order->Assignee, MoveLoc);
 				Order->LastReminderTime = gpGlobals->time;
@@ -1972,7 +1972,7 @@ bool AICOMM_PerformNextSiegeHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefinit
 	{
 		Vector NextBuildPosition = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), SiegeLocation, UTIL_MetresToGoldSrcUnits(3.0f));
 
-		if (!vIsZero(NextBuildPosition))
+		if (!vIsZero(NextBuildPosition) && vDist2DSq(NextBuildPosition, HiveToSiege->Location) < sqrf(UTIL_MetresToGoldSrcUnits(22.0f)))
 		{
 			bool bSuccess = AICOMM_DeployStructure(pBot, NextStructure, NextBuildPosition, STRUCTURE_PURPOSE_SIEGE);
 
@@ -1981,7 +1981,7 @@ bool AICOMM_PerformNextSiegeHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefinit
 
 		NextBuildPosition = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), SiegeLocation, UTIL_MetresToGoldSrcUnits(5.0f));
 
-		if (!vIsZero(NextBuildPosition))
+		if (!vIsZero(NextBuildPosition) && vDist2DSq(NextBuildPosition, HiveToSiege->Location) < sqrf(UTIL_MetresToGoldSrcUnits(22.0f)))
 		{
 			bool bSuccess = AICOMM_DeployStructure(pBot, NextStructure, NextBuildPosition, STRUCTURE_PURPOSE_SIEGE);
 
@@ -1990,7 +1990,7 @@ bool AICOMM_PerformNextSiegeHiveAction(AvHAIPlayer* pBot, const AvHAIHiveDefinit
 
 		NextBuildPosition = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), SiegeLocation, UTIL_MetresToGoldSrcUnits(5.0f));
 
-		if (!vIsZero(NextBuildPosition))
+		if (!vIsZero(NextBuildPosition) && vDist2DSq(NextBuildPosition, HiveToSiege->Location) < sqrf(UTIL_MetresToGoldSrcUnits(22.0f)))
 		{
 			bool bSuccess = AICOMM_DeployStructure(pBot, NextStructure, NextBuildPosition, STRUCTURE_PURPOSE_SIEGE);
 

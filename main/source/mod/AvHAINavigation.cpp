@@ -2326,7 +2326,9 @@ bool HasBotCompletedClimbMove(const AvHAIPlayer* pBot, Vector MoveStart, Vector 
 {
 	Vector PositionInMove = vClosestPointOnLine2D(MoveStart, MoveEnd, pBot->Edict->v.origin);
 
-	if (NextMoveFlag != SAMPLE_POLYFLAGS_DISABLED)
+	if (!vEquals2D(PositionInMove, MoveEnd, 4.0f)) { return false; }
+
+	/*if (NextMoveFlag != SAMPLE_POLYFLAGS_DISABLED)
 	{
 		Vector ThisMoveDir = UTIL_GetVectorNormal2D(MoveEnd - MoveStart);
 		Vector NextMoveDir = UTIL_GetVectorNormal2D(NextMoveDestination - MoveEnd);
@@ -2344,11 +2346,40 @@ bool HasBotCompletedClimbMove(const AvHAIPlayer* pBot, Vector MoveStart, Vector 
 				}
 			}		
 		}
+	}*/
+
+	if (pBot->BotNavInfo.IsOnGround)
+	{
+		return UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, NextMoveDestination);
+	}
+	else
+	{
+		if (NextMoveFlag != SAMPLE_POLYFLAGS_DISABLED)
+		{
+			Vector ThisMoveDir = UTIL_GetVectorNormal2D(MoveEnd - MoveStart);
+			Vector NextMoveDir = UTIL_GetVectorNormal2D(NextMoveDestination - MoveEnd);
+
+			float MoveDot = UTIL_GetDotProduct2D(ThisMoveDir, NextMoveDir);
+
+			if (MoveDot > 0.0f)
+			{
+				if (pBot->Edict->v.origin.z >= RequiredClimbHeight && !pBot->BotNavInfo.IsOnGround)
+				{
+					if (UTIL_QuickTrace(pBot->Edict, pBot->Edict->v.origin, NextMoveDestination)
+						&& fabsf(pBot->CollisionHullBottomLocation.z - MoveEnd.z) < 100.0f)
+					{
+						return true;
+					}
+				}
+			}
+		}
+		else
+		{
+			return false;
+		}
 	}
 
-	if (!vEquals2D(PositionInMove, MoveEnd, 2.0f)) { return false; }
-
-	return vPointOverlaps3D(MoveEnd, pBot->Edict->v.absmin, pBot->Edict->v.absmax) && UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, NextMoveDestination);
+	
 }
 
 bool HasBotCompletedJumpMove(const AvHAIPlayer* pBot, Vector MoveStart, Vector MoveEnd, Vector NextMoveDestination, SamplePolyFlags NextMoveFlag)
@@ -4081,7 +4112,7 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 		if (NearestLiftTrigger)
 		{
 			// If the trigger is on cooldown, or the door/train is designed to automatically return without being summoned, then just wait for it to come back
-			if (gpGlobals->time < NearestLiftTrigger->NextActivationTime || (NearestLift->DoorType == DOORTYPE_TRAIN && !(NearestLift->DoorEdict->v.spawnflags & SF_TRAIN_WAIT_RETRIGGER)) || (NearestLift->DoorType == DOORTYPE_DOOR && NearestLift->DoorEntity && NearestLift->DoorEntity->GetToggleState() == TS_AT_TOP && NearestLift->DoorEntity->m_flWait > 0.0f && !(NearestLift->DoorEdict->v.spawnflags & SF_DOOR_NO_AUTO_RETURN)))
+			if (gpGlobals->time < NearestLiftTrigger->NextActivationTime || (NearestLift->DoorType == DOORTYPE_TRAIN && !(NearestLift->DoorEdict->v.spawnflags & SF_TRAIN_WAIT_RETRIGGER)) || (NearestLift->DoorType == DOORTYPE_DOOR && NearestLift->DoorEntity && NearestLift->DoorEntity->GetToggleState() == TS_AT_TOP && NearestLift->DoorEntity->m_flWait > 0.0f && !FBitSet(NearestLift->DoorEdict->v.spawnflags, SF_DOOR_NO_AUTO_RETURN)))
 			{
 				if (!bIsOnLift && !bIsLiftAtOrNearStart)
 				{
@@ -4462,6 +4493,25 @@ void WallClimbMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndP
 {
 	edict_t* pEdict = pBot->Edict;
 
+	if (UTIL_PointIsDirectlyReachable(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, EndPoint))
+	{
+		Vector PointOnMoveLine = vClosestPointOnLine2D(StartPoint, EndPoint, pBot->Edict->v.origin);
+
+		if (vEquals2D(PointOnMoveLine, EndPoint, 4.0f))
+		{
+
+			// Stop holding crouch if we're a skulk so we can actually climb
+			if (IsPlayerSkulk(pBot->Edict))
+			{
+				pBot->Button &= ~IN_DUCK;
+			}
+
+			pBot->desiredMovementDir = UTIL_GetVectorNormal2D(EndPoint - pBot->CurrentFloorPosition);
+
+			return;
+		}
+	}
+
 	Vector vForward = UTIL_GetVectorNormal2D(EndPoint - StartPoint);
 	Vector vRight = UTIL_GetVectorNormal(UTIL_GetCrossProduct(vForward, UP_VECTOR));
 
@@ -4498,6 +4548,8 @@ void WallClimbMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndP
 	{
 		pBot->Button &= ~IN_DUCK;
 	}
+
+
 
 	float ZDiff = fabs(pEdict->v.origin.z - RequiredClimbHeight);
 	Vector AdjustedTargetLocation = EndPoint + (UTIL_GetVectorNormal2D(EndPoint - StartPoint) * 1000.0f);
@@ -8014,18 +8066,30 @@ void UTIL_UpdateDoorTriggers(nav_door* Door)
 			}
 		}
 
-		float BaseTriggerDelay = (it->ToggleEnt) ? it->ToggleEnt->m_flDelay : 0.0f;
-		float DoorDelay = Door->DoorEntity->GetDelay();
-		it->ActivationDelay = BaseTriggerDelay + DoorDelay + 1.0f;
+		float BaseTriggerDelay = 0.0f;
+		float BaseTriggerResetTime = 0.0f;
+
+		bool bButtonIsToggle = FBitSet(it->Edict->v.spawnflags, SF_DOOR_NO_AUTO_RETURN);
+
+		if (it->ToggleEnt)
+		{
+			BaseTriggerDelay = it->ToggleEnt->m_flDelay;
+			BaseTriggerResetTime = (bButtonIsToggle) ? 1.0f : it->ToggleEnt->GetDelay();
+		}		
+
+		float DoorDelay = (FBitSet(Door->DoorEdict->v.spawnflags, SF_DOOR_NO_AUTO_RETURN)) ? 0.0f : Door->DoorEntity->GetDelay();
+		it->ActivationDelay = fmaxf(BaseTriggerDelay, BaseTriggerResetTime) + DoorDelay + 1.0f;
 
 		if (it->ToggleEnt && it->ToggleEnt->GetToggleState() != it->LastToggleState)
 		{
-			if (it->LastToggleState != TS_GOING_UP && it->LastToggleState != TS_GOING_DOWN)
+			TOGGLE_STATE NewState = (TOGGLE_STATE)it->ToggleEnt->GetToggleState();
+
+			if (it->LastToggleState == TS_AT_BOTTOM || (bButtonIsToggle && it->LastToggleState == TS_AT_TOP))
 			{
-				it->NextActivationTime = gpGlobals->time + fmaxf(it->ActivationDelay + 1.0f, 1.0f);
+				it->NextActivationTime = gpGlobals->time + fmaxf(it->ActivationDelay, 1.0f);
 			}
 
-			it->LastToggleState = (TOGGLE_STATE)it->ToggleEnt->GetToggleState();
+			it->LastToggleState = NewState;
 		}
 
 		it++;
