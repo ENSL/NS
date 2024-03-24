@@ -2379,7 +2379,7 @@ bool HasBotCompletedClimbMove(const AvHAIPlayer* pBot, Vector MoveStart, Vector 
 		}
 	}
 
-	
+	return false;
 }
 
 bool HasBotCompletedJumpMove(const AvHAIPlayer* pBot, Vector MoveStart, Vector MoveEnd, Vector NextMoveDestination, SamplePolyFlags NextMoveFlag)
@@ -7337,11 +7337,13 @@ Vector UTIL_GetButtonFloorLocation(const Vector UserLocation, edict_t* ButtonEdi
 	return NewButtonAccessPoint;
 }
 
-bool UTIL_IsTriggerLinkedToDoor(CBaseEntity* TriggerEntity, CBaseEntity* Door)
+bool UTIL_IsTriggerLinkedToDoor(CBaseEntity* TriggerEntity, vector<CBaseEntity*>& CheckedTriggers, CBaseEntity* Door)
 {
 	if (!TriggerEntity || !Door) { return false; }
 
 	if (TriggerEntity == Door) { return true; }
+
+	CheckedTriggers.push_back(TriggerEntity);
 
 	const char* DoorName = STRING(Door->pev->targetname);
 	const char* TriggerName = STRING(TriggerEntity->pev->targetname);
@@ -7358,7 +7360,7 @@ bool UTIL_IsTriggerLinkedToDoor(CBaseEntity* TriggerEntity, CBaseEntity* Door)
 
 		CBaseEntity* TargetEntity = UTIL_FindEntityByTargetname(NULL, targetOnFinish);
 
-		if (TargetEntity && TargetEntity != TriggerEntity && UTIL_IsTriggerLinkedToDoor(TargetEntity, Door)) { return true; }
+		if (TargetEntity && TargetEntity != TriggerEntity && UTIL_IsTriggerLinkedToDoor(TargetEntity, CheckedTriggers, Door)) { return true; }
 
 		return false;
 	}
@@ -7375,10 +7377,10 @@ bool UTIL_IsTriggerLinkedToDoor(CBaseEntity* TriggerEntity, CBaseEntity* Door)
 
 			if (MMTargetEntity == Door) { return true; }
 
-			// Don't check this if it's targeting us (circular reference)
-			if (FStrEq(STRING(MMTargetEntity->pev->target), STRING(TriggerEntity->pev->targetname))) { continue; }
+			// Already checked this one!
+			if (std::find(CheckedTriggers.begin(), CheckedTriggers.end(), MMTargetEntity) != CheckedTriggers.end()) { continue; }
 
-			if (MMTargetEntity && UTIL_IsTriggerLinkedToDoor(MMTargetEntity, Door)) { return true; }
+			if (UTIL_IsTriggerLinkedToDoor(MMTargetEntity, CheckedTriggers, Door)) { return true; }
 		}
 
 		return false;
@@ -7394,7 +7396,7 @@ bool UTIL_IsTriggerLinkedToDoor(CBaseEntity* TriggerEntity, CBaseEntity* Door)
 			const char* SourceGlobalState = STRING(theEntity->m_globalstate);
 			if (FStrEq(EnvGlobalState, SourceGlobalState))
 			{
-				if (UTIL_IsTriggerLinkedToDoor(theEntity, Door)) { return true; }
+				if (UTIL_IsTriggerLinkedToDoor(theEntity, CheckedTriggers, Door)) { return true; }
 			}
 		END_FOR_ALL_ENTITIES("multisource")
 
@@ -7410,21 +7412,21 @@ bool UTIL_IsTriggerLinkedToDoor(CBaseEntity* TriggerEntity, CBaseEntity* Door)
 		FOR_ALL_ENTITIES("func_button", CBaseButton*)
 			if (theEntity->m_sMaster && FStrEq(STRING(theEntity->m_sMaster), targetName))
 			{
-				if (UTIL_IsTriggerLinkedToDoor(theEntity, Door)) { return true; }
+				if (std::find(CheckedTriggers.begin(), CheckedTriggers.end(), theEntity) == CheckedTriggers.end() && UTIL_IsTriggerLinkedToDoor(theEntity, CheckedTriggers, Door)) { return true; }
 			}
 		END_FOR_ALL_ENTITIES("func_button")
 
 		FOR_ALL_ENTITIES("trigger_once", CBaseTrigger*)
 			if (theEntity->m_sMaster && FStrEq(STRING(theEntity->m_sMaster), targetName))
 			{
-				if (UTIL_IsTriggerLinkedToDoor(theEntity, Door)) { return true; }
+				if (std::find(CheckedTriggers.begin(), CheckedTriggers.end(), theEntity) == CheckedTriggers.end() && UTIL_IsTriggerLinkedToDoor(theEntity, CheckedTriggers, Door)) { return true; }
 			}
 		END_FOR_ALL_ENTITIES("trigger_once")
 
 		FOR_ALL_ENTITIES("trigger_multiple", CBaseTrigger*)
 			if (theEntity->m_sMaster && FStrEq(STRING(theEntity->m_sMaster), targetName))
 			{
-				if (UTIL_IsTriggerLinkedToDoor(theEntity, Door)) { return true; }
+				if (std::find(CheckedTriggers.begin(), CheckedTriggers.end(), theEntity) == CheckedTriggers.end() && UTIL_IsTriggerLinkedToDoor(theEntity, CheckedTriggers, Door)) { return true; }
 			}
 		END_FOR_ALL_ENTITIES("trigger_multiple")
 
@@ -7444,10 +7446,13 @@ bool UTIL_IsTriggerLinkedToDoor(CBaseEntity* TriggerEntity, CBaseEntity* Door)
 	{
 		CBaseEntity* TargetEntity = UTIL_FindEntityByTargetname(NULL, STRING(ToggleRef->pev->target));
 
-		// Don't check this if it's targeting us (circular reference)
-		if (TargetEntity && !FStrEq(STRING(TargetEntity->pev->target), STRING(TriggerEntity->pev->targetname)))
+		const char* TestTriggerTargetname = STRING(TriggerEntity->pev->targetname);
+		const char* ThisTriggerTarget = STRING(TargetEntity->pev->target);
+
+		// Don't check this if it's targeting a trigger we've already checked
+		if (TargetEntity && std::find(CheckedTriggers.begin(), CheckedTriggers.end(), TargetEntity) == CheckedTriggers.end())
 		{ 
-			if (TargetEntity && UTIL_IsTriggerLinkedToDoor(TargetEntity, Door)) { return true; }
+			if (TargetEntity && UTIL_IsTriggerLinkedToDoor(TargetEntity, CheckedTriggers, Door)) { return true; }
 		}
 
 		FOR_ALL_ENTITIES("trigger_changetarget", CTriggerChangeTarget*)
@@ -7508,10 +7513,12 @@ void UTIL_PopulateTriggersForEntity(edict_t* Entity, vector<DoorTrigger>& Trigge
 
 	if (!DoorRef) { return; }
 
+	vector<CBaseEntity*> CheckedTriggerList;
 
 	while ((TriggerRef = UTIL_FindEntityByClassname(TriggerRef, "func_button")) != NULL)
 	{
-		if (UTIL_IsTriggerLinkedToDoor(TriggerRef, DoorRef))
+		CheckedTriggerList.clear();
+		if (UTIL_IsTriggerLinkedToDoor(TriggerRef, CheckedTriggerList, DoorRef))
 		{
 			DoorActivationType NewTriggerType = DOOR_BUTTON;
 
@@ -7527,11 +7534,13 @@ void UTIL_PopulateTriggersForEntity(edict_t* Entity, vector<DoorTrigger>& Trigge
 	}
 
 	TriggerRef = NULL;
+	
 
 	while ((TriggerRef = UTIL_FindEntityByClassname(TriggerRef, "avhweldable")) != NULL)
 	{
-		if (UTIL_IsTriggerLinkedToDoor(TriggerRef, DoorRef))
-		{
+		CheckedTriggerList.clear();
+		if (UTIL_IsTriggerLinkedToDoor(TriggerRef, CheckedTriggerList, DoorRef))
+		{			
 			DoorActivationType NewTriggerType = DOOR_WELD;
 
 			DoorTrigger NewTrigger;
@@ -7546,10 +7555,12 @@ void UTIL_PopulateTriggersForEntity(edict_t* Entity, vector<DoorTrigger>& Trigge
 	}
 
 	TriggerRef = NULL;
+	CheckedTriggerList.clear();
 
 	while ((TriggerRef = UTIL_FindEntityByClassname(TriggerRef, "func_breakable")) != NULL)
 	{
-		if (UTIL_IsTriggerLinkedToDoor(TriggerRef, DoorRef))
+		CheckedTriggerList.clear();
+		if (UTIL_IsTriggerLinkedToDoor(TriggerRef, CheckedTriggerList, DoorRef))
 		{
 			DoorActivationType NewTriggerType = DOOR_BREAK;
 
@@ -7568,7 +7579,8 @@ void UTIL_PopulateTriggersForEntity(edict_t* Entity, vector<DoorTrigger>& Trigge
 
 	while ((TriggerRef = UTIL_FindEntityByClassname(TriggerRef, "trigger_once")) != NULL)
 	{
-		if (UTIL_IsTriggerLinkedToDoor(TriggerRef, DoorRef))
+		CheckedTriggerList.clear();
+		if (UTIL_IsTriggerLinkedToDoor(TriggerRef, CheckedTriggerList, DoorRef))
 		{
 			DoorActivationType NewTriggerType = DOOR_TRIGGER;
 
@@ -7587,7 +7599,8 @@ void UTIL_PopulateTriggersForEntity(edict_t* Entity, vector<DoorTrigger>& Trigge
 
 	while ((TriggerRef = UTIL_FindEntityByClassname(TriggerRef, "trigger_multiple")) != NULL)
 	{
-		if (UTIL_IsTriggerLinkedToDoor(TriggerRef, DoorRef))
+		CheckedTriggerList.clear();
+		if (UTIL_IsTriggerLinkedToDoor(TriggerRef, CheckedTriggerList, DoorRef))
 		{
 			DoorActivationType NewTriggerType = DOOR_TRIGGER;
 
@@ -8046,7 +8059,8 @@ void UTIL_UpdateDoorTriggers(nav_door* Door)
 				else
 				{
 					const char* classname = STRING(ActivationTarget->pev->classname);
-					it->bIsActivated = UTIL_IsTriggerLinkedToDoor(ActivationTarget, Door->DoorEntity);
+					vector<CBaseEntity*> CheckedTriggerList;
+					it->bIsActivated = UTIL_IsTriggerLinkedToDoor(ActivationTarget, CheckedTriggerList, Door->DoorEntity);
 				}
 			}
 		}
@@ -8274,6 +8288,8 @@ void UTIL_PopulateDoors()
 
 nav_door* UTIL_GetNavDoorByEdict(const edict_t* DoorEdict)
 {
+	if (FNullEnt(DoorEdict)) { return nullptr; }
+
 	for (auto it = NavDoors.begin(); it != NavDoors.end(); it++)
 	{
 		if (it->DoorEdict == DoorEdict)

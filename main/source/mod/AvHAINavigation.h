@@ -470,7 +470,7 @@ void UTIL_UpdateDoorTriggers(nav_door* Door);
 
 void UTIL_ModifyOffMeshConnectionFlag(AvHAIOffMeshConnection* Connection, const unsigned int NewFlag);
 
-bool UTIL_IsTriggerLinkedToDoor(CBaseEntity* TriggerEntity, CBaseEntity* Door);
+bool UTIL_IsTriggerLinkedToDoor(CBaseEntity* TriggerEntity, vector<CBaseEntity*>& CheckedTriggers, CBaseEntity* Door);
 void UTIL_PopulateTriggersForEntity(edict_t* Entity, vector<DoorTrigger>& TriggerList);
 void UTIL_PopulateAffectedConnectionsForDoor(nav_door* Door);
 
