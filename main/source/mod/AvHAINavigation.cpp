@@ -8643,9 +8643,11 @@ void NAV_ProgressMovementTask(AvHAIPlayer* pBot)
 		{
 			Vector AimLocation;
 
-			if (MoveTask->TaskTarget->v.size.Length2D() < 100.0f)
+			Vector EntityCentre = UTIL_GetCentreOfEntity(MoveTask->TaskTarget);
+
+			if (MoveTask->TaskTarget->v.size.Length() < 100.0f)
 			{
-				AimLocation = UTIL_GetCentreOfEntity(MoveTask->TaskTarget);
+				AimLocation = EntityCentre;
 			}
 			else
 			{
@@ -8655,9 +8657,16 @@ void NAV_ProgressMovementTask(AvHAIPlayer* pBot)
 				vScaleBB(BBMin, BBMax, 0.75f);
 
 				AimLocation = vClosestPointOnBB(pBot->CurrentEyePosition, BBMin, BBMax);
+
+				if (MoveTask->TaskTarget->v.absmax.z - MoveTask->TaskTarget->v.absmin.z < 100.0f)
+				{
+					AimLocation.z = EntityCentre.z;
+				}
+
+				UTIL_DrawLine(INDEXENT(1), pBot->CurrentEyePosition, AimLocation);
 			}
 
-			BotLookAt(pBot, AimLocation);
+			BotMoveLookAt(pBot, AimLocation);
 			pBot->DesiredCombatWeapon = WEAPON_MARINE_WELDER;
 
 			if (GetPlayerCurrentWeapon(pBot->Player) != WEAPON_MARINE_WELDER)
@@ -8672,10 +8681,6 @@ void NAV_ProgressMovementTask(AvHAIPlayer* pBot)
 			return;
 		}
 	}
-
-
-
-
 
 	MoveTo(pBot, MoveTask->TaskLocation, MOVESTYLE_NORMAL);
 

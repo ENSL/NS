@@ -2472,7 +2472,8 @@ void BotProgressWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (IsPlayerInUseRange(pBot->Edict, Task->TaskTarget))
 	{
-		Vector AimLocation = UTIL_GetCentreOfEntity(Task->TaskTarget);
+		Vector EntityCentre = UTIL_GetCentreOfEntity(Task->TaskTarget);
+		Vector AimLocation = EntityCentre;
 
 		// If we're targeting a func_weldable, then the centre of the entity might be in a wall or out of reach
 		// so instead aim at the closest point on the func_weldable to us.
@@ -2490,6 +2491,11 @@ void BotProgressWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 				vScaleBB(BBMin, BBMax, 0.75f);
 
 				AimLocation = vClosestPointOnBB(pBot->CurrentEyePosition, BBMin, BBMax);
+
+				if (Task->TaskTarget->v.absmax.z - Task->TaskTarget->v.absmin.z < 100.0f)
+				{
+					AimLocation.z = EntityCentre.z;
+				}
 			}
 
 		}
