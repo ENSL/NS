@@ -4641,9 +4641,6 @@ void MoveToWithoutNav(AvHAIPlayer* pBot, const Vector Destination)
 	bool bumpLeft = !UTIL_QuickHullTrace(pBot->Edict, stTrcLft, endTrcLft, head_hull);
 	bool bumpRight = !UTIL_QuickHullTrace(pBot->Edict, stTrcRt, endTrcRt, head_hull);
 
-	//UTIL_DrawLine(INDEXENT(1), stTrcLft, endTrcLft, 255, 0, 0);
-	//UTIL_DrawLine(INDEXENT(1), stTrcRt, endTrcRt, 0, 0, 255);
-
 	pBot->desiredMovementDir = vForward;
 
 	if (bumpRight && !bumpLeft)
@@ -8644,12 +8641,23 @@ void NAV_ProgressMovementTask(AvHAIPlayer* pBot)
 	{
 		if (IsPlayerInUseRange(pBot->Edict, MoveTask->TaskTarget))
 		{
-			Vector BBMin = MoveTask->TaskTarget->v.absmin + Vector(5.0f, 5.0f, 5.0f);
-			Vector BBMax = MoveTask->TaskTarget->v.absmax - Vector(5.0f, 5.0f, 5.0f);
+			Vector AimLocation;
 
-			vScaleBB(BBMin, BBMax, 0.75f);
+			if (MoveTask->TaskTarget->v.size.Length2D() < 100.0f)
+			{
+				AimLocation = UTIL_GetCentreOfEntity(MoveTask->TaskTarget);
+			}
+			else
+			{
+				Vector BBMin = MoveTask->TaskTarget->v.absmin + Vector(5.0f, 5.0f, 5.0f);
+				Vector BBMax = MoveTask->TaskTarget->v.absmax - Vector(5.0f, 5.0f, 5.0f);
 
-			BotLookAt(pBot, vClosestPointOnBB(pBot->Edict->v.origin, BBMin, BBMax));
+				vScaleBB(BBMin, BBMax, 0.75f);
+
+				AimLocation = vClosestPointOnBB(pBot->CurrentEyePosition, BBMin, BBMax);
+			}
+
+			BotLookAt(pBot, AimLocation);
 			pBot->DesiredCombatWeapon = WEAPON_MARINE_WELDER;
 
 			if (GetPlayerCurrentWeapon(pBot->Player) != WEAPON_MARINE_WELDER)
@@ -8664,6 +8672,10 @@ void NAV_ProgressMovementTask(AvHAIPlayer* pBot)
 			return;
 		}
 	}
+
+
+
+
 
 	MoveTo(pBot, MoveTask->TaskLocation, MOVESTYLE_NORMAL);
 

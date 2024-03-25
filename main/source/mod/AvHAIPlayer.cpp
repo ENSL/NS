@@ -3293,12 +3293,13 @@ void AIPlayerSetMarineSweeperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 
 	if (AITAC_GetNumDeployablesNearLocation(CommChairLocation, &StructureFilter) < 2)
 	{
-		if (Task->TaskType != TASK_GUARD || vDist2DSq(Task->TaskLocation, CommChairLocation) > UTIL_MetresToGoldSrcUnits(10.0f))
+		if (Task->TaskType != TASK_GUARD || vDist2DSq(Task->TaskLocation, CommChairLocation) > sqrf(UTIL_MetresToGoldSrcUnits(10.0f)))
 		{
 			Task->TaskType = TASK_GUARD;
 			Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(pBot->BotNavInfo.NavProfile, CommChairLocation, UTIL_MetresToGoldSrcUnits(10.0f));
 			Task->bTaskIsUrgent = false;
 			Task->TaskLength = frandrange(20.0f, 30.0f);
+			Task->TaskStartedTime = 0.0f;
 		}
 		return;
 	}
@@ -3333,6 +3334,7 @@ void AIPlayerSetMarineSweeperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 			Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(pBot->BotNavInfo.NavProfile, RandomPG.Location, UTIL_MetresToGoldSrcUnits(5.0f));
 			Task->bTaskIsUrgent = false;
 			Task->TaskLength = frandrange(20.0f, 30.0f);
+			Task->TaskStartedTime = 0.0f;
 		}
 		return;
 	}
@@ -6319,6 +6321,8 @@ void AIPlayerSetAlienAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task
 		Task->TaskType = TASK_GUARD;
 		Task->TaskLocation = HiveToGuard->FloorLocation;
 		Task->TaskTarget = HiveToGuard->HiveEdict;
+		Task->TaskStartedTime = 0.0f;
+		Task->TaskLength = 60.0f;
 		return;
 	}
 	else if (HiveToSecure)

@@ -529,6 +529,11 @@ bool AITASK_IsGuardTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		return false;
 	}
 
+	if (Task->TaskLength > 0.0f && Task->TaskStartedTime > 0.0f)
+	{
+		return (gpGlobals->time - Task->TaskStartedTime < Task->TaskLength);
+	}
+
 	return true;
 }
 
@@ -1579,8 +1584,9 @@ void MarineProgressBuildTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 void BotProgressGuardTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
 
-	if (vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation) > sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
+	if (vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation) > sqrf(UTIL_MetresToGoldSrcUnits(10.0f)))
 	{
+		Task->TaskStartedTime = 0.0f;
 		if (IsPlayerLerk(pBot->Edict))
 		{
 			if (AITAC_ShouldBotBeCautious(pBot))
@@ -2483,7 +2489,7 @@ void BotProgressWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 				vScaleBB(BBMin, BBMax, 0.75f);
 
-				AimLocation = vClosestPointOnBB(pBot->Edict->v.origin, BBMin, BBMax);
+				AimLocation = vClosestPointOnBB(pBot->CurrentEyePosition, BBMin, BBMax);
 			}
 
 		}
