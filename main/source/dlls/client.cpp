@@ -430,7 +430,7 @@ void Host_Say( edict_t *pEntity, int teamonly )
 			}
 
 			// Check to see if we are asking the AI commander for something
-			if (!bMessageParsed)
+			if (!bMessageParsed && AIMGR_IsBotEnabled())
 			{
 				char shortenedMsg[32];
 				char* msg = (char*)CMD_ARGV(1);
@@ -440,7 +440,7 @@ void Host_Say( edict_t *pEntity, int teamonly )
 				char* pch;
 				pch = strtok(shortenedMsg, " ");
 
-				if (!stricmp(pch, kAICommanderRequest))
+				if (pch != NULL && !stricmp(pch, kAICommanderRequest))
 				{
 					pch = strtok(NULL, " \n");
 
