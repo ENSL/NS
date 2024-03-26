@@ -568,13 +568,16 @@ void AvHCommanderModeHandler::SetMenuFromTechSlots(const AvHTechSlots& inTechSlo
 		// else if we're placing a building or researching, don't display anything but cancel
 		else if((gHUD.GetGhostBuilding() != MESSAGE_NULL) || (theIsResearching && !theIsBuilding))
 		{
-			// Set last button as cancel
 			theActionButtons->SetButton(0, MENU_BUILD);
 			theActionButtons->SetButton(1, MENU_BUILD_ADVANCED);
 			theActionButtons->SetButton(2, MENU_ASSIST);
 			theActionButtons->SetButton(3, MENU_EQUIP);
 
-			theActionButtons->SetButton(kNumActionButtonRows*kNumActionButtonCols - 1, MESSAGE_CANCEL);
+			// Set second to last button as cancel, unless the player enables it being the last button. Changed to prevent accidental recycles and because C = cancel makes sense.
+			if (CVAR_GET_FLOAT("cl_cmcancellast") == 1.0f)
+				theActionButtons->SetButton(kNumActionButtonRows*kNumActionButtonCols - 1, MESSAGE_CANCEL);
+			else
+				theActionButtons->SetButton(kNumActionButtonRows * kNumActionButtonCols - 2, MESSAGE_CANCEL);
 		}
 		// else use the menu the server specifies
 		else
