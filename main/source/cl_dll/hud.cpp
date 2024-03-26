@@ -342,7 +342,7 @@ void CHud :: VidInit( void )
 		}
 	}
 
-	if (CVAR_GET_FLOAT("hud_style") == 2.0f)
+	if (CVAR_GET_FLOAT("hud_style") >= 2.0f)
 	{
 		mFont.Load("sprites/nl/font_arial");
 		mSmallFont.Load("sprites/nl/font_arialsmall");
@@ -370,10 +370,10 @@ void CHud :: VidInit( void )
 	if ( !m_pSpriteList || gHUD.GetReInitHUD())
 	{
 		// we need to load the hud.txt, and all sprites within
-		if (CVAR_GET_FLOAT("hud_style") == 2.0f)
-		m_pSpriteList = SPR_GetList("sprites/hudnl.txt", &m_iSpriteCountAllRes);
+		if (CVAR_GET_FLOAT("hud_style") == 3.0f)
+			m_pSpriteList = SPR_GetList("sprites/hudnl.txt", &m_iSpriteCountAllRes);
 		else
-		m_pSpriteList = SPR_GetList("sprites/hud.txt", &m_iSpriteCountAllRes);
+			m_pSpriteList = SPR_GetList("sprites/hud.txt", &m_iSpriteCountAllRes);
 
 		if (m_pSpriteList)
 		{

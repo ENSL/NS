@@ -145,6 +145,7 @@ cvar_t	*cl_chatbeep;
 cvar_t	*cl_mutemenu;
 cvar_t	*cl_weaponcfgs;
 cvar_t	*cl_pistoltrigger;
+cvar_t	*cl_cmcancellast;
 
 /*
 ===============================================================================
@@ -564,13 +565,13 @@ int CL_DLLEXPORT HUD_Key_Event( int down, int keynum, const char *pszCurrentBind
 {
 //    RecClKeyEvent(down, keynum, pszCurrentBinding);
 
-    // Check to see if the event has any outlawed commands in it.
-    float theBlockScripts = gHUD.GetServerVariableFloat(kvBlockScripts);
-    
+	// Check to see if the event has any outlawed commands in it.
+	float theBlockScripts = gHUD.GetServerVariableFloat(kvBlockScripts);
+
 	if (theBlockScripts && AvHContainsBlockedCommands(pszCurrentBinding))
 	{
 		if(down)//: only show when going down.
-			gEngfuncs.pfnCenterPrint("Scripting is not allowed on this server.\n"); 
+			gEngfuncs.pfnCenterPrint("Scripting is not allowed on this server.\n");
 		return 0;
 	}
 
@@ -584,15 +585,15 @@ int CL_DLLEXPORT HUD_Key_Event( int down, int keynum, const char *pszCurrentBind
 
 	int theProcessKeyBinding = 1;
 
-//	char theKeyBinding[256] = "none";
-//	if(pszCurrentBinding)
-//	{
-//		sprintf(theKeyBinding, pszCurrentBinding);
-//	}
-//
-//	char theMessage[512];
-//	sprintf(theMessage, "%s (down: %d, keynum %d)", theKeyBinding, down, keynum);
-//	CenterPrint(theMessage);
+	//	char theKeyBinding[256] = "none";
+	//	if(pszCurrentBinding)
+	//	{
+	//		sprintf(theKeyBinding, pszCurrentBinding);
+	//	}
+	//
+	//	char theMessage[512];
+	//	sprintf(theMessage, "%s (down: %d, keynum %d)", theKeyBinding, down, keynum);
+	//	CenterPrint(theMessage);
 
 	if(gViewPort /*&& gViewPort->IsOptionsMenuVisible()*/)
 	{
@@ -1727,6 +1728,8 @@ void InitInput (void)
 	cl_mutemenu			= gEngfuncs.pfnRegisterVariable ("cl_mutemenu", "3", FCVAR_ARCHIVE);
 	cl_weaponcfgs		= gEngfuncs.pfnRegisterVariable ("cl_weaponcfgs", "1", FCVAR_ARCHIVE);
 	cl_pistoltrigger	= gEngfuncs.pfnRegisterVariable ("cl_pistoltrigger", "1", FCVAR_ARCHIVE | FCVAR_USERINFO);
+	cl_cmcancellast		= gEngfuncs.pfnRegisterVariable("cl_cmcancellast", "0", FCVAR_ARCHIVE);
+
 
 	// Initialize third person camera controls.
 	CAM_Init();

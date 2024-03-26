@@ -57,14 +57,14 @@ DESCRIPTION INFO_OPTIONS
 	
 	"cl_musicenabled"
 	{
-		"Music enabled"
+		"In-game music enabled"
 		{ BOOL }
 		{ "1" }
 	}
 
 	"cl_musicvolume"
 	{
-		"Music volume"
+		"In-game music volume"
 		{ NUMBER 0.000000 2.000000 }
 		{ "0.600000" }
 	}
@@ -104,9 +104,9 @@ DESCRIPTION INFO_OPTIONS
 
 	"cl_bob"
 	{
-		"Weapon bobbing (0.006 default)"
+		"Weapon bobbing (0.005 default)"
 		{ NUMBER 0.000000 0.010000 }
-		{ "0.006000" }
+		{ "0.005000" }
 	}
 
 	"cl_bobview"
@@ -162,6 +162,13 @@ DESCRIPTION INFO_OPTIONS
 		{ STRING }
 		{ "qwerasdfzxcv" }
 	}
+
+	"cl_cmcancellast"
+	{
+		"Commander cancel button is the last button (same as recycle)"
+		{ BOOL }
+		{ "0" }
+	}
 	
 	"cl_placebo"
 	{
@@ -185,6 +192,7 @@ DESCRIPTION INFO_OPTIONS
 			"Original" "0"
 			"Minimal" "1"
 			"Competitive - Nine Legends" "2"
+			"Competitive - Nine Legends (small health/ammo)" "3"
 		}
 		{ "1.000000" }
 	}

@@ -2242,7 +2242,7 @@ AVHHSPRITE AvHHud::GetTechTreeSprite(AvHMessageID inMessageID)
 		sprintf(theMessageNumberString, "%d", (int)theMessageNumber);
 		//string theSpriteName = kTechTreeSpriteDirectory + string("/") + kTechTreeSpritePrefix + string(theMessageIDString) + string(".spr");
 		string theSpriteName;
-		if (CVAR_GET_FLOAT("hud_style") == 2.0f)
+		if (CVAR_GET_FLOAT("hud_style") >= 2.0f)
 			theSpriteName = kTechTreeSpriteDirectoryNL + string("/") + kTechTreeSpritePrefix + string(theMessageNumberString) + string("s.spr");
 		else
 		theSpriteName = kTechTreeSpriteDirectory + string("/") + kTechTreeSpritePrefix + string(theMessageNumberString) + string("s.spr");
@@ -4493,7 +4493,7 @@ void AvHHud::VidInit(void)
 	//		this->mAlienUILifeforms[i] = SPR_Load(theSpriteName.c_str());
 	//	}
 
-	if (hudStyle == 2.0f)
+	if (hudStyle >= 2.0f)
 	{
 		this->mAlienUIUpgrades = SPR_Load(kAlienUpgradeSpriteNL);
 		this->mAlienUIEnergySprite = SPR_Load(kAlienEnergySpriteNL);

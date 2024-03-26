@@ -128,7 +128,7 @@ cvar_t  avh_randomrfk				= {kvRandomRfk, "0", FCVAR_SERVER};
 
 // AI Player Settings
 cvar_t	avh_botsenabled				= { kvBotsEnabled,"0", FCVAR_SERVER };			// Bots can be added to the server Y/N
-cvar_t	avh_botautomode				= { kvBotAutoMode,"0", FCVAR_SERVER };			// Defines automated behaviour for adding/removing bots. 0 = manual (must add via console), 1 = automatic (auto-fills teams), 2 = balance only (only keeps teams even)
+cvar_t	avh_botautomode				= { kvBotAutoMode,"1", FCVAR_SERVER };			// Defines automated behaviour for adding/removing bots. 0 = manual (must add via console), 1 = automatic (auto-fills teams), 2 = balance only (only keeps teams even)
 cvar_t	avh_botminplayers			= { kvBotMinPlayers,"0", FCVAR_SERVER };		// If bots are enabled and auto mode == 1 then it will maintain this player count by adding/removing as needed
 cvar_t	avh_botskill				= { kvBotSkill,"1", FCVAR_SERVER };				// Sets the skill for the bots (0 = easiest, 3 = hardest)
 cvar_t	avh_botusemapdefaults		= { kvBotUseMapDefaults,"1", FCVAR_SERVER };	// If bot auto mode == 1 then the min players will be taken from the config
