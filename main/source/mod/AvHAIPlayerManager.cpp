@@ -360,22 +360,22 @@ void AIMGR_RemoveAIPlayerFromTeam(int Team)
 				BotValue += 1000.0f; // Ensure this guy isn't kicked unless he's the only bot on the team!
 				break;
 			case PLAYERCLASS_ALIVE_HEAVY_MARINE:
-				BotValue += kHeavyArmorCost;
+				BotValue += BALANCE_VAR(kHeavyArmorCost);
 				break;
 			case PLAYERCLASS_ALIVE_JETPACK_MARINE:
-				BotValue += kJetpackCost;
+				BotValue += BALANCE_VAR(kJetpackCost);
 				break;
 			case PLAYERCLASS_ALIVE_LEVEL2:
-				BotValue += kGorgeCost;
+				BotValue += BALANCE_VAR(kGorgeCost);
 				break;
 			case PLAYERCLASS_ALIVE_LEVEL3:
-				BotValue += kLerkCost;
+				BotValue += BALANCE_VAR(kLerkCost);
 				break;
 			case PLAYERCLASS_ALIVE_LEVEL4:
-				BotValue += kFadeCost;
+				BotValue += BALANCE_VAR(kFadeCost);
 				break;
 			case PLAYERCLASS_ALIVE_LEVEL5:
-				BotValue += kOnosCost;
+				BotValue += BALANCE_VAR(kOnosCost);
 				break;
 			case PLAYERCLASS_ALIVE_GESTATING:
 				BotValue += 10.0f;
