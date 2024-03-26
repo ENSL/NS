@@ -3664,7 +3664,10 @@ void AvHPlayer::InitializeFromTeam(float inHealthPercentage, float inArmorPercen
 {
     // Set base health and armor
     int theMaxHealth = AvHPlayerUpgrade::GetMaxHealth(this->pev->iuser4, (AvHUser3)this->pev->iuser3, this->GetExperienceLevel());
-    this->pev->health = this->pev->max_health = max(theMaxHealth*inHealthPercentage,1.0f);//: prevent bug with players evolving down from higher lifeform from getting negative health but still "alive"
+    //this->pev->health = this->pev->max_health = max(theMaxHealth*inHealthPercentage,1.0f);//: prevent bug with players evolving down from higher lifeform from getting negative health but still "alive"
+    // 2024 - Fix max health being set below 100 when leaving the command chair.
+    this->pev->max_health = theMaxHealth;
+    this->pev->health = max(theMaxHealth * inHealthPercentage, 1.0f);
 
     this->pev->armorvalue = AvHPlayerUpgrade::GetMaxArmorLevel(this->pev->iuser4, (AvHUser3)this->pev->iuser3)*inArmorPercentage;
     
