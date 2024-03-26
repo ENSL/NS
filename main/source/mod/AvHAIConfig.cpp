@@ -696,7 +696,7 @@ void CONFIG_RegenerateIniFile()
     fprintf(NewConfigFile, "# 0 = On map load (after 5 second grace period)\n");
     fprintf(NewConfigFile, "# 1 = When all humans have joined a team (i.e. no more humans left in ready room)\n");
     fprintf(NewConfigFile, "# 2 = When the round has started (after countdown)\n");
-    fprintf(NewConfigFile, "BotFillTiming = 1\n\n\n");
+    fprintf(NewConfigFile, "BotFillTiming=1\n\n\n");
 
 
     fprintf(NewConfigFile, "### Skill Settings ###\n\n");
@@ -710,11 +710,11 @@ void CONFIG_RegenerateIniFile()
     fprintf(NewConfigFile, "# Set the difficulty using the 'mp_botskill' cvar (0 - 3)\n\n");
 
     fprintf(NewConfigFile, "BotSkillLevel=0\n");
-    fprintf(NewConfigFile, "MarineReactionTime=0.5\n");
+    fprintf(NewConfigFile, "MarineReactionTime=0.4\n");
     fprintf(NewConfigFile, "MarineAimSkill=0.1\n");
     fprintf(NewConfigFile, "MarineMovementTracking=0.1\n");
     fprintf(NewConfigFile, "MarineViewSpeed=0.5\n");
-    fprintf(NewConfigFile, "AlienReactionTime=0.5\n");
+    fprintf(NewConfigFile, "AlienReactionTime=0.4\n");
     fprintf(NewConfigFile, "AlienAimSkill=0.2\n");
     fprintf(NewConfigFile, "AlienMovementTracking=0.2\n");
     fprintf(NewConfigFile, "AlienViewSpeed=0.75\n\n");
@@ -756,6 +756,8 @@ void CONFIG_RegenerateIniFile()
     fprintf(NewConfigFile, "TeamSize=default:7/7\n");
     fprintf(NewConfigFile, "TeamSize=ns_machina:8/8\n");
     fprintf(NewConfigFile, "TeamSize=ns_ragnarok:8/8\n");
+    fprintf(NewConfigFile, "TeamSize=ns_askr_b5:8/8\n");
+    fprintf(NewConfigFile, "TeamSize=ns_askr_b6:8/8\n");
     fprintf(NewConfigFile, "TeamSize=co_faceoff:4/4\n");
     fprintf(NewConfigFile, "TeamSize=co_core:4/4\n");
     fprintf(NewConfigFile, "TeamSize=co_pulse:6/6\n");
