@@ -421,7 +421,7 @@ void AIMGR_AddAIPlayerToTeam(int Team)
 
 	if (ActiveAIPlayers.size() >= gpGlobals->maxClients)
 	{
-		ALERT(at_console, "Bot limit reached, cannot add more\n");
+		g_engfuncs.pfnServerPrint("Bot limit reached, cannot add more\n");
 		return;
 	}
 
@@ -439,7 +439,7 @@ void AIMGR_AddAIPlayerToTeam(int Team)
 
 	if (FNullEnt(BotEnt))
 	{
-		ALERT(at_console, "Failed to create AI player: server is full\n");
+		g_engfuncs.pfnServerPrint("Failed to create AI player: server is full\n");
 		return;
 	}
 
@@ -901,8 +901,6 @@ void AIMGR_ResetRound()
 		bTileCacheFullyUpdated = UTIL_UpdateTileCache();
 	}
 
-	ALERT(at_console, "AI Manager Reset Round\n");
-
 	bHasRoundStarted = false;
 	bMapDataInitialised = true;
 
@@ -1042,7 +1040,9 @@ void AIMGR_LoadNavigationData()
 
 	if (!loadNavigationData(theCStrLevelName))
 	{
-		ALERT(at_console, "Failed to load navigation data for %s\n", theCStrLevelName);
+		char ErrMsg[128];
+		sprintf(ErrMsg, "Failed to load navigation data for %s\n", theCStrLevelName);
+		g_engfuncs.pfnServerPrint(ErrMsg);
 	}
 }
 

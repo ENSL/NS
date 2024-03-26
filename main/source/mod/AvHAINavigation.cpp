@@ -868,7 +868,10 @@ bool LoadNavMesh(const char* mapname)
 
 	if (!savedFile) 
 	{ 
-		ALERT(at_console, "No nav file found for %s in the navmeshes folder.", mapname);
+		char ErrMsg[256];
+		sprintf(ErrMsg, "No nav file found for %s in the navmeshes folder\n", mapname);
+		g_engfuncs.pfnServerPrint(ErrMsg);
+		g_engfuncs.pfnServerPrint("You will need to create one using the Nav Editor tool in the navmeshes folder, or download one\n");
 		return false; 
 	}
 
@@ -884,7 +887,9 @@ bool LoadNavMesh(const char* mapname)
 		// Error or early EOF
 		fclose(savedFile);
 		UnloadNavigationData();
-		ALERT(at_console, "The nav file found for %s is a different version to the current bot version. Please regenerate it.", mapname);
+		char ErrMsg[256];
+		sprintf(ErrMsg, "The nav file found for %s is a different version to the current bot version. Use the Nav Editor to regenerate it\n", mapname);
+		g_engfuncs.pfnServerPrint(ErrMsg);
 		return false;
 	}
 
@@ -892,7 +897,9 @@ bool LoadNavMesh(const char* mapname)
 	{
 		fclose(savedFile);
 		UnloadNavigationData();
-		ALERT(at_console, "The nav file found for %s is a different version to the current bot version. Please regenerate it.", mapname);
+		char ErrMsg[256];
+		sprintf(ErrMsg, "The nav file found for %s is a different version to the current bot version. Use the Nav Editor to regenerate it\n", mapname);
+		g_engfuncs.pfnServerPrint(ErrMsg);
 		return false;
 	}
 
@@ -907,7 +914,7 @@ bool LoadNavMesh(const char* mapname)
 		{
 			fclose(savedFile);
 			UnloadNavigationData();
-			ALERT(at_console, "Unable to allocate memory for the nav mesh.", mapname);
+			g_engfuncs.pfnServerPrint("Unable to allocate memory for the nav mesh\n");
 			return false;
 		}
 
@@ -916,7 +923,7 @@ bool LoadNavMesh(const char* mapname)
 		{
 			fclose(savedFile);
 			UnloadNavigationData();
-			ALERT(at_console, "Could not initialise nav mesh, please try regenerating the nav file.\n");
+			g_engfuncs.pfnServerPrint("The nav file has been corrupted or is out of date. Use the Nav Editor to regenerate it\n");
 			return false;
 		}
 
@@ -931,7 +938,7 @@ bool LoadNavMesh(const char* mapname)
 		status = NavMeshes[i].tileCache->init(TileCacheParams[i], m_talloc, m_tcomp, m_tmproc);
 		if (dtStatusFailed(status))
 		{
-			ALERT(at_console, "Could not initialise tile cache, please try regenerating the nav file.\n");
+			g_engfuncs.pfnServerPrint("The nav file has been corrupted or is out of date. Use the Nav Editor to regenerate it\n");
 			fclose(savedFile);
 			UnloadNavigationData();
 			return false;
@@ -947,7 +954,7 @@ bool LoadNavMesh(const char* mapname)
 		{
 			fclose(savedFile);
 			UnloadNavigationData();
-			ALERT(at_console, "The nav file has been corrupted or is out of date. Please try regenerating it.\n");
+			g_engfuncs.pfnServerPrint("The nav file has been corrupted or is out of date. Use the Nav Editor to regenerate it\n");
 			return false;
 		}
 		if (!tileHeader.tileRef || !tileHeader.dataSize)
@@ -962,7 +969,7 @@ bool LoadNavMesh(const char* mapname)
 			dtFree(data);
 			fclose(savedFile);
 			UnloadNavigationData();
-			ALERT(at_console, "The nav file has been corrupted or is out of date. Please try regenerating it.\n");
+			g_engfuncs.pfnServerPrint("The nav file has been corrupted or is out of date. Use the Nav Editor to regenerate it\n");
 			return false;
 		}
 
@@ -985,7 +992,7 @@ bool LoadNavMesh(const char* mapname)
 		{
 			fclose(savedFile);
 			UnloadNavigationData();
-			ALERT(at_console, "The nav file has been corrupted or is out of date. Please try regenerating it.\n");
+			g_engfuncs.pfnServerPrint("The nav file has been corrupted or is out of date. Use the Nav Editor to regenerate it\n");
 			return false;
 		}
 		if (!tileHeader.tileRef || !tileHeader.dataSize)
@@ -1000,7 +1007,7 @@ bool LoadNavMesh(const char* mapname)
 			dtFree(data);
 			fclose(savedFile);
 			UnloadNavigationData();
-			ALERT(at_console, "The nav file has been corrupted or is out of date. Please try regenerating it.\n");
+			g_engfuncs.pfnServerPrint("The nav file has been corrupted or is out of date. Use the Nav Editor to regenerate it\n");
 			return false;
 		}
 
@@ -1023,7 +1030,7 @@ bool LoadNavMesh(const char* mapname)
 		{
 			fclose(savedFile);
 			UnloadNavigationData();
-			ALERT(at_console, "The nav file has been corrupted or is out of date. Please try regenerating it.\n");
+			g_engfuncs.pfnServerPrint("The nav file has been corrupted or is out of date. Use the Nav Editor to regenerate it\n");
 			return false;
 		}
 		if (!tileHeader.tileRef || !tileHeader.dataSize)
@@ -1038,7 +1045,7 @@ bool LoadNavMesh(const char* mapname)
 			dtFree(data);
 			fclose(savedFile);
 			UnloadNavigationData();
-			ALERT(at_console, "The nav file has been corrupted or is out of date. Please try regenerating it.\n");
+			g_engfuncs.pfnServerPrint("The nav file has been corrupted or is out of date. Use the Nav Editor to regenerate it\n");
 			return false;
 		}
 
@@ -1123,10 +1130,15 @@ bool LoadNavMesh(const char* mapname)
 		if (dtStatusFailed(initStatus))
 		{
 			UnloadNavigationData();
-			ALERT(at_console, "The nav file has been corrupted or is out of date. Please try regenerating it.\n");
+			g_engfuncs.pfnServerPrint("The nav file has been corrupted or is out of date. Use the Nav Editor to regenerate it\n");
 			return false;
 		}
 	}
+
+	char SuccMsg[128];
+	sprintf(SuccMsg, "Navigation data for %s loaded successfully\n", mapname);
+	g_engfuncs.pfnServerPrint(SuccMsg);
+
 
 	return true;
 }

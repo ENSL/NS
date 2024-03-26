@@ -365,7 +365,7 @@ AvHGamerules::AvHGamerules() : mTeamA(TEAM_ONE), mTeamB(TEAM_TWO)
 		{
 			if (!AIMGR_IsBotEnabled())
 			{
-				ALERT(at_console, "Bots are disabled, or the navmesh could not be loaded.");
+				g_engfuncs.pfnServerPrint("Bots are disabled, or the navmesh could not be loaded\n");
 				return;
 			}
 
@@ -388,7 +388,7 @@ AvHGamerules::AvHGamerules() : mTeamA(TEAM_ONE), mTeamB(TEAM_TWO)
 		{
 			if (!AIMGR_IsBotEnabled())
 			{
-				ALERT(at_console, "Bots are disabled, or the navmesh could not be loaded.");
+				g_engfuncs.pfnServerPrint("Bots are disabled, or the navmesh could not be loaded\n");
 				return;
 			}
 
@@ -415,7 +415,7 @@ AvHGamerules::AvHGamerules() : mTeamA(TEAM_ONE), mTeamB(TEAM_TWO)
 			}
 			else
 			{
-				ALERT(at_console, "Bots are disabled, enable first before loading the navmesh.");
+				g_engfuncs.pfnServerPrint("Bots are disabled, enable first with 'mp_botsenabled 1' before loading the navmesh\n");
 			}
 		});
 
