@@ -189,26 +189,13 @@ void CONFIG_ParseConfigFile()
                 auto marineSize = teamSizes.substr(0, sizeDelimiterPos);
                 auto alienSize = teamSizes.substr(sizeDelimiterPos + 1);
 
-                try
-                {
-                    int iMarineSize = atoi(marineSize.c_str());
-                    int iAlienSize = atoi(alienSize.c_str());
+                int iMarineSize = atoi(marineSize.c_str());
+                int iAlienSize = atoi(alienSize.c_str());
 
-                    if (iMarineSize >= 0 && iMarineSize <= 32 && iAlienSize >= 0 && iAlienSize <= 32)
-                    {
-                        TeamSizeMap[mapName].TeamASize = atoi(marineSize.c_str());
-                        TeamSizeMap[mapName].TeamBSize = atoi(alienSize.c_str());
-                    }
-                }
-                catch (std::invalid_argument const& ex)
+                if (iMarineSize >= 0 && iMarineSize <= 32 && iAlienSize >= 0 && iAlienSize <= 32)
                 {
-                    (void)ex;
-                    ALERT(at_console, "'%s' is not a valid team size setting. Team sizes must 'x/y' where x and y are valid numbers between 0 and 32\n", value.c_str());
-                }
-                catch (std::out_of_range const& ex)
-                {
-                    (void)ex;
-                    ALERT(at_console, "'%s' is not a valid team size setting. Team sizes must 'x/y' where x and y are valid numbers between 0 and 32\n", value.c_str());
+                    TeamSizeMap[mapName].TeamASize = atoi(marineSize.c_str());
+                    TeamSizeMap[mapName].TeamBSize = atoi(alienSize.c_str());
                 }
 
                 continue;
@@ -222,43 +209,18 @@ void CONFIG_ParseConfigFile()
             }
 
             if (!stricmp(keyChar, "BotFillTiming"))
-            {
-                try
-                {
-                    int FillSetting = atoi(value.c_str());
-                    FillSetting = clampi(FillSetting, 0, 2);
-                    CurrentBotFillTiming = (BotFillTiming)FillSetting;
-                }
-                catch (std::invalid_argument const& ex)
-                {
-                    (void)ex;
-                    ALERT(at_console, "'%s' is not a valid number. BotFillTiming must be a number between 0 and 2 inclusive\n", value.c_str());
-                }
-                catch (std::out_of_range const& ex)
-                {
-                    (void)ex;
-                    ALERT(at_console, "'%s' is not a valid number. BotFillTiming must be a number between 0 and 2 inclusive\n", value.c_str());
-                }
+            {                
+                int FillSetting = atoi(value.c_str());
+                FillSetting = clampi(FillSetting, 0, 2);
+                CurrentBotFillTiming = (BotFillTiming)FillSetting;
+                
                 continue;
             }
 
             if (!stricmp(keyChar, "BotSkillLevel") || !stricmp(keyChar, "BotSkillName"))
             {
-                try
-                {
-                    CurrSkillIndex = std::stoi(value.c_str());
-                    CurrSkillIndex = clampi(CurrSkillIndex, 0, 3);
-                }
-                catch (std::invalid_argument const& ex)
-                {
-                    (void)ex;
-                    ALERT(at_console, "'%s' is not a valid skill level. Bot skill level must be a number between 0 and 3 inclusive.", value.c_str());
-                }
-                catch (std::out_of_range const& ex)
-                {
-                    (void)ex;
-                    ALERT(at_console, "'%s' is not a valid skill level. Bot skill level must be a number between 0 and 3 inclusive.", value.c_str());
-                }
+                CurrSkillIndex = std::stoi(value.c_str());
+                CurrSkillIndex = clampi(CurrSkillIndex, 0, 3);
 
                 continue;
             }
@@ -267,22 +229,9 @@ void CONFIG_ParseConfigFile()
             {
                 if (CurrSkillIndex > -1)
                 {
-                    try
-                    {
-                        float NewValue = std::stof(value.c_str());
+                    float NewValue = std::stof(value.c_str());
 
-                        BotSkillLevels[CurrSkillIndex].marine_bot_reaction_time = clampf(NewValue, 0.0f, 1.0f);
-                    }                
-                    catch (std::invalid_argument const& ex)
-                    {
-                        (void)ex;
-                        ALERT(at_console, "'%s' is not a valid skill setting. Bot skill settings should be a float. See nsbots.ini for more info", value.c_str());
-                    }
-                    catch (std::out_of_range const& ex)
-                    {
-                        (void)ex;
-                        ALERT(at_console, "'%s' is not a valid skill setting. Bot skill settings should be a float. See nsbots.ini for more info", value.c_str());
-                    }
+                    BotSkillLevels[CurrSkillIndex].marine_bot_reaction_time = clampf(NewValue, 0.0f, 1.0f);
                 }
                 else
                 {
@@ -299,22 +248,9 @@ void CONFIG_ParseConfigFile()
             {
                 if (CurrSkillIndex > -1)
                 {
-                    try
-                    {
-                        float NewValue = std::stof(value.c_str());
+                    float NewValue = std::stof(value.c_str());
 
-                        BotSkillLevels[CurrSkillIndex].alien_bot_reaction_time = clampf(NewValue, 0.0f, 1.0f);
-                    }
-                    catch (std::invalid_argument const& ex)
-                    {
-                        (void)ex;
-                        ALERT(at_console, "'%s' is not a valid skill setting. Bot skill settings should be a float. See nsbots.ini for more info", value.c_str());
-                    }
-                    catch (std::out_of_range const& ex)
-                    {
-                        (void)ex;
-                        ALERT(at_console, "'%s' is not a valid skill setting. Bot skill settings should be a float. See nsbots.ini for more info", value.c_str());
-                    }
+                    BotSkillLevels[CurrSkillIndex].alien_bot_reaction_time = clampf(NewValue, 0.0f, 1.0f);
                 }
                 else
                 {
@@ -332,22 +268,9 @@ void CONFIG_ParseConfigFile()
             {
                 if (CurrSkillIndex > -1)
                 {
-                    try
-                    {
-                        float NewValue = std::stof(value.c_str());
+                    float NewValue = std::stof(value.c_str());
 
-                        BotSkillLevels[CurrSkillIndex].marine_bot_aim_skill = clampf(NewValue, 0.0f, 1.0f);
-                    }
-                    catch (std::invalid_argument const& ex)
-                    {
-                        (void)ex;
-                        ALERT(at_logged, "'%s' is not a valid skill setting. Bot skill settings should be a float. See nsbots.ini for more info", value.c_str());
-                    }
-                    catch (std::out_of_range const& ex)
-                    {
-                        (void)ex;
-                        ALERT(at_logged, "'%s' is not a valid skill setting. Bot skill settings should be a float. See nsbots.ini for more info", value.c_str());
-                    }
+                    BotSkillLevels[CurrSkillIndex].marine_bot_aim_skill = clampf(NewValue, 0.0f, 1.0f);
                 }
                 else
                 {
@@ -365,22 +288,9 @@ void CONFIG_ParseConfigFile()
             {
                 if (CurrSkillIndex > -1)
                 {
-                    try
-                    {
-                        float NewValue = std::stof(value.c_str());
+                    float NewValue = std::stof(value.c_str());
 
-                        BotSkillLevels[CurrSkillIndex].alien_bot_aim_skill = clampf(NewValue, 0.0f, 1.0f);
-                    }
-                    catch (std::invalid_argument const& ex)
-                    {
-                        (void)ex;
-                        ALERT(at_console, "'%s' is not a valid skill setting. Bot skill settings should be a float. See nsbots.ini for more info", value.c_str());
-                    }
-                    catch (std::out_of_range const& ex)
-                    {
-                        (void)ex;
-                        ALERT(at_console, "'%s' is not a valid skill setting. Bot skill settings should be a float. See nsbots.ini for more info", value.c_str());
-                    }
+                    BotSkillLevels[CurrSkillIndex].alien_bot_aim_skill = clampf(NewValue, 0.0f, 1.0f);
                 }
                 else
                 {
@@ -398,22 +308,9 @@ void CONFIG_ParseConfigFile()
             {
                 if (CurrSkillIndex > -1)
                 {
-                    try
-                    {
-                        float NewValue = std::stof(value.c_str());
+                    float NewValue = std::stof(value.c_str());
 
-                        BotSkillLevels[CurrSkillIndex].marine_bot_motion_tracking_skill = clampf(NewValue, 0.0f, 1.0f);
-                    }
-                    catch (std::invalid_argument const& ex)
-                    {
-                        (void)ex;
-                        ALERT(at_console, "'%s' is not a valid skill setting. Bot skill settings should be a float. See nsbots.ini for more info", value.c_str());
-                    }
-                    catch (std::out_of_range const& ex)
-                    {
-                        (void)ex;
-                        ALERT(at_console, "'%s' is not a valid skill setting. Bot skill settings should be a float. See nsbots.ini for more info", value.c_str());
-                    }
+                    BotSkillLevels[CurrSkillIndex].marine_bot_motion_tracking_skill = clampf(NewValue, 0.0f, 1.0f);
                 }
                 else
                 {
@@ -431,22 +328,9 @@ void CONFIG_ParseConfigFile()
             {
                 if (CurrSkillIndex > -1)
                 {
-                    try
-                    {
-                        float NewValue = std::stof(value.c_str());
+                    float NewValue = std::stof(value.c_str());
 
-                        BotSkillLevels[CurrSkillIndex].alien_bot_motion_tracking_skill = clampf(NewValue, 0.0f, 1.0f);
-                    }
-                    catch (std::invalid_argument const& ex)
-                    {
-                        (void)ex;
-                        ALERT(at_console, "'%s' is not a valid skill setting. Bot skill settings should be a float. See nsbots.ini for more info", value.c_str());
-                    }
-                    catch (std::out_of_range const& ex)
-                    {
-                        (void)ex;
-                        ALERT(at_console, "'%s' is not a valid skill setting. Bot skill settings should be a float. See nsbots.ini for more info", value.c_str());
-                    }
+                    BotSkillLevels[CurrSkillIndex].alien_bot_motion_tracking_skill = clampf(NewValue, 0.0f, 1.0f);
                 }
                 else
                 {
@@ -464,22 +348,9 @@ void CONFIG_ParseConfigFile()
             {
                 if (CurrSkillIndex > -1)
                 {
-                    try
-                    {
-                        float NewValue = std::stof(value.c_str());
+                    float NewValue = std::stof(value.c_str());
 
-                        BotSkillLevels[CurrSkillIndex].marine_bot_view_speed = clampf(NewValue, 0.0f, 5.0f);
-                    }
-                    catch (std::invalid_argument const& ex)
-                    {
-                        (void)ex;
-                        ALERT(at_console, "'%s' is not a valid skill setting. Bot skill settings should be a float. See nsbots.ini for more info", value.c_str());
-                    }
-                    catch (std::out_of_range const& ex)
-                    {
-                        (void)ex;
-                        ALERT(at_console, "'%s' is not a valid skill setting. Bot skill settings should be a float. See nsbots.ini for more info", value.c_str());
-                    }
+                    BotSkillLevels[CurrSkillIndex].marine_bot_view_speed = clampf(NewValue, 0.0f, 5.0f);
                 }
                 else
                 {
@@ -497,22 +368,9 @@ void CONFIG_ParseConfigFile()
             {
                 if (CurrSkillIndex > -1)
                 {
-                    try
-                    {
-                        float NewValue = std::stof(value.c_str());
+                    float NewValue = std::stof(value.c_str());
 
-                        BotSkillLevels[CurrSkillIndex].alien_bot_view_speed = clampf(NewValue, 0.0f, 5.0f);
-                    }
-                    catch (std::invalid_argument const& ex)
-                    {
-                        (void)ex;
-                        ALERT(at_console, "'%s' is not a valid skill setting. Bot skill settings should be a float. See nsbots.ini for more info", value.c_str());
-                    }
-                    catch (std::out_of_range const& ex)
-                    {
-                        (void)ex;
-                        ALERT(at_console, "'%s' is not a valid skill setting. Bot skill settings should be a float. See nsbots.ini for more info", value.c_str());
-                    }
+                    BotSkillLevels[CurrSkillIndex].alien_bot_view_speed = clampf(NewValue, 0.0f, 5.0f);
                 }
                 else
                 {
