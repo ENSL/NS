@@ -4,8 +4,6 @@ An updated build of the game [Natural Selection] for Windows and Linux focused o
 
 ## Downloads
 
-#### <ins>NOTICE</ins>: The recent HL 25th aniversary update broke the NS mod. To run NS you need to go to the Steam Library -> Half-Life -> right click -> Properties -> Betas -> steam_legacy, then press "Update" where the play button normally is. This will be necessary until valve releases their HL SDK update and we then manage to fix all of the issues introduced.
-
 The **[Natural Selection Launcher](https://github.com/ENSL/NaturalLauncher/releases/)** (Windows) can install, update, or repair the game.
 
 **[Manual installation](https://github.com/ENSL/NS/releases)** (Windows / Linux)
@@ -31,18 +29,22 @@ For Linux:
 
 ## Changes
 
-Updates include:
+Update highlights:
 
-- Widescreen support (now expands FOV up to 16:9 aspect instead of cropping the image)
-- AI upscaled model textures can be turned on with the "Use High Definition models" video option 
-- Many FPS dependent bugs fixed, including jetpack acceleration, so the game can now be fairly played at 200+ FPS
-- Quake style queued jumping to make bunnyhopping more accessible (server adjustable via sv_jumpmode)
-- Shotgun and grenade launcher have been reworked to fix reload bugs and animate better
+- Many new audio and visual options, including the "gamma ramp" restored as a post-processing shader
+- Integrated bot players
+- Widescreen support
+- AI upscaled model textures can be turned on with the "Use High Definition models" HL video option 
+- Many FPS-dependent bugs fixed, including jetpack acceleration, so the game can now be fairly played at 200+ FPS
+- Quake-style queued jumping to make bunnyhopping more accessible (server adjustable via sv_jumpmode)
+- The shotgun and grenade launcher have been reworked to fix reload bugs and animate better
+- The "pistol script" is now a standard feature as a toggleable binary trigger
 - Weapon reloads are now predicted on the client
-- New minimal HUD and the Nine Legends HUD can be selected through advanced options or hud_style and hud_mapstyle
-- New crosshair system that can be adjusted through the advanced options and cl_cross commands (Thanks [OpenAG](https://github.com/YaLTeR/OpenAG))
-- Ambient sounds can be changed in advanced options or via cl_ambientsound
+- Player names are now shown on the minimap
 - The marine HUD now tracks research progress and the alien HUD tracks hive growth
+- Teammate health or armor status rings are now shown to players that can heal or repair them
+- New minimal and Nine Legends HUDs are available
+- A New crosshair system (Modified from [OpenAG](https://github.com/YaLTeR/OpenAG))
 - Raw input and sensitivity scaling options are now available and non-accelerated mouse input is now default
 - The many other improvements, customization options, and bug fixes can be found in the [release notes](https://github.com/ENSL/NS/releases)
 
@@ -51,13 +53,13 @@ Updates include:
 How to set up a dedicated [Natural Selection] server with [HLDS]:
 
 1. Follow these steps to get steamCMD installed and HLDS updated in it: https://developer.valvesoftware.com/wiki/SteamCMD
-2. You'll want to run `app_update 90 validate` multiple times in steamCMD to install HLDS and fully update it, as it won't completely do it the first time.
-   - **NOTE:** Please use `app_update 90 -beta steam_legacy validate` until the mod is updated for the HL 25th aniversary release.
-4. Copy the `ns` directory into the `hlds` directory after installing HLDS from steamcmd
-5. For Linux servers:
+1. Set the HLDS install directory after opening steamcmd and before logging in. The following steps assume a directory named `hlds` from doing `force_install_dir ./hlds/`
+1. You'll want to run `app_update 90 validate` multiple times in steamCMD to install HLDS and fully update it, as it won't completely do it the first time.
+1. Copy the `ns` directory into the `hlds` directory after installing HLDS from steamcmd
+1. For Linux servers:
    - Remove or rename the `libstdc++so.6` in the `hlds` directory so the linux distro's can be used instead. The one steam provides is outdated. You may need to rename the `libgcc.so.1` file in the same directory as well.
    - 32 bit C libraries might need to be installed. Try `apt-get install libc6-i386` if on debian or ubuntu. The libm.so.6 from it may need to be placed in your HLDS folder if you cannot install that package.
-6. Run the game:
+1. Run the game:
    - Linux:
       ```sh
       ./hlds_run -game ns +map ns_eclipse +sv_secure 1 +port 27015 +hostname "Natural Selection" +maxplayers 32
@@ -78,10 +80,38 @@ In order to check if your server is connected to the steam servers copy the foll
 
 There is an updated version of metamod called [metamod-p](https://github.com/APGRoboCop/metamod-p/).
 
-There are a few different bots for Natural Selection, with Evobot being the newest and most comprehensive:
-* [Evobot]
+## Bots
+Evobot is integrated in NS 3.3 and can be configured in the listen server creation UI or via the following commands in the `server.cfg` for dedicated servers:
+```
+mp_botsenabled (0/1)        Bots are enabled Y/N
+mp_botautomode (0-2)        (0 = manually add/remove bots, 1 = Maintain min player counts, 2 = Keep teams balanced only)
+mp_botskill (0-3)        Bot skill (0 = Easiest, 3 = Hardest)
+mp_botcommandermode (0-2)    (0 = Bot never commands, 1 = Bot commands after mp_botcommanderwait seconds if nobody else does, 2 = Bot only commands if no humans are on the team)
+mp_botcommanderwait (0..)    How long the bot should wait before taking command (if allowed to)
+mp_botusemapdefaults (0/1)    Use the map min player counts defined in nsbots.ini Y/N
+mp_botminplayers (0-32)        If not using map defaults, maintain this player population for all maps
+mp_botallowlerk (0/1)        Bot is allowed to evolve lerk Y/N
+mp_botallowfade    (0/1)        Bot is allowed to evolve fade Y/N
+mp_botallowonos    (0/1)        Bot is allowed to evolve onos Y/N
+mp_botlerkcooldown (0..)    After a lerk is killed, how long in seconds should the bot wait to evolve again (default 60s)
+mp_botmaxstucktime (0..)    If a bot is stuck longer than this time (in seconds) it will suicide (default 15s)
+mp_botdebugmode (0-2)        (0 = Disabled, 1 = Drone Mode, 2 = Test Nav Mode). Use test nav mode to validate your nav files.
+
+sv_botadd <Team>    If mp_botautomode is 0, this will manually add a bot to team 1 or 2. If Team is 0, it will assign randomly
+sv_botremove <Team>    If mp_botautomode is 0, this will manually remove a bot from team 1 or 2. If Team is 0, it will remove randomly
+sv_botregenini        If your copy of nsbots.ini is lost or corrupted, this will generate a fresh one
+
+bot_cometome        If mp_botdebugmode is 1, this will force the bot to come to you. Helps test your nav file.
+bot_drawoffmeshconns    Will draw the off-mesh connections present in the loaded navigation file, color-coded based on connection type
+bot_drawtempobstacles    Will draw nearby temporary obstacles affecting the nav mesh
+```
+
+The bot system uses a modified version of the Detour library from [recastnavigation](https://github.com/recastnavigation/recastnavigation).
+
+Other bot plugins:
 * [RCbot](http://rcbot.bots-united.com/)
 * [Whichbot](https://whichbot.sourceforge.net/)
+* [Commander AI](https://github.com/jac95501/-NS-Commander-AI)
 
 ## Compiling
 
