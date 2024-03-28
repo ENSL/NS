@@ -1278,11 +1278,18 @@ dtStatus dtNavMeshQuery::getPathToNode(dtNode* endNode, dtPolyRef* path, int* pa
 	// Find the length of the entire path.
 	dtNode* curNode = endNode;
 	int length = 0;
+	int maxLength = maxPath * 2;
+
 	do
 	{
 		length++;
-		curNode = m_nodePool->getNodeAtIdx(curNode->pidx);
-	} while (curNode);
+
+		// Check to prevent infinite recursion
+		dtNode* NewNode = m_nodePool->getNodeAtIdx(curNode->pidx);
+		if (NewNode == curNode) { return DT_FAILURE; }
+
+		curNode = NewNode;
+	} while (curNode && length < maxLength);
 
 	// If the path cannot be fully stored then advance to the last node we will be able to store.
 	curNode = endNode;

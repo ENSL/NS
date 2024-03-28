@@ -1863,7 +1863,6 @@ dtStatus FindPathClosestToPoint(const nav_profile& NavProfile, const Vector From
 	status = m_navQuery->findNearestPoly(pStartPos, pExtents, m_navFilter, &StartPoly, StartNearest);
 	if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK))
 	{
-		//BotSay(pBot, "findNearestPoly start failed!");
 		return (status & DT_STATUS_DETAIL_MASK); // couldn't find a polygon
 	}
 
@@ -1871,7 +1870,6 @@ dtStatus FindPathClosestToPoint(const nav_profile& NavProfile, const Vector From
 	status = m_navQuery->findNearestPoly(pEndPos, pExtents, m_navFilter, &EndPoly, EndNearest);
 	if ((status & DT_FAILURE) || (status & DT_STATUS_DETAIL_MASK))
 	{
-		//BotSay(pBot, "findNearestPoly end failed!");
 		return (status & DT_STATUS_DETAIL_MASK); // couldn't find a polygon
 	}
 
@@ -2481,17 +2479,17 @@ void CheckAndHandleDoorObstruction(AvHAIPlayer* pBot)
 
 	Vector NearestPoint = UTIL_GetClosestPointOnEntityToLocation(pBot->Edict->v.origin, BlockingDoorEdict);
 
-	if (IsPlayerTouchingEntity(pBot->Edict, BlockingDoorEdict))
-	{
-		Vector MoveDir = UTIL_GetVectorNormal2D(pBot->Edict->v.origin - NearestPoint);
-
-		pBot->desiredMovementDir = MoveDir;
-		return;
-	}
-
 	// If the door is in the process of opening or closing, let it finish before doing anything else
 	if (BlockingDoor->m_toggle_state == TS_GOING_UP || BlockingDoor->m_toggle_state == TS_GOING_DOWN)
 	{
+		if (IsPlayerTouchingEntity(pBot->Edict, BlockingDoorEdict))
+		{
+			Vector MoveDir = UTIL_GetVectorNormal2D(CurrentPathNode.Location - CurrentPathNode.FromLocation);
+
+			pBot->desiredMovementDir = MoveDir;
+			return;
+		}
+
 		if (vDist2DSq(pBot->Edict->v.origin, NearestPoint) < sqrf(UTIL_MetresToGoldSrcUnits(1.5f)))
 		{
 			// Wait for the door to finish opening
