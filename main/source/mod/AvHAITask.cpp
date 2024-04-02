@@ -1772,16 +1772,29 @@ void BotProgressDefendTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 		AvHAIBuildableStructure StructureRef = AITAC_GetDeployableFromEdict(Task->TaskTarget);
 
-		if (!StructureRef.IsValid()) { return; }
-
-		// If the structure we're defending was damaged just now, look at it so we can see who is attacking
-		if (gpGlobals->time - StructureRef.lastDamagedTime < 5.0f)
+		if (StructureRef.IsValid())
 		{
-			if (UTIL_QuickTrace(pBot->Edict, pBot->CurrentEyePosition, UTIL_GetCentreOfEntity(Task->TaskTarget)))
+			// If the structure we're defending was damaged just now, look at it so we can see who is attacking
+			if (gpGlobals->time - StructureRef.lastDamagedTime < 5.0f)
 			{
-				BotLookAt(pBot, Task->TaskTarget);
+				if (UTIL_QuickTrace(pBot->Edict, pBot->CurrentEyePosition, UTIL_GetCentreOfEntity(Task->TaskTarget)))
+				{
+					BotLookAt(pBot, Task->TaskTarget);
+				}
 			}
 		}
+		else
+		{
+			AvHAIHiveDefinition* Hive = AITAC_GetHiveFromEdict(Task->TaskTarget);
+
+			if (Hive && Hive->bIsUnderAttack)
+			{
+				if (UTIL_QuickTrace(pBot->Edict, pBot->CurrentEyePosition, Hive->Location))
+				{
+					BotLookAt(pBot, Task->TaskTarget);
+				}
+			}
+		}		
 	}
 
 	BotProgressGuardTask(pBot, Task);

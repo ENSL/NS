@@ -4012,19 +4012,20 @@ void LiftMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 	bool bIsOnLift = (pBot->Edict->v.groundentity == NearestLift->DoorEdict);
 	bool bWaitingToEmbark = (!bIsOnLift && vDist3DSq(pBot->Edict->v.origin, StartPoint) < vDist3DSq(pBot->Edict->v.origin, EndPoint)) || (bIsOnLift && !bIsLiftMoving && bIsLiftAtOrNearStart);
 
+
 	// Do nothing if we're on a moving lift
 	if (bIsLiftMoving && bIsOnLift)
 	{
 		Vector LiftEdge = UTIL_GetClosestPointOnEntityToLocation(StartPoint, NearestLift->DoorEdict);
 
-		bool bFullyOnLift = vDist2DSq(pBot->Edict->v.origin, LiftEdge) > (sqrf(GetPlayerRadius(pBot->Player) * 1.1f));
+		bool bFullyOnLift = vDist2DSq(pBot->Edict->v.origin, LiftEdge) > sqrf(GetPlayerRadius(pBot->Player) * 2.0f);
 
 		if (!bFullyOnLift)
 		{
 			pBot->desiredMovementDir = UTIL_GetVectorNormal2D(LiftPosition - pBot->Edict->v.origin);
 		}
 
-		if (!UTIL_QuickTrace(pBot->Edict, pBot->CollisionHullTopLocation, pBot->CollisionHullTopLocation + Vector(0.0f, 0.0f, 64.0f)))
+		if (!UTIL_QuickHullTrace(pBot->Edict, pBot->Edict->v.origin, pBot->CollisionHullTopLocation + Vector(0.0f, 0.0f, 64.0f)))
 		{
 			pBot->desiredMovementDir = UTIL_GetVectorNormal2D(LiftPosition - pBot->Edict->v.origin);
 		}
@@ -5460,6 +5461,8 @@ bool AbortCurrentMove(AvHAIPlayer* pBot, const Vector NewDestination)
 {
 	if (pBot->BotNavInfo.CurrentPath.size() == 0 || pBot->BotNavInfo.CurrentPathPoint >= pBot->BotNavInfo.CurrentPath.size() || pBot->BotNavInfo.NavProfile.bFlyingProfile) { return true; }
 
+	if (IsBotOffPath(pBot) || HasBotReachedPathPoint(pBot)) { return true; }
+
 	bot_path_node CurrentPathNode = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint];
 
 	Vector MoveFrom = CurrentPathNode.FromLocation;
@@ -5927,6 +5930,13 @@ void OnosUpdateBotMoveProfile(AvHAIPlayer* pBot, BotMoveStyle MoveStyle)
 
 bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle MoveStyle, const float MaxAcceptableDist)
 {
+#ifdef DEBUG
+	if (pBot == AIMGR_GetDebugAIPlayer())
+	{
+		bool bBreak = true; // Add a break point here if you want to debug a specific bot
+	}
+#endif
+
 	if (vIsZero(Destination) || (vDist2D(pBot->Edict->v.origin, Destination) <= 6.0f && (fabs(pBot->CollisionHullBottomLocation.z - Destination.z) < 50.0f)))
 	{
 		pBot->BotNavInfo.StuckInfo.bPathFollowFailed = false;
@@ -8710,7 +8720,8 @@ bool NAV_IsMovementTaskStillValid(AvHAIPlayer* pBot)
 
 	if (MoveTask->TaskType == MOVE_TASK_MOVE)
 	{
-		return (vDist2DSq(pBot->Edict->v.origin, MoveTask->TaskLocation) > sqrf(GetPlayerRadius(pBot->Player)) || fabsf(pBot->Edict->v.origin.z - MoveTask->TaskLocation.z) > 50.0f);
+		return (vDist2DSq(pBot->Edict->v.origin, MoveTask->TaskLocation) > sqrf(GetPlayerRadius(pBot->Player)) || fabsf(pBot->Edict->v.origin.z - MoveTask->TaskLocation.z) > 50.0f)
+			&& UTIL_PointIsReachable(pBot->BotNavInfo.NavProfile, pBot->CurrentFloorPosition, MoveTask->TaskLocation, GetPlayerRadius(pBot->Edict));
 	}
 
 	if (MoveTask->TaskType == MOVE_TASK_USE)

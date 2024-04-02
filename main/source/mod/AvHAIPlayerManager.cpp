@@ -492,6 +492,8 @@ void AIMGR_AddAIPlayerToTeam(int Team)
 	BotEnt->v.pitch_speed = 270;  // slightly faster than HLDM of 225
 	BotEnt->v.yaw_speed = 250; // slightly faster than HLDM of 210
 
+	BotEnt->v.modelindex = 0;
+
 	AvHPlayer* theNewAIPlayer = GetClassPtr((AvHPlayer*)&BotEnt->v);
 
 	if (theNewAIPlayer)
@@ -631,7 +633,7 @@ void AIMGR_UpdateAIPlayers()
 
 	int NumBotsThinkThisFrame = 0;
 
-	int BotsPerFrame = max(1.0f, round(BOT_THINK_RATE_HZ * NumRegularBots * FrameDelta));
+	int BotsPerFrame = max(1, (int)round(BOT_THINK_RATE_HZ * NumRegularBots * FrameDelta));
 
 	int BotIndex = 0;
 		

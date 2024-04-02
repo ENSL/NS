@@ -940,6 +940,12 @@ bool AICOMM_IsRequestValid(ai_commander_request* Request)
 		case BUILD_HMG:
 			return !PlayerHasWeapon(PlayerRef, WEAPON_MARINE_HMG)
 				&& !AITAC_ItemExistsInLocation(Requestor->v.origin, DEPLOYABLE_ITEM_HMG, RequestorTeam, AI_REACHABILITY_MARINE, 0.0f, UTIL_MetresToGoldSrcUnits(5.0f), false);
+		case BUILD_HEAVY:
+			return !PlayerHasEquipment(Requestor)
+				&& !AITAC_ItemExistsInLocation(Requestor->v.origin, DEPLOYABLE_ITEM_HEAVYARMOUR, RequestorTeam, AI_REACHABILITY_MARINE, 0.0f, UTIL_MetresToGoldSrcUnits(5.0f), false);
+		case BUILD_JETPACK:
+			return !PlayerHasEquipment(Requestor)
+				&& !AITAC_ItemExistsInLocation(Requestor->v.origin, DEPLOYABLE_ITEM_JETPACK, RequestorTeam, AI_REACHABILITY_MARINE, 0.0f, UTIL_MetresToGoldSrcUnits(5.0f), false);
 		case BUILD_GRENADE_GUN:
 			return !PlayerHasWeapon(PlayerRef, WEAPON_MARINE_GL)
 				&& !AITAC_ItemExistsInLocation(Requestor->v.origin, DEPLOYABLE_ITEM_GRENADELAUNCHER, RequestorTeam, AI_REACHABILITY_MARINE, 0.0f, UTIL_MetresToGoldSrcUnits(5.0f), false);
@@ -2669,6 +2675,89 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 
 	}
 
+	if (NextRequest->RequestType == BUILD_HEAVY || NextRequest->RequestType == BUILD_JETPACK)
+	{
+		AvHAIDeployableItemType ItemToDrop = (NextRequest->RequestType == BUILD_HEAVY) ? DEPLOYABLE_ITEM_HEAVYARMOUR : DEPLOYABLE_ITEM_JETPACK;
+		float Cost = (NextRequest->RequestType == BUILD_HEAVY) ? BALANCE_VAR(kHeavyArmorCost) : BALANCE_VAR(kJetpackCost);
+		AvHTechID TechNeeded = (NextRequest->RequestType == BUILD_HEAVY) ? TECH_RESEARCH_HEAVYARMOR : TECH_RESEARCH_JETPACKS;
+
+		if (!AITAC_ResearchIsComplete(CommanderTeam, TechNeeded))
+		{
+			char msg[128];
+			sprintf(msg, "We haven't researched it yet, %s. Ask again later.", STRING(Requestor->v.netname));
+			BotSay(pBot, true, 0.5f, msg);
+			NextRequest->bResponded = true;
+			return false;
+		}
+
+		DeployableSearchFilter PrototypeLabFilter;
+		PrototypeLabFilter.DeployableTeam = CommanderTeam;
+		PrototypeLabFilter.DeployableTypes = STRUCTURE_MARINE_PROTOTYPELAB;
+		PrototypeLabFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+		PrototypeLabFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+		AvHAIBuildableStructure NearestPL = AITAC_FindClosestDeployableToLocation(Requestor->v.origin, &PrototypeLabFilter);
+
+		if (!NearestPL.IsValid())
+		{
+			char msg[128];
+			sprintf(msg, "We don't have a prototype lab %s, ask again later.", STRING(Requestor->v.netname));
+			BotSay(pBot, true, 0.5f, msg);
+			NextRequest->bResponded = true;
+
+			return false;
+		}
+
+		if (vDist2DSq(Requestor->v.origin, NearestPL.Location) > sqrf(BALANCE_VAR(kArmoryBuildDistance)))
+		{
+			if (!NextRequest->bAcknowledged)
+			{
+				char msg[128];
+				sprintf(msg, "Get near the prototype lab %s, and I will drop it for you.", STRING(Requestor->v.netname));
+				BotSay(pBot, true, 0.5f, msg);
+				NextRequest->bAcknowledged = true;
+			}
+			return false;
+		}
+
+		Vector IdealDeployLocation = Requestor->v.origin + (UTIL_GetForwardVector2D(Requestor->v.angles) * 75.0f);
+		Vector ProjectedDeployLocation = AdjustPointForPathfinding(IdealDeployLocation);
+
+		if (vDist2DSq(ProjectedDeployLocation, NearestPL.Location) < BALANCE_VAR(kArmoryBuildDistance))
+		{
+			bool bSuccess = AICOMM_DeployItem(pBot, ItemToDrop, ProjectedDeployLocation);
+
+			if (bSuccess)
+			{
+				NextRequest->bResponded = bSuccess;
+				return true;
+			}
+		}
+
+		Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), NearestPL.Location, UTIL_MetresToGoldSrcUnits(4.0f));
+
+		if (vIsZero(DeployLocation))
+		{
+			DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), NearestPL.Location, UTIL_MetresToGoldSrcUnits(4.0f));
+		}
+
+		if (vIsZero(DeployLocation))
+		{
+			char msg[128];
+			sprintf(msg, "I can't find a drop location, %s. Try asking again elsewhere.", STRING(Requestor->v.netname));
+			BotSay(pBot, true, 0.5f, msg);
+			NextRequest->bResponded = true;
+			return false;
+		}
+
+		bool bSuccess = AICOMM_DeployItem(pBot, ItemToDrop, DeployLocation);
+
+		NextRequest->ResponseAttempts++;
+
+		NextRequest->bResponded = bSuccess;
+		return true;
+	}
+
 	if (NextRequest->RequestType == BUILD_HMG || NextRequest->RequestType == BUILD_GRENADE_GUN)
 	{
 		AvHAIDeployableItemType ItemToDrop = (NextRequest->RequestType == BUILD_HMG) ? DEPLOYABLE_ITEM_HMG : DEPLOYABLE_ITEM_GRENADELAUNCHER;
@@ -2810,6 +2899,81 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 		if (!vIsZero(DeployLocation))
 		{
 			bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_PHASEGATE, DeployLocation, STRUCTURE_PURPOSE_NONE);
+
+			if (bSuccess)
+			{
+				NextRequest->bResponded = true;
+				return true;
+			}
+			else
+			{
+				char msg[128];
+				sprintf(msg, "I can't find a good deploy spot, %s. Try again elsewhere.", STRING(Requestor->v.netname));
+				BotSay(pBot, true, 0.5f, msg);
+				NextRequest->bResponded = true;
+				return false;
+			}
+		}
+		else
+		{
+			char msg[128];
+			sprintf(msg, "I can't find a good deploy spot, %s. Try again elsewhere.", STRING(Requestor->v.netname));
+			BotSay(pBot, true, 0.5f, msg);
+			NextRequest->bResponded = true;
+			return false;
+		}
+
+		return false;
+
+	}
+
+	if (NextRequest->RequestType == BUILD_ARMORY)
+	{
+		if (pBot->Player->GetResources() < BALANCE_VAR(kArmoryCost))
+		{
+			if (!NextRequest->bAcknowledged)
+			{
+				char msg[128];
+				sprintf(msg, "Just waiting on resources, %s. Will drop asap.", STRING(Requestor->v.netname));
+				BotSay(pBot, true, 0.5f, msg);
+				NextRequest->bAcknowledged = true;
+				return false;
+			}
+			return false;
+		}
+
+		Vector IdealDeployLocation = Requestor->v.origin + (UTIL_GetForwardVector2D(Requestor->v.angles) * 75.0f);
+		Vector ProjectedDeployLocation = AdjustPointForPathfinding(IdealDeployLocation, GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE));
+
+		if (!vIsZero(ProjectedDeployLocation))
+		{
+			bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_ARMOURY, ProjectedDeployLocation, STRUCTURE_PURPOSE_NONE);
+
+			if (bSuccess)
+			{
+				NextRequest->bResponded = true;
+				return true;
+			}
+		}
+
+		Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), Requestor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+
+		if (!vIsZero(DeployLocation))
+		{
+			bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_ARMOURY, DeployLocation, STRUCTURE_PURPOSE_NONE);
+
+			if (bSuccess)
+			{
+				NextRequest->bResponded = true;
+				return true;
+			}
+		}
+
+		DeployLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), Requestor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+
+		if (!vIsZero(DeployLocation))
+		{
+			bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_ARMOURY, DeployLocation, STRUCTURE_PURPOSE_NONE);
 
 			if (bSuccess)
 			{
@@ -3391,6 +3555,14 @@ void AICOMM_ReceiveChatRequest(AvHAIPlayer* Commander, edict_t* Requestor, const
 	{
 		NewRequestType = BUILD_MINES;
 	}
+	else if (!stricmp(Request, "ha") || !stricmp(Request, "heavy") || !stricmp(Request, "heavyarmor") || !stricmp(Request, "heavy armor"))
+	{
+		NewRequestType = BUILD_HEAVY;
+	}
+	else if (!stricmp(Request, "jp") || !stricmp(Request, "jetpack") || !stricmp(Request, "jet pack"))
+	{
+		NewRequestType = BUILD_JETPACK;
+	}
 	else if (!stricmp(Request, "cat") || !stricmp(Request, "cats") || !stricmp(Request, "catalysts"))
 	{
 		NewRequestType = BUILD_CAT;
@@ -3410,6 +3582,14 @@ void AICOMM_ReceiveChatRequest(AvHAIPlayer* Commander, edict_t* Requestor, const
 	else if (!stricmp(Request, "armory") || !stricmp(Request, "armoury"))
 	{
 		NewRequestType = BUILD_ARMORY;
+	}
+	else if (!stricmp(Request, "scan"))
+	{
+		NewRequestType = BUILD_SCAN;
+	}
+	else if (!stricmp(Request, "cc") || !stricmp(Request, "chair") || !stricmp(Request, "command chair"))
+	{
+		NewRequestType = BUILD_COMMANDSTATION;
 	}
 
 	if (NewRequestType == MESSAGE_NULL) { return; }
