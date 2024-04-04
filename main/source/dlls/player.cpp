@@ -1694,7 +1694,7 @@ void CBasePlayer::StartObserver( Vector vecPosition, Vector vecViewAngle )
 	pev->deadflag = DEAD_RESPAWNABLE;
 	
 	// Tell the physics code that this player's now in observer mode
-	Observer_SetMode(this->GetDefaultSpectatingMode());
+	Observer_SetMode(OBS_IN_EYE);
 	Observer_SpectatePlayer(this->GetDefaultSpectatingTarget());
 	m_flNextObserverInput = 0;
 }

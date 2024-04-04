@@ -25,6 +25,8 @@
 
 const float kNextTargetInterval = .2f;
 
+extern cvar_t avh_freespectatormode;
+
 // Find the next client in the game for this player to spectate
 bool CBasePlayer::Observer_FindNextPlayer(bool inReverse)
 {
@@ -269,47 +271,56 @@ void CBasePlayer::Observer_SetMode( int iMode )
 	ASSERT(thePlayer);
 
     bool theIsObserving = (thePlayer->GetPlayMode() == PLAYMODE_OBSERVER);
-    
-    if(!theIsObserving)
+
+	int NewMode = iMode;
+
+	float FreeSpecMode = avh_freespectatormode.value;
+
+	if (FreeSpecMode == 0 || (FreeSpecMode == 1 && !theIsObserving))
 	{
-		if((iMode == OBS_ROAMING) /*|| (iMode == OBS_MAP_FREE) || (iMode == OBS_MAP_CHASE)*/)
+		if (NewMode == OBS_CHASE_FREE || NewMode == OBS_ROAMING)
 		{
-			return;
+			NewMode = (pev->iuser1 == OBS_CHASE_LOCKED || pev->iuser1 == OBS_IN_EYE) ? pev->iuser1 : OBS_IN_EYE;
 		}
 	}
 
 	// Just abort if we're changing to the mode we're already in
-	if ( iMode == pev->iuser1 )
+	if (NewMode == pev->iuser1 )
 		return;
 
     // Removed by mmcguire.
     
 	// is valid mode ?
-	if ( iMode < OBS_CHASE_LOCKED || iMode > OBS_IN_EYE )
-		iMode = OBS_IN_EYE; // now it is
+	if (NewMode < OBS_CHASE_LOCKED || NewMode > OBS_IN_EYE )
+		NewMode = OBS_IN_EYE; // now it is
 
     // if we are not roaming, we need a valid target to track
-	if ( (iMode != OBS_ROAMING) && (m_hObserverTarget == NULL) )
+	if ( (NewMode != OBS_ROAMING) && (m_hObserverTarget == NULL) )
 	{
 		Observer_FindNextPlayer();
 
 		// if we didn't find a valid target switch to roaming
 		if (m_hObserverTarget == NULL)
 		{
-			iMode = OBS_ROAMING;
+			NewMode = OBS_ROAMING;
 		}
 	}
 
 	// set spectator mode
-	pev->iuser1 = iMode;
+	pev->iuser1 = NewMode;
 
 	// set target if not roaming
-	if (iMode == OBS_ROAMING)
+	if (NewMode == OBS_ROAMING)
+	{
 		pev->iuser2 = 0;
+	}		
 	else
-		pev->iuser2 = ENTINDEX( m_hObserverTarget->edict() );
+	{
+		pev->iuser2 = ENTINDEX(m_hObserverTarget->edict());
+		// Make sure our target is valid (go backward then forward)
+		Observer_FindNextPlayer(true);
+		Observer_FindNextPlayer(false);
+	}
 
-	// Make sure our target is valid (go backward then forward)
-	Observer_FindNextPlayer(true);
-	Observer_FindNextPlayer(false);
+	
 }

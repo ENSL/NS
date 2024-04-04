@@ -853,58 +853,41 @@ void CHudSpectator::HandleButtonsDown( int ButtonPressed )
 
     int theNewMainMode = g_iUser1;
 
-    // Jump changes main window modes
+	// Crouch toggles the overview mode
+	if (gHUD.GetIsNSMode() && ButtonPressed & IN_DUCK)
+	{
+		bool theInOverviewMode = gHUD.m_Spectator.IsInOverviewMode();
+		gHUD.m_Spectator.SetOverviewMode(!theInOverviewMode);
+	}
+
+    // Jump changes spectator modes
     if ( ButtonPressed & IN_JUMP )
     {
-        bool theFirstPerson = (g_iUser1 == OBS_IN_EYE);
-        bool theInOverviewMode = gHUD.m_Spectator.IsInOverviewMode();
+		theNewMainMode++;
 
-        // NS
-        if(gHUD.GetIsNSMode())
-        {
-            // First-person full -> chase camera full -> firstperson with overview -> chase camera with overview
-            if(theFirstPerson && !theInOverviewMode)
-            {
-                gHUD.m_Spectator.SetMode(OBS_CHASE_LOCKED);
-                //gHUD.m_Spectator.SetOverviewMode(false);
-            }
-            else if(!theFirstPerson && !theInOverviewMode)
-            {
-                gHUD.m_Spectator.SetMode(OBS_IN_EYE);
-                gHUD.m_Spectator.SetOverviewMode(true);
-            }
-            else if(theFirstPerson && theInOverviewMode)
-            {
-                gHUD.m_Spectator.SetMode(OBS_CHASE_LOCKED);
-                //gHUD.m_Spectator.SetOverviewMode(true);
-            }
-            else if(!theFirstPerson && theInOverviewMode)
-            {
-                gHUD.m_Spectator.SetMode(OBS_IN_EYE);
-                gHUD.m_Spectator.SetOverviewMode(false);
-            }
-        }
-        // Combat
-        else
-        {
-            // First-person full -> chase camera full
-            if(theFirstPerson)
-            {
-                gHUD.m_Spectator.SetMode(OBS_CHASE_LOCKED);
-                gHUD.m_Spectator.SetOverviewMode(false);
-            }
-            else
-            {
-                gHUD.m_Spectator.SetMode(OBS_IN_EYE);
-                gHUD.m_Spectator.SetOverviewMode(false);
-            }
-        }
+		AvHPlayMode CurrPlayMode = gHUD.GetPlayMode();
+
+		float FreeSpecMode = gHUD.GetServerVariableFloat("mp_freespectatormode");
+		if (FreeSpecMode == 0 || (FreeSpecMode == 1 && gHUD.GetPlayMode() != PLAYMODE_OBSERVER))
+		{
+			while (theNewMainMode == OBS_CHASE_FREE || theNewMainMode == OBS_ROAMING)
+			{
+				theNewMainMode++;
+			}
+		}
+
+		if (theNewMainMode > OBS_IN_EYE)
+		{
+			theNewMainMode = OBS_CHASE_LOCKED;
+		}
+
+		gHUD.m_Spectator.SetMode(theNewMainMode);
     }
     
     //g_iUser1 = theNewMainMode;
 
     // Attack moves to the next player
-    if ( ButtonPressed & (IN_MOVELEFT | IN_MOVERIGHT) )
+    if (g_iUser1 != OBS_ROAMING && ButtonPressed & (IN_MOVELEFT | IN_MOVERIGHT) )
     { 
         FindNextPlayer( (ButtonPressed & IN_MOVELEFT) ? true:false );
         
@@ -1037,25 +1020,43 @@ void CHudSpectator::HandleButtonsUp( int ButtonPressed )
 
 void CHudSpectator::SetMode(int iNewMainMode)
 {
+	int NewMode = iNewMainMode;
+
+	if (NewMode == OBS_CHASE_FREE || NewMode == OBS_ROAMING)
+	{
+		float FreeSpecMode = gHUD.GetServerVariableFloat("mp_freespectatormode");
+		if (FreeSpecMode == 0 || (FreeSpecMode == 1 && gHUD.GetPlayMode() != PLAYMODE_OBSERVER))
+		{
+			if (g_iUser1 != OBS_CHASE_FREE && g_iUser1 != OBS_ROAMING)
+			{
+				NewMode = g_iUser1;
+			}
+			else
+			{
+				NewMode = OBS_IN_EYE;
+			}
+		}
+	}
+
 	// if value == -1 keep old value
-	if ( iNewMainMode == -1 )
-		iNewMainMode = g_iUser1;
+	if (NewMode == -1 )
+		NewMode = g_iUser1;
 
 	// main modes ettings will override inset window settings
-	if ( iNewMainMode != g_iUser1 )
+	if (NewMode != g_iUser1 )
 	{
 		// if we are NOT in HLTV mode, main spectator mode is set on server
 		if ( !gEngfuncs.IsSpectateOnly() )
 		{
 			char cmdstring[32];
 			// forward command to server
-			sprintf(cmdstring,"specmode %i",iNewMainMode );
+			sprintf(cmdstring,"specmode %i", NewMode);
 			gEngfuncs.pfnServerCmd(cmdstring);
 			return;
 		}
         else
         {
-            if ( !g_iUser2 && (iNewMainMode !=OBS_ROAMING ) )	// make sure we have a target
+            if ( !g_iUser2 && (NewMode != OBS_ROAMING ) )	// make sure we have a target
             {
                 // choose last Director object if still available
                 if ( IsActivePlayer( gEngfuncs.GetEntityByIndex( m_lastPrimaryObject ) ) )
@@ -1069,7 +1070,7 @@ void CHudSpectator::SetMode(int iNewMainMode)
                 }
             }
             
-            switch ( iNewMainMode )
+            switch (NewMode)
             {
             case OBS_CHASE_LOCKED:
                 g_iUser1 = OBS_CHASE_LOCKED;
