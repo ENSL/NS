@@ -4151,22 +4151,34 @@ void AIPlayerNSAlienThink(AvHAIPlayer* pBot)
 
 	if (gpGlobals->time - pBot->LastCombatTime > 5.0f)
 	{
-		if (!PlayerHasAlienUpgradeOfType(pBot->Edict, HIVE_TECH_DEFENCE) && AITAC_IsAlienUpgradeAvailableForTeam(pBot->Player->GetTeam(), HIVE_TECH_DEFENCE))
+		bool bInMiddleOfMove = false;
+
+		if (pBot->BotNavInfo.CurrentPath.size() > 0 && pBot->BotNavInfo.CurrentPathPoint < pBot->BotNavInfo.CurrentPath.size())
 		{
-			BotEvolveUpgrade(pBot, pBot->CurrentFloorPosition, AlienGetDesiredUpgrade(pBot, HIVE_TECH_DEFENCE));
-			return;
+			bot_path_node CurrentMove = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint];
+
+			bInMiddleOfMove = CurrentMove.flag != SAMPLE_POLYFLAGS_WALK;
 		}
 
-		if (!PlayerHasAlienUpgradeOfType(pBot->Edict, HIVE_TECH_MOVEMENT) && AITAC_IsAlienUpgradeAvailableForTeam(pBot->Player->GetTeam(), HIVE_TECH_MOVEMENT))
+		if (!bInMiddleOfMove)
 		{
-			BotEvolveUpgrade(pBot, pBot->CurrentFloorPosition, AlienGetDesiredUpgrade(pBot, HIVE_TECH_MOVEMENT));
-			return;
-		}
+			if (!PlayerHasAlienUpgradeOfType(pBot->Edict, HIVE_TECH_DEFENCE) && AITAC_IsAlienUpgradeAvailableForTeam(pBot->Player->GetTeam(), HIVE_TECH_DEFENCE))
+			{
+				BotEvolveUpgrade(pBot, pBot->CurrentFloorPosition, AlienGetDesiredUpgrade(pBot, HIVE_TECH_DEFENCE));
+				return;
+			}
 
-		if (!PlayerHasAlienUpgradeOfType(pBot->Edict, HIVE_TECH_SENSORY) && AITAC_IsAlienUpgradeAvailableForTeam(pBot->Player->GetTeam(), HIVE_TECH_SENSORY))
-		{
-			BotEvolveUpgrade(pBot, pBot->CurrentFloorPosition, AlienGetDesiredUpgrade(pBot, HIVE_TECH_SENSORY));
-			return;
+			if (!PlayerHasAlienUpgradeOfType(pBot->Edict, HIVE_TECH_MOVEMENT) && AITAC_IsAlienUpgradeAvailableForTeam(pBot->Player->GetTeam(), HIVE_TECH_MOVEMENT))
+			{
+				BotEvolveUpgrade(pBot, pBot->CurrentFloorPosition, AlienGetDesiredUpgrade(pBot, HIVE_TECH_MOVEMENT));
+				return;
+			}
+
+			if (!PlayerHasAlienUpgradeOfType(pBot->Edict, HIVE_TECH_SENSORY) && AITAC_IsAlienUpgradeAvailableForTeam(pBot->Player->GetTeam(), HIVE_TECH_SENSORY))
+			{
+				BotEvolveUpgrade(pBot, pBot->CurrentFloorPosition, AlienGetDesiredUpgrade(pBot, HIVE_TECH_SENSORY));
+				return;
+			}
 		}
 	}
 

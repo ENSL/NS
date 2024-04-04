@@ -49,6 +49,8 @@ bool bPlayerSpawned = false;
 
 float CountdownStartedTime = 0.0f;
 
+bool bBotsEnabled = false;
+
 string BotNames[MAX_PLAYERS] = {	"MrRobot",
 									"Wall-E",
 									"BeepBoop",
@@ -879,7 +881,9 @@ void AIMGR_RemoveBotsInReadyRoom()
 
 void AIMGR_ResetRound()
 {
-	if (!AIMGR_IsBotEnabled()) { return; } // Do nothing if we're not using bots
+	if (!AIMGR_IsBotEnabled()) { return; } // Do nothing if we're not using bots, as the data will be cleared out via AIMGR_OnBotDisabled()
+
+	AITAC_ClearMapAIData(false);	
 
 	// AI Players would be 0 if the round is being reset because a new game is starting. If the round is reset
 	// from a console command, or tournament mode readying up etc, then bot logic is unaffected
@@ -890,8 +894,6 @@ void AIMGR_ResetRound()
 	}
 
 	LastAIPlayerCountUpdate = 0.0f;
-
-	AITAC_ClearMapAIData(false);
 
 	UTIL_PopulateDoors();
 	UTIL_PopulateWeldableObstacles();
@@ -993,12 +995,16 @@ void AIMGR_ClearBotData()
 
 void AIMGR_NewMap()
 {
+	AIMGR_BotPrecache();
+
+	if (!AIMGR_IsBotEnabled()) { return; } // Do nothing if we're not using bots. Data will be already cleared if bot is disabled via AIMGR_OnBotDisabled()
+
 	if (NavmeshLoaded())
 	{
 		UnloadNavigationData();
 	}
 
-	if (!AIMGR_IsBotEnabled()) { return; } // Do nothing if we're not using bots
+	AITAC_ClearMapAIData(true);
 
 	bMapDataInitialised = false;
 
@@ -1007,10 +1013,6 @@ void AIMGR_NewMap()
 	AIStartedTime = gpGlobals->time;
 	LastAIPlayerCountUpdate = 0.0f;
 	
-	AITAC_ClearMapAIData(true);
-
-	AIMGR_BotPrecache();
-
 	bHasRoundStarted = false;
 
 	bPlayerSpawned = false;
@@ -1259,4 +1261,96 @@ void AIMGR_ClientConnected(edict_t* NewClient)
 void AIMGR_PlayerSpawned()
 {
 	bPlayerSpawned = true;
+}
+
+void AIMGR_OnBotEnabled()
+{
+	// First clear any stale data
+	if (NavmeshLoaded())
+	{
+		UnloadNavigationData();
+	}
+
+	AITAC_ClearMapAIData(true);
+
+	bBotsEnabled = true;
+
+	// Now load new stuff for current map
+
+	AIMGR_LoadNavigationData();
+
+	bMapDataInitialised = false;
+
+	ActiveAIPlayers.clear();
+
+	AIStartedTime = gpGlobals->time;
+	LastAIPlayerCountUpdate = 0.0f;
+
+	if (AIMGR_GetNavMeshStatus() != NAVMESH_STATUS_FAILED) 
+	{
+		UTIL_PopulateDoors();
+		UTIL_PopulateWeldableObstacles();
+
+		bool bTileCacheFullyUpdated = UTIL_UpdateTileCache();
+
+		while (!bTileCacheFullyUpdated)
+		{
+			bTileCacheFullyUpdated = UTIL_UpdateTileCache();
+		}
+	}
+	// Figure out the current game status
+
+	bHasRoundStarted = GetGameRules()->GetGameStarted();
+	bMapDataInitialised = true;
+
+	CountdownStartedTime = (bHasRoundStarted || GetGameRules()->GetCountdownStarted()) ? gpGlobals->time : 0.0f;
+	
+}
+
+void AIMGR_OnBotDisabled()
+{
+	// Clear all data out
+
+	AITAC_ClearMapAIData(false);
+
+	if (NavmeshLoaded())
+	{
+		UnloadNavigationData();
+	}
+
+	bBotsEnabled = false;
+}
+
+void AIMGR_UpdateAISystem()
+{
+	AIMGR_UpdateAIPlayerCounts();
+
+	bool bNewBotsEnabled = (avh_botsenabled.value > 0);
+
+	if (bNewBotsEnabled != bBotsEnabled)
+	{
+		if (bNewBotsEnabled)
+		{
+			AIMGR_OnBotEnabled();
+		}
+		else
+		{
+			AIMGR_OnBotDisabled();
+		}
+
+		bBotsEnabled = bNewBotsEnabled;
+		return;
+	}
+
+	if (AIMGR_IsBotEnabled())
+	{
+		if (AIMGR_GetNavMeshStatus() == NAVMESH_STATUS_PENDING)
+		{
+			AIMGR_LoadNavigationData();
+		}
+
+		AIMGR_UpdateAIMapData();
+
+		AIMGR_UpdateAIPlayers();
+	}
 }

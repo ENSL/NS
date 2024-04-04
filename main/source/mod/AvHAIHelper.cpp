@@ -129,8 +129,6 @@ Vector UTIL_GetEntityGroundLocation(const edict_t* pEntity)
 
 	if (GetDeployableObjectTypeFromEdict(pEntity) == STRUCTURE_ALIEN_HIVE)
 	{
-		return UTIL_GetFloorUnderEntity(pEntity);
-
 		const AvHAIHiveDefinition* Hive = AITAC_GetHiveFromEdict(pEntity);
 
 		if (Hive)

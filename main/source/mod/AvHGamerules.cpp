@@ -3649,19 +3649,7 @@ void AvHGamerules::Think(void)
 
     if(GET_RUN_CODE(4))
     {	
-		AIMGR_UpdateAIPlayerCounts();
-		
-		if (AIMGR_IsBotEnabled())
-		{
-			if (AIMGR_GetNavMeshStatus() == NAVMESH_STATUS_PENDING)
-			{
-				AIMGR_LoadNavigationData();
-			}
-
-			AIMGR_UpdateAIMapData();
-
-			AIMGR_UpdateAIPlayers();
-		}
+		AIMGR_UpdateAISystem();
 
 	    if(!this->GetGameStarted())
 	    {

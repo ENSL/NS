@@ -113,4 +113,11 @@ void AIMGR_ReceiveCommanderRequest(AvHTeamNumber Team, edict_t* Requestor, const
 void AIMGR_ClientConnected(edict_t* NewClient);
 void AIMGR_PlayerSpawned();
 
+// Called when mp_botsenabled changes from 0 to 1
+void AIMGR_OnBotEnabled();
+// Called when mp_botsenabled changes from 1 to 0
+void AIMGR_OnBotDisabled();
+
+void AIMGR_UpdateAISystem();
+
 #endif

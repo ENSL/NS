@@ -2286,7 +2286,7 @@ bool AICOMM_BuildInfantryPortal(AvHAIPlayer* pBot, edict_t* CommChair)
 bool AICOMM_CheckForNextRecycleAction(AvHAIPlayer* pBot)
 {
 	DeployableSearchFilter UnreachableFilter;
-	UnreachableFilter.DeployableTypes = (SEARCH_ALL_STRUCTURES & ~(STRUCTURE_MARINE_DEPLOYEDMINE));
+	UnreachableFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
 	UnreachableFilter.DeployableTeam = pBot->Player->GetTeam();
 	UnreachableFilter.ReachabilityTeam = pBot->Player->GetTeam();
 	UnreachableFilter.ReachabilityFlags = AI_REACHABILITY_UNREACHABLE;
