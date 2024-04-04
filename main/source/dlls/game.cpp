@@ -125,6 +125,7 @@ cvar_t  avh_jumpmode				= {kvJumpMode, "1", FCVAR_SERVER};
 cvar_t  avh_version					= {kvVersion, "330", FCVAR_SERVER};
 cvar_t  avh_widescreenclamp			= {kvWidescreenClamp, "0", FCVAR_SERVER};
 cvar_t  avh_randomrfk				= {kvRandomRfk, "0", FCVAR_SERVER};
+cvar_t  avh_freespectatormode		= {kvFreeSpectatorMode, "1", FCVAR_SERVER };
 
 // AI Player Settings
 cvar_t	avh_botsenabled				= { kvBotsEnabled,"0", FCVAR_SERVER };			// Bots can be added to the server Y/N
@@ -285,6 +286,7 @@ void GameDLLInit( void )
     // TODO: Remove
     CVAR_REGISTER (&avh_ironman);
 	CVAR_REGISTER (&avh_ironmantime);
+	CVAR_REGISTER (&avh_freespectatormode);
 
 #ifdef DEBUG
     CVAR_REGISTER (&avh_spawninvulnerabletime);

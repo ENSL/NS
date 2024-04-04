@@ -670,7 +670,7 @@ void ClientCommand( edict_t *pEntity )
     else if (FStrEq( pcmd, "follow")) // follow a specific player
     {
 		CBasePlayer * pPlayer = GetClassPtr((CBasePlayer *)pev);
-		if ( pPlayer->IsObserver() )
+		if ( pPlayer->IsObserver() && pPlayer->pev->iuser1 != OBS_ROAMING )
 		{
 			pPlayer->Observer_SpectatePlayer(atoi( CMD_ARGV(1) ));
 			pPlayer->SetDefaultSpectatingSettings(pPlayer->pev->iuser1, pPlayer->pev->iuser2);
@@ -679,7 +679,7 @@ void ClientCommand( edict_t *pEntity )
 	else if ( FStrEq( pcmd, "follownext" )  )	// follow next player
 	{
 		CBasePlayer * pPlayer = GetClassPtr((CBasePlayer *)pev);
-		if ( pPlayer->IsObserver() )
+		if ( pPlayer->IsObserver() && pPlayer->pev->iuser1 != OBS_ROAMING)
 		{
 			pPlayer->Observer_FindNextPlayer(atoi( CMD_ARGV(1) ));
 			pPlayer->SetDefaultSpectatingSettings(pPlayer->pev->iuser1, pPlayer->pev->iuser2);

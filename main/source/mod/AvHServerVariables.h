@@ -142,6 +142,7 @@ float	ns_cvar_float(const cvar_t *cvar);
 #define kvPerformance				"mp_performance"
 #define kvIronMan					"mp_ironman"
 #define kvIronManTime				"mp_ironmantime"
+#define kvFreeSpectatorMode			"mp_freespectatormode"
 
 #define kvBotsEnabled				"mp_botsenabled"
 #define kvBotMinPlayers				"mp_botminplayers"

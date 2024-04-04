@@ -231,6 +231,7 @@ extern cvar_t							avh_ironman;
 extern cvar_t                           avh_mapvoteratio;
 extern cvar_t							avh_structurelimit;
 extern cvar_t							avh_version;
+extern cvar_t							avh_freespectatormode;
 
 extern cvar_t							avh_botsenabled;
 extern cvar_t							avh_botautomode;
@@ -348,6 +349,7 @@ AvHGamerules::AvHGamerules() : mTeamA(TEAM_ONE), mTeamB(TEAM_TWO)
     RegisterServerVariable(&avh_structurelimit);
 	RegisterServerVariable(&avh_version);
 	RegisterServerVariable(&avh_widescreenclamp);
+	RegisterServerVariable(&avh_freespectatormode);
 
 	//playtest cvars
 	RegisterServerVariable(&avh_fastjp);
