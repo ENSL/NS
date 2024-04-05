@@ -2404,7 +2404,7 @@ bool HasBotCompletedJumpMove(const AvHAIPlayer* pBot, Vector MoveStart, Vector M
 
 bool HasBotCompletedPhaseGateMove(const AvHAIPlayer* pBot, Vector MoveStart, Vector MoveEnd, Vector NextMoveDestination, SamplePolyFlags NextMoveFlag)
 {
-	return vPointOverlaps3D(MoveEnd, pBot->Edict->v.absmin, pBot->Edict->v.absmax);
+	return vPointOverlaps3D(MoveEnd, pBot->Edict->v.absmin, pBot->Edict->v.absmax) || vDist2DSq(pBot->Edict->v.origin, MoveEnd) < sqrf(32.0f);
 }
 
 bool HasBotCompletedLiftMove(const AvHAIPlayer* pBot, Vector MoveStart, Vector MoveEnd, Vector NextMoveDestination, SamplePolyFlags NextMoveFlag)
@@ -4345,6 +4345,13 @@ bool IsBotOffWalkNode(const AvHAIPlayer* pBot, Vector MoveStart, Vector MoveEnd,
 
 	if (vDist2DSq(pBot->Edict->v.origin, NearestPointOnLine) > sqrf(GetPlayerRadius(pBot->Edict) * 3.0f)) { return true; }
 
+	if (!FNullEnt(pBot->Edict->v.groundentity))
+	{
+		nav_door* Door = UTIL_GetNavDoorByEdict(pBot->Edict->v.groundentity);
+
+		if (Door) { return false; }
+	}
+
 	if (vEquals2D(NearestPointOnLine, MoveStart) && !UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, MoveStart)) { return true; }
 	if (vEquals2D(NearestPointOnLine, MoveEnd) && !UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, MoveEnd)) { return true; }
 
@@ -4357,6 +4364,15 @@ bool IsBotOffFallNode(const AvHAIPlayer* pBot, Vector MoveStart, Vector MoveEnd,
 	if (!pBot->BotNavInfo.IsOnGround) { return false; }
 
 	Vector NearestPointOnLine = vClosestPointOnLine2D(MoveStart, MoveEnd, pBot->Edict->v.origin);
+
+	if (vDist2DSq(pBot->Edict->v.origin, NearestPointOnLine) > sqrf(GetPlayerRadius(pBot->Edict) * 3.0f)) { return true; }
+
+	if (!FNullEnt(pBot->Edict->v.groundentity))
+	{
+		nav_door* Door = UTIL_GetNavDoorByEdict(pBot->Edict->v.groundentity);
+
+		if (Door) { return false; }
+	}
 
 	if (!UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, MoveStart) && !UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, MoveEnd)) { return true; }
 
@@ -4391,7 +4407,7 @@ bool IsBotOffJumpNode(const AvHAIPlayer* pBot, Vector MoveStart, Vector MoveEnd,
 
 bool IsBotOffPhaseGateNode(const AvHAIPlayer* pBot, Vector MoveStart, Vector MoveEnd, Vector NextMoveDestination, SamplePolyFlags NextMoveFlag)
 {
-	if (vDist2DSq(pBot->Edict->v.origin, MoveStart) > sqrf(UTIL_MetresToGoldSrcUnits(3.0f)) && vDist2DSq(pBot->Edict->v.origin, MoveEnd) > sqrf(UTIL_MetresToGoldSrcUnits(3.0f))) { return true; }
+	if (vDist2DSq(pBot->Edict->v.origin, MoveStart) > sqrf(UTIL_MetresToGoldSrcUnits(2.0f)) && vDist2DSq(pBot->Edict->v.origin, MoveEnd) > sqrf(UTIL_MetresToGoldSrcUnits(2.0f))) { return true; }
 
 	DeployableSearchFilter PGFilter;
 	PGFilter.DeployableTeam = pBot->Player->GetTeam();
@@ -6579,6 +6595,7 @@ void BotFollowPath(AvHAIPlayer* pBot)
 
 	if (IsBotOffPath(pBot))
 	{
+		MoveToWithoutNav(pBot, CurrentNode.Location);
 		pBot->BotNavInfo.StuckInfo.bPathFollowFailed = true;
 		ClearBotPath(pBot);
 		return;
@@ -7574,15 +7591,13 @@ void UTIL_PopulateAffectedConnectionsForDoor(nav_door* Door)
 		{
 			Vector DoorCentre = (*stopIt);
 
-			Vector NearestPointOnLine = vClosestPointOnLine(ConnStart, MidPoint, DoorCentre);
-			if (vPointOverlaps3D(NearestPointOnLine, DoorCentre - HalfExtents, DoorCentre + HalfExtents))
+			if (vlineIntersectsAABB(ConnStart, MidPoint, DoorCentre - HalfExtents, DoorCentre + HalfExtents))
 			{
 				Door->AffectedConnections.push_back(&(*it));
 				break;
 			}
 
-			NearestPointOnLine = vClosestPointOnLine(MidPoint, ConnEnd, DoorCentre);
-			if (vPointOverlaps3D(NearestPointOnLine, DoorCentre - HalfExtents, DoorCentre + HalfExtents))
+			if (vlineIntersectsAABB(MidPoint, ConnEnd, DoorCentre - HalfExtents, DoorCentre + HalfExtents))
 			{
 				Door->AffectedConnections.push_back(&(*it));
 				break;
@@ -8752,7 +8767,6 @@ void NAV_ProgressMovementTask(AvHAIPlayer* pBot)
 					AimLocation.z = EntityCentre.z;
 				}
 
-				UTIL_DrawLine(INDEXENT(1), pBot->CurrentEyePosition, AimLocation);
 			}
 
 			BotMoveLookAt(pBot, AimLocation);
@@ -8771,7 +8785,8 @@ void NAV_ProgressMovementTask(AvHAIPlayer* pBot)
 		}
 	}
 
-	MoveTo(pBot, MoveTask->TaskLocation, MOVESTYLE_NORMAL);
+	bool bSuccess = MoveTo(pBot, MoveTask->TaskLocation, MOVESTYLE_NORMAL);
+
 
 }
 

@@ -4638,7 +4638,7 @@ bool AITAC_ShouldBotBuildHive(AvHAIPlayer* pBot, AvHAIHiveDefinition** EligibleH
 
 	float HiveCost = BALANCE_VAR(kHiveCost);
 
-	if (!IsPlayerGorge(pBot->Edict))
+	if (GetPlayerActiveClass(pBot->Player) != AVH_USER3_ALIEN_PLAYER2)
 	{
 		HiveCost += BALANCE_VAR(kGorgeCost);
 	}
@@ -4655,7 +4655,7 @@ bool AITAC_ShouldBotBuildHive(AvHAIPlayer* pBot, AvHAIHiveDefinition** EligibleH
 
 	// If we're a higher lifeform, ensure we can't leave this to someone else before considering losing those resources
 	// We will ignore humans and third party bots, because we don't know if they will drop the hive or not. Not everyone can be as team-spirited as us...
-	if (!IsPlayerSkulk(pBot->Edict) && !IsPlayerGorge(pBot->Edict))
+	if (!IsPlayerSkulk(pBot->Edict) && GetPlayerActiveClass(pBot->Player) != AVH_USER3_ALIEN_PLAYER2)
 	{
 		vector<AvHAIPlayer*> OtherAITeamMates = AIMGR_GetAIPlayersOnTeam(BotTeam);
 
@@ -4813,7 +4813,7 @@ bool AITAC_IsAlienCapperNeeded(AvHAIPlayer* pBot)
 
 	float ResourcesNeeded = BALANCE_VAR(kResourceTowerCost);
 
-	if (!IsPlayerGorge(pBot->Edict))
+	if (GetPlayerActiveClass(pBot->Player) != AVH_USER3_ALIEN_PLAYER2)
 	{
 		ResourcesNeeded += BALANCE_VAR(kGorgeCost);
 	}
@@ -4823,8 +4823,8 @@ bool AITAC_IsAlienCapperNeeded(AvHAIPlayer* pBot)
 		if (EnemyNodeOwnership < 0.35f) { return false; }
 	}
 
-	bool bIsHigherLifeform = (!IsPlayerSkulk(pBot->Edict) && !IsPlayerGorge(pBot->Edict));
-	bool bIsBuilder = (IsPlayerGorge(pBot->Edict) && pBot->BotRole == BOT_ROLE_BUILDER);
+	bool bIsHigherLifeform = (!IsPlayerSkulk(pBot->Edict) && GetPlayerActiveClass(pBot->Player) != AVH_USER3_ALIEN_PLAYER2);
+	bool bIsBuilder = (GetPlayerActiveClass(pBot->Player) == AVH_USER3_ALIEN_PLAYER2 && pBot->BotRole == BOT_ROLE_BUILDER);
 
 	if (bIsHigherLifeform || bIsBuilder)
 	{
@@ -4919,7 +4919,7 @@ bool AITAC_IsAlienBuilderNeeded(AvHAIPlayer* pBot)
 	}
 
 	// Don't build if we're a higher lifeform and there are others who could do the job instead
-	if (!IsPlayerSkulk(pBot->Edict) && !IsPlayerGorge(pBot->Edict))
+	if (!IsPlayerSkulk(pBot->Edict) && GetPlayerActiveClass(pBot->Player) != AVH_USER3_ALIEN_PLAYER2)
 	{
 		int NumSkulks = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER1, nullptr);
 		int NumGorges = AITAC_GetNumPlayersOnTeamOfClass(BotTeam, AVH_USER3_ALIEN_PLAYER2, nullptr);

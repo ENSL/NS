@@ -84,6 +84,55 @@ void AITASK_OnCompleteCommanderTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (OldTaskType == TASK_MOVE)
 	{
+		AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+		AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
+
+		if (AIMGR_GetTeamType(EnemyTeam) == AVH_CLASS_TYPE_ALIEN)
+		{
+			const AvHAIHiveDefinition* NearestHive = AITAC_GetHiveNearestLocation(pBot->Edict->v.origin);
+
+			if (NearestHive && vDist2DSq(NearestHive->FloorLocation, pBot->Edict->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(15.0f)))
+			{
+				if (NearestHive->Status == HIVE_STATUS_UNBUILT)
+				{
+					AITASK_SetSecureHiveTask(pBot, Task, NearestHive->HiveEdict, NearestHive->FloorLocation, false);
+					Task->bIssuedByCommander = true;
+					return;
+				}
+				else
+				{
+					if (UTIL_PlayerHasLOSToEntity(pBot->Edict, NearestHive->HiveEdict, UTIL_MetresToGoldSrcUnits(15.0f), false))
+					{
+						AITASK_SetAttackTask(pBot, Task, NearestHive->HiveEdict, false);
+						Task->bIssuedByCommander = true;
+						return;
+					}
+				}
+			}
+		}
+		else
+		{
+			if (vDist2DSq(pBot->Edict->v.origin, AITAC_GetTeamStartingLocation(EnemyTeam)) < sqrf(UTIL_MetresToGoldSrcUnits(10.0f)))
+			{
+				DeployableSearchFilter EnemyStuffFilter;
+				EnemyStuffFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
+				EnemyStuffFilter.DeployableTeam = EnemyTeam;
+				EnemyStuffFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+				EnemyStuffFilter.ReachabilityTeam = (AvHTeamNumber)pBot->Edict->v.team;
+				EnemyStuffFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(10.0f);
+
+				AvHAIBuildableStructure NearbyEnemyStructure = AITAC_FindClosestDeployableToLocation(AITAC_GetTeamStartingLocation(EnemyTeam), &EnemyStuffFilter);
+
+				if (NearbyEnemyStructure.IsValid())
+				{
+					AITASK_SetAttackTask(pBot, Task, NearbyEnemyStructure.edict, false);
+					Task->bIssuedByCommander = true;
+					return;
+				}
+
+			}
+		}
+
 		DeployableSearchFilter EnemyResTowerFilter;
 		EnemyResTowerFilter.DeployableTypes = SEARCH_ANY_RES_TOWER;
 		EnemyResTowerFilter.DeployableTeam = (AIMGR_GetEnemyTeam(pBot->Player->GetTeam()));
@@ -972,6 +1021,18 @@ bool AITASK_IsEvolveTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		return !IsPlayerFade(pBot->Edict) && pBot->Player->GetResources() >= BALANCE_VAR(kFadeCost);
 	case ALIEN_LIFEFORM_FIVE:
 		return !IsPlayerOnos(pBot->Edict) && pBot->Player->GetResources() >= BALANCE_VAR(kOnosCost) && (AITAC_GetNumPlayersOnTeamOfClass(pBot->Player->GetTeam(), AVH_USER3_ALIEN_PLAYER5, nullptr) < 2);
+	case ALIEN_EVOLUTION_ONE:
+	case ALIEN_EVOLUTION_TWO:
+	case ALIEN_EVOLUTION_THREE:
+		return (!PlayerHasAlienUpgradeOfType(pBot->Edict, HIVE_TECH_DEFENCE) && AITAC_IsAlienUpgradeAvailableForTeam(pBot->Player->GetTeam(), HIVE_TECH_DEFENCE));
+	case ALIEN_EVOLUTION_SEVEN:
+	case ALIEN_EVOLUTION_EIGHT:
+	case ALIEN_EVOLUTION_NINE:
+		return (!PlayerHasAlienUpgradeOfType(pBot->Edict, HIVE_TECH_MOVEMENT) && AITAC_IsAlienUpgradeAvailableForTeam(pBot->Player->GetTeam(), HIVE_TECH_MOVEMENT));
+	case ALIEN_EVOLUTION_TEN:
+	case ALIEN_EVOLUTION_ELEVEN:
+	case ALIEN_EVOLUTION_TWELVE:
+		return (!PlayerHasAlienUpgradeOfType(pBot->Edict, HIVE_TECH_SENSORY) && AITAC_IsAlienUpgradeAvailableForTeam(pBot->Player->GetTeam(), HIVE_TECH_SENSORY));
 	default:
 		return false;
 	}
@@ -1003,7 +1064,7 @@ bool AITASK_IsAlienHealTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
 	if (!Task->TaskTarget || FNullEnt(Task->TaskTarget) || (Task->TaskTarget->v.effects & EF_NODRAW) || Task->TaskTarget->v.deadflag != DEAD_NO) { return false; }
 
-	if (!IsPlayerGorge(pBot->Edict)) { return false; }
+	if (GetPlayerActiveClass(pBot->Player) != AVH_USER3_ALIEN_PLAYER2) { return false; }
 
 	if (GetPlayerOverallHealthPercent(Task->TaskTarget) >= 0.99f) { return false; }
 
@@ -1331,7 +1392,7 @@ void BotProgressReinforceStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		if (!vIsZero(Task->TaskLocation))
 		{
 			float ResourceCost = UTIL_GetCostOfStructureType(NextStructure);
-			if (!IsPlayerGorge(pBot->Edict))
+			if (GetPlayerActiveClass(pBot->Player) != AVH_USER3_ALIEN_PLAYER2)
 			{
 				ResourceCost += BALANCE_VAR(kGorgeCost);
 			}
@@ -1345,7 +1406,7 @@ void BotProgressReinforceStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	}
 
 	// We have nothing to build, or we don't have enough resources yet, see if there's any unfinished structures we can finish off
-	if (IsPlayerGorge(pBot->Edict))
+	if (GetPlayerActiveClass(pBot->Player) == AVH_USER3_ALIEN_PLAYER2)
 	{
 		DeployableSearchFilter UnfinishedFilter;
 		UnfinishedFilter.DeployableTeam = BotTeam;
@@ -1965,7 +2026,7 @@ void AlienProgressBuildHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	
 	int ResRequired = UTIL_GetCostOfStructureType(Task->StructureType);
 
-	if (!IsPlayerGorge(pBot->Edict))
+	if (GetPlayerActiveClass(pBot->Player) != AVH_USER3_ALIEN_PLAYER2)
 	{
 		ResRequired += BALANCE_VAR(kGorgeCost);
 	}
@@ -2023,7 +2084,7 @@ void AlienProgressBuildTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	int ResRequired = UTIL_GetCostOfStructureType(Task->StructureType);
 
-	if (!IsPlayerGorge(pBot->Edict))
+	if (GetPlayerActiveClass(pBot->Player) != AVH_USER3_ALIEN_PLAYER2)
 	{
 		ResRequired += BALANCE_VAR(kGorgeCost);
 	}
@@ -2064,7 +2125,6 @@ void BotAlienPlaceChamber(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, AvHAIDeploya
 {
 	if (vIsZero(Task->TaskLocation) || DesiredStructure == STRUCTURE_NONE) { return; }
 
-
 	if (Task->ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_PENDING) { return; }
 
 	float DistFromBuildLocation = vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation);
@@ -2092,7 +2152,7 @@ void BotAlienPlaceChamber(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, AvHAIDeploya
 
 	int ResRequired = UTIL_GetCostOfStructureType(DesiredStructure);
 
-	if (!IsPlayerGorge(pBot->Edict))
+	if (GetPlayerActiveClass(pBot->Player) != AVH_USER3_ALIEN_PLAYER2)
 	{
 		ResRequired += BALANCE_VAR(kGorgeCost);
 	}
@@ -2102,7 +2162,7 @@ void BotAlienPlaceChamber(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, AvHAIDeploya
 		return;
 	}
 
-	if (!IsPlayerGorge(pBot->Edict))
+	if (GetPlayerActiveClass(pBot->Player) != AVH_USER3_ALIEN_PLAYER2)
 	{
 		BotEvolveLifeform(pBot, pBot->CurrentFloorPosition, ALIEN_LIFEFORM_TWO);
 		return;
@@ -2145,7 +2205,7 @@ void BotAlienBuildResTower(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, const AvHAI
 
 	int ResRequired = UTIL_GetCostOfStructureType(STRUCTURE_ALIEN_RESTOWER);
 
-	if (!IsPlayerGorge(pBot->Edict))
+	if (GetPlayerActiveClass(pBot->Player) != AVH_USER3_ALIEN_PLAYER2)
 	{
 		ResRequired += BALANCE_VAR(kGorgeCost);
 	}
@@ -2157,7 +2217,7 @@ void BotAlienBuildResTower(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, const AvHAI
 		return;
 	}
 
-	if (!IsPlayerGorge(pBot->Edict))
+	if (GetPlayerActiveClass(pBot->Player) != AVH_USER3_ALIEN_PLAYER2)
 	{
 		BotEvolveLifeform(pBot, pBot->CurrentFloorPosition, ALIEN_LIFEFORM_TWO);
 		return;
@@ -2200,7 +2260,7 @@ void BotAlienBuildHive(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, const AvHAIHive
 	{
 		int ResRequired = UTIL_GetCostOfStructureType(STRUCTURE_ALIEN_HIVE);
 
-		if (!IsPlayerGorge(pBot->Edict))
+		if (GetPlayerActiveClass(pBot->Player) != AVH_USER3_ALIEN_PLAYER2)
 		{
 			ResRequired += BALANCE_VAR(kGorgeCost);
 		}
@@ -2210,7 +2270,7 @@ void BotAlienBuildHive(AvHAIPlayer* pBot, AvHAIPlayerTask* Task, const AvHAIHive
 			return;
 		}
 
-		if (!IsPlayerGorge(pBot->Edict))
+		if (GetPlayerActiveClass(pBot->Player) != AVH_USER3_ALIEN_PLAYER2)
 		{
 			BotEvolveLifeform(pBot, pBot->CurrentFloorPosition, ALIEN_LIFEFORM_TWO);
 			return;
@@ -2325,7 +2385,7 @@ void AlienProgressCapResNodeTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	{
 		// Node is empty and not capped by either side
 
-		int NumResourcesRequired = (IsPlayerGorge(pBot->Edict) ? BALANCE_VAR(kResourceTowerCost) : (BALANCE_VAR(kResourceTowerCost) + BALANCE_VAR(kGorgeCost)));
+		int NumResourcesRequired = (GetPlayerActiveClass(pBot->Player) == AVH_USER3_ALIEN_PLAYER2) ? BALANCE_VAR(kResourceTowerCost) : (BALANCE_VAR(kResourceTowerCost) + BALANCE_VAR(kGorgeCost));
 
 		// We have enough resources to place the tower (includes cost of evolving to gorge if necessary)
 		if (pBot->Player->GetResources() >= NumResourcesRequired)

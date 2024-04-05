@@ -197,6 +197,14 @@ bool BotUseObject(AvHAIPlayer* pBot, edict_t* Target, bool bContinuous)
 	{
 		pBot->Button |= IN_USE;
 		pBot->LastUseTime = gpGlobals->time;
+
+		CBaseEntity* UsedObject = CBaseEntity::Instance(Target);
+
+		if (UsedObject)
+		{
+			UsedObject->Use(pBot->Player, pBot->Player, USE_TOGGLE, 0);
+		}
+
 		return true;
 	}
 
@@ -1323,6 +1331,8 @@ void BotUpdateView(AvHAIPlayer* pBot)
 
 	pBot->ViewForwardVector = UTIL_GetForwardVector(pBot->Edict->v.v_angle);
 
+	UpdateAIPlayerViewFrustum(pBot);
+
 	// Update list of currently visible players
 	for (int i = 1; i <= gpGlobals->maxClients; i++)
 	{
@@ -1534,13 +1544,55 @@ void BotClearEnemyTrackingInfo(enemy_status* TrackingInfo)
 	TrackingInfo->LastHiddenPosition = ZERO_VECTOR;
 }
 
+void UpdateAIPlayerViewFrustum(AvHAIPlayer* pBot)
+{
+	MAKE_VECTORS(pBot->Edict->v.v_angle);
+	Vector up = gpGlobals->v_up;
+	Vector forward = gpGlobals->v_forward;
+	Vector right = gpGlobals->v_right;
+
+	Vector fc = (pBot->Edict->v.origin + pBot->Edict->v.view_ofs) + (forward * BOT_MAX_VIEW);
+
+	Vector fbl = fc + (up * f_ffheight / 2.0f) - (right * f_ffwidth / 2.0f);
+	Vector fbr = fc + (up * f_ffheight / 2.0f) + (right * f_ffwidth / 2.0f);
+	Vector ftl = fc - (up * f_ffheight / 2.0f) - (right * f_ffwidth / 2.0f);
+	Vector ftr = fc - (up * f_ffheight / 2.0f) + (right * f_ffwidth / 2.0f);
+
+	Vector nc = (pBot->Edict->v.origin + pBot->Edict->v.view_ofs) + (forward * BOT_MIN_VIEW);
+
+	Vector nbl = nc + (up * f_fnheight / 2.0f) - (right * f_fnwidth / 2.0f);
+	Vector nbr = nc + (up * f_fnheight / 2.0f) + (right * f_fnwidth / 2.0f);
+	Vector ntl = nc - (up * f_fnheight / 2.0f) - (right * f_fnwidth / 2.0f);
+	Vector ntr = nc - (up * f_fnheight / 2.0f) + (right * f_fnwidth / 2.0f);
+
+	UTIL_SetFrustumPlane(&pBot->viewFrustum[FRUSTUM_PLANE_TOP], ftl, ntl, ntr);
+	UTIL_SetFrustumPlane(&pBot->viewFrustum[FRUSTUM_PLANE_BOTTOM], fbr, nbr, nbl);
+	UTIL_SetFrustumPlane(&pBot->viewFrustum[FRUSTUM_PLANE_LEFT], fbl, nbl, ntl);
+	UTIL_SetFrustumPlane(&pBot->viewFrustum[FRUSTUM_PLANE_RIGHT], ftr, ntr, nbr);
+	UTIL_SetFrustumPlane(&pBot->viewFrustum[FRUSTUM_PLANE_NEAR], nbr, ntr, ntl);
+	UTIL_SetFrustumPlane(&pBot->viewFrustum[FRUSTUM_PLANE_FAR], fbl, ftl, ftr);
+}
+
 bool IsPlayerInBotFOV(AvHAIPlayer* Observer, edict_t* TargetPlayer)
 {
-	Vector TargetVector = (TargetPlayer->v.origin - Observer->CurrentEyePosition).Normalize();
+	/*Vector TargetVector = (TargetPlayer->v.origin - Observer->CurrentEyePosition).Normalize();
 
 	float DotProduct = UTIL_GetDotProduct(Observer->ViewForwardVector, TargetVector);
 
-	return DotProduct > 0.65f;
+	return DotProduct > 0.65f;*/
+
+	if (FNullEnt(TargetPlayer) || !IsPlayerActiveInGame(TargetPlayer)) { return false; }
+	// To make things a little more accurate, we're going to treat players as cylinders rather than boxes
+	for (int i = 0; i < 6; i++)
+	{
+		// Our cylinder must be inside all planes to be visible, otherwise return false
+		if (!UTIL_CylinderInsidePlane(&Observer->viewFrustum[i], TargetPlayer->v.origin - Vector(0, 0, 5), 60.0f, 16.0f))
+		{
+			return false;
+		}
+	}
+
+	return true;
 
 }
 
@@ -1742,7 +1794,7 @@ void StartNewBotFrame(AvHAIPlayer* pBot)
 		else
 		{
 			// All other structures should appear near-instantly
-			if ((gpGlobals->time - pBot->PrimaryBotTask.ActiveBuildInfo.BuildAttemptTime) > 0.5f)
+			if ((gpGlobals->time - pBot->PrimaryBotTask.ActiveBuildInfo.BuildAttemptTime) > 1.0f)
 			{
 				pBot->PrimaryBotTask.ActiveBuildInfo.BuildStatus = BUILD_ATTEMPT_FAILED;
 			}
@@ -1765,7 +1817,7 @@ void StartNewBotFrame(AvHAIPlayer* pBot)
 		else
 		{
 			// All other structures should appear near-instantly
-			if ((gpGlobals->time - pBot->SecondaryBotTask.ActiveBuildInfo.BuildAttemptTime) > 0.5f)
+			if ((gpGlobals->time - pBot->SecondaryBotTask.ActiveBuildInfo.BuildAttemptTime) > 1.0f)
 			{
 				pBot->SecondaryBotTask.ActiveBuildInfo.BuildStatus = BUILD_ATTEMPT_FAILED;
 			}
@@ -3201,6 +3253,7 @@ bool MarineCombatThink(AvHAIPlayer* pBot)
 
 void AIPlayerSetPrimaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
+
 	switch (pBot->BotRole)
 	{
 	case BOT_ROLE_SWEEPER:
@@ -3890,6 +3943,15 @@ void AIPlayerSetSecondaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		}
 	}
 
+	// If we're engaging an enemy turret then finish the job
+	if (Task->TaskType == TASK_ATTACK && (GetStructureTypeFromEdict(Task->TaskTarget) & (STRUCTURE_ALIEN_OFFENCECHAMBER | STRUCTURE_MARINE_TURRET | STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_MARINE_TURRETFACTORY)))
+	{
+		if (vDist2DSq(pBot->Edict->v.origin, Task->TaskTarget->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(20.0f)))
+		{
+			return;
+		}
+	}
+
 	// Find any nearby unbuilt structures
 	DeployableSearchFilter UnbuiltFilter;
 	UnbuiltFilter.DeployableTypes = STRUCTURE_MARINE_INFANTRYPORTAL;
@@ -4071,6 +4133,35 @@ void AIPlayerSetSecondaryMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		}
 	}
 
+	// If we're engaging an enemy turret then finish the job
+	if (Task->TaskType == TASK_ATTACK)
+	{
+		if (vDist2DSq(pBot->Edict->v.origin, Task->TaskTarget->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(20.0f)))
+		{
+			return;
+		}
+	}
+
+	DeployableSearchFilter EnemyStructures;
+	EnemyStructures.DeployableTypes = SEARCH_ALL_STRUCTURES;
+	EnemyStructures.DeployableTeam = BotTeam;
+	EnemyStructures.ReachabilityTeam = BotTeam;
+	EnemyStructures.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+	EnemyStructures.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(10.0f);
+
+	vector<AvHAIBuildableStructure> NearbyEnemyStructures = AITAC_FindAllDeployables(pBot->Edict->v.origin, &EnemyStructures);
+
+	for (auto it = NearbyEnemyStructures.begin(); it != NearbyEnemyStructures.end(); it++)
+	{
+		if (UTIL_PlayerHasLOSToEntity(pBot->Edict, it->edict, UTIL_MetresToGoldSrcUnits(20.0f), false))
+		{
+			AITASK_SetAttackTask(pBot, Task, it->edict, false);
+			return;
+		}
+	}
+
+
+
 }
 
 bool AIPlayerMustFinishCurrentTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
@@ -4079,7 +4170,7 @@ bool AIPlayerMustFinishCurrentTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (!AITASK_IsTaskStillValid(pBot, Task)) { return false; }
 
-	if (IsPlayerGorge(pBot->Edict))
+	if (GetPlayerActiveClass(pBot->Player) == AVH_USER3_ALIEN_PLAYER2)
 	{
 		AvHTeamNumber BotTeam = pBot->Player->GetTeam();
 
@@ -4148,39 +4239,6 @@ void AIPlayerNSAlienThink(AvHAIPlayer* pBot)
 	}
 
 	pBot->CurrentTask = AIPlayerGetNextTask(pBot);
-
-	if (gpGlobals->time - pBot->LastCombatTime > 5.0f)
-	{
-		bool bInMiddleOfMove = false;
-
-		if (pBot->BotNavInfo.CurrentPath.size() > 0 && pBot->BotNavInfo.CurrentPathPoint < pBot->BotNavInfo.CurrentPath.size())
-		{
-			bot_path_node CurrentMove = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint];
-
-			bInMiddleOfMove = CurrentMove.flag != SAMPLE_POLYFLAGS_WALK;
-		}
-
-		if (!bInMiddleOfMove)
-		{
-			if (!PlayerHasAlienUpgradeOfType(pBot->Edict, HIVE_TECH_DEFENCE) && AITAC_IsAlienUpgradeAvailableForTeam(pBot->Player->GetTeam(), HIVE_TECH_DEFENCE))
-			{
-				BotEvolveUpgrade(pBot, pBot->CurrentFloorPosition, AlienGetDesiredUpgrade(pBot, HIVE_TECH_DEFENCE));
-				return;
-			}
-
-			if (!PlayerHasAlienUpgradeOfType(pBot->Edict, HIVE_TECH_MOVEMENT) && AITAC_IsAlienUpgradeAvailableForTeam(pBot->Player->GetTeam(), HIVE_TECH_MOVEMENT))
-			{
-				BotEvolveUpgrade(pBot, pBot->CurrentFloorPosition, AlienGetDesiredUpgrade(pBot, HIVE_TECH_MOVEMENT));
-				return;
-			}
-
-			if (!PlayerHasAlienUpgradeOfType(pBot->Edict, HIVE_TECH_SENSORY) && AITAC_IsAlienUpgradeAvailableForTeam(pBot->Player->GetTeam(), HIVE_TECH_SENSORY))
-			{
-				BotEvolveUpgrade(pBot, pBot->CurrentFloorPosition, AlienGetDesiredUpgrade(pBot, HIVE_TECH_SENSORY));
-				return;
-			}
-		}
-	}
 
 	if (pBot->CurrentTask && pBot->CurrentTask->TaskType != TASK_NONE)
 	{
@@ -5488,16 +5546,29 @@ void AIPlayerReceiveMoveOrder(AvHAIPlayer* pBot, Vector Destination)
 	}
 
 	const AvHAIHiveDefinition* HiveRef = AITAC_GetHiveNearestLocation(Destination);
-
 	// Have we been asked to go to an empty hive? If so, then treat the order as a "help secure this hive" command
-	if (HiveRef && HiveRef->Status == HIVE_STATUS_UNBUILT && vDist2DSq(HiveRef->Location, Destination) < sqrf(UTIL_MetresToGoldSrcUnits(15.0f)))
+	if (HiveRef && vDist2DSq(HiveRef->Location, Destination) < sqrf(UTIL_MetresToGoldSrcUnits(15.0f)))
 	{
-		if (!AICOMM_IsHiveFullySecured(pBot, HiveRef, false))
+		if (HiveRef->Status == HIVE_STATUS_UNBUILT)
 		{
-			AITASK_SetSecureHiveTask(pBot, &pBot->CommanderTask, HiveRef->HiveEdict, ActualMoveLocation, false);
-			pBot->CommanderTask.bIssuedByCommander = true;
-			return;
+			if (!AICOMM_IsHiveFullySecured(pBot, HiveRef, false))
+			{
+				AITASK_SetSecureHiveTask(pBot, &pBot->CommanderTask, HiveRef->HiveEdict, ActualMoveLocation, false);
+				pBot->CommanderTask.bIssuedByCommander = true;
+				return;
+			}
 		}
+		else
+		{
+			if (UTIL_QuickTrace(pBot->Edict, Destination + Vector(0.0f, 0.0f, 32.0f), HiveRef->Location))
+			{
+				AITASK_SetAttackTask(pBot, &pBot->CommanderTask, HiveRef->HiveEdict, false);
+				pBot->CommanderTask.bIssuedByCommander = true;
+				return;
+			}
+		}
+
+		
 	}
 
 	// Otherwise, treat as a normal move order. Go there and wait a bit to see what the commander wants to do next
@@ -5816,7 +5887,7 @@ void AIPlayerSetAlienCapperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	AvHAIResourceNode* NodeToCap = nullptr;
 
-	bool bCanAttackTowers = (!IsPlayerGorge(pBot->Edict) || PlayerHasWeapon(pBot->Player, WEAPON_GORGE_BILEBOMB));
+	bool bCanAttackTowers = (GetPlayerActiveClass(pBot->Player) != AVH_USER3_ALIEN_PLAYER2 || PlayerHasWeapon(pBot->Player, WEAPON_GORGE_BILEBOMB));
 
 	// If we're already capping a node, are at the node and there is an unfinished tower on there, then finish the job and don't move on yet
 	if (Task->TaskType == TASK_CAP_RESNODE)
@@ -5844,7 +5915,7 @@ void AIPlayerSetAlienCapperPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	float ResourcesRequired = BALANCE_VAR(kResourceTowerCost);
 
-	if (!IsPlayerGorge(pBot->Edict))
+	if (GetPlayerActiveClass(pBot->Player) != AVH_USER3_ALIEN_PLAYER2)
 	{
 		ResourcesRequired += BALANCE_VAR(kGorgeCost);
 	}
@@ -6787,7 +6858,7 @@ void AIPlayerSetSecondaryAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 			{
 				AvHAIPlayer* ThisBot = (*BotIt);
 
-				if (ThisBot != pBot && IsPlayerActiveInGame(ThisBot->Edict) && !IsPlayerGorge(ThisBot->Edict) && vDist2DSq(ThisBot->Edict->v.origin, ThisHive->FloorLocation) > sqrf(UTIL_MetresToGoldSrcUnits(15.0f)))
+				if (ThisBot != pBot && IsPlayerActiveInGame(ThisBot->Edict) && GetPlayerActiveClass(pBot->Player) != AVH_USER3_ALIEN_PLAYER2 && vDist2DSq(ThisBot->Edict->v.origin, ThisHive->FloorLocation) > sqrf(UTIL_MetresToGoldSrcUnits(15.0f)))
 				{
 					if (ThisBot->SecondaryBotTask.TaskType == TASK_DEFEND && ThisBot->SecondaryBotTask.TaskTarget == ThisHive->HiveEdict)
 					{
@@ -6912,6 +6983,42 @@ void AIPlayerSetWantsAndNeedsAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		Task->bTaskIsUrgent = Task->bTaskIsUrgent || CurrentHealth < 0.4f;
 		return;
 	}
+
+	if (gpGlobals->time - pBot->LastCombatTime > 10.0f)
+	{
+		if (Task->TaskType == TASK_EVOLVE) { return; }
+
+		bool bInMiddleOfMove = false;
+
+		if (pBot->BotNavInfo.CurrentPath.size() > 0 && pBot->BotNavInfo.CurrentPathPoint < pBot->BotNavInfo.CurrentPath.size())
+		{
+			bot_path_node CurrentMove = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint];
+
+			bInMiddleOfMove = CurrentMove.flag != SAMPLE_POLYFLAGS_WALK;
+		}
+
+		if (!bInMiddleOfMove)
+		{
+			if (!PlayerHasAlienUpgradeOfType(pBot->Edict, HIVE_TECH_DEFENCE) && AITAC_IsAlienUpgradeAvailableForTeam(pBot->Player->GetTeam(), HIVE_TECH_DEFENCE))
+			{
+				AITASK_SetEvolveTask(pBot, Task, pBot->CurrentFloorPosition, AlienGetDesiredUpgrade(pBot, HIVE_TECH_DEFENCE), true);
+				return;
+			}
+
+			if (!PlayerHasAlienUpgradeOfType(pBot->Edict, HIVE_TECH_MOVEMENT) && AITAC_IsAlienUpgradeAvailableForTeam(pBot->Player->GetTeam(), HIVE_TECH_MOVEMENT))
+			{
+				AITASK_SetEvolveTask(pBot, Task, pBot->CurrentFloorPosition, AlienGetDesiredUpgrade(pBot, HIVE_TECH_MOVEMENT), true);
+				return;
+			}
+
+			if (!PlayerHasAlienUpgradeOfType(pBot->Edict, HIVE_TECH_SENSORY) && AITAC_IsAlienUpgradeAvailableForTeam(pBot->Player->GetTeam(), HIVE_TECH_SENSORY))
+			{
+				AITASK_SetEvolveTask(pBot, Task, pBot->CurrentFloorPosition, AlienGetDesiredUpgrade(pBot, HIVE_TECH_SENSORY), true);
+				return;
+			}
+		}
+	}
+
 
 	if (CurrentHealth >= 1.0f) { return; }
 

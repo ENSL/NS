@@ -811,3 +811,46 @@ float UTIL_CalculateSlopeAngleBetweenPoints(const Vector StartPoint, const Vecto
 
 	return atanf(Rise / Run);
 }
+
+// Function to check if a finite line intersects with an AABB
+bool vlineIntersectsAABB(Vector lineStart, Vector lineEnd, Vector BoxMinPosition, Vector BoxMaxPosition)
+{
+	Vector RayDir = UTIL_GetVectorNormal(lineEnd - lineStart);
+	float LineLength = vDist3D(lineStart, lineEnd);
+	Vector dirfrac;
+
+	float t = FLT_MAX;
+
+	// r.dir is unit direction vector of ray
+	dirfrac.x = 1.0f / RayDir.x;
+	dirfrac.y = 1.0f / RayDir.y;
+	dirfrac.z = 1.0f / RayDir.z;
+	// lb is the corner of AABB with minimal coordinates - left bottom, rt is maximal corner
+	// r.org is origin of ray
+	float t1 = (BoxMinPosition.x - lineStart.x) * dirfrac.x;
+	float t2 = (BoxMaxPosition.x - lineStart.x) * dirfrac.x;
+	float t3 = (BoxMinPosition.y - lineStart.y) * dirfrac.y;
+	float t4 = (BoxMaxPosition.y - lineStart.y) * dirfrac.y;
+	float t5 = (BoxMinPosition.z - lineStart.z) * dirfrac.z;
+	float t6 = (BoxMaxPosition.z - lineStart.z) * dirfrac.z;
+
+	float tmin = max(max(min(t1, t2), min(t3, t4)), min(t5, t6));
+	float tmax = min(min(max(t1, t2), max(t3, t4)), max(t5, t6));
+
+	// if tmax < 0, ray (line) is intersecting AABB, but the whole AABB is behind us
+	if (tmax < 0)
+	{
+		t = tmax;
+		return false;
+	}
+
+	// if tmin > tmax, ray doesn't intersect AABB
+	if (tmin > tmax)
+	{
+		t = tmax;
+		return false;
+	}
+
+	t = tmin;
+	return t <= LineLength;
+}

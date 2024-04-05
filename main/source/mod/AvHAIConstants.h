@@ -8,6 +8,7 @@
 
 #include "AvHHive.h"
 #include "AvHEntities.h"
+#include "AvHAIMath.h"
 
 static const float commander_action_cooldown = 1.0f;
 static const float min_request_spam_time = 10.0f;
@@ -740,6 +741,7 @@ typedef struct AVH_AI_PLAYER
 	AvHAIWeapon DesiredMoveWeapon = WEAPON_INVALID;
 	AvHAIWeapon DesiredCombatWeapon = WEAPON_INVALID;
 
+	frustum_plane_t viewFrustum[6]; // Bot's view frustum. Essentially, their "screen" for determining visibility of stuff
 	enemy_status TrackedEnemies[32];
 	int CurrentEnemy = -1;
 	AvHAICombatStrategy CurrentCombatStrategy = COMBAT_STRATEGY_ATTACK;

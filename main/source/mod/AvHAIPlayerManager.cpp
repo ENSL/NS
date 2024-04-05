@@ -12,6 +12,8 @@
 #include "../dlls/client.h"
 #include <time.h>
 
+float MAX_MATCH_TIME = 7200.0f;
+
 double last_think_time = 0.0;
 
 vector<AvHAIPlayer> ActiveAIPlayers;
@@ -125,6 +127,21 @@ void AIMGR_UpdateAIPlayerCounts()
 	// Don't add or remove bots too quickly, otherwise it can cause lag or even overflows
 	if (gpGlobals->time - LastAIPlayerCountUpdate < 0.2f) { return; }
 
+	LastAIPlayerCountUpdate = gpGlobals->time;
+
+	bool bMatchExceededMaxLength = (gpGlobals->time - AIStartedTime) > MAX_MATCH_TIME;
+
+	// If bots are disabled, ensure we've removed all bots from the game
+	if (!AIMGR_IsBotEnabled() || (bMatchExceededMaxLength && AIMGR_GetNumActiveHumanPlayers() == 0))
+	{
+		if (AIMGR_GetNumAIPlayers() > 0)
+		{
+			AIMGR_RemoveAIPlayerFromTeam(0);
+
+		}
+		return;
+	}
+
 	if (!AIMGR_ShouldStartPlayerBalancing()) { return; }
 
 	// If game has ended, kick bots that have dropped back to the ready room
@@ -134,18 +151,7 @@ void AIMGR_UpdateAIPlayerCounts()
 		return;
 	}
 
-	LastAIPlayerCountUpdate = gpGlobals->time;
 
-	// If bots are disabled, ensure we've removed all bots from the game
-	if (!AIMGR_IsBotEnabled())
-	{
-		if (AIMGR_GetNumAIPlayers() > 0)
-		{
-			AIMGR_RemoveAIPlayerFromTeam(0);
-		
-		}
-		return;
-	}
 
 	BotFillTiming CurrentFillTiming = CONFIG_GetBotFillTiming();
 
@@ -802,6 +808,40 @@ int AIMGR_GetNumHumanPlayersOnTeam(AvHTeamNumber Team)
 		edict_t* PlayerEdict = ThisPlayer->edict();
 
 		if (!(PlayerEdict->v.flags & FL_FAKECLIENT))
+		{
+			Result++;
+		}
+	}
+
+	return Result;
+}
+
+int AIMGR_GetNumHumanPlayersOnServer()
+{
+	int Result = 0;
+
+	for (int i = 1; i <= gpGlobals->maxClients; i++)
+	{
+		edict_t* PlayerEdict = INDEXENT(i);
+
+		if (!FNullEnt(PlayerEdict) && IsPlayerHuman(PlayerEdict))
+		{
+			Result++;
+		}
+	}
+
+	return Result;
+}
+
+int AIMGR_GetNumActiveHumanPlayers()
+{
+	int Result = 0;
+
+	for (int i = 1; i <= gpGlobals->maxClients; i++)
+	{
+		edict_t* PlayerEdict = INDEXENT(i);
+
+		if (!FNullEnt(PlayerEdict) && IsPlayerHuman(PlayerEdict) && PlayerEdict->v.team != TEAM_IND)
 		{
 			Result++;
 		}

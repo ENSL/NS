@@ -205,4 +205,6 @@ unsigned int UTIL_CountSetBitsInInteger(unsigned int n);
 
 float UTIL_CalculateSlopeAngleBetweenPoints(const Vector StartPoint, const Vector EndPoint);
 
+bool vlineIntersectsAABB(Vector lineStart, Vector lineEnd, Vector BoxMinPosition, Vector BoxMaxPosition);
+
 #endif

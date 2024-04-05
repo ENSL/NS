@@ -68,6 +68,8 @@ void AIDEBUG_TestPathFind();
 
 int AIMGR_GetNumAIPlayersOnTeam(AvHTeamNumber Team);
 int AIMGR_GetNumHumanPlayersOnTeam(AvHTeamNumber Team);
+int AIMGR_GetNumHumanPlayersOnServer();
+int AIMGR_GetNumActiveHumanPlayers();
 
 int AIMGR_GetNumAIPlayersWithRoleOnTeam(AvHTeamNumber Team, AvHAIBotRole Role, AvHAIPlayer* IgnoreAIPlayer);
 
