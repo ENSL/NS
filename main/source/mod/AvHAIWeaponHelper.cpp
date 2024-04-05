@@ -549,6 +549,11 @@ AvHAIWeapon BotMarineChooseBestWeapon(AvHAIPlayer* pBot, edict_t* target)
 
 	if (FNullEnt(target))
 	{
+		if (IsPlayerReloading(pBot->Player))
+		{
+			return GetPlayerCurrentWeapon(pBot->Player);
+		}
+
 		if (UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) > 0 || UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) > 0)
 		{
 			return UTIL_GetPlayerPrimaryWeapon(pBot->Player);
