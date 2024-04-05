@@ -46,6 +46,8 @@ bool CONFIG_IsOnosAllowed();
 // Returns the max time a bot is allowed to be stuck before suiciding (0 means forever)
 float CONFIG_GetMaxStuckTime();
 
+float CONFIG_GetMaxAIMatchTimeMinutes();
+
 // Returns the desired marine team size for the given map, indexes into TeamSizeMap
 int CONFIG_GetTeamASizeForMap(const char* MapName);
 // Returns the desired alien team size for the given map, indexes into TeamSizeMap

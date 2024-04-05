@@ -12,8 +12,6 @@
 #include "../dlls/client.h"
 #include <time.h>
 
-float MAX_MATCH_TIME = 7200.0f;
-
 double last_think_time = 0.0;
 
 vector<AvHAIPlayer> ActiveAIPlayers;
@@ -129,9 +127,14 @@ void AIMGR_UpdateAIPlayerCounts()
 
 	LastAIPlayerCountUpdate = gpGlobals->time;
 
-	bool bMatchExceededMaxLength = (gpGlobals->time - AIStartedTime) > MAX_MATCH_TIME;
+	float MaxMinutes = CONFIG_GetMaxAIMatchTimeMinutes();
+	float MaxSeconds = MaxMinutes * 60.0f;
 
-	// If bots are disabled, ensure we've removed all bots from the game
+	bool bMatchExceededMaxLength = (GetGameRules()->GetGameTime() > MaxSeconds);
+
+	// If bots are disabled or we've exceeded max AI time and no humans are playing, ensure we've removed all bots from the game
+	// Max AI time is configurable in nsbots.ini, and helps prevent infinite stalemates
+	// Default time is 90 minutes before bots start leaving to let the map cycle
 	if (!AIMGR_IsBotEnabled() || (bMatchExceededMaxLength && AIMGR_GetNumActiveHumanPlayers() == 0))
 	{
 		if (AIMGR_GetNumAIPlayers() > 0)

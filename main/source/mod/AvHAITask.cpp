@@ -563,9 +563,10 @@ bool AITASK_IsResupplyTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (!UTIL_StructureIsFullyBuilt(Task->TaskTarget) || UTIL_StructureIsRecycling(Task->TaskTarget)) { return false; }
 
-	return ((pBot->Edict->v.health < pBot->Edict->v.max_health)
-		|| (UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) < UTIL_GetPlayerPrimaryMaxAmmoReserve(pBot->Player))
-		|| (BotGetSecondaryWeaponAmmoReserve(pBot) < BotGetSecondaryWeaponMaxAmmoReserve(pBot))
+	return (
+			(pBot->Edict->v.health < pBot->Edict->v.max_health)
+		||	(UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) < UTIL_GetPlayerPrimaryMaxAmmoReserve(pBot->Player))
+		||	(UTIL_GetPlayerSecondaryAmmoReserve(pBot->Player) < UTIL_GetPlayerSecondaryMaxAmmoReserve(pBot->Player))
 		);
 }
 

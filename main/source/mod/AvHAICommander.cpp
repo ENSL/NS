@@ -960,7 +960,11 @@ bool AICOMM_IsRequestValid(ai_commander_request* Request)
 		case BUILD_TURRET_FACTORY:
 			return !AITAC_IsStructureOfTypeNearLocation(RequestorTeam, (STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_MARINE_ADVTURRETFACTORY), Requestor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
 		case BUILD_ARMORY:
-			return !AITAC_IsStructureOfTypeNearLocation(RequestorTeam, (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY), Requestor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));		
+			return !AITAC_IsStructureOfTypeNearLocation(RequestorTeam, (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY), Requestor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));	
+		case BUILD_COMMANDSTATION:
+			return !AITAC_IsStructureOfTypeNearLocation(RequestorTeam, STRUCTURE_MARINE_COMMCHAIR, Requestor->v.origin, UTIL_MetresToGoldSrcUnits(10.0f));
+		case BUILD_SCAN:
+			return !AITAC_ItemExistsInLocation(Requestor->v.origin, DEPLOYABLE_ITEM_SCAN, RequestorTeam, AI_REACHABILITY_NONE, 0.0f, UTIL_MetresToGoldSrcUnits(5.0f), false);
 		default:
 			return true;
 	}
@@ -2843,6 +2847,86 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 		return true;
 	}
 
+	if (NextRequest->RequestType == BUILD_SCAN)
+	{
+		DeployableSearchFilter ObsFilter;
+		ObsFilter.DeployableTeam = CommanderTeam;
+		ObsFilter.DeployableTypes = STRUCTURE_MARINE_OBSERVATORY;
+		ObsFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+		ObsFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+		AvHAIBuildableStructure NearestObservatory = AITAC_FindClosestDeployableToLocation(Requestor->v.origin, &ObsFilter);
+
+		if (!NearestObservatory.IsValid())
+		{
+			char msg[128];
+			sprintf(msg, "We don't have an observatory yet %s, ask again later.", STRING(Requestor->v.netname));
+			BotSay(pBot, true, 0.5f, msg);
+			NextRequest->bResponded = true;
+
+			return false;
+		}
+
+		Vector IdealDeployLocation = Requestor->v.origin + (UTIL_GetForwardVector2D(Requestor->v.angles) * 75.0f);
+		Vector ProjectedDeployLocation = AdjustPointForPathfinding(IdealDeployLocation, GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE));
+
+		if (!vIsZero(ProjectedDeployLocation))
+		{
+			bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_PHASEGATE, ProjectedDeployLocation, STRUCTURE_PURPOSE_NONE);
+
+			if (bSuccess)
+			{
+				NextRequest->bResponded = true;
+				return true;
+			}
+		}
+
+		Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), Requestor->v.origin, UTIL_MetresToGoldSrcUnits(1.0f));
+
+		if (!vIsZero(DeployLocation))
+		{
+			bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_PHASEGATE, DeployLocation, STRUCTURE_PURPOSE_NONE);
+
+			if (bSuccess)
+			{
+				NextRequest->bResponded = true;
+				return true;
+			}
+		}
+
+		DeployLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), Requestor->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+
+		if (!vIsZero(DeployLocation))
+		{
+			bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_SCAN, DeployLocation);
+
+			if (bSuccess)
+			{
+				NextRequest->bResponded = true;
+				return true;
+			}
+			else
+			{
+				char msg[128];
+				sprintf(msg, "I can't find a good scan spot, %s. Try again elsewhere.", STRING(Requestor->v.netname));
+				BotSay(pBot, true, 0.5f, msg);
+				NextRequest->bResponded = true;
+				return false;
+			}
+		}
+		else
+		{
+			char msg[128];
+			sprintf(msg, "I can't find a good scan spot, %s. Try again elsewhere.", STRING(Requestor->v.netname));
+			BotSay(pBot, true, 0.5f, msg);
+			NextRequest->bResponded = true;
+			return false;
+		}
+
+		return false;
+
+	}
+
 	if (NextRequest->RequestType == BUILD_PHASEGATE)
 	{
 		if (!AITAC_ResearchIsComplete(CommanderTeam, TECH_RESEARCH_PHASETECH))
@@ -2927,9 +3011,11 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 
 	}
 
-	if (NextRequest->RequestType == BUILD_ARMORY)
+	if (NextRequest->RequestType == BUILD_ARMORY || NextRequest->RequestType == BUILD_COMMANDSTATION)
 	{
-		if (pBot->Player->GetResources() < BALANCE_VAR(kArmoryCost))
+		float RequiredRes = (NextRequest->RequestType == BUILD_ARMORY) ? BALANCE_VAR(kArmoryCost) : BALANCE_VAR(kCommandStationCost);
+
+		if (pBot->Player->GetResources() < RequiredRes)
 		{
 			if (!NextRequest->bAcknowledged)
 			{
@@ -2945,9 +3031,11 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 		Vector IdealDeployLocation = Requestor->v.origin + (UTIL_GetForwardVector2D(Requestor->v.angles) * 75.0f);
 		Vector ProjectedDeployLocation = AdjustPointForPathfinding(IdealDeployLocation, GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE));
 
+		AvHAIDeployableStructureType StructureToDeploy = (NextRequest->RequestType == BUILD_ARMORY) ? STRUCTURE_MARINE_ARMOURY : STRUCTURE_MARINE_COMMCHAIR;
+
 		if (!vIsZero(ProjectedDeployLocation))
 		{
-			bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_ARMOURY, ProjectedDeployLocation, STRUCTURE_PURPOSE_NONE);
+			bool bSuccess = AICOMM_DeployStructure(pBot, StructureToDeploy, ProjectedDeployLocation, STRUCTURE_PURPOSE_NONE);
 
 			if (bSuccess)
 			{
@@ -2960,7 +3048,7 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 
 		if (!vIsZero(DeployLocation))
 		{
-			bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_ARMOURY, DeployLocation, STRUCTURE_PURPOSE_NONE);
+			bool bSuccess = AICOMM_DeployStructure(pBot, StructureToDeploy, DeployLocation, STRUCTURE_PURPOSE_NONE);
 
 			if (bSuccess)
 			{
@@ -2973,7 +3061,7 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 
 		if (!vIsZero(DeployLocation))
 		{
-			bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_ARMOURY, DeployLocation, STRUCTURE_PURPOSE_NONE);
+			bool bSuccess = AICOMM_DeployStructure(pBot, StructureToDeploy, DeployLocation, STRUCTURE_PURPOSE_NONE);
 
 			if (bSuccess)
 			{

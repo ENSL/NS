@@ -379,7 +379,13 @@ void BotSay(AvHAIPlayer* pBot, bool bTeamSay, float Delay, char* textToSay)
 bool BotReloadWeapons(AvHAIPlayer* pBot)
 {
 	// Aliens and commander don't reload
-	if (!IsPlayerMarine(pBot->Edict) || !IsPlayerActiveInGame(pBot->Edict) || IsPlayerReloading(pBot->Player)) { return false; }
+	if (!IsPlayerMarine(pBot->Edict) || !IsPlayerActiveInGame(pBot->Edict)) { return false; }
+
+	if (IsPlayerReloading(pBot->Player))
+	{
+		pBot->DesiredCombatWeapon = GetPlayerCurrentWeapon(pBot->Player);
+	}
+
 
 	AvHAIWeapon PrimaryWeapon = UTIL_GetPlayerPrimaryWeapon(pBot->Player);
 	AvHAIWeapon SecondaryWeapon = GetBotMarineSecondaryWeapon(pBot);
@@ -791,12 +797,14 @@ void BotShootTarget(AvHAIPlayer* pBot, AvHAIWeapon AttackWeapon, edict_t* Target
 	// We can be less accurate with spores and umbra since they have AoE effects
 	float MinAcceptableAccuracy = 0.9f;
 
+	Vector GetPosition = pBot->Player->GetGunPosition();
+
 	bWillHit = (AimDot >= MinAcceptableAccuracy);
 
 	if (!bWillHit && IsHitscanWeapon(CurrentWeapon))
 	{
 
-		edict_t* HitEntity = UTIL_TraceEntity(pBot->Edict, pBot->CurrentEyePosition, pBot->CurrentEyePosition + (AimDir * GetMaxIdealWeaponRange(CurrentWeapon)));
+		edict_t* HitEntity = UTIL_TraceEntity(pBot->Edict, pBot->Player->GetGunPosition(), pBot->Player->GetGunPosition() + (AimDir * GetMaxIdealWeaponRange(CurrentWeapon)));
 
 		bWillHit = (HitEntity == Target);
 	}
@@ -871,7 +879,7 @@ void BotShootLocation(AvHAIPlayer* pBot, AvHAIWeapon AttackWeapon, const Vector 
 		return;
 	}
 
-	if (CurrentWeapon == WEAPON_NONE) { return; }
+	if (CurrentWeapon == WEAPON_INVALID) { return; }
 
 	if (CurrentWeapon == WEAPON_SKULK_XENOCIDE)
 	{
@@ -2820,7 +2828,7 @@ void AIPlayerNSMarineThink(AvHAIPlayer* pBot)
 		BotProgressTask(pBot, pBot->CurrentTask);
 	}
 
-	if (pBot->DesiredCombatWeapon == WEAPON_NONE)
+	if (pBot->DesiredCombatWeapon == WEAPON_INVALID)
 	{
 		pBot->DesiredCombatWeapon = BotMarineChooseBestWeapon(pBot, nullptr);
 	}
@@ -4245,7 +4253,7 @@ void AIPlayerNSAlienThink(AvHAIPlayer* pBot)
 		BotProgressTask(pBot, pBot->CurrentTask);
 	}
 
-	if (pBot->DesiredCombatWeapon == WEAPON_NONE)
+	if (pBot->DesiredCombatWeapon == WEAPON_INVALID)
 	{
 		pBot->DesiredCombatWeapon = UTIL_GetPlayerPrimaryWeapon(pBot->Player);
 	}

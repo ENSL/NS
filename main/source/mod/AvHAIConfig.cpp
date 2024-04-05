@@ -8,6 +8,8 @@
 
 BotFillTiming CurrentBotFillTiming = FILLTIMING_ALLHUMANS;
 
+float MaxAIMatchTimeMinutes = 90.0f;
+
 std::unordered_map<std::string, TeamSizeDefinitions> TeamSizeMap;
 
 bot_skill BotSkillLevels[4];
@@ -52,6 +54,11 @@ bool CONFIG_IsOnosAllowed()
 float CONFIG_GetMaxStuckTime()
 {
     return avh_botmaxstucktime.value;
+}
+
+float CONFIG_GetMaxAIMatchTimeMinutes()
+{
+    return MaxAIMatchTimeMinutes;
 }
 
 string CONFIG_GetBotPrefix()
@@ -204,6 +211,14 @@ void CONFIG_ParseConfigFile()
             if (!stricmp(keyChar, "Prefix"))
             {
                 sprintf(BotPrefix, value.c_str());
+
+                continue;
+            }
+
+            if (!stricmp(keyChar, "MaxAIMatchTime"))
+            {
+                float MaxMinutes = std::stof(value.c_str());
+                MaxAIMatchTimeMinutes = MaxMinutes;
 
                 continue;
             }
@@ -549,6 +564,11 @@ void CONFIG_RegenerateIniFile()
 
     fprintf(NewConfigFile, "# What prefix to put in front of a bot's name (can leave blank)\n");
     fprintf(NewConfigFile, "Prefix=[BOT]\n\n");
+
+    fprintf(NewConfigFile, "# After this many minutes into a match, the bots will leave the game if there are no humans playing\n");
+    fprintf(NewConfigFile, "# Helps prevent stalemates and bugs that happen after extremely long matches\n");
+    fprintf(NewConfigFile, "# Default = 90 minutes\n");
+    fprintf(NewConfigFile, "MaxAIMatchTime=90\n\n");
 
     fprintf(NewConfigFile, "# When should the server start adding bots? Note: bots will always be added after round start regardless\n");
     fprintf(NewConfigFile, "# 0 = On map load (after 5 second grace period)\n");

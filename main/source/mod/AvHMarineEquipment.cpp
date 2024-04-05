@@ -1977,6 +1977,12 @@ void AvHCommandStation::CommandUse( CBaseEntity* pActivator, CBaseEntity* pCalle
 							this->mTimeToPlayOnlineSound = this->GetTimeAnimationDone();
 
 							GetGameRules()->MarkDramaticEvent(kCCNewCommanderPriority, thePlayer, this);
+
+							// A human used the comm chair, let the AI know to keep away
+							if (!(thePlayer->pev->flags & FL_FAKECLIENT))
+							{
+								AIMGR_SetCommanderAllowedTime(theStationTeamNumber, gpGlobals->time + 20.0f);
+							}
 						}
 						else
 						{

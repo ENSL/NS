@@ -3530,6 +3530,25 @@ void BlockedMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoi
 
 	pBot->desiredMovementDir = vForward;
 
+	Vector CurrVelocity = UTIL_GetVectorNormal2D(pBot->Edict->v.velocity);
+
+	float Dot = UTIL_GetDotProduct2D(vForward, CurrVelocity);
+
+	Vector FaceDir = UTIL_GetForwardVector2D(pBot->Edict->v.angles);
+
+	float FaceDot = UTIL_GetDotProduct2D(FaceDir, vForward);
+
+	// Yes this is cheating, but is it not cheating for humans to have millions of years of evolution
+	// driving their ability to judge a jump, while the bots have a single year of coding from a moron?
+	if (FaceDot < 0.95f)
+	{
+		float MoveSpeed = vSize2D(pBot->Edict->v.velocity);
+		Vector NewVelocity = vForward * MoveSpeed;
+		NewVelocity.z = pBot->Edict->v.velocity.z;
+
+		pBot->Edict->v.velocity = NewVelocity;
+	}
+
 	BotJump(pBot);
 }
 
@@ -3543,6 +3562,25 @@ void JumpMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 	}
 
 	pBot->desiredMovementDir = vForward;
+
+	Vector CurrVelocity = UTIL_GetVectorNormal2D(pBot->Edict->v.velocity);
+
+	float Dot = UTIL_GetDotProduct2D(vForward, CurrVelocity);
+
+	Vector FaceDir = UTIL_GetForwardVector2D(pBot->Edict->v.angles);
+
+	float FaceDot = UTIL_GetDotProduct2D(FaceDir, vForward);
+
+	// Yes this is cheating, but is it not cheating for humans to have millions of years of evolution
+	// driving their ability to judge a jump, while the bots have a single year of coding from a moron?
+	if (FaceDot < 0.95f)
+	{
+		float MoveSpeed = vSize2D(pBot->Edict->v.velocity);
+		Vector NewVelocity = vForward * MoveSpeed;
+		NewVelocity.z = pBot->Edict->v.velocity.z;
+
+		pBot->Edict->v.velocity = NewVelocity;
+	}
 
 	BotJump(pBot);
 
@@ -4315,10 +4353,10 @@ bool IsBotOffPath(const AvHAIPlayer* pBot)
 	case SAMPLE_POLYFLAGS_LIFT:
 		return IsBotOffLiftNode(pBot, MoveFrom, MoveTo, NextMoveLocation, NextMoveFlag);
 	default:
-		return IsBotOffWalkNode(pBot, MoveFrom, MoveTo, NextMoveLocation, NextMoveFlag);
+		return IsBotOffFallNode(pBot, MoveFrom, MoveTo, NextMoveLocation, NextMoveFlag);
 	}
 
-	return IsBotOffWalkNode(pBot, MoveFrom, MoveTo, NextMoveLocation, NextMoveFlag);
+	return IsBotOffFallNode(pBot, MoveFrom, MoveTo, NextMoveLocation, NextMoveFlag);
 
 }
 
@@ -4340,6 +4378,9 @@ bool IsBotOffLadderNode(const AvHAIPlayer* pBot, Vector MoveStart, Vector MoveEn
 bool IsBotOffWalkNode(const AvHAIPlayer* pBot, Vector MoveStart, Vector MoveEnd, Vector NextMoveDestination, SamplePolyFlags NextMoveFlag)
 {
 	if (!pBot->BotNavInfo.IsOnGround) { return false; }
+
+	// This shouldn't happen... but does occasionally. Walk moves should always be directly reachable from start to end
+	if (!UTIL_PointIsDirectlyReachable(MoveStart, MoveEnd)) { return true; }
 
 	Vector NearestPointOnLine = vClosestPointOnLine2D(MoveStart, MoveEnd, pBot->Edict->v.origin);
 
@@ -4464,17 +4505,9 @@ void BlinkClimbMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector End
 	if (GetPlayerCurrentWeapon(pBot->Player) != WEAPON_FADE_BLINK) { return; }
 
 	// Only blink if we're below the target climb height
-	if (pEdict->v.origin.z < RequiredClimbHeight)
+	if (pEdict->v.origin.z < RequiredClimbHeight + 32.0f)
 	{
 		float HeightToClimb = (fabsf(pEdict->v.origin.z - RequiredClimbHeight));
-
-		if (HeightToClimb > (GetPlayerHeight(pBot->Edict, false) * 2.0f))
-		{
-			if (GetPlayerEnergy(pBot->Edict) < 0.15f && pBot->BotNavInfo.IsOnGround)
-			{
-				return;
-			}
-		}
 
 		Vector CurrVelocity = UTIL_GetVectorNormal2D(pBot->Edict->v.velocity);
 
@@ -4484,30 +4517,37 @@ void BlinkClimbMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector End
 
 		float FaceDot = UTIL_GetDotProduct2D(FaceDir, MoveDir);
 
-		// Don't start blinking unless we're already in the air, or we're moving in the correct direction. Stops fade shooting off sideways when approaching a climb point from the side
-		if (FaceDot > 0.9f)
+		// Yes this is cheating, but the fades were struggling with zipping off-target when trying to blink
+		// Better this than fades getting constantly chewed up by marines because they can't escape properly
+		if (FaceDot < 0.95f)
 		{
-			float ZDiff = fabs(pEdict->v.origin.z - RequiredClimbHeight);
+			float MoveSpeed = vSize2D(pBot->Edict->v.velocity);
+			Vector NewVelocity = MoveDir * MoveSpeed;
+			NewVelocity.z = pBot->Edict->v.velocity.z;
 
-			// We don't want to blast off like a rocket, so only apply enough blink until our upwards velocity is enough to carry us to the desired height
-			float DesiredZVelocity = sqrtf(2.0f * GOLDSRC_GRAVITY * (ZDiff + 10.0f));
+			pBot->Edict->v.velocity = NewVelocity;
+		}
 
-			if (pBot->Edict->v.velocity.z < DesiredZVelocity || pBot->Edict->v.velocity.z < 300.0f)
+		float ZDiff = fabs(pEdict->v.origin.z - (RequiredClimbHeight + 72.0f));
+
+		// We don't want to blast off like a rocket, so only apply enough blink until our upwards velocity is enough to carry us to the desired height
+		float DesiredZVelocity = sqrtf(2.0f * GOLDSRC_GRAVITY * (ZDiff + 10.0f));
+
+		if (pBot->Edict->v.velocity.z < DesiredZVelocity || pBot->Edict->v.velocity.z < 300.0f)
+		{
+			// We're going to cheat and give the bot the necessary energy to make the move. Better the fade cheats a bit than gets stuck somewhere
+			if (GetPlayerEnergy(pBot->Edict) < 0.1f)
 			{
-				// We're going to cheat and give the bot the necessary energy to make the move. Better the fade cheats a bit than gets stuck somewhere
-				if (GetPlayerEnergy(pBot->Edict) < 0.1f)
-				{
-					pBot->Player->Energize(0.1f);
-				}
-				BotMoveLookAt(pBot, EndPoint + Vector(0.0f, 0.0f, 100.0f));
-				pBot->Button |= IN_ATTACK2;
+				pBot->Player->Energize(0.1f);
 			}
-			else
-			{
-				Vector LookAtTarget = EndPoint;
-				LookAtTarget.z = pBot->CurrentEyePosition.z;
-				BotMoveLookAt(pBot, LookAtTarget);
-			}
+			BotMoveLookAt(pBot, EndPoint + Vector(0.0f, 0.0f, 100.0f));
+			pBot->Button |= IN_ATTACK2;
+		}
+		else
+		{
+			Vector LookAtTarget = EndPoint;
+			LookAtTarget.z = pBot->CurrentEyePosition.z;
+			BotMoveLookAt(pBot, LookAtTarget);
 		}
 	}
 }
@@ -8770,7 +8810,7 @@ void NAV_ProgressMovementTask(AvHAIPlayer* pBot)
 			}
 
 			BotMoveLookAt(pBot, AimLocation);
-			pBot->DesiredCombatWeapon = WEAPON_MARINE_WELDER;
+			pBot->DesiredMoveWeapon = WEAPON_MARINE_WELDER;
 
 			if (GetPlayerCurrentWeapon(pBot->Player) != WEAPON_MARINE_WELDER)
 			{
