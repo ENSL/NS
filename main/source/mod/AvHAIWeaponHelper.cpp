@@ -378,7 +378,6 @@ float GetMaxIdealWeaponRange(const AvHAIWeapon Weapon)
 		return UTIL_MetresToGoldSrcUnits(100.0f);
 	case WEAPON_LERK_SPORES:
 	case WEAPON_LERK_UMBRA:
-		return UTIL_MetresToGoldSrcUnits(50.0f);
 	case WEAPON_MARINE_GL:
 	case WEAPON_MARINE_MG:
 	case WEAPON_MARINE_PISTOL:
@@ -387,7 +386,7 @@ float GetMaxIdealWeaponRange(const AvHAIWeapon Weapon)
 	case WEAPON_SKULK_LEAP:
 	case WEAPON_ONOS_CHARGE:
 	case WEAPON_GORGE_SPIT:
-		return UTIL_MetresToGoldSrcUnits(20.0f);
+		return UTIL_MetresToGoldSrcUnits(50.0f);
 	case WEAPON_MARINE_HMG:
 	case WEAPON_MARINE_GRENADE:
 		return UTIL_MetresToGoldSrcUnits(10.0f);
