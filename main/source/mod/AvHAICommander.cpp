@@ -2872,7 +2872,7 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 
 		if (!vIsZero(ProjectedDeployLocation))
 		{
-			bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_PHASEGATE, ProjectedDeployLocation, STRUCTURE_PURPOSE_NONE);
+			bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_SCAN, ProjectedDeployLocation);
 
 			if (bSuccess)
 			{
@@ -2885,7 +2885,7 @@ bool AICOMM_CheckForNextSupportAction(AvHAIPlayer* pBot)
 
 		if (!vIsZero(DeployLocation))
 		{
-			bool bSuccess = AICOMM_DeployStructure(pBot, STRUCTURE_MARINE_PHASEGATE, DeployLocation, STRUCTURE_PURPOSE_NONE);
+			bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_SCAN, DeployLocation);
 
 			if (bSuccess)
 			{
