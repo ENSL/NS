@@ -5,6 +5,8 @@
 #include "AvHServerUtil.h"
 
 #include <unordered_map>
+#include <algorithm>
+#include <random>
 
 BotFillTiming CurrentBotFillTiming = FILLTIMING_ALLHUMANS;
 
@@ -15,6 +17,43 @@ std::unordered_map<std::string, TeamSizeDefinitions> TeamSizeMap;
 bot_skill BotSkillLevels[4];
 
 AvHMessageID ChamberSequence[3] = { ALIEN_BUILD_DEFENSE_CHAMBER, ALIEN_BUILD_MOVEMENT_CHAMBER, ALIEN_BUILD_SENSORY_CHAMBER };
+
+string DefaultBotNames[MAX_PLAYERS] = { "MrRobot",
+                                    "Wall-E",
+                                    "BeepBoop",
+                                    "Robotnik",
+                                    "JonnyAutomaton",
+                                    "Burninator",
+                                    "SteelDeath",
+                                    "Meatbag",
+                                    "Undertaker",
+                                    "Botini",
+                                    "Robottle",
+                                    "Rusty",
+                                    "HeavyMetal",
+                                    "Combot",
+                                    "BagelLover",
+                                    "Screwdriver",
+                                    "LoveBug",
+                                    "iSmash",
+                                    "Chippy",
+                                    "Baymax",
+                                    "BoomerBot",
+                                    "Jarvis",
+                                    "Marvin",
+                                    "Data",
+                                    "Scrappy",
+                                    "Mortis",
+                                    "TerrorHertz",
+                                    "Omicron",
+                                    "Herbie",
+                                    "Robogeddon",
+                                    "Velociripper",
+                                    "TerminalFerocity"
+};
+
+vector<string> BotNames;
+int CurrentNameIndex = 0;
 
 char BotPrefix[32] = "";
 
@@ -108,6 +147,69 @@ bot_skill CONFIG_GetBotSkillLevel()
     int index = clampi((int)avh_botskill.value, 0, 3);
 
     return BotSkillLevels[index];
+}
+
+void CONFIG_PopulateBotNames()
+{
+    BotNames.clear();
+
+    string BotConfigFile = string(getModDirectory()) + "/botnames.txt";
+
+    const char* filename = BotConfigFile.c_str();
+
+    std::ifstream cFile(filename);
+    if (cFile.is_open())
+    {
+        std::string line;
+        while (getline(cFile, line))
+        {
+            if (line[0] == '/' || line.empty())
+                continue;
+
+            BotNames.push_back(line);
+        }
+    }
+
+    if (BotNames.size() > 2)
+    {
+        auto rng = std::default_random_engine{};
+        std::shuffle(begin(BotNames), end(BotNames), rng);
+    }
+
+    vector<string> DefaultNames;
+
+    // Ensure we have 32 names for all bots
+    for (int i = BotNames.size(); i < MAX_PLAYERS; i++)
+    {
+        DefaultNames.push_back(DefaultBotNames[i]);
+    }
+
+    if (DefaultNames.size() > 2)
+    {
+        auto rng = std::default_random_engine{};
+        std::shuffle(begin(DefaultNames), end(DefaultNames), rng);
+    }
+
+    BotNames.insert(BotNames.end(), DefaultNames.begin(), DefaultNames.end());
+
+    CurrentNameIndex = 0;
+    
+}
+
+string CONFIG_GetNextBotName()
+{
+    if (BotNames.size() == 0) { return "Bot"; }
+
+    string Result = BotNames[CurrentNameIndex];
+
+    CurrentNameIndex++;
+
+    if (CurrentNameIndex >= BotNames.size())
+    {
+        CurrentNameIndex = 0;
+    }
+
+    return Result;
 }
 
 void CONFIG_ParseConfigFile()

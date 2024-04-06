@@ -51,40 +51,6 @@ float CountdownStartedTime = 0.0f;
 
 bool bBotsEnabled = false;
 
-string BotNames[MAX_PLAYERS] = {	"MrRobot",
-									"Wall-E",
-									"BeepBoop",
-									"Robotnik",
-									"JonnyAutomaton",
-									"Burninator",
-									"SteelDeath",
-									"Meatbag",
-									"Undertaker",
-									"Botini",
-									"Robottle",
-									"Rusty",
-									"HeavyMetal",
-									"Combot",
-									"BagelLover",
-									"Screwdriver",
-									"LoveBug",
-									"iSmash",
-									"Chippy",
-									"Baymax",
-									"BoomerBot",
-									"Jarvis",
-									"Marvin",
-									"Data",
-									"Scrappy",
-									"Mortis",
-									"TerrorHertz",
-									"Omicron",
-									"Herbie",
-									"Robogeddon",
-									"Velociripper",
-									"TerminalFerocity"
-};
-
 AvHAICommanderMode AIMGR_GetCommanderMode()
 {
 	if (avh_botcommandermode.value == 1)
@@ -442,9 +408,8 @@ void AIMGR_AddAIPlayerToTeam(int Team)
 		BotNameIndex = RANDOM_LONG(0, 31);
 	}
 
-	// Retrieve the current bot name and then cycle the index so the names are always unique
-	// Slap a [BOT] tag too so players know they're not human
-	string NewName = CONFIG_GetBotPrefix() + BotNames[BotNameIndex];
+	// Retrieve the next configured bot name from the list
+	string NewName = CONFIG_GetBotPrefix() + CONFIG_GetNextBotName();
 
 	BotEnt = (*g_engfuncs.pfnCreateFakeClient)(NewName.c_str());
 
@@ -1059,6 +1024,9 @@ void AIMGR_NewMap()
 	bHasRoundStarted = false;
 
 	bPlayerSpawned = false;
+
+	CONFIG_ParseConfigFile();
+	CONFIG_PopulateBotNames();
 }
 
 bool AIMGR_IsNavmeshLoaded()
@@ -1080,8 +1048,6 @@ void AIMGR_LoadNavigationData()
 {
 	// Don't reload the nav mesh if it's already loaded
 	if (NavmeshLoaded()) { return; }
-
-	CONFIG_ParseConfigFile();
 
 	const char* theCStrLevelName = STRING(gpGlobals->mapname);
 

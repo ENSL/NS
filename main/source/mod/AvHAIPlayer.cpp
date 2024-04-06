@@ -4598,7 +4598,7 @@ AvHMessageID GetNextAIPlayerCOAlienUpgrade(AvHAIPlayer* pBot)
 	// As a bombardier, we can still go fade if we can't afford Onos yet, so calculate our points savings accordingly
 	if (pBot->BotRole == BOT_ROLE_BOMBARDIER)
 	{
-		if (NumPointsAvailable <= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_FIVE))
+		if (CONFIG_IsOnosAllowed() && NumPointsAvailable <= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_FIVE))
 		{
 			return MESSAGE_NULL;
 		}
@@ -5039,7 +5039,7 @@ void AIPlayerSetPrimaryCOAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (pBot->BotRole == BOT_ROLE_ASSAULT)
 	{
-		if (!IsPlayerFade(pBot->Edict) && pBot->ExperiencePointsAvailable >= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_FOUR))
+		if (CONFIG_IsFadeAllowed() && !IsPlayerFade(pBot->Edict) && pBot->ExperiencePointsAvailable >= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_FOUR))
 		{
 			if (Task->TaskType != TASK_EVOLVE)
 			{
@@ -5060,11 +5060,11 @@ void AIPlayerSetPrimaryCOAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		{
 			AvHMessageID DesiredEvolution = MESSAGE_NULL;
 
-			if (pBot->ExperiencePointsAvailable >= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_FIVE))
+			if (CONFIG_IsOnosAllowed() && pBot->ExperiencePointsAvailable >= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_FIVE))
 			{
 				DesiredEvolution = ALIEN_LIFEFORM_FIVE;
 			}
-			else if (pBot->ExperiencePointsAvailable >= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_FOUR))
+			else if (CONFIG_IsFadeAllowed() && pBot->ExperiencePointsAvailable >= GetGameRules()->GetCostForMessageID(ALIEN_LIFEFORM_FOUR))
 			{
 				DesiredEvolution = ALIEN_LIFEFORM_FOUR;
 			}
@@ -5587,8 +5587,6 @@ void AIPlayerReceiveMoveOrder(AvHAIPlayer* pBot, Vector Destination)
 
 void BotStopCommanderMode(AvHAIPlayer* pBot)
 {
-	// Thanks EterniumDev (Alien) for logic to allow commander AI to leave the chair and build structures when needed
-
 	if (IsPlayerCommander(pBot->Edict))
 	{
 		pBot->Player->SetUser3(AVH_USER3_MARINE_PLAYER);

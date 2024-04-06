@@ -332,7 +332,7 @@ void UpdateBotStuck(AvHAIPlayer* pBot);
 
 // Used by the MoveTo command, handles the bot's movement and inputs to follow a path it has calculated for itself
 void BotFollowPath(AvHAIPlayer* pBot);
-void BotFollowFlightPath(AvHAIPlayer* pBot);
+void BotFollowFlightPath(AvHAIPlayer* pBot, bool bAllowSkip);
 void BotFollowSwimPath(AvHAIPlayer* pBot);
 
 void SkipAheadInFlightPath(AvHAIPlayer* pBot);

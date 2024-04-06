@@ -62,4 +62,8 @@ BotFillTiming CONFIG_GetBotFillTiming();
 
 void CONFIG_RegenerateIniFile();
 
+void CONFIG_PopulateBotNames();
+
+string CONFIG_GetNextBotName();
+
 #endif

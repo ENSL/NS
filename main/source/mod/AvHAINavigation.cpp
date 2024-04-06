@@ -6213,7 +6213,7 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 		{
 			if (bIsFlyingProfile)
 			{
-				BotFollowFlightPath(pBot);
+				BotFollowFlightPath(pBot, true);
 			}
 			else
 			{
@@ -6351,7 +6351,7 @@ void SkipAheadInFlightPath(AvHAIPlayer* pBot)
 	}
 }
 
-void BotFollowFlightPath(AvHAIPlayer* pBot)
+void BotFollowFlightPath(AvHAIPlayer* pBot, bool bAllowSkip)
 {
 	if (pBot->BotNavInfo.CurrentPath.size() == 0 || pBot->BotNavInfo.CurrentPathPoint >= pBot->BotNavInfo.CurrentPath.size())
 	{
@@ -6392,7 +6392,7 @@ void BotFollowFlightPath(AvHAIPlayer* pBot)
 		return;
 	}
 
-	if (CurrentPathPoint->area != SAMPLE_POLYAREA_CROUCH && next(CurrentPathPoint) != BotNavInfo->CurrentPath.end() && next(CurrentPathPoint)->area != SAMPLE_POLYAREA_CROUCH)
+	if (bAllowSkip && CurrentPathPoint->area != SAMPLE_POLYAREA_CROUCH && next(CurrentPathPoint) != BotNavInfo->CurrentPath.end() && next(CurrentPathPoint)->area != SAMPLE_POLYAREA_CROUCH)
 	{
 		SkipAheadInFlightPath(pBot);
 		CurrentPathPoint = (BotNavInfo->CurrentPath.begin() + BotNavInfo->CurrentPathPoint);
@@ -6400,7 +6400,7 @@ void BotFollowFlightPath(AvHAIPlayer* pBot)
 
 	ClosestPointToPath = vClosestPointOnLine(CurrentPathPoint->FromLocation, CurrentPathPoint->Location, pEdict->v.origin);
 
-	if (vDist3DSq(pBot->Edict->v.origin, ClosestPointToPath) > sqrf(GetPlayerRadius(pBot->Edict) * 3.0f))
+	if (bAllowSkip && vDist3DSq(pBot->Edict->v.origin, ClosestPointToPath) > sqrf(GetPlayerRadius(pBot->Edict) * 3.0f))
 	{
 		ClearBotPath(pBot);
 		return;
@@ -6561,7 +6561,7 @@ void BotFollowSwimPath(AvHAIPlayer* pBot)
 	// We're at the surface, now tackle the path the usual way
 	if (pBot->BotNavInfo.NavProfile.bFlyingProfile)
 	{
-		BotFollowFlightPath(pBot);
+		BotFollowFlightPath(pBot, true);
 	}
 	else
 	{
@@ -6630,6 +6630,15 @@ void BotFollowPath(AvHAIPlayer* pBot)
 					return;
 				}
 			}
+		}
+	}
+
+	if (IsPlayerLerk(pBot->Edict))
+	{
+		if (CurrentNode.flag != SAMPLE_POLYFLAGS_WALK && CurrentNode.flag != SAMPLE_POLYFLAGS_LIFT)
+		{
+			BotFollowFlightPath(pBot, false);
+			return;
 		}
 	}
 
