@@ -2218,99 +2218,117 @@ void AvHTeam::UpdateReinforcementWave()
 	int theNumDeadPlayers = this->GetPlayerCount(true);
 	int theWaveSize = AvHSUCalcCombatSpawnWaveSize(theNumPlayersOnTeam, theNumDeadPlayers);
 
-	// If we're in combat mode
-	if(GetGameRules()->GetIsCombatMode() && (GetGameRules()->GetVictoryTeam() == TEAM_IND) && !GetGameRules()->GetIsIronMan())
+	// Early exit if we're not playing combat mode or if one team has won
+	if (!GetGameRules()->GetIsCombatMode() || (GetGameRules()->GetVictoryTeam() != TEAM_IND) || GetGameRules()->GetIsIronMan()) { return; }
+
+	// If either team is alien and doesn't have an active hive, then early exit
+	// POTENTIAL CRASH FIX in CBasePlayer::Spawn when trying to find a spawn point for dead aliens if their hive is dead but the victory team isn't assigned yet
+	AvHTeam* TeamA = GetGameRules()->GetTeamA();
+	AvHTeam* TeamB = GetGameRules()->GetTeamB();
+
+	if (TeamA->GetTeamType() == AVH_CLASS_TYPE_ALIEN)
 	{
-		// If reinforcement wave hasn't started
-		if(this->mTimeReinforcementWaveComplete == -1)
-		{
-			// If team has at least one dead player, start wave
-			for(EntityListType::const_iterator theIter = this->mPlayerList.begin(); theIter != this->mPlayerList.end(); theIter++)
-			{
-				const AvHPlayer* thePlayer = this->GetPlayerFromIndex(*theIter);
-				ASSERT(thePlayer);
-                float theWaveTime = AvHSUCalcCombatSpawnTime(this->mTeamType, theNumPlayersOnTeam, theNumDeadPlayers, 0);
+		AvHHive* theHive = AvHSUGetRandomActiveHive(TeamA->GetTeamNumber());
 
-                switch(thePlayer->GetPlayMode())
-                {
-                case PLAYMODE_AWAITINGREINFORCEMENT:
-                case PLAYMODE_REINFORCING:
-					// Set time reinforcement is complete
-					this->mTimeReinforcementWaveComplete = gpGlobals->time + theWaveTime;
-					break;
-                }
-			}
+		if (!theHive) { return; }
+	}
+
+	if (TeamB->GetTeamType() == AVH_CLASS_TYPE_ALIEN)
+	{
+		AvHHive* theHive = AvHSUGetRandomActiveHive(TeamB->GetTeamNumber());
+
+		if (!theHive) { return; }
+	}
+	
+	// If reinforcement wave hasn't started
+	if(this->mTimeReinforcementWaveComplete == -1)
+	{
+		// If team has at least one dead player, start wave
+		for(EntityListType::const_iterator theIter = this->mPlayerList.begin(); theIter != this->mPlayerList.end(); theIter++)
+		{
+			const AvHPlayer* thePlayer = this->GetPlayerFromIndex(*theIter);
+			ASSERT(thePlayer);
+            float theWaveTime = AvHSUCalcCombatSpawnTime(this->mTeamType, theNumPlayersOnTeam, theNumDeadPlayers, 0);
+
+            switch(thePlayer->GetPlayMode())
+            {
+            case PLAYMODE_AWAITINGREINFORCEMENT:
+            case PLAYMODE_REINFORCING:
+				// Set time reinforcement is complete
+				this->mTimeReinforcementWaveComplete = gpGlobals->time + theWaveTime;
+				break;
+            }
 		}
-		else
-		{
-            // Spawn back in a max of X players per wave (1/4 rounded up)
-            int theNumRespawning = 0;
+	}
+	else
+	{
+        // Spawn back in a max of X players per wave (1/4 rounded up)
+        int theNumRespawning = 0;
 
-            EntityListType::const_iterator theIter;
+        EntityListType::const_iterator theIter;
 
-            // Count number of people currently respawning
+        // Count number of people currently respawning
+        for(theIter = this->mPlayerList.begin(); theIter != this->mPlayerList.end(); theIter++)
+        {
+            AvHPlayer* thePlayer = this->GetPlayerFromIndex(*theIter);
+            ASSERT(thePlayer);
+                
+            if(thePlayer->GetPlayMode() == PLAYMODE_REINFORCING)
+            {
+                theNumRespawning++;
+            }
+        }
+
+        // Find the player that's been waiting the longest
+        if(theNumRespawning < theWaveSize)
+        {
+            EntityListType::const_iterator theLongestWaitingPlayer = this->mPlayerList.end();
+            float theLongestWaitingTime = -1;
+
+            // Loop through players
             for(theIter = this->mPlayerList.begin(); theIter != this->mPlayerList.end(); theIter++)
             {
+                // While we don't allow any more to repsawn or we hit end of list 
                 AvHPlayer* thePlayer = this->GetPlayerFromIndex(*theIter);
                 ASSERT(thePlayer);
-                
+                    
+                if(thePlayer->GetPlayMode() == PLAYMODE_AWAITINGREINFORCEMENT)
+                {
+                    float thePlayerWaitTime = (gpGlobals->time - thePlayer->GetTimeLastPlaying());
+                    if((theLongestWaitingTime == -1) || (thePlayerWaitTime > theLongestWaitingTime))
+                    {
+                        theLongestWaitingPlayer = theIter;
+                        theLongestWaitingTime = thePlayerWaitTime;
+                    }
+                }
+            }
+
+            if(theLongestWaitingPlayer != this->mPlayerList.end())
+            {
+                AvHPlayer* thePlayer = this->GetPlayerFromIndex(*theLongestWaitingPlayer);
+                ASSERT(thePlayer);
+                thePlayer->SetPlayMode(PLAYMODE_REINFORCING);
+            }
+        }
+
+        // Respawn players when wave is complete
+        if(gpGlobals->time > this->mTimeReinforcementWaveComplete)
+        {
+            for(theIter = this->mPlayerList.begin(); theIter != this->mPlayerList.end(); theIter++)
+            {
+                // While we don't allow any more to repsawn or we hit end of list 
+                AvHPlayer* thePlayer = this->GetPlayerFromIndex(*theIter);
+                ASSERT(thePlayer);
+
                 if(thePlayer->GetPlayMode() == PLAYMODE_REINFORCING)
                 {
-                    theNumRespawning++;
+                    thePlayer->SetPlayMode(PLAYMODE_PLAYING);
                 }
             }
 
-            // Find the player that's been waiting the longest
-            if(theNumRespawning < theWaveSize)
-            {
-                EntityListType::const_iterator theLongestWaitingPlayer = this->mPlayerList.end();
-                float theLongestWaitingTime = -1;
-
-                // Loop through players
-                for(theIter = this->mPlayerList.begin(); theIter != this->mPlayerList.end(); theIter++)
-                {
-                    // While we don't allow any more to repsawn or we hit end of list 
-                    AvHPlayer* thePlayer = this->GetPlayerFromIndex(*theIter);
-                    ASSERT(thePlayer);
-                    
-                    if(thePlayer->GetPlayMode() == PLAYMODE_AWAITINGREINFORCEMENT)
-                    {
-                        float thePlayerWaitTime = (gpGlobals->time - thePlayer->GetTimeLastPlaying());
-                        if((theLongestWaitingTime == -1) || (thePlayerWaitTime > theLongestWaitingTime))
-                        {
-                            theLongestWaitingPlayer = theIter;
-                            theLongestWaitingTime = thePlayerWaitTime;
-                        }
-                    }
-                }
-
-                if(theLongestWaitingPlayer != this->mPlayerList.end())
-                {
-                    AvHPlayer* thePlayer = this->GetPlayerFromIndex(*theLongestWaitingPlayer);
-                    ASSERT(thePlayer);
-                    thePlayer->SetPlayMode(PLAYMODE_REINFORCING);
-                }
-            }
-
-            // Respawn players when wave is complete
-            if(gpGlobals->time > this->mTimeReinforcementWaveComplete)
-            {
-                for(theIter = this->mPlayerList.begin(); theIter != this->mPlayerList.end(); theIter++)
-                {
-                    // While we don't allow any more to repsawn or we hit end of list 
-                    AvHPlayer* thePlayer = this->GetPlayerFromIndex(*theIter);
-                    ASSERT(thePlayer);
-
-                    if(thePlayer->GetPlayMode() == PLAYMODE_REINFORCING)
-                    {
-                        thePlayer->SetPlayMode(PLAYMODE_PLAYING);
-                    }
-                }
-
-                // Reset wave
-                this->mTimeReinforcementWaveComplete = -1;
-            }
-		}
+            // Reset wave
+            this->mTimeReinforcementWaveComplete = -1;
+        }
 	}
 }
 
