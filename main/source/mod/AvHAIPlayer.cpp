@@ -4391,13 +4391,14 @@ AvHMessageID AlienGetDesiredUpgrade(AvHAIPlayer* pBot, HiveTechStatus DesiredTec
 		{
 		case AVH_USER3_ALIEN_PLAYER1:
 		{
-			if (randbool())
+			
+			if (randbool() || GetHasUpgrade(pBot->Player->pev->iuser4, MASK_UPGRADE_7))
 			{
-				return ALIEN_EVOLUTION_SEVEN;
+				return ALIEN_EVOLUTION_NINE;
 			}
 			else
 			{
-				return ALIEN_EVOLUTION_NINE;
+				return ALIEN_EVOLUTION_SEVEN;
 			}
 		}
 		case AVH_USER3_ALIEN_PLAYER2:
@@ -4415,11 +4416,9 @@ AvHMessageID AlienGetDesiredUpgrade(AvHAIPlayer* pBot, HiveTechStatus DesiredTec
 	{
 		switch (pBot->Player->GetUser3())
 		{
-		case AVH_USER3_ALIEN_PLAYER2:
-			return ALIEN_EVOLUTION_TEN;
 		case AVH_USER3_ALIEN_PLAYER1:
 		{
-			if (randbool())
+			if (randbool() || GetHasUpgrade(pBot->Player->pev->iuser4, MASK_UPGRADE_7))
 			{
 				return ALIEN_EVOLUTION_TEN;
 			}
@@ -4428,6 +4427,8 @@ AvHMessageID AlienGetDesiredUpgrade(AvHAIPlayer* pBot, HiveTechStatus DesiredTec
 				return ALIEN_EVOLUTION_ELEVEN;
 			}
 		}
+		case AVH_USER3_ALIEN_PLAYER2:
+			return ALIEN_EVOLUTION_TEN;
 		case AVH_USER3_ALIEN_PLAYER3:
 		case AVH_USER3_ALIEN_PLAYER4:
 		case AVH_USER3_ALIEN_PLAYER5:
