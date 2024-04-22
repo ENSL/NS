@@ -73,6 +73,13 @@ enum SamplePolyFlags
 	SAMPLE_POLYFLAGS_ALL			= -1	// All abilities.
 };
 
+// What should the lerk do for this movement?
+enum LerkFlightBehaviour
+{
+	FLIGHT_DROP = 0, // Drop like a stone
+	FLIGHT_GLIDE, // Hold jump to glide
+	FLIGHT_FLAP // Rapidly tap jump to flap and speed up
+};
 
 // Door reference. Not used, but is a future feature to allow bots to track if a door is open or not, and how to open it etc.
 typedef struct _NAV_DOOR

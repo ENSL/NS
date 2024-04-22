@@ -55,6 +55,14 @@ edict_t* UTIL_TraceEntity(const edict_t* pEdict, const Vector& start, const Vect
 	return hit.pHit;
 }
 
+edict_t* UTIL_TraceEntityHull(const edict_t* pEdict, const Vector& start, const Vector& end)
+{
+	TraceResult hit;
+	edict_t* IgnoreEdict = (!FNullEnt(pEdict)) ? pEdict->v.pContainingEntity : NULL;
+	UTIL_TraceHull(start, end, dont_ignore_monsters, head_hull, IgnoreEdict, &hit);
+	return hit.pHit;
+}
+
 Vector UTIL_GetTraceHitLocation(const Vector Start, const Vector End)
 {
 	TraceResult hit;

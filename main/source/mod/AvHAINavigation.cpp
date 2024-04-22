@@ -1706,14 +1706,7 @@ dtStatus FindFlightPathToPoint(const nav_profile &NavProfile, Vector FromLocatio
 
 		bot_path_node NextPathNode;
 
-		if (CurrFlags == SAMPLE_POLYFLAGS_LIFT)
-		{
-			NextPathNode.flag = CurrFlags;
-		}
-		else
-		{
-			NextPathNode.flag = SAMPLE_POLYFLAGS_WALK;
-		}
+		NextPathNode.flag = CurrFlags;
 		
 		NextPathNode.area = CurrArea;
 		NextPathNode.poly = StraightPolyPath[nVert];
@@ -1723,17 +1716,23 @@ dtStatus FindFlightPathToPoint(const nav_profile &NavProfile, Vector FromLocatio
 		{
 			float MaxHeight = (CurrFlags == SAMPLE_POLYFLAGS_JUMP) ? fmaxf(PrevPoint.z, NextPathPoint.z) + 60.0f : UTIL_FindZHeightForWallClimb(PrevPoint, NextPathPoint, head_hull);
 
+			Vector PotentialNextPoint = PrevPoint + (UTIL_GetVectorNormal2D(NextPathPoint - PrevPoint) * 2.0f);;
+			PotentialNextPoint.z = MaxHeight;
+
+			if (UTIL_QuickTrace(nullptr, PrevPoint, PotentialNextPoint))
+			{
+				NextPathNode.requiredZ = MaxHeight;
+				NextPathNode.Location = PotentialNextPoint;
+				NextPathNode.FromLocation = PrevPoint;
+
+				PrevPoint = NextPathNode.Location;
+
+				path.push_back(NextPathNode);
+
+			}
+
 			NextPathNode.requiredZ = MaxHeight;
-			NextPathNode.Location = PrevPoint;
-			NextPathNode.Location.z = MaxHeight;
-			NextPathNode.FromLocation = PrevPoint;
-
-			PrevPoint = NextPathNode.Location;
-
-			path.push_back(NextPathNode);
-
-			NextPathNode.requiredZ = MaxHeight;
-			NextPathNode.Location = NextPathPoint;
+			NextPathNode.Location = NextPathPoint - (UTIL_GetVectorNormal2D(NextPathPoint - PrevPoint) * 2.0f);
 			NextPathNode.Location.z = MaxHeight;
 			NextPathNode.FromLocation = PrevPoint;
 
@@ -1741,12 +1740,25 @@ dtStatus FindFlightPathToPoint(const nav_profile &NavProfile, Vector FromLocatio
 
 			path.push_back(NextPathNode);
 		}
-		else if (CurrFlags == SAMPLE_POLYFLAGS_LADDER || CurrFlags == SAMPLE_POLYFLAGS_FALL)
+		else if (CurrFlags == SAMPLE_POLYFLAGS_FALL)
 		{
 			float MaxHeight = fmaxf(PrevPoint.z, NextPathPoint.z);
 
 			NextPathNode.requiredZ = MaxHeight;
-			NextPathNode.Location = (PrevPoint.z < NextPathPoint.z) ? PrevPoint : NextPathPoint;
+			NextPathNode.Location = NextPathPoint;
+			NextPathNode.Location.z = PrevPoint.z;
+			NextPathNode.FromLocation = PrevPoint;
+
+			PrevPoint = NextPathNode.Location;
+
+			path.push_back(NextPathNode);
+		}
+		else if (CurrFlags == SAMPLE_POLYFLAGS_LADDER)
+		{
+			float MaxHeight = fmaxf(PrevPoint.z, NextPathPoint.z);
+
+			NextPathNode.requiredZ = MaxHeight;
+			NextPathNode.Location = (PrevPoint.z < NextPathPoint.z) ? (PrevPoint + (UTIL_GetVectorNormal2D(NextPathPoint - PrevPoint) * 2.0f)) : NextPathPoint;
 			NextPathNode.Location.z = MaxHeight;
 			NextPathNode.FromLocation = PrevPoint;
 
@@ -6674,6 +6686,8 @@ void SkipAheadInFlightPath(AvHAIPlayer* pBot)
 
 	for (auto it = prev(BotNavInfo->CurrentPath.end()); it != next(CurrentPathPoint); it--)
 	{
+		if (it->area == SAMPLE_POLYAREA_CROUCH) { continue; }
+
 		Vector NextFlightPoint = UTIL_FindHighestSuccessfulTracePoint(pBot->Edict->v.origin, it->FromLocation, it->Location, 5.0f, 50.0f, 200.0f);
 
 		// If we can directly reach the end point, set our path point to the end of the path and go for it
@@ -6692,6 +6706,133 @@ void SkipAheadInFlightPath(AvHAIPlayer* pBot)
 			return;
 		}
 	}
+}
+
+LerkFlightBehaviour BotFlightWalkMove(AvHAIPlayer* pBot, Vector FromLocation, Vector ToLocation)
+{
+	Vector LookLocation = ToLocation;
+
+	Vector ClosestPointOnLine = vClosestPointOnLine(FromLocation, ToLocation, pBot->Edict->v.origin);
+
+	if (fabs(pBot->Edict->v.origin.z - ClosestPointOnLine.z) > 8.0f)
+	{
+		if (pBot->Edict->v.origin.z > ClosestPointOnLine.z)
+		{
+			LookLocation.z -= 32.0f;
+		}
+		else
+		{
+			LookLocation.z += 32.0f;
+		}
+	}
+
+	BotMoveLookAt(pBot, LookLocation);
+
+	Vector MoveDir = UTIL_GetVectorNormal(ToLocation - FromLocation);
+
+	Vector VelocityDir = UTIL_GetVectorNormal(pBot->Edict->v.velocity);
+
+	float MoveDot = UTIL_GetDotProduct(MoveDir, VelocityDir);
+
+	if (MoveDot < 0.7f || vDist2DSq(pBot->Edict->v.origin, FromLocation) > sqrf(100.0f) && vDist2DSq(pBot->Edict->v.origin, ToLocation) > sqrf(100.0f))
+	{
+		float CurrentSpeed = pBot->Edict->v.velocity.Length2D();
+
+		Vector ThisMoveDir = UTIL_GetVectorNormal2D(ToLocation - pBot->Edict->v.origin);
+
+		Vector NewVelocity = ThisMoveDir * fmaxf(CurrentSpeed, 100.0f);
+		NewVelocity.z = pBot->Edict->v.velocity.z;
+		
+		pBot->Edict->v.velocity = NewVelocity;
+
+	}
+
+	pBot->desiredMovementDir = UTIL_GetVectorNormal2D(pBot->Edict->v.angles);
+
+	return (vSize3D(pBot->Edict->v.velocity) < 500.0f && GetPlayerEnergy(pBot->Edict) > 0.1f) ? FLIGHT_FLAP : FLIGHT_GLIDE;
+}
+
+LerkFlightBehaviour BotFlightFallMove(AvHAIPlayer* pBot, Vector FromLocation, Vector ToLocation)
+{
+	Vector LookLocation = ToLocation;
+
+	Vector ClosestPointOnLine = vClosestPointOnLine(FromLocation, ToLocation, pBot->Edict->v.origin);
+
+	if (fabs(pBot->Edict->v.origin.z - ClosestPointOnLine.z) > 8.0f)
+	{
+		if (pBot->Edict->v.origin.z > ClosestPointOnLine.z)
+		{
+			LookLocation.z -= 32.0f;
+		}
+		else
+		{
+			LookLocation.z += 32.0f;
+		}
+	}
+
+	BotMoveLookAt(pBot, LookLocation);
+
+	if (pBot->BotNavInfo.IsOnGround)
+	{
+		pBot->desiredMovementDir = UTIL_GetVectorNormal2D(ToLocation - FromLocation);
+	}
+	else
+	{
+		pBot->desiredMovementDir = UTIL_GetVectorNormal2D(pBot->Edict->v.angles);
+	}
+
+	return pBot->BotNavInfo.IsOnGround ? FLIGHT_DROP : FLIGHT_GLIDE;
+}
+
+LerkFlightBehaviour BotFlightClimbMove(AvHAIPlayer* pBot, Vector FromLocation, Vector ToLocation, float RequiredZ)
+{
+	Vector LookLocation = ToLocation;
+
+	Vector MoveDir = UTIL_GetVectorNormal2D(ToLocation - FromLocation);
+
+	if (vIsZero(MoveDir))
+	{
+		MoveDir = UTIL_GetVectorNormal2D(pBot->Edict->v.angles);
+	}
+
+	Vector ClosestPointOnLine = vClosestPointOnLine(FromLocation, ToLocation, pBot->Edict->v.origin);
+	float DistFromLine = vDist2DSq(pBot->Edict->v.origin, ClosestPointOnLine);
+
+	Vector ThisMoveDir = MoveDir;
+
+	float CurrentSpeed = pBot->Edict->v.velocity.Length2D();
+	Vector NewVelocity = ThisMoveDir * fmaxf(CurrentSpeed, 100.0f);
+	NewVelocity.z = pBot->Edict->v.velocity.z;
+
+	pBot->Edict->v.velocity = NewVelocity;
+
+	pBot->desiredMovementDir = UTIL_GetVectorNormal2D(pBot->Edict->v.angles);
+
+	if (UTIL_QuickTrace(pBot->Edict, pBot->Edict->v.origin, ToLocation))
+	{
+		BotMoveLookAt(pBot, ToLocation);
+	}
+	else
+	{
+		Vector LookLocation = pBot->Edict->v.origin + (MoveDir * 100.0f);
+		LookLocation.z = RequiredZ;
+
+		BotMoveLookAt(pBot, LookLocation);
+	}
+
+	if (pBot->Edict->v.origin.z - RequiredZ > 4.0f)
+	{
+		return FLIGHT_DROP;
+	}
+	else
+	{
+		pBot->Edict->v.velocity.z = fmaxf(pBot->Edict->v.velocity.z, 10.0f);
+	}
+
+	UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, pBot->Edict->v.origin + UTIL_GetVectorNormal(pBot->Edict->v.velocity) * 100.0f, 255, 0, 0);
+
+
+	return FLIGHT_FLAP;
 }
 
 void BotFollowFlightPath(AvHAIPlayer* pBot, bool bAllowSkip)
@@ -6729,8 +6870,6 @@ void BotFollowFlightPath(AvHAIPlayer* pBot, bool bAllowSkip)
 		}
 	}
 
-
-
 	if (CurrentPathPoint->flag == SAMPLE_POLYFLAGS_LIFT)
 	{
 		LiftMove(pBot, CurrentPathPoint->FromLocation, CurrentMoveDest);
@@ -6746,7 +6885,9 @@ void BotFollowFlightPath(AvHAIPlayer* pBot, bool bAllowSkip)
 		NextFlags = (SamplePolyFlags)next(CurrentPathPoint)->flag;
 	}
 
-	if (bAllowSkip && CurrentPathPoint->area != SAMPLE_POLYAREA_CROUCH && CurrentPathPoint->flag != SAMPLE_POLYFLAGS_LIFT && NextArea != SAMPLE_POLYAREA_CROUCH && NextFlags != SAMPLE_POLYFLAGS_LIFT)
+	bool bShouldSkipAhead = bAllowSkip && (CurrentPathPoint->area == SAMPLE_POLYAREA_GROUND && CurrentPathPoint->flag == SAMPLE_POLYFLAGS_WALK);
+
+	if (bShouldSkipAhead)
 	{
 		SkipAheadInFlightPath(pBot);
 		CurrentPathPoint = (BotNavInfo->CurrentPath.begin() + BotNavInfo->CurrentPathPoint);
@@ -6754,10 +6895,22 @@ void BotFollowFlightPath(AvHAIPlayer* pBot, bool bAllowSkip)
 
 	ClosestPointToPath = vClosestPointOnLine(CurrentPathPoint->FromLocation, CurrentPathPoint->Location, pEdict->v.origin);
 
-	if (bAllowSkip && vDist3DSq(pBot->Edict->v.origin, ClosestPointToPath) > sqrf(GetPlayerRadius(pBot->Edict) * 3.0f))
+	if (bAllowSkip)
 	{
-		ClearBotPath(pBot);
-		return;
+		bool bStrayedOffPath = vDist3DSq(pBot->Edict->v.origin, ClosestPointToPath) > sqrf(GetPlayerRadius(pBot->Edict) * 3.0f);
+		bool bNoDirectRoute = false;
+		
+		if ((CurrentPathPoint->area == SAMPLE_POLYAREA_GROUND || CurrentPathPoint->area == SAMPLE_POLYAREA_CROUCH) && CurrentPathPoint->flag == SAMPLE_POLYFLAGS_WALK)
+		{
+			bNoDirectRoute = !UTIL_QuickHullTrace(pBot->Edict, pBot->Edict->v.origin, CurrentPathPoint->Location, false);
+		}
+
+		if (bStrayedOffPath || bNoDirectRoute)
+		{
+			MoveDirectlyTo(pBot, CurrentPathPoint->Location);
+			ClearBotPath(pBot);			
+			return;
+		}
 	}
 
 	CurrentMoveDest = CurrentPathPoint->Location;
@@ -6765,68 +6918,52 @@ void BotFollowFlightPath(AvHAIPlayer* pBot, bool bAllowSkip)
 
 	unsigned char CurrentMoveArea = CurrentPathPoint->area;
 	unsigned char NextMoveArea = (next(CurrentPathPoint) != BotNavInfo->CurrentPath.end()) ? next(CurrentPathPoint)->area : CurrentMoveArea;
-		
-	Vector MoveDir = UTIL_GetVectorNormal(CurrentMoveDest - MoveFrom);
 
-	float CurrentSpeed = vSize3D(pEdict->v.velocity);
+	LerkFlightBehaviour FlightBehaviour = FLIGHT_FLAP;
 
-	if (vDist2DSq(pEdict->v.origin, MoveFrom) > sqrf(100.0f) && vDist2DSq(pEdict->v.origin, CurrentMoveDest) > sqrf(100.0f))
+	switch (CurrentPathPoint->flag)
 	{
-
-		Vector NewVelocity = MoveDir;
-
-		if (vDist3DSq(pEdict->v.origin, ClosestPointToPath) > sqrf(16.0f))
-		{
-			NewVelocity = UTIL_GetVectorNormal((ClosestPointToPath + (MoveDir * 100.0f)) - pEdict->v.origin);
-		}
-
-		NewVelocity = NewVelocity * CurrentSpeed;
-		pEdict->v.velocity = NewVelocity;
+		case SAMPLE_POLYFLAGS_WALLCLIMB:
+		case SAMPLE_POLYFLAGS_LADDER:
+			FlightBehaviour = BotFlightClimbMove(pBot, CurrentPathPoint->FromLocation, CurrentPathPoint->Location, CurrentPathPoint->requiredZ);
+			break;
+		case SAMPLE_POLYFLAGS_FALL:
+			FlightBehaviour = BotFlightFallMove(pBot, CurrentPathPoint->FromLocation, CurrentPathPoint->Location);
+			break;
+		default:
+			FlightBehaviour = BotFlightWalkMove(pBot, CurrentPathPoint->FromLocation, CurrentPathPoint->Location);
+			break;
 
 	}
-
-	bool bMustHugGround = (CurrentMoveArea == SAMPLE_POLYAREA_CROUCH || NextMoveArea == SAMPLE_POLYAREA_CROUCH);
-
-	if (!bMustHugGround || MoveFrom.z <= CurrentMoveDest.z)
+		
+	if (FlightBehaviour == FLIGHT_GLIDE)
 	{
-		if (CurrentSpeed < 500.f && GetPlayerEnergy(pBot->Edict) > 0.1f)
-		{
-			if (!(pEdict->v.oldbuttons & IN_JUMP))
-			{
-				pBot->Button |= IN_JUMP;
-			}
-			else
-			{
-				if (gpGlobals->time - BotNavInfo->LastFlapTime < 0.2f)
-				{
-					pBot->Button |= IN_JUMP;
-				}
-				else
-				{
-					BotNavInfo->LastFlapTime = gpGlobals->time;
-				}
-			}
-		}
-		else
+		pBot->Button |= IN_JUMP;
+	}
+	else if (FlightBehaviour == FLIGHT_FLAP)
+	{		
+		if (gpGlobals->time - BotNavInfo->LastFlapTime > 0.2f)
 		{
 			pBot->Button |= IN_JUMP;
+			BotNavInfo->LastFlapTime = gpGlobals->time;
 		}
-	}	
-
-	Vector LookLocation = CurrentMoveDest;
-	
-	if (pEdict->v.origin.z < CurrentPathPoint->requiredZ)
-	{
-		LookLocation.z += 32.0f;
 	}
 
-	BotMoveLookAt(pBot, LookLocation);
+	Vector StartTrace = pBot->Edict->v.origin;
+	Vector EndTrace = StartTrace + (UTIL_GetVectorNormal2D(pBot->Edict->v.angles) * 32.0f);
 
-	pBot->desiredMovementDir = UTIL_GetForwardVector2D(pEdict->v.v_angle);
+	edict_t* BlockingEdict = UTIL_TraceEntityHull(pBot->Edict, StartTrace, EndTrace);
+
+	if (!FNullEnt(BlockingEdict) && (IsEdictStructure(BlockingEdict) || IsEdictPlayer(BlockingEdict)))
+	{
+		pBot->Edict->v.velocity.z = 150.0f;
+	}
 
 	CheckAndHandleBreakableObstruction(pBot, MoveFrom, CurrentMoveDest, SAMPLE_POLYFLAGS_WALK);
 
 	CheckAndHandleDoorObstruction(pBot);
+
+	BotMovementInputs(pBot);
 
 }
 
@@ -7510,6 +7647,11 @@ float UTIL_FindZHeightForWallClimb(const Vector ClimbStart, const Vector ClimbEn
 
 		if (hit.flFraction >= 1.0f && !hit.fStartSolid)
 		{
+			if (UTIL_QuickHullTrace(nullptr, EndTrace, EndTrace + Vector(0.0f, 0.0f, 8.0f), false))
+			{
+				CurrTraceStart.z += 8.0f;
+			}
+
 			return CurrTraceStart.z;
 		}
 		else

@@ -2955,6 +2955,13 @@ bool BombardierCombatThink(AvHAIPlayer* pBot)
 
 bool RegularMarineCombatThink(AvHAIPlayer* pBot)
 {
+#ifdef DEBUG
+	if (pBot == AIMGR_GetDebugAIPlayer())
+	{
+		bool bBreak = true; // Add a break point here if you want to debug a specific bot
+	}
+#endif
+
 	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
 	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
 
@@ -2981,6 +2988,8 @@ bool RegularMarineCombatThink(AvHAIPlayer* pBot)
 	// Run away and restock
 	if (pBot->CurrentCombatStrategy == COMBAT_STRATEGY_RETREAT)
 	{
+		pBot->DesiredCombatWeapon = DesiredCombatWeapon;
+
 		if (NearestHealthPack && (pBot->Edict->v.health < pBot->Edict->v.max_health * 0.7f))
 		{
 			MoveTo(pBot, NearestHealthPack->Location, MOVESTYLE_NORMAL);
@@ -3007,7 +3016,17 @@ bool RegularMarineCombatThink(AvHAIPlayer* pBot)
 				{
 					if (IsPlayerInUseRange(pBot->Edict, NearestArmouryRef.edict))
 					{
+						if (UTIL_GetPlayerPrimaryAmmoReserve(pBot->Player) < UTIL_GetPlayerPrimaryMaxAmmoReserve(pBot->Player) || UTIL_GetPlayerSecondaryAmmoReserve(pBot->Player) >= UTIL_GetPlayerPrimaryWeaponMaxClipSize(pBot->Player))
+						{
+							pBot->DesiredCombatWeapon = UTIL_GetPlayerPrimaryWeapon(pBot->Player);
+						}
+						else
+						{
+							pBot->DesiredCombatWeapon = UTIL_GetPlayerSecondaryWeapon(pBot->Player);
+						}
 						BotUseObject(pBot, NearestArmouryRef.edict, true);
+						BotReloadWeapons(pBot);						
+
 						return true;
 					}
 				}
@@ -3068,11 +3087,6 @@ bool RegularMarineCombatThink(AvHAIPlayer* pBot)
 	if (pBot->CurrentCombatStrategy == COMBAT_STRATEGY_SKIRMISH || pBot->CurrentCombatStrategy == COMBAT_STRATEGY_AMBUSH)
 	{
 		pBot->DesiredCombatWeapon = DesiredCombatWeapon;
-
-		if (GetPlayerCurrentWeapon(pBot->Player) != DesiredCombatWeapon)
-		{
-			return true;
-		}
 
 		if (vIsZero(pBot->LastSafeLocation))
 		{
@@ -3175,12 +3189,8 @@ bool RegularMarineCombatThink(AvHAIPlayer* pBot)
 	// Go for the kill. Maintain desired distance and pursue when needed
 	if (pBot->CurrentCombatStrategy == COMBAT_STRATEGY_ATTACK)
 	{
-		pBot->DesiredCombatWeapon = DesiredCombatWeapon;
-
-		if (GetPlayerCurrentWeapon(pBot->Player) != DesiredCombatWeapon)
-		{
-			return true;
-		}
+		bool bCanUsePrimaryWeapon = UTIL_GetPlayerPrimaryWeaponClipAmmo(pBot->Player) > 0;
+		pBot->DesiredCombatWeapon = (!TrackedEnemyRef->bIsVisible && bCanUsePrimaryWeapon) ? UTIL_GetPlayerPrimaryWeapon(pBot->Player) : DesiredCombatWeapon;
 
 		if (vIsZero(pBot->LastSafeLocation))
 		{
