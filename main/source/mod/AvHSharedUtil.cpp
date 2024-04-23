@@ -1604,7 +1604,7 @@ bool AvHSHUGetSizeForTech(AvHMessageID inMessageID, Vector& outMinSize, Vector& 
 	// Onos-sized
 	//const int theOnosHeightNeededToSpawn = HULL3_MAXZ - HULL3_MINZ + kRespawnFudgeFactorHeight;
 	//const int theOnosWidthNeededToSpawn = HULL3_MAXY - HULL3_MINY + kRespawnFudgeFactorHeight;
-
+	
 	// Marine-sized
 	const int theMarineHeightNeededToSpawn = HULL0_MAXZ - HULL0_MINZ + kRespawnFudgeFactorHeight;
 
@@ -1659,7 +1659,12 @@ bool AvHSHUGetSizeForTech(AvHMessageID inMessageID, Vector& outMinSize, Vector& 
 
 	case BUILD_ARMSLAB:
 		outMinSize = Vector(-16, -16, 0);
-		outMaxSize = Vector(16.0, 16.0, 72.0 /*66.9486*/);
+		outMaxSize = Vector(16.0, 16.0, 57.77 /*66.9486*/);
+		// 2024 - NS3.1 changed to this value to prevent building placed in vents from sinking. Just use this value only when placing to fix bullets sparking on it.
+		if (inGetSizeToPlace)
+		{
+			outMaxSize.z = 72.0;// 2024 - It was 72 instead of 73. Idk if it was a typo or what.
+		}
 		theSuccess = true;
 		break;
 
@@ -1680,26 +1685,46 @@ bool AvHSHUGetSizeForTech(AvHMessageID inMessageID, Vector& outMinSize, Vector& 
 
 	case BUILD_COMMANDSTATION:
 		outMinSize = Vector(-16, -16, 0);
-		outMaxSize = Vector(16.0, 16.0, 73.0 /*70.34*/);
+		outMaxSize = Vector(16.0, 16.0, 70.34);
+		// 2024 - NS3.1 changed to this value to prevent building placed in vents from sinking. Just use this value only when placing to fix bullets sparking on it.
+		if (inGetSizeToPlace)
+		{
+			outMaxSize.z = 73.0;
+		}
 		theSuccess = true;
 		break;
 
 	case BUILD_TURRET_FACTORY:
 		outMinSize = Vector(-16, -16, 0);
 		//outMaxSize = Vector(16.0, 16.0, 55.68);
-		outMaxSize = Vector(16.0, 16.0, 73.0 /*62.1931*/);
+		outMaxSize = Vector(16.0, 16.0, 55.68 /*62.1931*/);
+		// 2024 - NS3.1 changed to this value to prevent building placed in vents from sinking. Just use this value only when placing to fix bullets sparking on it.
+		if (inGetSizeToPlace)
+		{
+			outMaxSize.z = 73.0;
+		}
 		theSuccess = true;
 		break;
 
 	case BUILD_ARMORY:
 		outMinSize = Vector(-16, -16, 0);
-		outMaxSize = Vector(16.0, 16.0, 73.0 /*62.1931*/);
+		outMaxSize = Vector(16.0, 16.0, 62.1931);
+		// 2024 - NS3.1 changed to this value to prevent building placed in vents from sinking. Just use this value only when placing to fix bullets sparking on it.
+		if (inGetSizeToPlace)
+		{
+			outMaxSize.z = 73.0;
+		}
 		theSuccess = true;
 		break;
 
 	case BUILD_PROTOTYPE_LAB:
 		outMinSize = Vector(-16, -16, 0);
-		outMaxSize = Vector(16.0, 16.0, 73.0 /*67.7443*/);
+		outMaxSize = Vector(16.0, 16.0, 67.7443);
+		// 2024 - NS3.1 changed to this value to prevent building placed in vents from sinking. Just use this value only when placing to fix bullets sparking on it.
+		if (inGetSizeToPlace)
+		{
+			outMaxSize.z = 73.0;
+		}
 		theSuccess = true;
 		break;
 
@@ -1711,7 +1736,12 @@ bool AvHSHUGetSizeForTech(AvHMessageID inMessageID, Vector& outMinSize, Vector& 
 
 	case BUILD_SIEGE:
 		outMinSize = Vector(-16, -16, 0);
-		outMaxSize = Vector(16.0, 16.0, 73.0 /*62.1931*/ /*50.6678*/);
+		outMaxSize = Vector(16.0, 16.0, 50.6678 /*62.1931*/);
+		// 2024 - NS3.1 changed to this value to prevent building placed in vents from sinking. Just use this value only when placing to fix bullets sparking on it.
+		if (inGetSizeToPlace)
+		{
+			outMaxSize.z = 73.0;
+		}
 		theSuccess = true;
 		break;
 
@@ -1767,7 +1797,7 @@ bool AvHSHUGetSizeForTech(AvHMessageID inMessageID, Vector& outMinSize, Vector& 
 		theSuccess = true;
 		break;
 	}
-
+	
 	return theSuccess;
 }
 
