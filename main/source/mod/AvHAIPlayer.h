@@ -66,6 +66,8 @@ void BotClearEnemyTrackingInfo(enemy_status* TrackingInfo);
 bool IsPlayerInBotFOV(AvHAIPlayer* Observer, edict_t* TargetPlayer);
 void UpdateAIPlayerViewFrustum(AvHAIPlayer* pBot);
 
+float BotRateEnemyThreat(AvHAIPlayer* pBot, enemy_status* TrackingInfo);
+
 bool UTIL_IsCloakedPlayerInvisible(edict_t* Observer, AvHPlayer* Player);
 
 
@@ -181,5 +183,7 @@ bool OnosCombatThink(AvHAIPlayer* pBot);
 
 bool BombardierCombatThink(AvHAIPlayer* pBot);
 bool RegularMarineCombatThink(AvHAIPlayer* pBot);
+
+void DEBUG_PrintCombatInfo(AvHAIPlayer* pBot);
 
 #endif

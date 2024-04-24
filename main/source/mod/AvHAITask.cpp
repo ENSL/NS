@@ -1456,8 +1456,6 @@ void BotProgressReinforceStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	}
 
 	BotGuardLocation(pBot, (!vIsZero(Task->TaskLocation)) ? Task->TaskLocation : ReinforceLocation);
-
-
 }
 
 void BotProgressResupplyTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
@@ -1471,10 +1469,13 @@ void BotProgressResupplyTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		pBot->DesiredCombatWeapon = GetBotMarineSecondaryWeapon(pBot);
 	}
 
-	if (UTIL_PlayerHasLOSToEntity(pBot->Edict, Task->TaskTarget, max_player_use_reach, false))
+	bool bHasLOS = UTIL_PlayerHasLOSToEntity(pBot->Edict, Task->TaskTarget, UTIL_MetresToGoldSrcUnits(5.0f), false);
+	float DistToArmoury = vDist2DSq(pBot->Edict->v.origin, Task->TaskTarget->v.origin);
+
+	if (bHasLOS && DistToArmoury <= sqrf(max_player_use_reach))
 	{
 		BotUseObject(pBot, Task->TaskTarget, true);
-		if (vDist2DSq(pBot->Edict->v.origin, Task->TaskTarget->v.origin) > sqrf(50.0f))
+		if (DistToArmoury > sqrf(50.0f))
 		{
 			MoveDirectlyTo(pBot, Task->TaskTarget->v.origin);
 		}
@@ -1483,7 +1484,7 @@ void BotProgressResupplyTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	MoveTo(pBot, Task->TaskTarget->v.origin, MOVESTYLE_NORMAL);
 
-	if (vDist2DSq(pBot->Edict->v.origin, Task->TaskTarget->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
+	if (bHasLOS)
 	{
 		BotLookAt(pBot, UTIL_GetCentreOfEntity(Task->TaskTarget));
 	}

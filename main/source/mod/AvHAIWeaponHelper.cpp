@@ -1039,6 +1039,59 @@ BotAttackResult PerformAttackLOSCheck(AvHAIPlayer* pBot, const AvHAIWeapon Weapo
 	return ATTACK_SUCCESS;
 }
 
+BotAttackResult PerformAttackLOSCheck(AvHAIPlayer* pBot, const AvHAIWeapon Weapon, const Vector TargetLocation)
+{
+	if (!TargetLocation) { return ATTACK_INVALIDTARGET; }
+
+	if (Weapon == WEAPON_NONE) { return ATTACK_NOWEAPON; }
+
+	// Don't need aiming or special LOS checks for primal scream as it's AoE buff
+	if (Weapon == WEAPON_LERK_PRIMALSCREAM)
+	{
+		return ATTACK_SUCCESS;
+	}
+
+	// Add a LITTLE bit of give to avoid edge cases where the bot is a smidge out of range
+	float MaxWeaponRange = GetMaxIdealWeaponRange(Weapon) - 5.0f;
+
+	// Don't need aiming or special LOS checks for Xenocide as it's an AOE attack, just make sure we're close enough and don't have a wall in the way
+	if (Weapon == WEAPON_SKULK_XENOCIDE)
+	{
+		if (vDist3DSq(pBot->Edict->v.origin, TargetLocation) <= sqrf(MaxWeaponRange) && UTIL_QuickTrace(pBot->Edict, pBot->Edict->v.origin, TargetLocation))
+		{
+			return ATTACK_SUCCESS;
+		}
+		else
+		{
+			return ATTACK_OUTOFRANGE;
+		}
+	}
+
+	// For charge and stomp, we can go through stuff so don't need to check for being blocked
+	if (Weapon == WEAPON_ONOS_CHARGE || Weapon == WEAPON_ONOS_STOMP)
+	{
+		if (vDist3DSq(pBot->Edict->v.origin, TargetLocation) > sqrf(MaxWeaponRange)) { return ATTACK_OUTOFRANGE; }
+
+		if (!UTIL_QuickTrace(pBot->Edict, pBot->Edict->v.origin, TargetLocation) || fabsf(TargetLocation.z - TargetLocation.z) > 50.0f) { return ATTACK_OUTOFRANGE; }
+
+		return ATTACK_SUCCESS;
+	}
+
+	TraceResult hit;
+
+	Vector StartTrace = pBot->CurrentEyePosition;
+
+	Vector AttackDir = UTIL_GetVectorNormal(TargetLocation - StartTrace);
+
+	Vector EndTrace = pBot->CurrentEyePosition + (AttackDir * MaxWeaponRange);
+
+	if (vDist3DSq(StartTrace, EndTrace) < vDist3DSq(StartTrace, TargetLocation)) { return ATTACK_OUTOFRANGE; }
+
+	UTIL_TraceLine(StartTrace, EndTrace, dont_ignore_monsters, dont_ignore_glass, pBot->Edict->v.pContainingEntity, &hit);
+
+	return (hit.flFraction >= 1.0f) ? ATTACK_SUCCESS : ATTACK_BLOCKED;
+}
+
 BotAttackResult PerformAttackLOSCheck(AvHAIPlayer* pBot, const AvHAIWeapon Weapon, const Vector TargetLocation, const edict_t* Target)
 {
 	if (!TargetLocation) { return ATTACK_INVALIDTARGET; }
@@ -1085,23 +1138,12 @@ BotAttackResult PerformAttackLOSCheck(AvHAIPlayer* pBot, const AvHAIWeapon Weapo
 
 	Vector EndTrace = pBot->CurrentEyePosition + (AttackDir * MaxWeaponRange);
 
+	if (vDist3DSq(StartTrace, EndTrace) < vDist3DSq(StartTrace, TargetLocation)) { return ATTACK_OUTOFRANGE; }
+
 	UTIL_TraceLine(StartTrace, EndTrace, dont_ignore_monsters, dont_ignore_glass, pBot->Edict->v.pContainingEntity, &hit);
 
-	if (FNullEnt(hit.pHit)) { return ATTACK_OUTOFRANGE; }
+	return (hit.flFraction >= 1.0f || hit.pHit == Target) ? ATTACK_SUCCESS : ATTACK_BLOCKED;
 
-	if (hit.pHit != Target)
-	{
-		if (vDist3DSq(pBot->CurrentEyePosition, TargetLocation) > sqrf(MaxWeaponRange))
-		{
-			return ATTACK_OUTOFRANGE;
-		}
-		else
-		{
-			return ATTACK_BLOCKED;
-		}
-	}
-
-	return ATTACK_SUCCESS;
 }
 
 BotAttackResult PerformAttackLOSCheck(const Vector Location, const AvHAIWeapon Weapon, const edict_t* Target)

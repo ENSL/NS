@@ -7093,25 +7093,71 @@ void BotFollowPath(AvHAIPlayer* pBot)
 
 	if (IsPlayerStandingOnPlayer(pBot->Edict) && CurrentNode.flag != SAMPLE_POLYFLAGS_WALLCLIMB && CurrentNode.flag != SAMPLE_POLYFLAGS_LADDER)
 	{
-		if (pBot->Edict->v.groundentity->v.velocity.Length2D() > 10.0f)
+		Vector ForwardDir = UTIL_GetForwardVector2D(pBot->Edict->v.angles);
+		
+		bool bCanMoveBackwards = UTIL_QuickHullTrace(pBot->Edict, pBot->Edict->v.origin, pBot->Edict->v.origin - (ForwardDir * 50.0f));
+
+		if (bCanMoveBackwards)
 		{
-			pBot->desiredMovementDir = UTIL_GetVectorNormal2D(-pBot->Edict->v.groundentity->v.velocity);
+			pBot->desiredMovementDir = -ForwardDir;
 			return;
 		}
-		pBot->desiredMovementDir = -UTIL_GetForwardVector2D(pBot->Edict->v.angles);
-		return;
+		
+		bool bCanMoveForward = UTIL_QuickHullTrace(pBot->Edict, pBot->Edict->v.origin, pBot->Edict->v.origin + (ForwardDir * 50.0f));
+
+		if (bCanMoveForward)
+		{
+			pBot->desiredMovementDir = ForwardDir;
+			return;
+		}
+
+		// If we have a point we can go back to, and we can reach it, then go for it. Otherwise, keep pushing on and hope the other guy moves
+		if (!vIsZero(pBot->BotNavInfo.LastOpenLocation))
+		{
+			if (UTIL_PointIsReachable(pBot->BotNavInfo.NavProfile, pBot->Edict->v.origin, pBot->BotNavInfo.LastOpenLocation, GetPlayerRadius(pBot->Edict)))
+			{
+				NAV_SetMoveMovementTask(pBot, pBot->BotNavInfo.LastOpenLocation, nullptr);
+				return;
+			}
+		}
 	}
 
-	vector<AvHPlayer*> PotentialRiders = AITAC_GetAllPlayersOfTeamInArea(pBot->Player->GetTeam(), pBot->Edict->v.origin, pBot->Edict->v.size.Length(), false, pBot->Edict, AVH_USER3_NONE);
+	/*vector<AvHPlayer*> PotentialRiders = AITAC_GetAllPlayersOfTeamInArea(pBot->Player->GetTeam(), pBot->Edict->v.origin, pBot->Edict->v.size.Length(), false, pBot->Edict, AVH_USER3_NONE);
 
 	for (auto it = PotentialRiders.begin(); it != PotentialRiders.end(); it++)
 	{
 		if ((*it)->pev->groundentity == pBot->Edict)
 		{
-			pBot->desiredMovementDir = UTIL_GetForwardVector2D(pBot->Edict->v.angles);
-			return;
+			Vector ForwardDir = UTIL_GetForwardVector2D(pBot->Edict->v.angles);
+			bool bCanMoveForward = UTIL_QuickHullTrace(pBot->Edict, pBot->Edict->v.origin, pBot->Edict->v.origin + (ForwardDir * 50.0f));
+
+			if (bCanMoveForward)
+			{
+				pBot->desiredMovementDir = ForwardDir;
+				return;
+			}
+
+			bool bCanMoveBackwards = UTIL_QuickHullTrace(pBot->Edict, pBot->Edict->v.origin, pBot->Edict->v.origin - (ForwardDir * 50.0f));
+
+			if (bCanMoveBackwards)
+			{
+				pBot->desiredMovementDir = -ForwardDir;
+				return;
+			}
+
+			// If we have a point we can go back to, and we can reach it, then go for it. Otherwise, keep pushing on and hope the other guy moves
+			if (!vIsZero(pBot->BotNavInfo.LastOpenLocation))
+			{
+				if (UTIL_PointIsReachable(pBot->BotNavInfo.NavProfile, pBot->Edict->v.origin, pBot->BotNavInfo.LastOpenLocation, GetPlayerRadius(pBot->Edict)))
+				{
+					NAV_SetMoveMovementTask(pBot, pBot->BotNavInfo.LastOpenLocation, nullptr);
+					return;
+				}
+			}
+
+
 		}
-	}
+	}*/
 
 	if (IsPlayerLerk(pBot->Edict))
 	{

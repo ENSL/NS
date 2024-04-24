@@ -478,26 +478,24 @@ typedef struct _BOT_PATH_NODE
 // Represents a bot's current understanding of an enemy player's status
 typedef struct _ENEMY_STATUS
 {
-	AvHPlayer* EnemyPlayer = nullptr;
-	edict_t* EnemyEdict = nullptr; // Reference to the enemy player edict
-	Vector LastVisibleLocation = g_vecZero; // The last point the bot saw the target
-	Vector LastSeenLocation = g_vecZero; // The last visibly-confirmed location of the player or tracked location (if parasited / motion tracked)
-	Vector LastFloorPosition = g_vecZero; // Nearest point on the floor where the enemy was (for moving towards it)
-	Vector LastSeenVelocity = g_vecZero; // Last visibly-confirmed movement direction of the player
-	Vector PendingSeenLocation = g_vecZero; // The last visibly-confirmed location of the player
-	Vector PendingSeenVelocity = g_vecZero; // Last visibly-confirmed movement direction of the player
-	Vector LastLOSPosition = g_vecZero; // The last position where the bot has LOS to the enemy
-	Vector LastHiddenPosition = g_vecZero; // The last position where the bot did NOT have LOS to the enemy
-	float LastSeenTime = 0.0f; // Last time the bot saw the player (not tracked)
-	float LastTrackedTime = 0.0f; // Last time the bot saw the player (tracked position)
-	//bool bInFOV = false; // Is the player in the bot's FOV
-	bool bHasLOS = false; // Does the bot have LOS to the target
-	bool bIsVisible = false; // Enemy is in FOV and has LOS
-	bool bIsAwareOfPlayer = false; // Is the bot aware of this player's presence?
-	float NextUpdateTime = 0.0f; // When the bot can next react to a change in target's state
-	float NextVelocityUpdateTime = 0.0f; // When the bot can next react to a change in target's state
-	float EndTrackingTime = 0.0f; // When to stop "sensing" enemy movement after losing LOS
-	float CertaintyOfLocation = 0.0f; // How sure the bot is where the enemy is if they're cloaked
+	AvHPlayer* PlayerRef = nullptr; // Reference to the enemy AvHPlayer
+	edict_t* PlayerEdict = nullptr; // Reference to the enemy player edict
+
+	Vector LastDetectedLocation = g_vecZero; // Where the bot last detected the enemy, either through sight, motion tracking or sound
+	Vector LastVisibleLocation = g_vecZero;  // Last point the bot had visible confirmation of the enemy
+	Vector LastKnownVelocity = g_vecZero;
+	Vector VisiblePointOnPlayer = g_vecZero;
+	float AwarenessOfPlayer = 0.0f;			 // How aware of this enemy the bot is
+	float LastDetectedTime = 0.0f;			 // When the bot last saw the enemy or they pinged on motion tracking
+	float InitialAwarenessTime = 0.0f;			 // When the bot first became aware of the enemy
+	float LastVisibleTime = 0.0f;			// Last time the bot actually saw the enemy
+	float EnemyThreatLevel = 0.0f;
+
+	bool bHasLOS = false;					 // Does the bot has LOS of the enemy?
+	bool bEnemyHasLOS = false;
+
+	Vector LastLOSPosition = g_vecZero;
+	Vector LastCoverPosition = g_vecZero;
 
 } enemy_status;
 
