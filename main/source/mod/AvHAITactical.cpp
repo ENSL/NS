@@ -89,6 +89,7 @@ std::vector<AvHAIBuildableStructure> AITAC_FindAllDeployables(const Vector& Loca
 
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+			if (it.second.Purpose != Filter->PurposeFlags && (it.second.Purpose & Filter->PurposeFlags) != it.second.Purpose) { continue; }
 
 			if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE)
 			{
@@ -122,6 +123,7 @@ std::vector<AvHAIBuildableStructure> AITAC_FindAllDeployables(const Vector& Loca
 
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+			if (it.second.Purpose != Filter->PurposeFlags && (it.second.Purpose & Filter->PurposeFlags) != it.second.Purpose) { continue; }
 
 			if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE)
 			{
@@ -173,6 +175,7 @@ std::vector<AvHAIBuildableStructure*> AITAC_FindAllDeployablesByRef(const Vector
 
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+			if (it.second.Purpose != Filter->PurposeFlags && (it.second.Purpose & Filter->PurposeFlags) != it.second.Purpose) { continue; }
 
 			if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE)
 			{
@@ -206,6 +209,7 @@ std::vector<AvHAIBuildableStructure*> AITAC_FindAllDeployablesByRef(const Vector
 
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+			if (it.second.Purpose != Filter->PurposeFlags && (it.second.Purpose & Filter->PurposeFlags) != it.second.Purpose) { continue; }
 
 			if (Filter->ReachabilityFlags != AI_REACHABILITY_NONE)
 			{
@@ -253,6 +257,7 @@ bool AITAC_DeployableExistsAtLocation(const Vector& Location, const DeployableSe
 
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+			if (it.second.Purpose != Filter->PurposeFlags && (it.second.Purpose & Filter->PurposeFlags) != it.second.Purpose) { continue; }
 
 			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
 
@@ -283,6 +288,7 @@ bool AITAC_DeployableExistsAtLocation(const Vector& Location, const DeployableSe
 
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+			if (it.second.Purpose != Filter->PurposeFlags && (it.second.Purpose & Filter->PurposeFlags) != it.second.Purpose) { continue; }
 
 			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
 
@@ -331,6 +337,7 @@ AvHAIBuildableStructure	AITAC_FindClosestDeployableToLocation(const Vector& Loca
 			if (!(it.second.StructureType & Filter->DeployableTypes)) { continue; }
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+			if (it.second.Purpose != Filter->PurposeFlags && (it.second.Purpose & Filter->PurposeFlags) != it.second.Purpose) { continue; }
 
 			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
 
@@ -360,6 +367,7 @@ AvHAIBuildableStructure	AITAC_FindClosestDeployableToLocation(const Vector& Loca
 			if (!(it.second.StructureType & Filter->DeployableTypes)) { continue; }
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+			if (it.second.Purpose != Filter->PurposeFlags && (it.second.Purpose & Filter->PurposeFlags) != it.second.Purpose) { continue; }
 
 			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
 
@@ -405,7 +413,8 @@ AvHAIBuildableStructure* AITAC_FindClosestDeployableToLocationByRef(const Vector
 
 			if (!(it.second.StructureType & Filter->DeployableTypes)) { continue; }
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
-			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }			
+			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }	
+			if (it.second.Purpose != Filter->PurposeFlags && (it.second.Purpose & Filter->PurposeFlags) != it.second.Purpose) { continue; }
 
 			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
 
@@ -435,6 +444,7 @@ AvHAIBuildableStructure* AITAC_FindClosestDeployableToLocationByRef(const Vector
 			if (!(it.second.StructureType & Filter->DeployableTypes)) { continue; }
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+			if (it.second.Purpose != Filter->PurposeFlags && (it.second.Purpose & Filter->PurposeFlags) != it.second.Purpose) { continue; }
 			
 			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
 
@@ -481,6 +491,7 @@ AvHAIBuildableStructure AITAC_FindFurthestDeployableFromLocation(const Vector& L
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
 			if (!(it.second.StructureType & Filter->DeployableTypes)) { continue; }
+			if (it.second.Purpose != Filter->PurposeFlags && (it.second.Purpose & Filter->PurposeFlags) != it.second.Purpose) { continue; }
 
 			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
 
@@ -510,6 +521,7 @@ AvHAIBuildableStructure AITAC_FindFurthestDeployableFromLocation(const Vector& L
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
 			if (!(it.second.StructureType & Filter->DeployableTypes)) { continue; }
+			if (it.second.Purpose != Filter->PurposeFlags && (it.second.Purpose & Filter->PurposeFlags) != it.second.Purpose) { continue; }
 
 			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
 
@@ -556,6 +568,7 @@ AvHAIBuildableStructure* AITAC_FindFurthestDeployableFromLocationByRef(const Vec
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
 			if (!(it.second.StructureType & Filter->DeployableTypes)) { continue; }
+			if (it.second.Purpose != Filter->PurposeFlags && (it.second.Purpose & Filter->PurposeFlags) != it.second.Purpose) { continue; }
 
 			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
 
@@ -585,6 +598,7 @@ AvHAIBuildableStructure* AITAC_FindFurthestDeployableFromLocationByRef(const Vec
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
 			if (!(it.second.StructureType & Filter->DeployableTypes)) { continue; }
+			if (it.second.Purpose != Filter->PurposeFlags && (it.second.Purpose & Filter->PurposeFlags) != it.second.Purpose) { continue; }
 
 			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
 
@@ -787,6 +801,7 @@ AvHAIBuildableStructure AITAC_GetNearestDeployableDirectlyReachable(AvHAIPlayer*
 
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+			if (it.second.Purpose != Filter->PurposeFlags && (it.second.Purpose & Filter->PurposeFlags) != it.second.Purpose) { continue; }
 
 			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
 
@@ -820,6 +835,7 @@ AvHAIBuildableStructure AITAC_GetNearestDeployableDirectlyReachable(AvHAIPlayer*
 
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+			if (it.second.Purpose != Filter->PurposeFlags && (it.second.Purpose & Filter->PurposeFlags) != it.second.Purpose) { continue; }
 
 			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
 
@@ -870,6 +886,7 @@ AvHAIBuildableStructure* AITAC_GetNearestDeployableDirectlyReachableByRef(AvHAIP
 
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+			if (it.second.Purpose != Filter->PurposeFlags && (it.second.Purpose & Filter->PurposeFlags) != it.second.Purpose) { continue; }
 
 			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
 
@@ -903,6 +920,7 @@ AvHAIBuildableStructure* AITAC_GetNearestDeployableDirectlyReachableByRef(AvHAIP
 
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+			if (it.second.Purpose != Filter->PurposeFlags && (it.second.Purpose & Filter->PurposeFlags) != it.second.Purpose) { continue; }
 
 			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
 
@@ -952,6 +970,7 @@ int AITAC_GetNumDeployablesNearLocation(const Vector& Location, const Deployable
 
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+			if (it.second.Purpose != Filter->PurposeFlags && (it.second.Purpose & Filter->PurposeFlags) != it.second.Purpose) { continue; }
 
 			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
 
@@ -982,6 +1001,7 @@ int AITAC_GetNumDeployablesNearLocation(const Vector& Location, const Deployable
 
 			if (it.second.StructureStatusFlags & Filter->ExcludeStatusFlags) { continue; }
 			if ((it.second.StructureStatusFlags & Filter->IncludeStatusFlags) != Filter->IncludeStatusFlags) { continue; }
+			if (it.second.Purpose != Filter->PurposeFlags && (it.second.Purpose & Filter->PurposeFlags) != it.second.Purpose) { continue; }
 
 			unsigned int StructureReachabilityFlags = (it.second.TeamAReachabilityFlags | it.second.TeamBReachabilityFlags);
 

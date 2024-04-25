@@ -371,7 +371,7 @@ dtStatus FindPathClosestToPoint(const nav_profile& NavProfile, const Vector From
 dtStatus DEBUG_TestFindPath(const nav_profile& NavProfile, const Vector FromLocation, const Vector ToLocation, vector<bot_path_node>& path, float MaxAcceptableDistance);
 
 // If the bot is stuck and off the path or nav mesh, this will try to find a point it can directly move towards to get it back on track
-Vector FindClosestPointBackOnPath(AvHAIPlayer* pBot);
+Vector FindClosestPointBackOnPath(AvHAIPlayer* pBot, Vector Destination);
 
 Vector FindClosestNavigablePointToDestination(const nav_profile& NavProfile, const Vector FromLocation, const Vector ToLocation, float MaxAcceptableDistance);
 

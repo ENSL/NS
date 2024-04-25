@@ -59,4 +59,8 @@ void UTIL_DrawHUDText(edict_t* pEntity, char channel, float x, float y, unsigned
 void UTIL_ClearLocalizations();
 void UTIL_LocalizeText(const char* InputText, string& OutputText);
 
+char* UTIL_TaskTypeToChar(const BotTaskType TaskType);
+
+char* UTIL_BotRoleToChar(const AvHAIBotRole Role);
+
 #endif

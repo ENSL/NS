@@ -864,8 +864,9 @@ bool AITASK_IsReinforceStructureTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTas
 	if (!FNullEnt(Task->TaskSecondaryTarget) && !UTIL_StructureIsFullyBuilt(Task->TaskSecondaryTarget)) { return true; }
 
 	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
 
-	if (Task->TaskTarget->v.team != BotTeam) { return false; }
+	if (Task->TaskTarget->v.team == EnemyTeam) { return false; }
 
 	// The reinforce structure task is true if we have an undecided hive available that we could build a new chamber with
 	bool bActiveHiveWithoutTechExists = AITAC_TeamHiveWithTechExists(pBot->Player->GetTeam(), MESSAGE_NULL);

@@ -184,6 +184,7 @@ bool OnosCombatThink(AvHAIPlayer* pBot);
 bool BombardierCombatThink(AvHAIPlayer* pBot);
 bool RegularMarineCombatThink(AvHAIPlayer* pBot);
 
+void DEBUG_PrintTaskInfo(AvHAIPlayer* pBot);
 void DEBUG_PrintCombatInfo(AvHAIPlayer* pBot);
 
 #endif

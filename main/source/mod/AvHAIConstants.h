@@ -169,8 +169,11 @@ typedef enum
 typedef enum _STRUCTUREPURPOSE
 {
 	STRUCTURE_PURPOSE_NONE = 0,
-	STRUCTURE_PURPOSE_SIEGE,
-	STRUCTURE_PURPOSE_FORTIFY
+	STRUCTURE_PURPOSE_GENERAL = 1u,
+	STRUCTURE_PURPOSE_SIEGE = 1u << 1,
+	STRUCTURE_PURPOSE_FORTIFY = 1u << 2,
+	STRUCTURE_PURPOSE_BASE = 1u << 3,
+	STRUCTURE_PURPOSE_ANY = -1
 
 } StructurePurpose;
 
@@ -308,6 +311,7 @@ typedef struct _DEPLOYABLE_SEARCH_FILTER
 	bool bConsiderPhaseDistance = false;
 	AvHTeamNumber DeployableTeam = TEAM_IND;
 	AvHTeamNumber ReachabilityTeam = TEAM_IND;
+	unsigned int PurposeFlags = STRUCTURE_PURPOSE_ANY;
 } DeployableSearchFilter;
 
 // Pending message a bot wants to say. Allows for a delay in sending a message to simulate typing, or prevent too many messages on the same frame
@@ -350,7 +354,7 @@ typedef struct _AVH_AI_BUILDABLE_STRUCTURE
 	vector<AvHAIOffMeshConnection> OffMeshConnections; // References to any off-mesh connections this structure is associated with
 	Vector LastSuccessfulCommanderLocation = g_vecZero; // Tracks the last commander view location where it successfully placed or selected the building
 	Vector LastSuccessfulCommanderAngle = g_vecZero; // Tracks the last commander input angle ("click" location) used to successfully place or select building
-	StructurePurpose Purpose = STRUCTURE_PURPOSE_NONE;
+	StructurePurpose Purpose = STRUCTURE_PURPOSE_GENERAL;
 	bool bReachabilityMarkedDirty = false; // If true, reachability flags will be recalculated for this structure
 
 	bool IsValid() { return !FNullEnt(edict) && !edict->free && !(edict->v.flags & EF_NODRAW) && edict->v.deadflag == DEAD_NO; }
@@ -489,7 +493,7 @@ typedef struct _ENEMY_STATUS
 	float LastDetectedTime = 0.0f;			 // When the bot last saw the enemy or they pinged on motion tracking
 	float InitialAwarenessTime = 0.0f;			 // When the bot first became aware of the enemy
 	float LastVisibleTime = 0.0f;			// Last time the bot actually saw the enemy
-	float EnemyThreatLevel = 0.0f;
+	float EnemyThreatLevel = 0.0f;			// Generally, >=3.0 means actively fighting them, >=2.0 means visible and close, >=1.0 means not visible but close and <1.0 means they can be heard but not close
 
 	bool bHasLOS = false;					 // Does the bot has LOS of the enemy?
 	bool bEnemyHasLOS = false;

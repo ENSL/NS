@@ -392,8 +392,8 @@ bool BotReloadWeapons(AvHAIPlayer* pBot)
 	if (IsPlayerReloading(pBot->Player))
 	{
 		pBot->DesiredCombatWeapon = GetPlayerCurrentWeapon(pBot->Player);
+		return true;
 	}
-
 
 	AvHAIWeapon PrimaryWeapon = UTIL_GetPlayerPrimaryWeapon(pBot->Player);
 	AvHAIWeapon SecondaryWeapon = GetBotMarineSecondaryWeapon(pBot);
@@ -2172,8 +2172,25 @@ void UpdateAIMarinePlayerNSRole(AvHAIPlayer* pBot)
 
 	int NumSweeperBots = AIMGR_GetNumAIPlayersWithRoleOnTeam(BotTeamNumber, BOT_ROLE_SWEEPER, pBot);
 
+	int NumDesiredSweeperBots = 1;
+
+	if (NumSweeperBots < 2)
+	{
+		DeployableSearchFilter DefenceStructuresFilter;
+		DefenceStructuresFilter.DeployableTeam = BotTeamNumber;
+		DefenceStructuresFilter.DeployableTypes = (STRUCTURE_MARINE_TURRET | STRUCTURE_MARINE_OBSERVATORY);
+		DefenceStructuresFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+		DefenceStructuresFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+		DefenceStructuresFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
+
+		if (!AITAC_DeployableExistsAtLocation(AITAC_GetTeamStartingLocation(BotTeamNumber), &DefenceStructuresFilter))
+		{
+			NumDesiredSweeperBots = 2;
+		}
+	}
+
 	// Always have a sweeper
-	if (NumSweeperBots < 1)
+	if (NumSweeperBots < NumDesiredSweeperBots)
 	{
 		SetNewAIPlayerRole(pBot, BOT_ROLE_SWEEPER);
 		return;
@@ -2208,18 +2225,18 @@ void AIPlayerNSThink(AvHAIPlayer* pBot)
 {
 	AvHTeam* BotTeam = GetGameRules()->GetTeam(pBot->Player->GetTeam());
 
-	if (!BotTeam) { return; }
+if (!BotTeam) { return; }
 
-	pBot->CurrentEnemy = BotGetNextEnemyTarget(pBot);
+pBot->CurrentEnemy = BotGetNextEnemyTarget(pBot);
 
-	if (BotTeam->GetTeamType() == AVH_CLASS_TYPE_MARINE)
-	{
-		AIPlayerNSMarineThink(pBot);
-	}
-	else
-	{
-		AIPlayerNSAlienThink(pBot);
-	}
+if (BotTeam->GetTeamType() == AVH_CLASS_TYPE_MARINE)
+{
+	AIPlayerNSMarineThink(pBot);
+}
+else
+{
+	AIPlayerNSAlienThink(pBot);
+}
 }
 
 int BotGetNextEnemyTarget(AvHAIPlayer* pBot)
@@ -2266,18 +2283,18 @@ AvHAICombatStrategy GetAlienCombatStrategyForTarget(AvHAIPlayer* pBot, enemy_sta
 
 	switch (PlayerUser3)
 	{
-		case AVH_USER3_ALIEN_PLAYER1:
-			return GetSkulkCombatStrategyForTarget(pBot, CurrentEnemy);
-		case AVH_USER3_ALIEN_PLAYER2:
-			return GetGorgeCombatStrategyForTarget(pBot, CurrentEnemy);
-		case AVH_USER3_ALIEN_PLAYER3:
-			return GetLerkCombatStrategyForTarget(pBot, CurrentEnemy);
-		case AVH_USER3_ALIEN_PLAYER4:
-			return GetFadeCombatStrategyForTarget(pBot, CurrentEnemy);
-		case AVH_USER3_ALIEN_PLAYER5:
-			return GetOnosCombatStrategyForTarget(pBot, CurrentEnemy);
-		default:
-			return COMBAT_STRATEGY_IGNORE;
+	case AVH_USER3_ALIEN_PLAYER1:
+		return GetSkulkCombatStrategyForTarget(pBot, CurrentEnemy);
+	case AVH_USER3_ALIEN_PLAYER2:
+		return GetGorgeCombatStrategyForTarget(pBot, CurrentEnemy);
+	case AVH_USER3_ALIEN_PLAYER3:
+		return GetLerkCombatStrategyForTarget(pBot, CurrentEnemy);
+	case AVH_USER3_ALIEN_PLAYER4:
+		return GetFadeCombatStrategyForTarget(pBot, CurrentEnemy);
+	case AVH_USER3_ALIEN_PLAYER5:
+		return GetOnosCombatStrategyForTarget(pBot, CurrentEnemy);
+	default:
+		return COMBAT_STRATEGY_IGNORE;
 	}
 }
 
@@ -2305,7 +2322,15 @@ AvHAICombatStrategy GetSkulkCombatStrategyForTarget(AvHAIPlayer* pBot, enemy_sta
 			return COMBAT_STRATEGY_ATTACK;
 		}
 
-		if (CurrentEnemy->EnemyThreatLevel < 2.0f && (gpGlobals->time - CurrentEnemy->LastVisibleTime > 5.0f))
+		if (pBot->CurrentTask->TaskType == TASK_EVOLVE)
+		{
+			if (CurrentEnemy->EnemyThreatLevel < 3.0f || !CurrentEnemy->bHasLOS)
+			{
+				return COMBAT_STRATEGY_IGNORE;
+			}
+		}
+
+		if (CurrentEnemy->EnemyThreatLevel < 2.0f && gpGlobals->time - CurrentEnemy->LastVisibleTime > 5.0f)
 		{
 			return COMBAT_STRATEGY_IGNORE;
 		}
@@ -3698,9 +3723,42 @@ void AIPlayerSetMarineAssaultPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Tas
 	{
 		DeployableSearchFilter AnyEnemyStuff;
 		AnyEnemyStuff.DeployableTeam = EnemyTeam;
-		AnyEnemyStuff.DeployableTypes = SEARCH_ALL_STRUCTURES;
+		AnyEnemyStuff.DeployableTypes = SEARCH_ANY_RES_TOWER;
 		AnyEnemyStuff.ReachabilityTeam = BotTeam;
 		AnyEnemyStuff.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+
+		AvHAIBuildableStructure EnemyRT = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &AnyEnemyStuff);
+
+		if (EnemyRT.IsValid())
+		{
+			AITASK_SetAttackTask(pBot, Task, EnemyRT.edict, false);
+			return;
+		}
+
+		if (AIMGR_GetEnemyTeamType(EnemyTeam) == AVH_CLASS_TYPE_ALIEN)
+		{
+			const AvHAIHiveDefinition* ActiveHive = AITAC_GetActiveHiveNearestLocation(AIMGR_GetEnemyTeam(BotTeam), pBot->Edict->v.origin);
+
+			if (ActiveHive)
+			{
+				AITASK_SetAttackTask(pBot, Task, ActiveHive->HiveEdict, false);
+				return;
+			}
+		}
+		else
+		{
+			AnyEnemyStuff.DeployableTypes = STRUCTURE_MARINE_COMMCHAIR;
+
+			AvHAIBuildableStructure EnemyCommChair = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &AnyEnemyStuff);
+
+			if (EnemyCommChair.IsValid())
+			{
+				AITASK_SetAttackTask(pBot, Task, EnemyCommChair.edict, false);
+				return;
+			}
+		}
+
+		AnyEnemyStuff.DeployableTypes = SEARCH_ALL_STRUCTURES;
 
 		AvHAIBuildableStructure EnemyStructure = AITAC_FindClosestDeployableToLocation(pBot->Edict->v.origin, &AnyEnemyStuff);
 
@@ -3723,10 +3781,6 @@ void AIPlayerSetMarineBombardierPrimaryTask(AvHAIPlayer* pBot, AvHAIPlayerTask* 
 
 void AIPlayerSetWantsAndNeedsCOMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
-	if (gpGlobals->time - pBot->LastCombatTime > 5.0f)
-	{
-		if (BotReloadWeapons(pBot)) { return; }
-	}
 
 	if (Task->TaskType == TASK_RESUPPLY) { return; }
 
@@ -3774,10 +3828,6 @@ void AIPlayerSetWantsAndNeedsCOMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Ta
 
 void AIPlayerSetWantsAndNeedsMarineTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
-	if (gpGlobals->time - pBot->LastCombatTime > 5.0f)
-	{
-		if (BotReloadWeapons(pBot)) { return; }
-	}
 
 	if (Task->TaskType == TASK_RESUPPLY || Task->TaskType == TASK_GET_HEALTH || Task->TaskType == TASK_GET_AMMO) { return; }
 
@@ -5479,25 +5529,8 @@ void AIPlayerThink(AvHAIPlayer* pBot)
 
 		AIDEBUG_DrawBotPath(pBot);
 
-		if (pBot->BotNavInfo.CurrentPath.size() > 0 && pBot->BotNavInfo.CurrentPathPoint < pBot->BotNavInfo.CurrentPath.size())
-		{
-			bot_path_node CurrentPathNode = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint];
-			UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, CurrentPathNode.FromLocation, 255, 0, 0);
-			UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, CurrentPathNode.Location, 0, 128, 0);
-		}
-
-		if (pBot->CurrentTask && pBot->CurrentTask->TaskType != TASK_NONE)
-		{
-			if (!FNullEnt(pBot->CurrentTask->TaskTarget))
-			{
-				UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, pBot->CurrentTask->TaskTarget->v.origin, 255, 0, 0);
-			}
-
-			if (!vIsZero(pBot->CurrentTask->TaskLocation))
-			{
-				UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, pBot->CurrentTask->TaskLocation, 255, 0, 0);
-			}
-		}
+		DEBUG_PrintTaskInfo(pBot);
+		//DEBUG_PrintCombatInfo(pBot);
 	}
 #endif
 
@@ -6987,6 +7020,12 @@ void AIPlayerSetSecondaryAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		return;
 	}
 
+	if (pBot->PrimaryBotTask.TaskType == TASK_EVOLVE)
+	{
+		AITASK_ClearBotTask(pBot, &pBot->SecondaryBotTask);
+		return;
+	}
+
 	vector<AvHAIHiveDefinition*> AllHives = AITAC_GetAllTeamHives(BotTeam, false);
 
 	AvHAIHiveDefinition* HiveToDefend = nullptr;
@@ -7101,6 +7140,21 @@ void AIPlayerSetSecondaryAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	{
 		if (vDist2DSq(pBot->Edict->v.origin, Task->TaskTarget->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(20.0f)))
 		{
+			return;
+		}
+	}
+
+	if (pBot->PrimaryBotTask.TaskType == TASK_CAP_RESNODE)
+	{
+		float ResourceCost = BALANCE_VAR(kResourceTowerCost);
+		if (!IsPlayerGorge(pBot->Edict))
+		{
+			ResourceCost += BALANCE_VAR(kGorgeCost);
+		}
+
+		if (pBot->Player->GetResources() >= ResourceCost)
+		{
+			AITASK_ClearBotTask(pBot, &pBot->SecondaryBotTask);
 			return;
 		}
 	}
@@ -7612,6 +7666,8 @@ bool GorgeCombatThink(AvHAIPlayer* pBot)
 
 	float CurrentHealthPercent = GetPlayerOverallHealthPercent(pBot->Edict);
 
+	bool bPlayerCloaked = UTIL_IsCloakedPlayerInvisible(CurrentEnemy, pBot->Player);
+
 	if (pBot->CurrentCombatStrategy == COMBAT_STRATEGY_RETREAT)
 	{
 		BotAttackResult AttackResult = PerformAttackLOSCheck(pBot, WEAPON_GORGE_SPIT, CurrentEnemy);
@@ -7631,19 +7687,24 @@ bool GorgeCombatThink(AvHAIPlayer* pBot)
 
 			if (!bInHealingRange)
 			{
+				pBot->BotNavInfo.bShouldWalk = bPlayerCloaked && TrackedEnemyRef->bEnemyHasLOS;
+
 				MoveTo(pBot, UTIL_GetEntityGroundLocation(NearestHealingSource), MOVESTYLE_NORMAL, DesiredDistFromHealingSource);
 
-				if (CurrentHealthPercent > 0.5f && AttackResult == ATTACK_SUCCESS)
+				if (!bPlayerCloaked)
 				{
-					BotShootTarget(pBot, WEAPON_GORGE_SPIT, CurrentEnemy);
-				}
-				else
-				{
-					pBot->DesiredCombatWeapon = WEAPON_GORGE_HEALINGSPRAY;
-
-					if (GetPlayerCurrentWeapon(pBot->Player) == WEAPON_GORGE_HEALINGSPRAY)
+					if (CurrentHealthPercent > 0.5f && AttackResult == ATTACK_SUCCESS)
 					{
-						pBot->Button |= IN_ATTACK;
+						BotShootTarget(pBot, WEAPON_GORGE_SPIT, CurrentEnemy);
+					}
+					else
+					{
+						pBot->DesiredCombatWeapon = WEAPON_GORGE_HEALINGSPRAY;
+
+						if (GetPlayerCurrentWeapon(pBot->Player) == WEAPON_GORGE_HEALINGSPRAY)
+						{
+							pBot->Button |= IN_ATTACK;
+						}
 					}
 				}
 
@@ -7660,6 +7721,21 @@ bool GorgeCombatThink(AvHAIPlayer* pBot)
 				}
 
 				BotMovementInputs(pBot);
+
+				return true;
+			}
+
+			// If we're invisible and healing, do nothing. Don't give our position away
+			if (bPlayerCloaked)
+			{
+				if (TrackedEnemyRef->bHasLOS)
+				{
+					BotLookAt(pBot, TrackedEnemyRef->LastDetectedLocation);
+				}
+				else
+				{
+					BotLookAt(pBot, TrackedEnemyRef->LastLOSPosition);
+				}
 
 				return true;
 			}
@@ -8385,6 +8461,66 @@ bool OnosCombatThink(AvHAIPlayer* pBot)
 	return true;
 }
 
+void DEBUG_PrintTaskInfo(AvHAIPlayer* pBot)
+{
+	char buf[511];
+	char interbuf[164];
+
+	sprintf(buf, "Task info for %s:\n\n", STRING(pBot->Edict->v.netname));
+
+	sprintf(interbuf, "Role: %s\n\n", UTIL_BotRoleToChar(pBot->BotRole));
+	strcat(buf, interbuf);
+
+	if (IsPlayerMarine(pBot->Edict))
+	{
+		const char* CommanderTask = UTIL_TaskTypeToChar(pBot->CommanderTask.TaskType);
+
+		sprintf(interbuf, "Commander-Issued: %s\n", CommanderTask);
+		strcat(buf, interbuf);
+	}
+
+	const char* PrimaryTask = UTIL_TaskTypeToChar(pBot->PrimaryBotTask.TaskType);
+
+	sprintf(interbuf, "Primary: %s\n", PrimaryTask);
+	strcat(buf, interbuf);
+
+	const char* SecondaryTask = UTIL_TaskTypeToChar(pBot->SecondaryBotTask.TaskType);
+
+	sprintf(interbuf, "Secondary: %s\n", SecondaryTask);
+	strcat(buf, interbuf);
+
+	const char* WantAndNeedTask = UTIL_TaskTypeToChar(pBot->WantsAndNeedsTask.TaskType);
+
+	sprintf(interbuf, "Want/Need: %s\n\n", WantAndNeedTask);
+	strcat(buf, interbuf);
+
+	if (pBot->CurrentTask)
+	{
+		const char* CurrentTask = UTIL_TaskTypeToChar(pBot->CurrentTask->TaskType);
+
+		sprintf(interbuf, "Current: %s\n\n", CurrentTask);
+		strcat(buf, interbuf);
+	}
+
+	if (pBot->CurrentTask && pBot->CurrentTask->TaskType != TASK_NONE)
+	{
+		sprintf(interbuf, "Red = Target, Yellow = Location\n");
+		strcat(buf, interbuf);
+
+		if (!FNullEnt(pBot->CurrentTask->TaskTarget))
+		{
+			UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, pBot->CurrentTask->TaskTarget->v.origin, 255, 0, 0);
+		}
+
+		if (!vIsZero(pBot->CurrentTask->TaskLocation))
+		{
+			UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, pBot->CurrentTask->TaskLocation, 255, 255, 0);
+		}
+	}
+
+	UTIL_DrawHUDText(INDEXENT(1), 0, 0.1f, 0.1f, 255, 255, 255, buf);
+}
+
 void DEBUG_PrintCombatInfo(AvHAIPlayer* pBot)
 {
 	char buf[511];
@@ -8396,18 +8532,18 @@ void DEBUG_PrintCombatInfo(AvHAIPlayer* pBot)
 
 	if (TrackedEnemy < 0)
 	{
-		sprintf(interbuf, "Biggest threat: NONE\n\n");
+		sprintf(interbuf, "Main Threat: NONE\n\n");
 	}
 	else
 	{
-		sprintf(interbuf, "Biggest threat: %s\n\n", STRING(pBot->TrackedEnemies[TrackedEnemy].PlayerEdict->v.netname));
+		sprintf(interbuf, "Main Threat: %s\n\n", STRING(pBot->TrackedEnemies[TrackedEnemy].PlayerEdict->v.netname));
 	}
 		
 	strcat(buf, interbuf);
 
 	if (TrackedEnemy < 0)
 	{
-		UTIL_DrawHUDText(INDEXENT(1), 0, 0.1f, 0.1f, 255, 255, 255, buf);
+		UTIL_DrawHUDText(INDEXENT(1), 0, 0.6f, 0.1f, 255, 255, 255, buf);
 		return;
 	}
 
@@ -8434,24 +8570,40 @@ void DEBUG_PrintCombatInfo(AvHAIPlayer* pBot)
 
 	strcat(buf, interbuf);
 
-	sprintf(interbuf, "Threat: %.2f\n", TrackedInfo->EnemyThreatLevel);
+	sprintf(interbuf, "Threat: %.2f\n\n", TrackedInfo->EnemyThreatLevel);
 	strcat(buf, interbuf);
 
-	UTIL_DrawHUDText(INDEXENT(1), 0, 0.1f, 0.1f, 255, 255, 255, buf);
+	AvHAICombatStrategy CurrentStrategy = GetBotCombatStrategyForTarget(pBot, TrackedInfo);
+
+	switch (CurrentStrategy)
+	{
+		case COMBAT_STRATEGY_AMBUSH:
+			sprintf(interbuf, "Strategy: Ambush\n");
+			break;
+		case COMBAT_STRATEGY_ATTACK:
+			sprintf(interbuf, "Strategy: Attack\n");
+			break;
+		case COMBAT_STRATEGY_IGNORE:
+			sprintf(interbuf, "Strategy: Ignore\n");
+			break;
+		case COMBAT_STRATEGY_RETREAT:
+			sprintf(interbuf, "Strategy: Retreat\n");
+			break;
+		case COMBAT_STRATEGY_SKIRMISH:
+			sprintf(interbuf, "Strategy: Skirmish\n");
+			break;
+		default:
+			sprintf(interbuf, "Strategy: None\n");
+			break;
+	}
+
+	strcat(buf, interbuf);
+
+	UTIL_DrawHUDText(INDEXENT(1), 0, 0.6f, 0.1f, 255, 255, 255, buf);
 
 	if (!vIsZero(TrackedInfo->LastDetectedLocation))
 	{
 		UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, TrackedInfo->LastDetectedLocation, 255, 0, 0);
-	}
-
-	if (!vIsZero(TrackedInfo->LastLOSPosition))
-	{
-		UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, TrackedInfo->LastLOSPosition - Vector(0.0f, 0.0f, 5.0f), 255, 255, 0);
-	}
-
-	if (!vIsZero(TrackedInfo->LastVisibleLocation))
-	{
-		UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, TrackedInfo->LastVisibleLocation + Vector(0.0f, 0.0f, 5.0f), 0, 0, 255);
 	}
 
 }

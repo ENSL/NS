@@ -554,7 +554,7 @@ void UTIL_DrawHUDText(edict_t* pEntity, char channel, float x, float y, unsigned
 	WRITE_BYTE(1); // effect ALPHA
 	WRITE_SHORT(0); // fade-in time in seconds * 256
 	WRITE_SHORT(0); // fade-out time in seconds * 256
-	WRITE_SHORT(5); // hold time in seconds * 256
+	WRITE_SHORT(20); // hold time in seconds * 256
 	WRITE_STRING(string);//string); // send the string
 	MESSAGE_END(); // end
 
@@ -646,4 +646,78 @@ void UTIL_LocalizeText(const char* InputText, string& OutputText)
 
 	LocalizedLocationsMap[InputText] = OutputText;
 
+}
+
+char* UTIL_TaskTypeToChar(const BotTaskType TaskType)
+{
+	switch (TaskType)
+	{
+	case TASK_ATTACK:
+		return "Attack";
+	case TASK_BUILD:
+		return "Build";
+	case TASK_CAP_RESNODE:
+		return "Cap Res Node";
+	case TASK_COMMAND:
+		return "Take Command";
+	case TASK_DEFEND:
+		return "Defend Structure";
+	case TASK_EVOLVE:
+		return "Evolve";
+	case TASK_GET_AMMO:
+		return "Get Ammo Pack";
+	case TASK_GET_EQUIPMENT:
+		return "Get Equipment";
+	case TASK_GET_HEALTH:
+		return "Get Health Pack";
+	case TASK_GET_WEAPON:
+		return "Get Weapon";
+	case TASK_GUARD:
+		return "Guard";
+	case TASK_HEAL:
+		return "Heal Target";
+	case TASK_MOVE:
+		return "Move to Location";
+	case TASK_PLACE_MINE:
+		return "Place Mine";
+	case TASK_REINFORCE_STRUCTURE:
+		return "Reinforce Structure";
+	case TASK_RESUPPLY:
+		return "Resupply";
+	case TASK_SECURE_HIVE:
+		return "Secure Hive";
+	case TASK_TOUCH:
+		return "Touch Trigger";
+	case TASK_WELD:
+		return "Weld Target";
+	default:
+		return "None";
+	}
+
+	return "None";
+}
+
+char* UTIL_BotRoleToChar(const AvHAIBotRole Role)
+{
+	switch (Role)
+	{
+	case BOT_ROLE_ASSAULT:
+		return "Assault";
+	case BOT_ROLE_BOMBARDIER:
+		return "Bombardier";
+	case BOT_ROLE_BUILDER:
+		return "Builder";
+	case BOT_ROLE_COMMAND:
+		return "Commander";
+	case BOT_ROLE_FIND_RESOURCES:
+		return "Res Capper";
+	case BOT_ROLE_HARASS:
+		return "Harrasser";
+	case BOT_ROLE_SWEEPER:
+		return "Sweeper";
+	default:
+		return "None";
+	}
+
+	return "None";
 }

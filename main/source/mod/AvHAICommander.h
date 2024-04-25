@@ -14,7 +14,7 @@
 
 static const float MIN_COMMANDER_REMIND_TIME = 20.0f; // How frequently the commander can nag a player to do something, if they don't think they're doing it
 
-bool AICOMM_DeployStructure(AvHAIPlayer* pBot, const AvHAIDeployableStructureType StructureToDeploy, const Vector Location, StructurePurpose Purpose = STRUCTURE_PURPOSE_NONE);
+bool AICOMM_DeployStructure(AvHAIPlayer* pBot, const AvHAIDeployableStructureType StructureToDeploy, const Vector Location, StructurePurpose Purpose = STRUCTURE_PURPOSE_GENERAL);
 bool AICOMM_DeployItem(AvHAIPlayer* pBot, const AvHAIDeployableItemType ItemToDeploy, const Vector Location);
 bool AICOMM_UpgradeStructure(AvHAIPlayer* pBot, AvHAIBuildableStructure* StructureToUpgrade);
 bool AICOMM_ResearchTech(AvHAIPlayer* pBot, AvHAIBuildableStructure* StructureToResearch, AvHMessageID Research);

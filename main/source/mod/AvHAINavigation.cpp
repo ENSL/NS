@@ -2069,7 +2069,17 @@ dtStatus FindPathClosestToPoint(AvHAIPlayer* pBot, const BotMoveStyle MoveStyle,
 
 	Vector FromLocation = pBot->CurrentFloorPosition;
 
-	Vector FromFloorLocation = AdjustPointForPathfinding(FromLocation);
+	// Add a slight bias towards trying to move forward if on a railing or other narrow bit of navigable terrain
+	// rather than potentially dropping back off it the wrong way
+	Vector GeneralDir = UTIL_GetVectorNormal2D(ToLocation - pBot->CurrentFloorPosition);
+	Vector CheckLocation = FromLocation + (GeneralDir * 16.0f);
+
+	Vector FromFloorLocation = AdjustPointForPathfinding(CheckLocation);
+
+	if (vIsZero(FromFloorLocation))
+	{
+		FromFloorLocation = AdjustPointForPathfinding(FromLocation);
+	}
 
 	nav_door* LiftReference = UTIL_GetLiftReferenceByEdict(pBot->Edict->v.groundentity);
 	bool bMustDisembarkLiftFirst = false;
@@ -4852,20 +4862,6 @@ void WallClimbMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndP
 		pBot->desiredMovementDir = UTIL_GetVectorNormal2D(pBot->desiredMovementDir + (vRight * modifier));
 	}
 
-	// Jump if we're on the floor, to give ourselves a boost and remove that momentary pause while "wall-sticking" mode activates if skulk
-	if ((pEdict->v.flags & FL_ONGROUND) && !IsPlayerClimbingWall(pBot->Edict))
-	{
-		Vector CurrentVelocity = UTIL_GetVectorNormal2D(pBot->Edict->v.velocity);
-
-		float VelocityDot = UTIL_GetDotProduct2D(vForward, CurrentVelocity);
-
-		if (VelocityDot > 0.7f)
-		{
-			// This was causing issues in tight areas, rethink this
-			//BotJump(pBot);
-		}
-	}
-
 	// Stop holding crouch if we're a skulk so we can actually climb
 	if (IsPlayerSkulk(pBot->Edict))
 	{
@@ -4899,20 +4895,12 @@ void WallClimbMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndP
 			else
 			{
 				LookLocation = DirectAheadView - Vector(0.0f, 0.0f, 20.0f);
-				//LookLocation = pBot->CurrentEyePosition + (ClimbSurfaceNormal * 100.0f);
 			}
 		}
 		else
 		{
-			if (ZDiff > 16.0f)
-			{
-				ClimbSurfaceNormal = ClimbSurfaceNormal;
-				LookLocation = pBot->CurrentEyePosition + (ClimbSurfaceNormal * 100.0f);
-			}
-			else
-			{
-				LookLocation = DirectAheadView + Vector(0.0f, 0.0f, 20.0f);
-			}
+			ClimbSurfaceNormal = ClimbSurfaceNormal;
+			LookLocation = pBot->CurrentEyePosition + (ClimbSurfaceNormal * 100.0f);
 		}
 	}
 
@@ -6437,12 +6425,12 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 			bool bSucceeded = NAV_GenerateNewBasePath(pBot, Destination, MoveStyle, MaxAcceptableDist);
 
 			if (!bSucceeded)
-			{
-				if (pBot->BotNavInfo.CurrentPath.size() == 0)
-				{
-					pBot->BotNavInfo.StuckInfo.bPathFollowFailed = true;
+			{				
+				pBot->BotNavInfo.StuckInfo.bPathFollowFailed = true;
 
-					if (!UTIL_PointIsOnNavmesh(pBot->CollisionHullBottomLocation, pBot->BotNavInfo.NavProfile) && !vIsZero(BotNavInfo->LastNavMeshPosition))
+				if (!UTIL_PointIsOnNavmesh(pBot->CollisionHullBottomLocation, pBot->BotNavInfo.NavProfile))
+				{
+					if (!vIsZero(BotNavInfo->LastNavMeshPosition))
 					{
 						MoveDirectlyTo(pBot, BotNavInfo->LastNavMeshPosition);
 
@@ -6451,7 +6439,7 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 							BotNavInfo->LastNavMeshPosition = g_vecZero;
 						}
 
-						return true;
+						return false;
 					}
 					else
 					{
@@ -6462,19 +6450,20 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 
 						if (vIsZero(BotNavInfo->UnstuckMoveLocation))
 						{
-							BotNavInfo->UnstuckMoveLocation = FindClosestPointBackOnPath(pBot);
+							BotNavInfo->UnstuckMoveLocation = FindClosestPointBackOnPath(pBot, Destination);
 						}
 
 						if (!vIsZero(BotNavInfo->UnstuckMoveLocation))
 						{
 							MoveDirectlyTo(pBot, BotNavInfo->UnstuckMoveLocation);
-							return true;
+							return false;
 						}
 					}
 				}
 				else
 				{
-					BotFollowPath(pBot);
+					MoveDirectlyTo(pBot, Destination);
+					return false;
 				}
 
 				return false;
@@ -6486,17 +6475,6 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 
 			if (!bSucceeded)
 			{
-				if (!FNullEnt(pBot->Edict->v.groundentity))
-				{
-					nav_door* Door = UTIL_GetNavDoorByEdict(pBot->Edict->v.groundentity);
-
-					if (Door)
-					{
-
-					}
-				}
-
-
 				if (!FNullEnt(BotNavInfo->MovementTask.TaskTarget))
 				{
 					CBaseEntity* TargetEntity = CBaseEntity::Instance(BotNavInfo->MovementTask.TaskTarget);
@@ -6587,26 +6565,33 @@ bool MoveTo(AvHAIPlayer* pBot, const Vector Destination, const BotMoveStyle Move
 
 }
 
-Vector FindClosestPointBackOnPath(AvHAIPlayer* pBot)
+Vector FindClosestPointBackOnPath(AvHAIPlayer* pBot, Vector Destination)
 {
+	Vector GeneralMoveDir = UTIL_GetVectorNormal2D(Destination - pBot->Edict->v.origin);
+	Vector CheckDir = pBot->Edict->v.origin + (GeneralMoveDir * 16.0f);
 
-	DeployableSearchFilter ResNodeFilter;
-	ResNodeFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
-
-	AvHAIResourceNode* NearestResNode = AITAC_FindNearestResourceNodeToLocation(pBot->Edict->v.origin, &ResNodeFilter);
-
-	Vector ValidNavmeshPoint = AITAC_GetTeamStartingLocation(pBot->Player->GetTeam());
-
-	if (NearestResNode && vDist2D(pBot->Edict->v.origin, NearestResNode->Location) < vDist2D(pBot->Edict->v.origin, ValidNavmeshPoint))
-	{
-		ValidNavmeshPoint = NearestResNode->Location;
-	}
-
-	ValidNavmeshPoint = UTIL_ProjectPointToNavmesh(ValidNavmeshPoint, pBot->BotNavInfo.NavProfile);
+	Vector ValidNavmeshPoint = AdjustPointForPathfinding(CheckDir);
 
 	if (vIsZero(ValidNavmeshPoint))
 	{
-		return g_vecZero;
+		DeployableSearchFilter ResNodeFilter;
+		ResNodeFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+
+		AvHAIResourceNode* NearestResNode = AITAC_FindNearestResourceNodeToLocation(pBot->Edict->v.origin, &ResNodeFilter);
+
+		Vector ValidNavmeshPoint = AITAC_GetTeamStartingLocation(pBot->Player->GetTeam());
+
+		if (NearestResNode && vDist2D(pBot->Edict->v.origin, NearestResNode->Location) < vDist2D(pBot->Edict->v.origin, ValidNavmeshPoint))
+		{
+			ValidNavmeshPoint = NearestResNode->Location;
+		}
+
+		ValidNavmeshPoint = UTIL_ProjectPointToNavmesh(ValidNavmeshPoint, pBot->BotNavInfo.NavProfile);
+
+		if (vIsZero(ValidNavmeshPoint))
+		{
+			return g_vecZero;
+		}
 	}
 
 	vector<bot_path_node> BackwardsPath;
@@ -6828,9 +6813,6 @@ LerkFlightBehaviour BotFlightClimbMove(AvHAIPlayer* pBot, Vector FromLocation, V
 	{
 		pBot->Edict->v.velocity.z = fmaxf(pBot->Edict->v.velocity.z, 10.0f);
 	}
-
-	UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, pBot->Edict->v.origin + UTIL_GetVectorNormal(pBot->Edict->v.velocity) * 100.0f, 255, 0, 0);
-
 
 	return FLIGHT_FLAP;
 }
