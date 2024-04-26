@@ -2388,6 +2388,8 @@ AvHAICombatStrategy GetGorgeCombatStrategyForTarget(AvHAIPlayer* pBot, enemy_sta
 
 	float CurrentHealthPercent = GetPlayerOverallHealthPercent(pBot->Edict);
 
+	bool bPlayerCloaked = pBot->Player->GetOpacity() <= 0.5f;
+
 	if (pBot->CurrentCombatStrategy == COMBAT_STRATEGY_RETREAT)
 	{
 		if (CurrentHealthPercent < 0.99f)
@@ -2437,11 +2439,11 @@ AvHAICombatStrategy GetGorgeCombatStrategyForTarget(AvHAIPlayer* pBot, enemy_sta
 
 	if (bHasBackup)
 	{
-		return (CurrentHealthPercent > 0.5f) ? COMBAT_STRATEGY_ATTACK : COMBAT_STRATEGY_SKIRMISH;
+		return (CurrentHealthPercent > 0.5f) ? COMBAT_STRATEGY_ATTACK : ((bPlayerCloaked) ? COMBAT_STRATEGY_RETREAT : COMBAT_STRATEGY_SKIRMISH);
 	}
 	else
 	{
-		return (CurrentHealthPercent > 0.5f) ? COMBAT_STRATEGY_SKIRMISH : COMBAT_STRATEGY_RETREAT;
+		return (CurrentHealthPercent > 0.7f) ? ((bPlayerCloaked) ? COMBAT_STRATEGY_RETREAT : COMBAT_STRATEGY_SKIRMISH) : COMBAT_STRATEGY_RETREAT;
 	}
 }
 
@@ -5522,7 +5524,7 @@ void AIPlayerDMThink(AvHAIPlayer* pBot)
 void AIPlayerThink(AvHAIPlayer* pBot)
 {
 
-#ifdef DEBUG
+//#ifdef DEBUG
 	if (pBot == AIMGR_GetDebugAIPlayer())
 	{
 		bool bBreak = true; // Add a break point here if you want to debug a specific bot
@@ -5530,9 +5532,9 @@ void AIPlayerThink(AvHAIPlayer* pBot)
 		AIDEBUG_DrawBotPath(pBot);
 
 		DEBUG_PrintTaskInfo(pBot);
-		//DEBUG_PrintCombatInfo(pBot);
+		DEBUG_PrintCombatInfo(pBot);
 	}
-#endif
+//#endif
 
 	pBot->ThinkDelta = fminf(gpGlobals->time - pBot->LastThinkTime, 0.1f);
 	pBot->LastThinkTime = gpGlobals->time;
@@ -7037,10 +7039,12 @@ void AIPlayerSetSecondaryAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 		if (ThisHive && ThisHive->bIsUnderAttack)
 		{
+			float DistToHive = vDist2DSq(ThisHive->FloorLocation, pBot->Edict->v.origin);
+
 			int AttackerStrength = 0;
 			int DefenderStrength = 0;
 
-			vector<AvHPlayer*> AttackingPlayers = AITAC_GetAllPlayersOfTeamInArea(EnemyTeam, ThisHive->FloorLocation, UTIL_MetresToGoldSrcUnits(15.0f), false, nullptr, AVH_USER3_NONE);
+			vector<AvHPlayer*> AttackingPlayers = AITAC_GetAllPlayersOfTeamInArea(EnemyTeam, ThisHive->FloorLocation, UTIL_MetresToGoldSrcUnits(20.0f), false, nullptr, AVH_USER3_NONE);
 			
 			for (auto AttackerIt = AttackingPlayers.begin(); AttackerIt != AttackingPlayers.end(); AttackerIt++)
 			{
@@ -7067,13 +7071,18 @@ void AIPlayerSetSecondaryAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 				AttackerStrength += ThisAttackerStrength;
 			}
 
-			vector<AvHPlayer*> DefendingPlayers = AITAC_GetAllPlayersOfTeamInArea(EnemyTeam, ThisHive->FloorLocation, UTIL_MetresToGoldSrcUnits(15.0f), false, pBot->Edict, AVH_USER3_ALIEN_PLAYER2);
+			vector<AvHPlayer*> DefendingPlayers = AITAC_GetAllPlayersOfTeamInArea(BotTeam, ThisHive->FloorLocation, UTIL_MetresToGoldSrcUnits(20.0f), false, pBot->Edict, AVH_USER3_ALIEN_PLAYER2);
 
 			for (auto DefenderIt = DefendingPlayers.begin(); DefenderIt != DefendingPlayers.end(); DefenderIt++)
 			{
 				AvHPlayer* ThisPlayer = (*DefenderIt);
 				edict_t* ThisPlayerEdict = ThisPlayer->edict();
 
+				float ThisPlayerDist = vDist2DSq(ThisPlayerEdict->v.origin, ThisHive->FloorLocation);
+
+				// This potential defender is further than us, don't count them in the strength measurements
+				if (ThisPlayerDist > DistToHive) { continue; }
+				
 				int ThisDefenderStrength = 1;
 
 				if (IsPlayerFade(ThisPlayerEdict))
@@ -7118,12 +7127,10 @@ void AIPlayerSetSecondaryAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 			if (AttackerStrength >= DefenderStrength)
 			{
-				float ThisDist = vDist2DSq(ThisHive->FloorLocation, pBot->Edict->v.origin);
-
-				if (!HiveToDefend || ThisDist < MinDist)
+				if (!HiveToDefend || DistToHive < MinDist)
 				{
 					HiveToDefend = ThisHive;
-					MinDist = ThisDist;
+					MinDist = DistToHive;
 				}
 			}
 		}
@@ -7131,6 +7138,7 @@ void AIPlayerSetSecondaryAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (HiveToDefend)
 	{
+		UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, HiveToDefend->Location, 255, 255, 0);
 		AITASK_SetDefendTask(pBot, Task, HiveToDefend->HiveEdict, true);
 		return;
 	}
@@ -8543,7 +8551,7 @@ void DEBUG_PrintCombatInfo(AvHAIPlayer* pBot)
 
 	if (TrackedEnemy < 0)
 	{
-		UTIL_DrawHUDText(INDEXENT(1), 0, 0.6f, 0.1f, 255, 255, 255, buf);
+		UTIL_DrawHUDText(INDEXENT(1), 1, 0.6f, 0.1f, 255, 255, 255, buf);
 		return;
 	}
 
@@ -8599,7 +8607,7 @@ void DEBUG_PrintCombatInfo(AvHAIPlayer* pBot)
 
 	strcat(buf, interbuf);
 
-	UTIL_DrawHUDText(INDEXENT(1), 0, 0.6f, 0.1f, 255, 255, 255, buf);
+	UTIL_DrawHUDText(INDEXENT(1), 1, 0.6f, 0.1f, 255, 255, 255, buf);
 
 	if (!vIsZero(TrackedInfo->LastDetectedLocation))
 	{

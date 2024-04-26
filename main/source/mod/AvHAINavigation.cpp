@@ -5975,6 +5975,10 @@ void UpdateBotStuck(AvHAIPlayer* pBot)
 			{
 				pBot->Button |= IN_DUCK;
 			}
+			else
+			{
+				pBot->Button &= ~IN_DUCK;
+			}
 		}		
 	}
 }
@@ -7195,7 +7199,6 @@ void PerformUnstuckMove(AvHAIPlayer* pBot, const Vector MoveDestination)
 	{
 		BotJump(pBot);
 	}
-
 
 	if (bBlockedRightSide && !bBlockedLeftSide)
 	{

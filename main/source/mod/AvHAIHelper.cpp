@@ -3,6 +3,7 @@
 #include "AvHAIPlayerUtil.h"
 #include "AvHAITactical.h"
 #include "AvHAINavigation.h"
+#include "AvHAIPlayerManager.h"
 
 #include "AvHGamerules.h"
 
@@ -522,21 +523,12 @@ void UTIL_DrawBox(edict_t* pEntity, Vector bMin, Vector bMax, float drawTimeSeco
 
 void UTIL_DrawHUDText(edict_t* pEntity, char channel, float x, float y, unsigned char r, unsigned char g, unsigned char b, const char* string)
 {
-	// higher level wrapper for hudtextparms TE_TEXTMESSAGEs. This function is meant to be called
-	// every frame, since the duration of the display is roughly worth the duration of a video
-	// frame. The X and Y coordinates are unary fractions which are bound to this rule:
-	// 0: top of the screen (Y) or left of the screen (X), left aligned text
-	// 1: bottom of the screen (Y) or right of the screen (X), right aligned text
-	// -1(only one negative value possible): center of the screen (X and Y), centered text
-	// Any value ranging from 0 to 1 will represent a valid position on the screen.
-
-	//static short duration;
-
 	if (FNullEnt(pEntity)) { return; }
 
-	//duration = (int)GAME_GetServerMSecVal() * 256 / 750; // compute text message duration
-	//if (duration < 5)
-	//	duration = 5;
+	float FrameDelta = AIMGR_GetFrameDelta();
+	FrameDelta *= 256.0f;
+
+	short Duration = (short)roundf(FrameDelta);
 
 	MESSAGE_BEGIN(MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, NULL, pEntity);
 	WRITE_BYTE(TE_TEXTMESSAGE);
@@ -552,9 +544,9 @@ void UTIL_DrawHUDText(edict_t* pEntity, char channel, float x, float y, unsigned
 	WRITE_BYTE(g); // effect GREEN
 	WRITE_BYTE(b); // effect BLUE
 	WRITE_BYTE(1); // effect ALPHA
-	WRITE_SHORT(0); // fade-in time in seconds * 256
-	WRITE_SHORT(0); // fade-out time in seconds * 256
-	WRITE_SHORT(20); // hold time in seconds * 256
+	WRITE_SHORT(1); // fade-in time in seconds * 256
+	WRITE_SHORT(Duration); // fade-out time in seconds * 256
+	WRITE_SHORT(Duration); // hold time in seconds * 256
 	WRITE_STRING(string);//string); // send the string
 	MESSAGE_END(); // end
 
