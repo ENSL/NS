@@ -7138,7 +7138,6 @@ void AIPlayerSetSecondaryAlienTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (HiveToDefend)
 	{
-		UTIL_DrawLine(INDEXENT(1), pBot->Edict->v.origin, HiveToDefend->Location, 255, 255, 0);
 		AITASK_SetDefendTask(pBot, Task, HiveToDefend->HiveEdict, true);
 		return;
 	}
