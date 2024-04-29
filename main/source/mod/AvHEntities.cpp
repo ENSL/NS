@@ -1030,7 +1030,7 @@ void AvHGameplay::Spawn()
 
 AvHGamma::AvHGamma()
 {
-	this->mGammaScalar = 1.0f;
+	this->mGammaScalar = kDefaultMapGamma;
 }
 	
 void AvHGamma::KeyValue(KeyValueData* pkvd)

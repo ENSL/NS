@@ -889,6 +889,9 @@ private:
 	float					mShaderGamma;
 	float					mShaderGammaAlt;
 
+	Vector					mLastOrderLocation;
+	int						mLastOrderIndex;
+
 };
 
 class CPostProcessShader

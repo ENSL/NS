@@ -1342,7 +1342,7 @@ void AvHHud::DrawOrders()
 	{
 		// Draw them blinking for soldiers, but always for commanders
 		float theFractionalLastUpdate = this->mTimeOfLastUpdate - (int)this->mTimeOfLastUpdate;
-		if((theFractionalLastUpdate > .25f) || (this->GetHUDUser3() == AVH_USER3_COMMANDER_PLAYER))
+		if ((theFractionalLastUpdate > .25f || CVAR_GET_FLOAT("hud_waypointblinking") <= 1.0f) || (this->GetHUDUser3() == AVH_USER3_COMMANDER_PLAYER))
 		{
 			OrderListType theOrders = this->GetOrderList();
 			

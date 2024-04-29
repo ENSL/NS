@@ -175,7 +175,7 @@ void CPostProcessShader::DrawShader()
 	// If the map has no gamma value, override it with the cvar's value.
 	else
 	{
-		colorMultiplier = min(1.0f, scalarCvar);
+		colorMultiplier = max(1.0f, scalarCvar);
 	}
 
 	// Use shader.

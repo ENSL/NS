@@ -770,7 +770,7 @@ bool AvHGamerules::CanPlayerBeKilled(CBasePlayer* inPlayer)
 void AvHGamerules::CalculateMapGamma()
 {
 	// Set defaults
-	this->mCalculatedMapGamma = kDefaultMapGamma;
+	//this->mCalculatedMapGamma = kDefaultMapGamma;
 
 	// Fetch from map extents entity if the map has one
 	FOR_ALL_ENTITIES(kwsGammaClassName, AvHGamma*)
@@ -2307,6 +2307,8 @@ void AvHGamerules::PostWorldPrecacheReset(bool inNewMap)
 	this->mMapExtents.ResetMapExtents();
 
 	this->mCalculatedMapGamma = false;
+	this->mMapGamma = kDefaultMapGamma;
+	this->mMapGammaAlt = kDefaultMapGamma;
 
 	// TODO: Clear min/max map sizes?  Others?
 

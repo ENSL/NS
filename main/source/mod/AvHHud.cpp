@@ -2611,6 +2611,7 @@ void AvHHud::ResetGame(bool inMapChanged)
 	this->mHiveInfoList.clear();
 
 	this->mShaderGamma = kDefaultMapGamma;
+	this->mShaderGammaAlt = kDefaultMapGamma;
 	this->mDesiredGammaSlope = kDefaultMapGamma;
 	this->mDesiredGammaSlopeAlt = kDefaultMapGamma;
 	this->mRecordingLastFrame = false;
@@ -2821,7 +2822,24 @@ int	AvHHud::MsgFunc_SetOrder(const char* pszName, int iSize, void* pbuf)
 
 	AvHChangeOrder(this->mOrders, theNewOrder);
 
-	this->mDrawOrderOverlay = true;
+	// Check if it's the same order as the last one before setting the acknowledgement bool. Happens when respawning.
+	Vector newOrderLocation;
+	theNewOrder.GetLocation(newOrderLocation);
+	if (CVAR_GET_FLOAT("hud_drawwaypoints") == 2.0f)
+	{
+		if ((newOrderLocation != this->mLastOrderLocation && theNewOrder.GetTargetIndex() == -1) || theNewOrder.GetTargetIndex() != this->mLastOrderIndex)
+		{
+			this->mDrawOrderOverlay = true;
+		}
+		if (!this->mDrawOrderOverlay)
+			gEngfuncs.Con_Printf("waypoint trapped \n");
+	}
+	else 
+	{
+		this->mDrawOrderOverlay = true;
+	}
+	this->mLastOrderLocation = newOrderLocation;
+	this->mLastOrderIndex = theNewOrder.GetTargetIndex();
 	
 	// Give feedback on order
 	this->OrderNotification(theNewOrder);
@@ -3875,6 +3893,8 @@ void AvHHud::Init(void)
 
 	this->mDrawCombatUpgradeMenu = false;
 	this->mDrawOrderOverlay = true;
+	this->mLastOrderLocation = Vector(0.0f, 0.0f, 0.0f);
+	this->mLastOrderIndex = -1;
 
 	this->mReInitHUD = false;
 	this->mLastHudStyle = 0;
