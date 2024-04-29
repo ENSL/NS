@@ -13,6 +13,7 @@
 
 #include <string>
 #include <sstream>
+#include <cfloat>
 
 extern enginefuncs_t g_engfuncs;
 
