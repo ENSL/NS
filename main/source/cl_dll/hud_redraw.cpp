@@ -21,8 +21,12 @@
 #include "mod/AvHFont.h"
 
 #include "vgui_TeamFortressViewport.h"
+#include "common/com_model.h"
+//#include "r_studioint.h"
 
 #define MAX_LOGO_FRAMES 56
+
+//extern engine_studio_api_t IEngineStudio;
 
 int grgLogoFrame[MAX_LOGO_FRAMES] = 
 {
@@ -105,6 +109,22 @@ int CHud :: Redraw( float flTime, int intermission )
 	// Clock was reset, reset delta
 	if ( m_flTimeDelta < 0 )
 		m_flTimeDelta = 0;
+
+	bool bWantWidescreen = m_pCvarWidescreen->value != 0.0F;
+
+	if (bWantWidescreen != m_bIsWidescreen)
+	{
+		if (bWantWidescreen)
+		{
+			m_iConWidth = m_iConHeight * (ScreenWidth() / (float)ScreenHeight());
+		}
+		else
+		{
+			m_iConWidth = m_iRes;
+		}
+		m_flOffsetX = (ScreenWidth() - m_iConWidth * m_flScaleX) / 2.0F;
+		m_bIsWidescreen = bWantWidescreen;
+	}
 
 	// Bring up the scoreboard during intermission
 	if (gViewPort)
@@ -318,22 +338,253 @@ int CHud :: DrawHudStringReverse( int xpos, int ypos, int iMinX, char *szString,
     
 }
 
-int CHud :: DrawHudNumber( int x, int y, int iFlags, int iNumber, int r, int g, int b)
+//// Old metod before scaling.
+//int CHud :: DrawHudNumber( int x, int y, int iFlags, int iNumber, int r, int g, int b)
+//{
+//	int iWidth = GetSpriteRect(m_HUD_number_0).right - GetSpriteRect(m_HUD_number_0).left;
+//	int k;
+//	
+//	if (iNumber > 0)
+//	{
+//		// SPR_Draw 100's
+//		if (iNumber >= 100)
+//		{
+//			 k = iNumber/100;
+//			SPR_Set(GetSprite(m_HUD_number_0 + k), r, g, b );
+//			SPR_DrawAdditive( 0, x, y, &GetSpriteRect(m_HUD_number_0 + k));
+//			x += iWidth;
+//		}
+//		else if (iFlags & (DHN_3DIGITS))
+//		{
+//			//SPR_DrawAdditive( 0, x, y, &rc );
+//			x += iWidth;
+//		}
+//
+//		// SPR_Draw 10's
+//		if (iNumber >= 10)
+//		{
+//			k = (iNumber % 100)/10;
+//			SPR_Set(GetSprite(m_HUD_number_0 + k), r, g, b );
+//			SPR_DrawAdditive( 0, x, y, &GetSpriteRect(m_HUD_number_0 + k));
+//			x += iWidth;
+//		}
+//		else if (iFlags & (DHN_3DIGITS | DHN_2DIGITS))
+//		{
+//			//SPR_DrawAdditive( 0, x, y, &rc );
+//			x += iWidth;
+//		}
+//
+//		// SPR_Draw ones
+//		k = iNumber % 10;
+//		SPR_Set(GetSprite(m_HUD_number_0 + k), r, g, b );
+//		SPR_DrawAdditive(0,  x, y, &GetSpriteRect(m_HUD_number_0 + k));
+//		x += iWidth;
+//	} 
+//	else if (iFlags & DHN_DRAWZERO) 
+//	{
+//		SPR_Set(GetSprite(m_HUD_number_0), r, g, b );
+//
+//		// SPR_Draw 100's
+//		if (iFlags & (DHN_3DIGITS))
+//		{
+//			//SPR_DrawAdditive( 0, x, y, &rc );
+//			x += iWidth;
+//		}
+//
+//		if (iFlags & (DHN_3DIGITS | DHN_2DIGITS))
+//		{
+//			//SPR_DrawAdditive( 0, x, y, &rc );
+//			x += iWidth;
+//		}
+//
+//		// SPR_Draw ones
+//		
+//		SPR_DrawAdditive( 0,  x, y, &GetSpriteRect(m_HUD_number_0));
+//		x += iWidth;
+//	}
+//
+//	return x;
+//}
+
+// Toodles' sprite scaling with additional scaling option added.
+void CHud::DrawHudSprite(AVHHSPRITE pic, int frame, wrect_t * rect, int x, int y, int r, int g, int b, int a, float scale, hudalign_e alignment)
 {
-	int iWidth = GetSpriteRect(m_HUD_number_0).right - GetSpriteRect(m_HUD_number_0).left;
+	auto sprw = gEngfuncs.pfnSPR_Width(pic, frame);
+	auto sprh = gEngfuncs.pfnSPR_Height(pic, frame);
+
+	if (!rect)
+	{
+		static wrect_t rc;
+		rc.left = 0;
+		rc.right = sprw;
+		rc.top = 0;
+		rc.bottom = sprh;
+		rect = &rc;
+	}
+
+	float xf = x;
+	float yf = y;
+	auto width = (rect->right - rect->left) * scale;
+	auto height = (rect->bottom - rect->top) * scale;
+
+	switch (alignment)
+	{
+	case a_north:
+	case a_center:
+	case a_south:
+		xf -= width / 2.0F - 0.5F;
+		break;
+	case a_northeast:
+	case a_east:
+	case a_southeast:
+		xf -= width;
+		break;
+	}
+
+	switch (alignment)
+	{
+	case a_west:
+	case a_center:
+	case a_east:
+		yf -= height / 2.0F - 0.5F;
+		break;
+	case a_southwest:
+	case a_south:
+	case a_southeast:
+		yf -= height;
+		break;
+	}
+
+	//// No software mode in NS.
+	//if (!IEngineStudio.IsHardware())
+	//{
+	//	x += m_flOffsetX;
+	//	y += m_flOffsetY;
+
+	//	ScaleColors(r, g, b, a);
+	//	gEngfuncs.pfnSPR_Set(pic, r, g, b);
+
+	//	// Toodles FIXME: Hack for the crosshair.
+	//	if (alignment == a_center)
+	//	{
+	//		gEngfuncs.pfnSPR_DrawHoles(frame, x, y, rect);
+	//	}
+	//	else
+	//	{
+	//		gEngfuncs.pfnSPR_DrawAdditive(frame, x, y, rect);
+	//	}
+	//	return;
+	//}
+
+	auto pSprite = const_cast<model_t*>(gEngfuncs.GetSpritePointer(pic));
+
+	auto x1 = roundf(m_flOffsetX + xf * m_flScaleX);
+	auto y1 = roundf(m_flOffsetY + yf * m_flScaleY);
+	auto x2 = roundf(m_flOffsetX + (xf + width) * m_flScaleX);
+	auto y2 = roundf(m_flOffsetY + (yf + height) * m_flScaleY);
+
+	auto left = rect->left / (float)sprw;
+	auto right = rect->right / (float)sprw;
+	auto top = rect->top / (float)sprh;
+	auto bottom = rect->bottom / (float)sprh;
+
+	gEngfuncs.pTriAPI->SpriteTexture(pSprite, frame);
+
+	auto rendermode = kRenderTransAdd;
+
+	// Toodles FIXME: Hack for the crosshair.
+	if (alignment == a_center)
+	{
+		rendermode = kRenderTransAlpha;
+	}
+
+	gEngfuncs.pTriAPI->Color4fRendermode(r / 255.0F, g / 255.0F, b / 255.0F, a / 255.0F, rendermode);
+	gEngfuncs.pTriAPI->RenderMode(rendermode);
+
+	gEngfuncs.pTriAPI->Begin(TRI_QUADS);
+
+	gEngfuncs.pTriAPI->TexCoord2f(left, top);
+	gEngfuncs.pTriAPI->Vertex3f(x1, y1, 0);
+
+	gEngfuncs.pTriAPI->TexCoord2f(right, top);
+	gEngfuncs.pTriAPI->Vertex3f(x2, y1, 0);
+
+	gEngfuncs.pTriAPI->TexCoord2f(right, bottom);
+	gEngfuncs.pTriAPI->Vertex3f(x2, y2, 0);
+
+	gEngfuncs.pTriAPI->TexCoord2f(left, bottom);
+	gEngfuncs.pTriAPI->Vertex3f(x1, y2, 0);
+
+	gEngfuncs.pTriAPI->End();
+	gEngfuncs.pTriAPI->RenderMode(kRenderNormal);
+}
+
+//void CHud::DrawHudSprite(AVHHSPRITE pic, int frame, wrect_t* rect, int x, int y, hudcolor_e color, int a, hudalign_e alignment)
+//{
+//	int r, g, b;
+//	GetColor(r, g, b, color);
+//	DrawHudSprite(pic, frame, rect, x, y, r, g, b, a, alignment);
+//}
+
+void CHud::DrawHudSpriteIndex(int index, int x, int y, int r, int g, int b, int a, float scale, hudalign_e alignment)
+{
+	DrawHudSprite(GetSprite(index), 0, &GetSpriteRect(index), x, y, r, g, b, a, scale, alignment);
+}
+
+//void CHud::DrawHudSpriteIndex(int index, int x, int y, hudcolor_e color, int a, hudalign_e alignment)
+//{
+//	int r, g, b;
+//	GetColor(r, g, b, color);
+//	DrawHudSprite(GetSprite(index), 0, &GetSpriteRect(index), x, y, r, g, b, a, alignment);
+//}
+
+void CHud::DrawHudFill(int x, int y, int w, int h, int r, int g, int b, int a, float scale)
+{
+	x = roundf(m_flOffsetX + x * m_flScaleX);
+	y = roundf(m_flOffsetY + y * m_flScaleY);
+	w = roundf(w * m_flScaleX * scale);
+	h = roundf(h * m_flScaleY * scale);
+
+	gEngfuncs.pfnFillRGBA(x, y, w, h, r, g, b, a);
+}
+
+//void CHud::DrawHudFill(int x, int y, int w, int h, hudcolor_e color, int a)
+//{
+//	int r, g, b;
+//	GetColor(r, g, b, color);
+//	DrawHudFill(x, y, w, h, r, g, b, a);
+//}
+
+//int CHud::DrawHudString(int xpos, int ypos, int iMaxX, const char* szIt, int r, int g, int b)
+//{
+//	auto x1 = roundf(m_flOffsetX + xpos * m_flScaleX);
+//	auto y1 = roundf(m_flOffsetY + ypos * m_flScaleY);
+//	return (gEngfuncs.pfnDrawString(x1, y1, szIt, r, g, b) - m_flOffsetX) / m_flScaleX;
+//}
+
+//// draws a string from right to left (right-aligned)
+//int CHud::DrawHudStringReverse(int xpos, int ypos, int iMinX, const char* szString, int r, int g, int b)
+//{
+//	auto x1 = roundf(m_flOffsetX + xpos * m_flScaleX);
+//	auto y1 = roundf(m_flOffsetY + ypos * m_flScaleY);
+//	return (gEngfuncs.pfnDrawStringReverse(x1, y1, szString, r, g, b) - m_flOffsetX) / m_flScaleX;
+//}
+
+int CHud::DrawHudNumber(int x, int y, int iFlags, int iNumber, int r, int g, int b, int a, float scale, hudalign_e alignment)
+{
+	int iWidth = (GetSpriteRect(m_HUD_number_0).right - GetSpriteRect(m_HUD_number_0).left) * scale;
 	int k;
-	
+
 	if (iNumber > 0)
 	{
 		// SPR_Draw 100's
 		if (iNumber >= 100)
 		{
-			 k = iNumber/100;
-			SPR_Set(GetSprite(m_HUD_number_0 + k), r, g, b );
-			SPR_DrawAdditive( 0, x, y, &GetSpriteRect(m_HUD_number_0 + k));
+			k = iNumber / 100;
+			DrawHudSpriteIndex(m_HUD_number_0 + k, x, y, r, g, b, a, scale, alignment);
 			x += iWidth;
 		}
-		else if (iFlags & (DHN_3DIGITS))
+		else if ((iFlags & DHN_3DIGITS) != 0)
 		{
 			//SPR_DrawAdditive( 0, x, y, &rc );
 			x += iWidth;
@@ -342,12 +593,11 @@ int CHud :: DrawHudNumber( int x, int y, int iFlags, int iNumber, int r, int g, 
 		// SPR_Draw 10's
 		if (iNumber >= 10)
 		{
-			k = (iNumber % 100)/10;
-			SPR_Set(GetSprite(m_HUD_number_0 + k), r, g, b );
-			SPR_DrawAdditive( 0, x, y, &GetSpriteRect(m_HUD_number_0 + k));
+			k = (iNumber % 100) / 10;
+			DrawHudSpriteIndex(m_HUD_number_0 + k, x, y, r, g, b, a, scale, alignment);
 			x += iWidth;
 		}
-		else if (iFlags & (DHN_3DIGITS | DHN_2DIGITS))
+		else if ((iFlags & (DHN_3DIGITS | DHN_2DIGITS)) != 0)
 		{
 			//SPR_DrawAdditive( 0, x, y, &rc );
 			x += iWidth;
@@ -355,36 +605,39 @@ int CHud :: DrawHudNumber( int x, int y, int iFlags, int iNumber, int r, int g, 
 
 		// SPR_Draw ones
 		k = iNumber % 10;
-		SPR_Set(GetSprite(m_HUD_number_0 + k), r, g, b );
-		SPR_DrawAdditive(0,  x, y, &GetSpriteRect(m_HUD_number_0 + k));
+		DrawHudSpriteIndex(m_HUD_number_0 + k, x, y, r, g, b, a, scale, alignment);
 		x += iWidth;
-	} 
-	else if (iFlags & DHN_DRAWZERO) 
+	}
+	else if ((iFlags & DHN_DRAWZERO) != 0)
 	{
-		SPR_Set(GetSprite(m_HUD_number_0), r, g, b );
-
 		// SPR_Draw 100's
-		if (iFlags & (DHN_3DIGITS))
+		if ((iFlags & DHN_3DIGITS) != 0)
 		{
 			//SPR_DrawAdditive( 0, x, y, &rc );
 			x += iWidth;
 		}
 
-		if (iFlags & (DHN_3DIGITS | DHN_2DIGITS))
+		if ((iFlags & (DHN_3DIGITS | DHN_2DIGITS)) != 0)
 		{
 			//SPR_DrawAdditive( 0, x, y, &rc );
 			x += iWidth;
 		}
 
 		// SPR_Draw ones
-		
-		SPR_DrawAdditive( 0,  x, y, &GetSpriteRect(m_HUD_number_0));
+
+		DrawHudSpriteIndex(m_HUD_number_0, x, y, r, g, b, a, scale, alignment);
 		x += iWidth;
 	}
 
 	return x;
 }
 
+//int CHud::DrawHudNumber(int x, int y, int iFlags, int iNumber, hudcolor_e color, int a, hudalign_e alignment)
+//{
+//	int r, g, b;
+//	GetColor(r, g, b, color);
+//	return DrawHudNumber(x, y, iFlags, iNumber, r, g, b, a, alignment);
+//}
 
 int CHud::GetNumWidth( int iNumber, int iFlags )
 {
@@ -412,4 +665,81 @@ int CHud::GetNumWidth( int iNumber, int iFlags )
 
 }	
 
+int CHud::GetHudNumberWidth(int number, int width, int flags, float scale)
+{
+	const int digitWidth = (GetSpriteRect(m_HUD_number_0).right - GetSpriteRect(m_HUD_number_0).left) * scale;
 
+	int totalDigits = 0;
+
+	if (number > 0)
+	{
+		totalDigits = static_cast<int>(log10(number)) + 1;
+	}
+	else if ((flags & DHN_DRAWZERO) != 0)
+	{
+		totalDigits = 1;
+	}
+
+	totalDigits = max(totalDigits, width);
+
+	return totalDigits * digitWidth;
+}
+
+int CHud::DrawHudNumberReverse(int x, int y, int number, int flags, int r, int g, int b, int a, float scale, hudalign_e alignment)
+{
+	if (number > 0 || (flags & DHN_DRAWZERO) != 0)
+	{
+		const int digitWidth = (GetSpriteRect(m_HUD_number_0).right - GetSpriteRect(m_HUD_number_0).left) * scale;
+
+		int remainder = number;
+
+		do
+		{
+			const int digit = remainder % 10;
+			const int digitSpriteIndex = m_HUD_number_0 + digit;
+
+			//This has to happen *before* drawing because we're drawing in reverse
+			x -= digitWidth;
+
+			DrawHudSpriteIndex(digitSpriteIndex, x, y, r, g, b, a, scale, alignment);
+
+			remainder /= 10;
+		} while (remainder > 0);
+	}
+
+	return x;
+}
+
+//int CHud::DrawHudNumberReverse(int x, int y, int number, int flags, hudcolor_e color, int a, hudalign_e alignment)
+//{
+//	int r, g, b;
+//	GetColor(r, g, b, color);
+//	return DrawHudNumberReverse(x, y, number, flags, r, g, b, a, alignment);
+//}
+
+//int CHud::DrawHudString(const char* string, int x, int y)
+//{
+//	auto x1 = roundf (m_flOffsetX + x * m_flScaleX);
+//	auto y1 = roundf (m_flOffsetY + y * m_flScaleY);
+//	return (gEngfuncs.pfnDrawConsoleString(x1, y1, (char*)string) - m_flOffsetX) / m_flScaleX;
+//}
+//
+//void CHud::GetHudStringSize(const char* string, int& width, int& height)
+//{
+//	gEngfuncs.pfnDrawConsoleStringLen(string, &width, &height);
+//	width /= m_flScaleX;
+//	height /= m_flScaleY;
+//}
+//
+//int CHud::HudStringLen(const char* string)
+//{
+//	int width, height;
+//	GetHudStringSize(string, width, height);
+//	return width;
+//}
+//
+//void CHud::GetChatInputPosition(int& x, int& y)
+//{
+//	x = roundf (m_flOffsetX + m_SayText.m_iBaseX * m_flScaleX);
+//	y = roundf (m_flOffsetY + (m_SayText.m_iBaseY + m_SayText.m_iLineHeight) * m_flScaleY);
+//}

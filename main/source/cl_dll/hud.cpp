@@ -230,6 +230,7 @@ void CHud :: Init( void )
 	CVAR_CREATE("hud_nameinfo", "1", FCVAR_ARCHIVE);
 	CVAR_CREATE("hud_drawwaypoints", "2", FCVAR_ARCHIVE);
 	CVAR_CREATE("hud_waypointblinking", "0", FCVAR_ARCHIVE);
+	m_pCvarWidescreen = gEngfuncs.pfnGetCvarPointer("gl_widescreen_yfov");
 
 	m_pSpriteList = NULL;
 
@@ -366,6 +367,17 @@ void CHud :: VidInit( void )
 		m_iRes = 320;
 	else
 		m_iRes = 640;
+
+	// HUD scaling
+	//m_iConHeight = m_iRes * 0.75F;
+	m_iConHeight = 600; // Replicate 800x600 scale since NS seems to have been designed for that.
+
+	m_flScaleY = ScreenHeight() / (float)m_iConHeight;
+	m_flScaleX = m_flScaleY;
+
+	m_flOffsetY = 0.0F;
+
+	m_bIsWidescreen = m_pCvarWidescreen->value == 0.0F;
 
 	// Only load this once
 	if ( !m_pSpriteList || gHUD.GetReInitHUD())

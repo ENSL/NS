@@ -101,6 +101,8 @@ public:
 	float m_fAttackFront, m_fAttackRear, m_fAttackLeft, m_fAttackRight;
 	void GetPainColor( int &r, int &g, int &b );
 	float m_fFade;
+	float m_fHealthScale;
+	int m_iMinAlpha;
 
 private:
 	AVHHSPRITE m_hSprite;
@@ -112,6 +114,11 @@ private:
 	int DrawDamage(float fTime);
 	void CalcDamageDirection(vec3_t vecFrom);
 	void UpdateTiles(float fTime, long bits);
+
+	cvar_t* hud_health_x;
+	cvar_t* hud_health_y;
+	cvar_t* hud_health_scale;
+	cvar_t* hud_health_alphamin;
 };	
 
 #endif

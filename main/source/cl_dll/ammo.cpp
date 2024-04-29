@@ -589,6 +589,10 @@ void WeaponsResource :: SelectSlot( int iSlot, int fAdvance, int iDirection )
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 int giBucketHeight, giBucketWidth, giABHeight, giABWidth; // Ammo Bar width and height
+cvar_t* hud_ammo_x;
+cvar_t* hud_ammo_y;
+cvar_t* hud_ammo_scale;
+cvar_t* hud_ammo_alphamin;
 
 AVHHSPRITE ghsprBuckets;					// Sprite for top row of weapons menu
 
@@ -650,6 +654,11 @@ int CHudAmmo::Init(void)
 
 	CVAR_CREATE( "hud_drawhistory_time", HISTORY_DRAW_TIME, 0 );
 	CVAR_CREATE( "hud_fastswitch", "0", FCVAR_ARCHIVE );		// controls whether or not weapons can be selected in one keypress
+
+	hud_ammo_x = CVAR_CREATE("hud_ammo_x", "0", FCVAR_ARCHIVE);
+	hud_ammo_y = CVAR_CREATE("hud_ammo_y", "0", FCVAR_ARCHIVE);
+	hud_ammo_scale = CVAR_CREATE("hud_ammo_scale", "1", FCVAR_ARCHIVE);
+	hud_ammo_alphamin = CVAR_CREATE("hud_ammo_alphamin", "128", FCVAR_ARCHIVE);
 
 	m_iFlags |= HUD_ACTIVE; //!!!
 
@@ -1161,6 +1170,125 @@ void CHudAmmo::SetCurrentClip(int inClip)
 	}
 }
 
+//// Old HUD drawing
+//int CHudAmmo::Draw(float flTime)
+//{
+//	int a, x, y, r, g, b;
+//	int AmmoWidth;
+//
+//	if (!(gHUD.m_iWeaponBits & (1<<(WEAPON_SUIT)) ))
+//		return 1;
+//
+//	if (/*!gHUD.GetIsAlive() ||*/ (gHUD.m_iHideHUDDisplay & ( HIDEHUD_WEAPONS | HIDEHUD_ALL )) )
+//		return 1;
+//
+//	// Draw Weapon Menu
+//	DrawWList(flTime);
+//
+//	// Draw ammo pickup history
+//	gHR.DrawAmmoHistory( flTime );
+//
+//	if (!(m_iFlags & HUD_ACTIVE))
+//		return 0;
+//
+//	if (!m_pWeapon)
+//		return 0;
+//
+//	WEAPON *pw = m_pWeapon; // shorthand
+//
+//	// SPR_Draw Ammo
+//	if ((pw->iAmmoType < 0) && (pw->iAmmo2Type < 0))
+//		return 0;
+//
+//
+//	int iFlags = DHN_DRAWZERO; // draw 0 values
+//
+//	AmmoWidth = gHUD.GetSpriteRect(gHUD.m_HUD_number_0).right - gHUD.GetSpriteRect(gHUD.m_HUD_number_0).left;
+//
+//	a = (int) max( MIN_ALPHA, m_fFade );
+//
+//	if (m_fFade > 0)
+//		m_fFade -= (gHUD.m_flTimeDelta * 20);
+//
+//	gHUD.GetPrimaryHudColor(r, g, b);
+//
+//	ScaleColors(r, g, b, a );
+//
+//	int theViewport[4];
+//	gHUD.GetViewport(theViewport);
+//
+//	// Does this weapon have a clip?
+//	y = theViewport[1] + theViewport[3] - gHUD.m_iFontHeight - gHUD.m_iFontHeight/2;
+//
+//	// Does weapon have any ammo at all?
+//	if (m_pWeapon->iAmmoType > 0)
+//	{
+//		int iIconWidth = m_pWeapon->rcAmmo.right - m_pWeapon->rcAmmo.left;
+//
+//		if (pw->iClip >= 0)
+//		{
+//			// room for the number and the '|' and the current ammo
+//
+//			x = theViewport[0] + theViewport[2] - (8 * AmmoWidth) - iIconWidth;
+//			x = gHUD.DrawHudNumber(x, y, iFlags | DHN_3DIGITS, pw->iClip, r, g, b);
+//
+//			wrect_t rc;
+//			rc.top = 0;
+//			rc.left = 0;
+//			rc.right = AmmoWidth;
+//			rc.bottom = 100;
+//
+//			int iBarWidth =  AmmoWidth/10;
+//
+//			x += AmmoWidth/2;
+//
+//			gHUD.GetPrimaryHudColor(r, g, b);
+//
+//			// draw the | bar
+//			FillRGBA(x, y, iBarWidth, gHUD.m_iFontHeight, r, g, b, a);
+//
+//			x += iBarWidth + AmmoWidth/2;;
+//
+//			// GL Seems to need this
+//			ScaleColors(r, g, b, a );
+//			x = gHUD.DrawHudNumber(x, y, iFlags | DHN_3DIGITS, gWR.CountAmmo(pw->iAmmoType), r, g, b);
+//
+//
+//		}
+//		else
+//		{
+//			// SPR_Draw a bullets only line
+//			x = theViewport[0] + theViewport[2]  - 4 * AmmoWidth - iIconWidth;
+//			x = gHUD.DrawHudNumber(x, y, iFlags | DHN_3DIGITS, gWR.CountAmmo(pw->iAmmoType), r, g, b);
+//		}
+//
+//		// Draw the ammo Icon
+//		int iOffset = (m_pWeapon->rcAmmo.bottom - m_pWeapon->rcAmmo.top)/8;
+//		SPR_Set(m_pWeapon->hAmmo, r, g, b);
+//		SPR_DrawAdditive(0, x, y - iOffset, &m_pWeapon->rcAmmo);
+//	}
+//
+//	// Does weapon have seconday ammo?
+//	if (pw->iAmmo2Type > 0)
+//	{
+//		int iIconWidth = m_pWeapon->rcAmmo2.right - m_pWeapon->rcAmmo2.left;
+//
+//		// Do we have secondary ammo?
+//		if ((pw->iAmmo2Type != 0) && (gWR.CountAmmo(pw->iAmmo2Type) > 0))
+//		{
+//			y -= gHUD.m_iFontHeight + gHUD.m_iFontHeight/4;
+//			x = theViewport[0] + theViewport[2] - 4 * AmmoWidth - iIconWidth;
+//			x = gHUD.DrawHudNumber(x, y, iFlags|DHN_3DIGITS, gWR.CountAmmo(pw->iAmmo2Type), r, g, b);
+//
+//			// Draw the ammo Icon
+//			SPR_Set(m_pWeapon->hAmmo2, r, g, b);
+//			int iOffset = (m_pWeapon->rcAmmo2.bottom - m_pWeapon->rcAmmo2.top)/8;
+//			SPR_DrawAdditive(0, x, y - iOffset, &m_pWeapon->rcAmmo2);
+//		}
+//	}
+//	return 1;
+//}
+
 //-------------------------------------------------------------------------
 // Drawing code
 //-------------------------------------------------------------------------
@@ -1197,9 +1325,21 @@ int CHudAmmo::Draw(float flTime)
 
 	int iFlags = DHN_DRAWZERO; // draw 0 values
 
-	AmmoWidth = gHUD.GetSpriteRect(gHUD.m_HUD_number_0).right - gHUD.GetSpriteRect(gHUD.m_HUD_number_0).left;
+	float ammoScale = 1.0f;
+	if (hud_ammo_scale)
+	{
+		ammoScale = min(max(0.01f, hud_ammo_scale->value), 5.0f);
+	}
 
-	a = (int) max( MIN_ALPHA, m_fFade );
+	AmmoWidth = (gHUD.GetSpriteRect(gHUD.m_HUD_number_0).right - gHUD.GetSpriteRect(gHUD.m_HUD_number_0).left) * ammoScale;
+
+	int minAlpha;
+	if (hud_ammo_alphamin)
+		minAlpha = max(0, min(hud_ammo_alphamin->value, 255));
+	else
+		minAlpha = MIN_ALPHA;
+
+	a = (int)max(minAlpha, m_fFade);
 
 	if (m_fFade > 0)
 		m_fFade -= (gHUD.m_flTimeDelta * 20);
@@ -1208,58 +1348,60 @@ int CHudAmmo::Draw(float flTime)
 	
 	ScaleColors(r, g, b, a );
 
-    int theViewport[4];
-    gHUD.GetViewport(theViewport);
-
 	// Does this weapon have a clip?
-	y = theViewport[1] + theViewport[3] - gHUD.m_iFontHeight - gHUD.m_iFontHeight/2;
+	int initialY = gHUD.GetHeight();
+	if (hud_ammo_y && hud_ammo_y->value != 0.0f)
+	{
+		initialY *= min(max(0.0f, hud_ammo_y->value), 1.0f);
+	}
+
+	y = initialY - gHUD.m_iFontHeight / 2;
 
 	// Does weapon have any ammo at all?
 	if (m_pWeapon->iAmmoType > 0)
 	{
-		int iIconWidth = m_pWeapon->rcAmmo.right - m_pWeapon->rcAmmo.left;
+		int iIconWidth = (m_pWeapon->rcAmmo.right - m_pWeapon->rcAmmo.left) * ammoScale;
 		
 		if (pw->iClip >= 0)
 		{
 			// room for the number and the '|' and the current ammo
 			
-			x = theViewport[0] + theViewport[2] - (8 * AmmoWidth) - iIconWidth;
-			x = gHUD.DrawHudNumber(x, y, iFlags | DHN_3DIGITS, pw->iClip, r, g, b);
+			int initialX = gHUD.GetWidth();
+			if (hud_ammo_x && hud_ammo_x->value != 0.0f)
+			{
+				initialX *= min(max(0.0f, hud_ammo_x->value), 1.0f);
+			}
 
-			wrect_t rc;
-			rc.top = 0;
-			rc.left = 0;
-			rc.right = AmmoWidth;
-			rc.bottom = 100;
+			x = initialX - (8 * AmmoWidth) - iIconWidth;
+
+			x = gHUD.DrawHudNumber(x, y, iFlags | DHN_3DIGITS, pw->iClip, r, g, b, 255, ammoScale, CHud::a_southwest);
 
 			int iBarWidth =  AmmoWidth/10;
+			int iBarHeight = gHUD.m_iFontHeight * -1;
 
 			x += AmmoWidth/2;
 
 			gHUD.GetPrimaryHudColor(r, g, b);
 			
 			// draw the | bar
-			FillRGBA(x, y, iBarWidth, gHUD.m_iFontHeight, r, g, b, a);
+			gHUD.DrawHudFill(x, y, iBarWidth, iBarHeight, r, g, b, a, ammoScale);
 
-			x += iBarWidth + AmmoWidth/2;;
+			x += iBarWidth + AmmoWidth/2;
 
 			// GL Seems to need this
 			ScaleColors(r, g, b, a );
-			x = gHUD.DrawHudNumber(x, y, iFlags | DHN_3DIGITS, gWR.CountAmmo(pw->iAmmoType), r, g, b);		
-
+			x = gHUD.DrawHudNumber(x, y, iFlags | DHN_3DIGITS, gWR.CountAmmo(pw->iAmmoType), r, g, b, 255, ammoScale, CHud::a_southwest);
 
 		}
 		else
 		{
 			// SPR_Draw a bullets only line
-			x = theViewport[0] + theViewport[2]  - 4 * AmmoWidth - iIconWidth;
-			x = gHUD.DrawHudNumber(x, y, iFlags | DHN_3DIGITS, gWR.CountAmmo(pw->iAmmoType), r, g, b);
+			x = gHUD.GetWidth() - 4 * AmmoWidth - iIconWidth;
+			x = gHUD.DrawHudNumber(x, y, iFlags | DHN_3DIGITS, gWR.CountAmmo(pw->iAmmoType), r, g, b, 255, ammoScale, CHud::a_southwest);
 		}
 
 		// Draw the ammo Icon
-		int iOffset = (m_pWeapon->rcAmmo.bottom - m_pWeapon->rcAmmo.top)/8;
-		SPR_Set(m_pWeapon->hAmmo, r, g, b);
-		SPR_DrawAdditive(0, x, y - iOffset, &m_pWeapon->rcAmmo);
+		gHUD.DrawHudSprite(m_pWeapon->hAmmo, 0, &m_pWeapon->rcAmmo, x, y, r, g, b, 255, ammoScale, CHud::a_southwest);
 	}
 
 	// Does weapon have seconday ammo?
@@ -1271,13 +1413,11 @@ int CHudAmmo::Draw(float flTime)
 		if ((pw->iAmmo2Type != 0) && (gWR.CountAmmo(pw->iAmmo2Type) > 0))
 		{
 			y -= gHUD.m_iFontHeight + gHUD.m_iFontHeight/4;
-			x = theViewport[0] + theViewport[2] - 4 * AmmoWidth - iIconWidth;
-			x = gHUD.DrawHudNumber(x, y, iFlags|DHN_3DIGITS, gWR.CountAmmo(pw->iAmmo2Type), r, g, b);
+			x = gHUD.GetWidth() - 4 * AmmoWidth - iIconWidth;
+			x = gHUD.DrawHudNumber(x, y, iFlags|DHN_3DIGITS, gWR.CountAmmo(pw->iAmmo2Type), r, g, b, 255, ammoScale, CHud::a_southwest);
 
 			// Draw the ammo Icon
-			SPR_Set(m_pWeapon->hAmmo2, r, g, b);
-			int iOffset = (m_pWeapon->rcAmmo2.bottom - m_pWeapon->rcAmmo2.top)/8;
-			SPR_DrawAdditive(0, x, y - iOffset, &m_pWeapon->rcAmmo2);
+			gHUD.DrawHudSprite(m_pWeapon->hAmmo2, 0, &m_pWeapon->rcAmmo2, x, y, r, b, g, 255, ammoScale, CHud::a_southwest);
 		}
 	}
 	return 1;

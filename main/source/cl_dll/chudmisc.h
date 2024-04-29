@@ -23,7 +23,8 @@
 #define DHN_DRAWZERO 1
 #define DHN_2DIGITS  2
 #define DHN_3DIGITS  4
-#define MIN_ALPHA	 100	
+//#define MIN_ALPHA	 100
+#define MIN_ALPHA	 128
 
 #define		HUDELEM_ACTIVE	1
 
@@ -342,7 +343,10 @@ public:
 	int VidInit( void );
 	int Draw(float flTime);
 	int MsgFunc_Battery(const char *pszName,  int iSize, void *pbuf );
-	
+
+	int m_iAnchorX; // our x position, set by the health hud
+	int m_iAnchorY; // our y position, set by the health hud
+
 private:
 	AVHHSPRITE m_hSprite1;
 	AVHHSPRITE m_hSprite2;

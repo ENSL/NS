@@ -19,6 +19,14 @@ private:
 	float						m_flMouseSensitivity;
 	bool						wstoggle;
 
+	float m_flScaleX;
+	float m_flScaleY;
+	unsigned int m_iConWidth;
+	unsigned int m_iConHeight;
+	float m_flOffsetX;
+	float m_flOffsetY;
+	byte m_bIsWidescreen;
+
 public:
 
 	AVHHSPRITE					m_hsprCursor;
@@ -35,16 +43,87 @@ public:
 	cvar_t  *m_pCvarStealMouse;
 	cvar_t	*m_pCvarDraw;
 	bool	m_bWindowed;
+	cvar_t* m_pCvarWidescreen;
 
 	int m_iFontHeight;
-	int DrawHudNumber(int x, int y, int iFlags, int iNumber, int r, int g, int b );
+	//int DrawHudNumber(int x, int y, int iFlags, int iNumber, int r, int g, int b );
 	int DrawHudStringCentered(int x, int y, int iMaxX, const char *szString, int r, int g, int b );
 	int DrawHudString(int x, int y, int iMaxX, const char *szString, int r, int g, int b );
 	int GetHudStringHeight();
 	int GetHudStringWidth(const char* szIt);
 	int DrawHudStringReverse( int xpos, int ypos, int iMinX, char *szString, int r, int g, int b );
-	int DrawHudNumberString( int xpos, int ypos, int iMinX, int iNumber, int r, int g, int b );
+	//int DrawHudNumberString( int xpos, int ypos, int iMinX, int iNumber, int r, int g, int b );
 	int GetNumWidth(int iNumber, int iFlags);
+
+	// New stuff
+	typedef enum {
+		COLOR_DEFAULT = 0,
+		COLOR_PRIMARY,
+		COLOR_SECONDARY,
+		COLOR_WARNING,
+		COLOR_COUNT
+	} hudcolor_e;
+
+	typedef enum {
+		a_northwest = 0,
+		a_north,
+		a_northeast,
+		a_west,
+		a_center,
+		a_east,
+		a_southwest,
+		a_south,
+		a_southeast,
+	} hudalign_e;
+
+	void DrawHudSprite(AVHHSPRITE pic, int frame, wrect_t* rect, int x, int y, int r, int g, int b, int a = 255, float scale = 1.0f, hudalign_e alignment = a_northwest);
+	//void DrawHudSprite(AVHHSPRITE pic, int frame, wrect_t* rect, int x, int y, hudcolor_e color, int a = 255, hudalign_e alignment = a_northwest);
+	//void DrawHudSpriteIndex(int index, int x, int y, hudcolor_e color, int a = 255, hudalign_e alignment = a_northwest);
+	void DrawHudSpriteIndex(int index, int x, int y, int r, int g, int b, int a = 255, float scale = 1.0f, hudalign_e alignment = a_northwest);
+	void DrawHudFill(int x, int y, int w, int h, int r, int g, int b, int a, float scale = 1.0f);
+	//void DrawHudFill(int x, int y, int w, int h, hudcolor_e color, int a);
+	int DrawHudNumber(int x, int y, int iFlags, int iNumber, int r, int g, int b, int a = 255, float scale = 1.0f, hudalign_e alignment = a_northwest);
+	//int DrawHudNumber(int x, int y, int iFlags, int iNumber, hudcolor_e color, int a = 255, hudalign_e alignment = a_northwest);
+	
+	//int DrawHudStringReverse(int xpos, int ypos, int iMinX, const char* szString, int r, int g, int b);
+	int DrawHudNumberString(int xpos, int ypos, int iMinX, int iNumber, int r, int g, int b);
+
+	int GetHudNumberWidth(int number, int width, int flags, float scale = 1.0f);
+	int DrawHudNumberReverse(int x, int y, int number, int flags, int r, int g, int b, int a = 255, float scale = 1.0f, hudalign_e alignment = a_northwest);
+	//int DrawHudNumberReverse(int x, int y, int number, int flags, hudcolor_e color, int a = 255, hudalign_e alignment = a_northwest);
+
+	//int DrawHudString(const char* string, int x, int y);
+	//void GetHudStringSize(const char* string, int& width, int& height);
+	//int HudStringLen(const char* string);
+
+	//void GetChatInputPosition(int& x, int& y);
+
+	inline unsigned int GetWidth() const
+	{
+		return m_iConWidth;
+	}
+
+	inline unsigned int GetHeight() const
+	{
+		return m_iConHeight;
+	}
+
+	inline float GetScaleX() const
+	{
+		return  m_flScaleX;
+	}
+
+	inline float GetScaleY() const
+	{
+		return  m_flScaleY;
+	}
+
+	//inline void GetColor(int& r, int& g, int& b, hudcolor_e color) const
+	//{
+	//	r = m_cColors[color].r;
+	//	g = m_cColors[color].g;
+	//	b = m_cColors[color].b;
+	//}
 
 private:
 	// the memory for these arrays are allocated in the first call to CHud::VidInit(), when the hud.txt and associated sprites are loaded.

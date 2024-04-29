@@ -28,6 +28,7 @@
 #include "mod/AvHHudConstants.h"
 #include "mod/AvHPlayerUpgrade.h"
 #include "mod/AvHNetworkMessages.h"
+#include "chudmisc.h"
 
 DECLARE_MESSAGE(m_Health, Health )
 DECLARE_MESSAGE(m_Health, Damage )
@@ -66,9 +67,14 @@ int CHudHealth::Init(void)
 	m_fAttackFront = m_fAttackRear = m_fAttackRight = m_fAttackLeft = 0;
 	giDmgHeight = 0;
 	giDmgWidth = 0;
+	m_fHealthScale = 1.0f;
 
 	memset(m_dmg, 0, sizeof(DAMAGE_IMAGE) * NUM_DMG_TYPES);
 
+	hud_health_x = CVAR_CREATE("hud_health_x", "0", FCVAR_ARCHIVE);
+	hud_health_y = CVAR_CREATE("hud_health_y", "0", FCVAR_ARCHIVE);
+	hud_health_scale = CVAR_CREATE("hud_health_scale", "1", FCVAR_ARCHIVE);
+	hud_health_alphamin = CVAR_CREATE("hud_health_alphamin", "128", FCVAR_ARCHIVE);
 
 	gHUD.AddHudElem(this);
 	return 1;
@@ -160,6 +166,91 @@ void CHudHealth::GetPainColor( int &r, int &g, int &b )
 	}
 }
 
+
+//// Old HUD drawing.
+//int CHudHealth::Draw(float flTime)
+//{
+//	int r, g, b;
+//	int a = 0, x, y;
+//	int HealthWidth;
+//
+//	if ( /*!gHUD.GetIsAlive() ||*/ (gHUD.m_iHideHUDDisplay & HIDEHUD_HEALTH) /*|| gEngfuncs.IsSpectateOnly()*/)
+//		return 1;
+//
+//	if (!m_hSprite)
+//		m_hSprite = LoadSprite(PAIN_NAME);
+//
+//	// Has health changed? Flash the health #
+//	if (m_fFade)
+//	{
+//		m_fFade -= (gHUD.m_flTimeDelta * 20);
+//		if (m_fFade <= 0)
+//		{
+//			a = MIN_ALPHA;
+//			m_fFade = 0;
+//		}
+//
+//		// Fade the health number back to dim
+//
+//		a = MIN_ALPHA + (m_fFade / FADE_TIME) * 128;
+//
+//	}
+//	else
+//		a = MIN_ALPHA;
+//
+//	// Potentially se upgrades and health of spectator target
+//	int theUpgrades = gHUD.GetHUDUpgrades();
+//
+//	// If health is getting low, make it bright red
+//	int theMaxHealth = gHUD.GetHUDMaxHealth();
+//	if (m_iHealth <= theMaxHealth / 10)
+//	{
+//		a = 255;
+//	}
+//
+//	GetPainColor(r, g, b);
+//	ScaleColors(r, g, b, a);
+//
+//	int theViewport[4];
+//	gHUD.GetViewport(theViewport);
+//
+//	// Only draw health if we have the suit.
+//	if (gHUD.m_iWeaponBits & (1 << (WEAPON_SUIT)))
+//	{
+//		HealthWidth = gHUD.GetSpriteRect(gHUD.m_HUD_number_0).right - gHUD.GetSpriteRect(gHUD.m_HUD_number_0).left;
+//		int CrossWidth = gHUD.GetSpriteRect(m_HUD_cross).right - gHUD.GetSpriteRect(m_HUD_cross).left;
+//
+//		y = theViewport[1] + theViewport[3] - gHUD.m_iFontHeight - gHUD.m_iFontHeight / 2;
+//
+//		x = theViewport[0] + CrossWidth / 2;
+//
+//		int theInset = 0;
+//		//if(gHUD.GetIsAlien() && !gHUD.GetIsCombatMode())
+//		//{
+//		//	theInset = ScreenWidth()*kResourceEnergyBarWidth;
+//		//}
+//		x += theInset;// + kHealthLeftInset*ScreenWidth;
+//
+//		SPR_Set(gHUD.GetSprite(m_HUD_cross), r, g, b);
+//		SPR_DrawAdditive(0, x, y, &gHUD.GetSpriteRect(m_HUD_cross));
+//
+//		x += CrossWidth + HealthWidth / 2;
+//
+//		x = gHUD.DrawHudNumber(x, y, DHN_3DIGITS | DHN_DRAWZERO, m_iHealth, r, g, b);
+//
+//		x += HealthWidth / 2;
+//
+//		gHUD.GetPrimaryHudColor(r, g, b);
+//
+//		int iHeight = gHUD.m_iFontHeight;
+//		int iWidth = HealthWidth / 10;
+//		FillRGBA(x, y, iWidth, iHeight, r, g, b, a);
+//	}
+//
+//	DrawDamage(flTime);
+//	return DrawPain(flTime);
+//}
+
 int CHudHealth::Draw(float flTime)
 {
 	int r, g, b;
@@ -172,23 +263,24 @@ int CHudHealth::Draw(float flTime)
 	if ( !m_hSprite )
 		m_hSprite = LoadSprite(PAIN_NAME);
 	
+	if (hud_health_alphamin)
+		m_iMinAlpha = max(0, min(hud_health_alphamin->value, 255));
+	else
+		m_iMinAlpha = MIN_ALPHA;
+
 	// Has health changed? Flash the health #
 	if (m_fFade)
 	{
 		m_fFade -= (gHUD.m_flTimeDelta * 20);
 		if (m_fFade <= 0)
 		{
-			a = MIN_ALPHA;
 			m_fFade = 0;
 		}
-
 		// Fade the health number back to dim
-
-		a = MIN_ALPHA +  (m_fFade/FADE_TIME) * 128;
-
+		a = m_iMinAlpha +  (m_fFade/FADE_TIME) * 128;
 	}
 	else
-		a = MIN_ALPHA;
+		a = m_iMinAlpha;
 
 	// Potentially se upgrades and health of spectator target
 	int theUpgrades = gHUD.GetHUDUpgrades();
@@ -203,40 +295,53 @@ int CHudHealth::Draw(float flTime)
 	GetPainColor( r, g, b );
 	ScaleColors(r, g, b, a );
 
-    int theViewport[4];
-    gHUD.GetViewport(theViewport);
-
 	// Only draw health if we have the suit.
 	if (gHUD.m_iWeaponBits & (1<<(WEAPON_SUIT)))
 	{
-		HealthWidth = gHUD.GetSpriteRect(gHUD.m_HUD_number_0).right - gHUD.GetSpriteRect(gHUD.m_HUD_number_0).left;
-		int CrossWidth = gHUD.GetSpriteRect(m_HUD_cross).right - gHUD.GetSpriteRect(m_HUD_cross).left;
+		if (hud_health_scale)
+		{
+			m_fHealthScale = min(max(0.01f, hud_health_scale->value), 5.0f);
+		}
 
-		y = theViewport[1] + theViewport[3] - gHUD.m_iFontHeight - gHUD.m_iFontHeight / 2;
-		
-		x = theViewport[0] + CrossWidth /2;
+		HealthWidth = (gHUD.GetSpriteRect(gHUD.m_HUD_number_0).right - gHUD.GetSpriteRect(gHUD.m_HUD_number_0).left) * m_fHealthScale;
+		int CrossWidth = (gHUD.GetSpriteRect(m_HUD_cross).right - gHUD.GetSpriteRect(m_HUD_cross).left) * m_fHealthScale;
 
-		int theInset = 0;
-		//if(gHUD.GetIsAlien() && !gHUD.GetIsCombatMode())
-		//{
-		//	theInset = ScreenWidth()*kResourceEnergyBarWidth;
-		//}
-		x += theInset;// + kHealthLeftInset*ScreenWidth;
-		
-		SPR_Set(gHUD.GetSprite(m_HUD_cross), r, g, b);
-		SPR_DrawAdditive(0, x, y, &gHUD.GetSpriteRect(m_HUD_cross));
+		if (hud_health_x && hud_health_x->value != 0.0f)
+		{
+			x = min(max(0.0f, hud_health_x->value), 1.0f) * gHUD.GetWidth();
+		}
+		else
+		{
+			x = CrossWidth / 2;
+		}
+		int initialY = gHUD.GetHeight();
+		if (hud_health_y && hud_health_y->value != 0.0f)
+		{
+			initialY *= min(max(0.0f, hud_health_y->value), 1.0f);
+		}
+
+		y = initialY - gHUD.m_iFontHeight / 2;
+
+		gHUD.DrawHudSpriteIndex(m_HUD_cross, x, y, r, g, b, 255, m_fHealthScale, CHud::a_southwest);
 
 		x += CrossWidth + HealthWidth / 2;
+		
+		//Reserve space for 3 digits by default, but allow it to expand
+		x += gHUD.GetHudNumberWidth(m_iHealth, 3, DHN_DRAWZERO, m_fHealthScale);
 
-		x = gHUD.DrawHudNumber(x, y, DHN_3DIGITS | DHN_DRAWZERO, m_iHealth, r, g, b);
+		gHUD.DrawHudNumberReverse(x, y, m_iHealth, DHN_DRAWZERO, r, g, b, 255, m_fHealthScale, CHud::a_southwest);
 
-		x += HealthWidth/2;
+		x += HealthWidth /2;
 
 		gHUD.GetPrimaryHudColor(r, g, b);
-		
-		int iHeight = gHUD.m_iFontHeight;
-		int iWidth = HealthWidth/10;
-		FillRGBA(x, y, iWidth, iHeight, r, g, b, a);
+
+		int iHeight = gHUD.m_iFontHeight * -1;
+		int iWidth = max(1, HealthWidth /10);
+
+		gHUD.DrawHudFill(x, y, iWidth, iHeight, r ,g , b, a, m_fHealthScale);
+
+		gHUD.m_Battery.m_iAnchorX = x + + iWidth + HealthWidth / 2;
+		gHUD.m_Battery.m_iAnchorY = initialY;
 	}
 
 	DrawDamage(flTime);

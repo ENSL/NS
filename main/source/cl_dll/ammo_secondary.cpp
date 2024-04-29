@@ -70,8 +70,9 @@ int CHudAmmoSecondary :: Draw(float flTime)
 		x -= (gHUD.GetSpriteRect(m_HUD_ammoicon).right - gHUD.GetSpriteRect(m_HUD_ammoicon).left);
 		y -= (gHUD.GetSpriteRect(m_HUD_ammoicon).top - gHUD.GetSpriteRect(m_HUD_ammoicon).bottom);
 
-		SPR_Set( gHUD.GetSprite(m_HUD_ammoicon), r, g, b );
-		SPR_DrawAdditive( 0, x, y, &gHUD.GetSpriteRect(m_HUD_ammoicon) );
+		//SPR_Set( gHUD.GetSprite(m_HUD_ammoicon), r, g, b );
+		//SPR_DrawAdditive( 0, x, y, &gHUD.GetSpriteRect(m_HUD_ammoicon) );
+		gHUD.DrawHudSpriteIndex(m_HUD_ammoicon, x, y, r , g, b);
 	}
 	else
 	{  // move the cursor by the '0' char instead, since we don't have an icon to work with
@@ -96,7 +97,8 @@ int CHudAmmoSecondary :: Draw(float flTime)
 		{
 			// draw the divider bar
 			x -= (AmmoWidth / 2);
-			FillRGBA(x, y, (AmmoWidth/10), gHUD.m_iFontHeight, r, g, b, a);
+			//FillRGBA(x, y, (AmmoWidth/10), gHUD.m_iFontHeight, r, g, b, a);
+			gHUD.DrawHudFill(x, y, (AmmoWidth / 10), gHUD.m_iFontHeight, r, g ,b , MIN_ALPHA);
 		}
 	}
 

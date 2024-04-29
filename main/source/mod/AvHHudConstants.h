@@ -36,7 +36,7 @@ const float kPlayerStatusStatusSpacing = .02f;
 
 // health armor inset (it is inset by the alien energy indicator for aliens)
 const float	kHealthLeftInset = .05f;
-const float	kArmorLeftInset = .1f;
+const float	kArmorLeftInset = .2f;
 
 // blip size
 const float kWorldBlipScale = 100;

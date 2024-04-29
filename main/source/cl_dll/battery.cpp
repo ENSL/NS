@@ -95,7 +95,7 @@ int CHudBattery::Draw(float flTime)
 	
 	if (!(gHUD.m_iWeaponBits & (1<<(WEAPON_SUIT)) ))
 		return 1;
-	
+
 	// Has health changed? Flash the health #
 	if (m_fFade)
 	{
@@ -105,23 +105,23 @@ int CHudBattery::Draw(float flTime)
 		m_fFade -= (gHUD.m_flTimeDelta * 20);
 		if (m_fFade <= 0)
 		{
-			a = 128;
+			//a = 128;
 			m_fFade = 0;
 		}
 		
 		// Fade the health number back to dim
 		
-		a = MIN_ALPHA +  (m_fFade/FADE_TIME) * 128;
+		a = gHUD.m_Health.m_iMinAlpha +  (m_fFade/FADE_TIME) * 128;
 		
 	}
 	else
-		a = MIN_ALPHA;
+		a = gHUD.m_Health.m_iMinAlpha;
 	
 	ScaleColors(r, g, b, a );
 	
-	int iOffset = (m_prc1->bottom - m_prc1->top)/6;
+	//int iOffset = (m_prc1->bottom - m_prc1->top)/6;
 
-	int theInset = 0;
+	//int theInset = 0;
 	//if(gHUD.GetIsAlien())
 	//{
 	//	theInset = ScreenWidth()*kResourceEnergyBarWidth;
@@ -130,8 +130,11 @@ int CHudBattery::Draw(float flTime)
     int theViewport[4];
     gHUD.GetViewport(theViewport);
 
-	y = theViewport[1] + theViewport[3] - gHUD.m_iFontHeight - gHUD.m_iFontHeight / 2;
-	x = theViewport[0] + theInset + kArmorLeftInset*ScreenWidth();
+	//y = theViewport[1] + theViewport[3] - gHUD.m_iFontHeight - gHUD.m_iFontHeight / 2;
+	//x = theViewport[0] + theInset + kArmorLeftInset*ScreenWidth();
+	//y = m_iAnchorY - gHUD.m_iFontHeight - gHUD.m_iFontHeight / 2;
+	y = m_iAnchorY - gHUD.m_iFontHeight / 2;
+	x = m_iAnchorX;
 
 	// make sure we have the right sprite handles
 	if ( !m_hSprite1 )
@@ -139,18 +142,101 @@ int CHudBattery::Draw(float flTime)
 	if ( !m_hSprite2 )
 		m_hSprite2 = gHUD.GetSprite( gHUD.GetSpriteIndex( "suit_full" ) );
 
-	SPR_Set(m_hSprite1, r, g, b );
-	SPR_DrawAdditive( 0,  x, y - iOffset, m_prc1);
+	//SPR_Set(m_hSprite1, r, g, b );
+	//SPR_DrawAdditive( 0,  x, y - iOffset, m_prc1);
+	gHUD.DrawHudSprite(m_hSprite1, 0, m_prc1, x, y, r, g, b, a, gHUD.m_Health.m_fHealthScale, CHud::a_southwest);
 
 	if (rc.bottom > rc.top)
 	{
-		SPR_Set(m_hSprite2, r, g, b );
-		SPR_DrawAdditive( 0, x, y - iOffset + (rc.top - m_prc2->top), &rc);
+		//SPR_Set(m_hSprite2, r, g, b );
+		//SPR_DrawAdditive( 0, x, y - iOffset + (rc.top - m_prc2->top), &rc);
+		gHUD.DrawHudSprite(m_hSprite2, 0, &rc, x, y, r, g, b, a, gHUD.m_Health.m_fHealthScale, CHud::a_southwest);
 	}
 
-	x += (m_prc1->right - m_prc1->left);
-	x = gHUD.DrawHudNumber(x, y, DHN_3DIGITS | DHN_DRAWZERO, m_iBat, r, g, b);
+	x += (m_prc1->right - m_prc1->left) * gHUD.m_Health.m_fHealthScale;
+	x = gHUD.DrawHudNumber(x, y, DHN_3DIGITS | DHN_DRAWZERO, m_iBat, r, g, b, 255, gHUD.m_Health.m_fHealthScale, CHud::a_southwest);
 
 	return 1;
     
 }
+
+//// Old HUD drawing.
+//int CHudBattery::Draw(float flTime)
+//{
+//
+//	if (gHUD.m_iHideHUDDisplay & HIDEHUD_HEALTH)
+//		return 1;
+//
+//	int r, g, b, x, y, a;
+//	wrect_t rc;
+//
+//	rc = *m_prc2;
+//
+//	int theMaxArmor = gHUD.GetHUDMaxArmor();
+//	float theScalar = 1.0f / theMaxArmor;
+//
+//	rc.top += m_iHeight * ((float)(theMaxArmor - (min(theMaxArmor, m_iBat))) * theScalar);	// battery can go from 0 to 100 so * 0.01 goes from 0 to 1
+//
+//	gHUD.GetPrimaryHudColor(r, g, b);
+//
+//	if (!(gHUD.m_iWeaponBits & (1 << (WEAPON_SUIT))))
+//		return 1;
+//
+//	// Has health changed? Flash the health #
+//	if (m_fFade)
+//	{
+//		if (m_fFade > FADE_TIME)
+//			m_fFade = FADE_TIME;
+//
+//		m_fFade -= (gHUD.m_flTimeDelta * 20);
+//		if (m_fFade <= 0)
+//		{
+//			a = 128;
+//			m_fFade = 0;
+//		}
+//
+//		// Fade the health number back to dim
+//
+//		a = MIN_ALPHA + (m_fFade / FADE_TIME) * 128;
+//
+//	}
+//	else
+//		a = MIN_ALPHA;
+//
+//	ScaleColors(r, g, b, a);
+//
+//	int iOffset = (m_prc1->bottom - m_prc1->top) / 6;
+//
+//	int theInset = 0;
+//	//if(gHUD.GetIsAlien())
+//	//{
+//	//	theInset = ScreenWidth()*kResourceEnergyBarWidth;
+//	//}
+//
+//	int theViewport[4];
+//	gHUD.GetViewport(theViewport);
+//
+//	y = theViewport[1] + theViewport[3] - gHUD.m_iFontHeight - gHUD.m_iFontHeight / 2;
+//	x = theViewport[0] + theInset + kArmorLeftInset * ScreenWidth();
+//
+//	// make sure we have the right sprite handles
+//	if (!m_hSprite1)
+//		m_hSprite1 = gHUD.GetSprite(gHUD.GetSpriteIndex("suit_empty"));
+//	if (!m_hSprite2)
+//		m_hSprite2 = gHUD.GetSprite(gHUD.GetSpriteIndex("suit_full"));
+//
+//	SPR_Set(m_hSprite1, r, g, b);
+//	SPR_DrawAdditive(0, x, y - iOffset, m_prc1);
+//
+//	if (rc.bottom > rc.top)
+//	{
+//		SPR_Set(m_hSprite2, r, g, b);
+//		SPR_DrawAdditive(0, x, y - iOffset + (rc.top - m_prc2->top), &rc);
+//	}
+//
+//	x += (m_prc1->right - m_prc1->left);
+//	x = gHUD.DrawHudNumber(x, y, DHN_3DIGITS | DHN_DRAWZERO, m_iBat, r, g, b);
+//
+//	return 1;
+//
+//}
