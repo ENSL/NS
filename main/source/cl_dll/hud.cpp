@@ -228,8 +228,8 @@ void CHud :: Init( void )
 	CVAR_CREATE("hud_mapnamesGreen", "255", FCVAR_ARCHIVE);
 	CVAR_CREATE("hud_mapnamesBlue", "255", FCVAR_ARCHIVE);
 	CVAR_CREATE("hud_nameinfo", "1", FCVAR_ARCHIVE);
-	CVAR_CREATE("hud_drawwaypoints", "2", FCVAR_ARCHIVE);
-	CVAR_CREATE("hud_waypointblinking", "1", FCVAR_ARCHIVE);
+	CVAR_CREATE("hud_waypoint_draw", "2", FCVAR_ARCHIVE);
+	CVAR_CREATE("hud_waypoint_blink", "2", FCVAR_ARCHIVE);
 	m_pCvarWidescreen = gEngfuncs.pfnGetCvarPointer("gl_widescreen_yfov");
 
 	m_pSpriteList = NULL;

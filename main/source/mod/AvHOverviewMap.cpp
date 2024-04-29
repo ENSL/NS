@@ -399,7 +399,7 @@ void AvHOverviewMap::DrawMiniMapEntity(const DrawInfo& inDrawInfo, const Drawabl
                 
             float theFractionalLastUpdate = mLastUpdateTime - (int)mLastUpdateTime;
         
-			if (theFractionalLastUpdate < .25f && CVAR_GET_FLOAT("hud_waypointblinking") >= 1.0f)
+			if (theFractionalLastUpdate < .25f && CVAR_GET_FLOAT("hud_waypoint_blink") >= 1.0f)
             {
     	        return;
             }

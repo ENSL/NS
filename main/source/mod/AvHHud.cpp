@@ -2825,7 +2825,7 @@ int	AvHHud::MsgFunc_SetOrder(const char* pszName, int iSize, void* pbuf)
 	// Check if it's the same order as the last one before setting the acknowledgement bool. Happens when respawning.
 	Vector newOrderLocation;
 	theNewOrder.GetLocation(newOrderLocation);
-	if (CVAR_GET_FLOAT("hud_drawwaypoints") == 2.0f)
+	if (CVAR_GET_FLOAT("hud_waypoint_draw") == 2.0f)
 	{
 		if ((newOrderLocation != this->mLastOrderLocation && theNewOrder.GetTargetIndex() == -1) || theNewOrder.GetTargetIndex() != this->mLastOrderIndex)
 		{

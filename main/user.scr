@@ -225,7 +225,7 @@ DESCRIPTION INFO_OPTIONS
 		{ "2.000000" }
 	}
 
-	"hud_drawwaypoints"
+	"hud_waypoint_draw"
 	{
 		"Show waypoints on HUD"
 		{
@@ -237,16 +237,16 @@ DESCRIPTION INFO_OPTIONS
 		{ "2.000000" }
 	}
 
-	"hud_waypointblinking"
+	"hud_waypoint_blink"
 	{
 		"Waypoint blinking"
 		{
 			LIST
 			"Never" "0"
-			"On map only" "1"
-			"On map and HUD" "2"
+			"Always" "1"
+			"On minimap only" "2"
 		}
-		{ "1.000000" }
+		{ "2.000000" }
 	}
 	
 	"hud_teamhealthalert"
