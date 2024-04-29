@@ -8,7 +8,7 @@
 class DrawableEntity
 {
 public:
-	DrawableEntity() : mUser3(AVH_USER3_NONE), mIsAlive(true), mX(0), mY(0), mAngleRadians(0), mIsLocalPlayer(false), mEntityNumber(0), mTeam(TEAM_IND), mSquadNumber(0), mIsUnderAttack(0)
+	DrawableEntity() : mUser3(AVH_USER3_NONE), mIsAlive(true), mX(0), mY(0), mAngleRadians(0), mIsLocalPlayer(false), mEntityNumber(0), mTeam(TEAM_IND), mSquadNumber(0), mIsUnderAttack(0), mIsUnbuilt(false), mIsRecycling(false)
 	{}
 	
 	AvHUser3	    mUser3;
@@ -21,6 +21,8 @@ public:
 	bool		    mIsLocalPlayer;
 	int			    mEntityNumber;
     int             mSquadNumber;
+    bool			mIsUnbuilt;
+    bool			mIsRecycling;
 };
 
 class AvHOverviewMap
@@ -86,7 +88,7 @@ private:
 
 	void							Init();
     void                            GetSpriteForEntity(const DrawableEntity& entity, AVHHSPRITE& outSprite, int& outFrame, int& outRenderMode, bool commanderOverview);
-    void                            GetColorForEntity(const DrawableEntity& entity, float& outR, float& outG, float& outB);
+    void                            GetColorForEntity(const DrawableEntity& entity, float& outR, float& outG, float& outB, float& outA);
     
 	void							UpdateDrawData(float inCurrentTime);
 

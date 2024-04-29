@@ -193,7 +193,7 @@ void AvHOverviewMap::GetSpriteForEntity(const DrawableEntity& entity, AVHHSPRITE
 }
 
 
-void AvHOverviewMap::GetColorForEntity(const DrawableEntity& entity, float& outR, float& outG, float& outB)
+void AvHOverviewMap::GetColorForEntity(const DrawableEntity& entity, float& outR, float& outG, float& outB, float& outA)
 {
 	static float attackBlinkPeriod=0.4f;
 	bool isStructure=entity.mUser3 == AVH_USER3_HIVE ||
@@ -215,6 +215,8 @@ void AvHOverviewMap::GetColorForEntity(const DrawableEntity& entity, float& outR
 	        entity.mUser3 == AVH_USER3_SENSORY_CHAMBER ||
 	        entity.mUser3 == AVH_USER3_ALIENRESTOWER ||
 	        entity.mUser3 == AVH_USER3_ADVANCED_TURRET_FACTORY;
+
+	outA = 1.0f;
 
 	if ( entity.mIsUnderAttack && (entity.mTeam == mTeam || gEngfuncs.IsSpectateOnly() ) ) {
 		if ( gpGlobals && (gpGlobals->time > this->mBlinkTime + attackBlinkPeriod) ) {
@@ -312,7 +314,13 @@ void AvHOverviewMap::GetColorForEntity(const DrawableEntity& entity, float& outR
 			outB=0.0;
 		}
 		if ( isStructure ) {
-			if ( entity.mTeam == TEAM_ONE ) {
+			if (entity.mIsRecycling)
+			{
+				outR = 0.5f;
+				outG = 0.5f;
+				outB = 0.5f;
+			}
+			else if ( entity.mTeam == TEAM_ONE ) {
 				outR=0.43;
 				outG=0.70;
 				outB=1.0;
@@ -321,6 +329,11 @@ void AvHOverviewMap::GetColorForEntity(const DrawableEntity& entity, float& outR
 				outR=0.88;
 				outG=0.45;
 				outB=0.00;
+			}
+
+			if (entity.mIsUnbuilt)
+			{
+				outA = 0.6f;
 			}
 		}
 	}
@@ -397,10 +410,10 @@ void AvHOverviewMap::DrawMiniMapEntity(const DrawInfo& inDrawInfo, const Drawabl
         if (x + w >= theX && y + h >= theY && x < theX + theWidth && y < theY + theHeight)
         {
 
-            float r, g, b;
-            GetColorForEntity(inEntity, r, g, b);
+            float r, g, b, a;
+            GetColorForEntity(inEntity, r, g, b, a);
 
-            AvHSpriteSetColor(r, g, b);
+            AvHSpriteSetColor(r, g, b, a);
             
             // If it's the local player, draw the FOV.
 
@@ -436,7 +449,7 @@ void AvHOverviewMap::DrawMiniMapEntity(const DrawInfo& inDrawInfo, const Drawabl
 				AvHSpriteSetRotation(0, 0, 0);
 			}
 
-            AvHSpriteSetColor(r, g, b);
+            AvHSpriteSetColor(r, g, b, a);
             AvHSpriteSetRenderMode(theRenderMode);
             AvHSpriteDraw(theSprite, theFrame, x, y, x + w, y + h, 0, 0, 1, 1);
 
@@ -534,10 +547,10 @@ void AvHOverviewMap::DrawMiniMapEntity(const DrawInfo& inDrawInfo, const Drawabl
 
                 AvHSpriteSetRenderMode(renderMode);
                 
-                float r, g, b;
-                GetColorForEntity(inEntity, r, g, b);
+                float r, g, b, a;
+                GetColorForEntity(inEntity, r, g, b, a);
 
-                AvHSpriteSetColor(r, g, b);
+                AvHSpriteSetColor(r, g, b, a);
                 AvHSpriteSetRotation(angle, tipX, tipY);
                 AvHSpriteDraw(theSprite, theFrame, tipX, tipY - h / 2 , tipX + w, tipY + h / 2, 0, 0, 1, 1);
 
@@ -979,6 +992,8 @@ void AvHOverviewMap::UpdateDrawData(float inCurrentTime)
         theDrawableEntity.mAngleRadians = theIter->second.mAngle * M_PI / 180;
         theDrawableEntity.mSquadNumber  = theIter->second.mSquadNumber;
 		theDrawableEntity.mIsUnderAttack = theIter->second.mUnderAttack;
+		theDrawableEntity.mIsUnbuilt = theIter->second.mUnbuilt;
+		theDrawableEntity.mIsRecycling = theIter->second.mRecycling;
 
 		// Returns position relative to minimap, so add it back in
 //				commented this out here, commented out corresponding shift in AvHEntityHierarchy::BuildFromTeam at line 234

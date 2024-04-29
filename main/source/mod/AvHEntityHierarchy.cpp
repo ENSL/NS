@@ -165,10 +165,8 @@ void AvHEntityHierarchy::BuildFromTeam(const AvHTeam* inTeam, BaseEntityListType
                                        GetHasUpgrade(theBaseEntity->pev->iuser4, MASK_VIS_SIGHTED);
 			bool theEntityIsDetected = GetHasUpgrade(theBaseEntity->pev->iuser4, MASK_VIS_DETECTED);
 			bool theEntityIsUnderAttack = GetGameRules()->GetIsEntityUnderAttack(theEntityIndex);
-			if ( theEntityIsUnderAttack )
-			{
-				int a=0;
-			}
+			bool theEntityIsUnbuilt = GetHasUpgrade(theBaseEntity->pev->iuser4, MASK_BUILDABLE);
+			bool theEntityIsRecycling = GetHasUpgrade(theBaseEntity->pev->iuser4, MASK_RECYCLING);
 			// Don't send ammo, health, weapons, or scans
 			bool theIsTransient = ((AvHUser3)(theBaseEntity->pev->iuser3) == AVH_USER3_MARINEITEM) || (theBaseEntity->pev->classname == MAKE_STRING(kwsScan));
 		
@@ -203,6 +201,8 @@ void AvHEntityHierarchy::BuildFromTeam(const AvHTeam* inTeam, BaseEntityListType
             mapEntity.mTeam  = (AvHTeamNumber)(theBaseEntity->pev->team);
             mapEntity.mSquadNumber = 0;
 			mapEntity.mUnderAttack = theEntityIsUnderAttack ? 1 : 0;
+			mapEntity.mUnbuilt = theEntityIsUnbuilt ? 1 : 0;
+			mapEntity.mRecycling = theEntityIsRecycling ? 1 : 0;
 
             bool sendEntity = false;
 
@@ -305,6 +305,8 @@ void AvHEntityHierarchy::BuildForSpec(BaseEntityListType& inBaseEntityList)
 		if ( theBaseEntity->pev->team == TEAM_ONE || theBaseEntity->pev->team == TEAM_TWO || theBaseEntity->pev->team == TEAM_THREE || theBaseEntity->pev->team == TEAM_FOUR )
 			theEntityIsVisible=true;
 		bool theEntityIsUnderAttack = GetGameRules()->GetIsEntityUnderAttack(theEntityIndex);
+		bool theEntityIsUnbuilt = GetHasUpgrade(theBaseEntity->pev->iuser4, MASK_BUILDABLE);
+		bool theEntityIsRecycling = GetHasUpgrade(theBaseEntity->pev->iuser4, MASK_RECYCLING);
 		// Don't send ammo, health, weapons, or scans
 		bool theIsTransient = ((AvHUser3)(theBaseEntity->pev->iuser3) == AVH_USER3_MARINEITEM) || (theBaseEntity->pev->classname == MAKE_STRING(kwsScan));
 	
@@ -318,6 +320,8 @@ void AvHEntityHierarchy::BuildForSpec(BaseEntityListType& inBaseEntityList)
         mapEntity.mTeam  = (AvHTeamNumber)(theBaseEntity->pev->team);
         mapEntity.mSquadNumber = 0;
 		mapEntity.mUnderAttack = theEntityIsUnderAttack ? 1 : 0;
+		mapEntity.mUnbuilt = theEntityIsUnbuilt ? 1 : 0;
+		mapEntity.mRecycling = theEntityIsRecycling ? 1 : 0;
 
         bool sendEntity = false;
 
