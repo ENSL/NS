@@ -2831,8 +2831,6 @@ int	AvHHud::MsgFunc_SetOrder(const char* pszName, int iSize, void* pbuf)
 		{
 			this->mDrawOrderOverlay = true;
 		}
-		if (!this->mDrawOrderOverlay)
-			gEngfuncs.Con_Printf("waypoint trapped \n");
 	}
 	else 
 	{
