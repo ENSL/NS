@@ -9408,11 +9408,11 @@ void AvHPlayer::UpdateAmbientSounds()
                 int theBaseSpeed, theMaxSpeed;
                 this->GetSpeeds(theBaseSpeed, theMaxSpeed);
                 
-                float theAlienSoundFreq = 0.3f;
-                float theChanceOfPlayingSound = gpGlobals->frametime*theAlienSoundFreq*(theVelocity/((float)theMaxSpeed));
+                float theAlienSoundFreq = 0.3f * gpGlobals->frametime;
+                float theChanceOfPlayingSound = theAlienSoundFreq*(theVelocity/((float)theMaxSpeed));
                 if(RANDOM_FLOAT(0, 1) < theChanceOfPlayingSound)
                 {
-                    float theVolume = RANDOM_FLOAT(.5, 1.0)*theSilenceVolumeFactor;
+                    float theVolume = RANDOM_FLOAT(0.5f, 0.95f /*.5, 1.0*/)*theSilenceVolumeFactor;
                     if(theVolume > 0.01f)
                     {
                         this->PlayRandomRoleSound(kPlayerLevelMoveSoundList, CHAN_VOICE, theVolume);
@@ -9426,7 +9426,7 @@ void AvHPlayer::UpdateAmbientSounds()
 					float theSilenceVolumeFactor = this->GetAlienAdjustedEventVolume();
 
                     // If player is part of primal scream, scream defiance!
-                    if(RANDOM_FLOAT(0, 1) < .02f && theSilenceVolumeFactor > 0.0)
+                    if(RANDOM_FLOAT(0, 1) < (2.0f * gpGlobals->frametime) && theSilenceVolumeFactor > 0.0)
                     {
                         EMIT_SOUND(this->edict(), CHAN_VOICE, kPrimalScreamResponseSound, theSilenceVolumeFactor, ATTN_NORM);
                     }   
@@ -9436,7 +9436,7 @@ void AvHPlayer::UpdateAmbientSounds()
                     bool theIsGestating = (this->GetUser3() == AVH_USER3_ALIEN_EMBRYO);
                         
                     // if idle, check chance for playing idle sound
-                    float theBaseChance = 0.0005f;
+                    float theBaseChance = 0.05f * gpGlobals->frametime;
                     if(theIsGestating)
                     {
                         theBaseChance *= 10;
@@ -9444,7 +9444,7 @@ void AvHPlayer::UpdateAmbientSounds()
                     
                     if(RANDOM_FLOAT(0, 1) < theBaseChance)
                     {
-                        float theVolume = RANDOM_FLOAT(.2, .4)*theSilenceVolumeFactor;
+                        float theVolume = RANDOM_FLOAT(0.2f, 0.4f)*theSilenceVolumeFactor;
                         if(theVolume > 0.01f)
                         {
                             if(theIsGestating)
