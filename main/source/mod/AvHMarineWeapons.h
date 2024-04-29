@@ -530,13 +530,19 @@ public:
 		
 	virtual void	Precache(void);
 
+	//virtual void	PrimaryAttack(void);
+
     virtual bool	Resupply();
+
+	//virtual BOOL	ShouldWeaponIdle(void);
 	
 	virtual void	Spawn();
 	
 	virtual bool	UsesAmmo(void) const;
 	
 	virtual BOOL	UseDecrement(void);
+
+	//virtual void	WeaponIdle(void);
 	
 protected: 
     virtual void    FireProjectiles(void);

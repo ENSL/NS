@@ -136,6 +136,7 @@ const float		kMineROF					= 1.0f;
 #define			kTripmineActivateSound		"weapons/mine_activate.wav"
 #define			kTripmineChargeSound		"weapons/mine_charge.wav"
 #define			kTripmineStepOnSound		"weapons/mine_step.wav"
+#define			kMineEventName				"events/Mine.sc"
 
 #define			kMineMinSize				Vector( -8, -8, 0)
 #define			kMineMaxSize				Vector(8, 8, 2)

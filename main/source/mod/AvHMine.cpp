@@ -120,6 +120,8 @@ int	AvHMine::GetShootAnimation() const
 {
 	// Return deploy animation for now, this should play fire animation, then a little later, play the deploy animation
 	return 2;
+	//// Attack animation test.
+	//return 4;
 }
 
 void AvHMine::Holster(int skiplocal)
@@ -307,13 +309,33 @@ void AvHMine::Precache()
 
 	UTIL_PrecacheOther(kwsDeployedMine);
 
-	this->mEvent = PRECACHE_EVENT(1, kWeaponAnimationEvent);
+	this->mEvent = PRECACHE_EVENT(1, kMineEventName);
 }
+
+//// Attack animation test.
+//void AvHMine::PrimaryAttack(void)
+//{
+//	AvHMarineWeapon::PrimaryAttack();
+//
+// // This makes the predicted clip size go down if you can't place a mine for some reason.
+//	this->m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 0.666666f;
+//
+//	if (this->m_flTimeWeaponIdle < 0)
+//	{
+//		this->m_flTimeWeaponIdle = 0.666666f;
+//	}
+//}
 
 bool AvHMine::Resupply()
 {
  	return false;
 }
+
+//////// Attack animation test.
+//BOOL AvHMine::ShouldWeaponIdle(void)
+//{
+//	return TRUE;
+//}
 
 void AvHMine::Spawn() 
 { 
@@ -352,4 +374,23 @@ BOOL AvHMine::UseDecrement(void)
 {
 	return true;
 }
+
+//// Attack animation test.
+//void AvHMine::WeaponIdle(void)
+//{
+//	//if (this->m_flTimeWeaponIdle <= UTIL_WeaponTimeBase() && this->m_flNextPrimaryAttack > UTIL_WeaponTimeBase())
+//	if (this->m_flNextPrimaryAttack > UTIL_WeaponTimeBase() && this->m_flNextPrimaryAttack < UTIL_WeaponTimeBase() + 0.333333f)
+//	{
+//		this->SendWeaponAnim(2);
+//		//m_pPlayer->m_flNextAttack
+//		this->m_pPlayer->SetAnimation(PLAYER_IDLE);
+//		this->SetNextIdle();
+//		ALERT(at_console, "mine special idle\n");
+//	}
+//	else
+//	{
+//		ALERT(at_console, "mine normal idle timeidle:%f nextprimatk:%f\n", this->m_flTimeWeaponIdle, this->m_flNextPrimaryAttack);
+//		AvHMarineWeapon::WeaponIdle();
+//	}
+//}
 

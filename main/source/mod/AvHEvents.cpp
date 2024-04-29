@@ -229,6 +229,7 @@ AVH_DECLARE_EVENT(SonicGun)
 AVH_DECLARE_EVENT(HeavyMachineGun)
 AVH_DECLARE_EVENT(GrenadeGun)
 AVH_DECLARE_EVENT(Grenade)
+AVH_DECLARE_EVENT(Mine)
 
 // Alien weapon events
 AVH_DECLARE_EVENT(SpitGun)
@@ -324,6 +325,7 @@ void Game_HookEvents( void )
 	gEngfuncs.pfnHookEvent( kHMGEventName, EV_HeavyMachineGun );
 	gEngfuncs.pfnHookEvent( kGGEventName, EV_GrenadeGun );
     gEngfuncs.pfnHookEvent( kGREventName, EV_Grenade );
+	gEngfuncs.pfnHookEvent( kMineEventName, EV_Mine );
 
 	// Alien weapon events
 	gEngfuncs.pfnHookEvent( kSpitGEventName, EV_SpitGun );
@@ -1271,6 +1273,16 @@ void EV_Grenade(struct event_args_s* inArgs)
 //            VectorCopy(theStartVelocity, theTempEntity->entity.baseline.velocity);
 //        }
 //    }
+}
+
+void EV_Mine(struct event_args_s* inArgs)
+{
+	if (EV_IsLocal(inArgs->entindex))
+	{
+		int theAnimation = max(inArgs->iparam2, 0);
+
+		gEngfuncs.pEventAPI->EV_WeaponAnimation(theAnimation, 2);
+	}
 }
 
 char *EV_HLDM_DamageDecal( physent_t *pe );
@@ -3614,6 +3626,7 @@ void EV_WeaponAnimation(struct event_args_s* inArgs)
 	{
 		int theAnimation = max(inArgs->iparam2, 0);
 		// 2024 - Set this here to be checked in weapons think later to force animations if needed since event playback doesn't always work.
+		gEngfuncs.Con_Printf("setanim %d\n", theAnimation);
 		HUD_SetWeaponAnim(theAnimation);
 		gEngfuncs.pEventAPI->EV_WeaponAnimation(theAnimation, 2);
 	}
