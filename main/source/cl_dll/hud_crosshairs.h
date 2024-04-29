@@ -27,6 +27,7 @@ class CHudCrosshairs : public CHudBase
 	cvar_t* cl_cross_dot_alpha;
 	cvar_t* cl_cross_dot_outline;
 	cvar_t* cl_cross_dot_outline_alpha;
+	cvar_t* cl_cross_dot_round;
 	cvar_t* cl_cross_line_top;
 	cvar_t* cl_cross_line_bottom;
 	cvar_t* cl_cross_line_left;
@@ -34,7 +35,16 @@ class CHudCrosshairs : public CHudBase
 	cvar_t* cl_cross_scaling;
 
 	float old_circle_radius;
+	float old_circle_thickness;
 	std::vector<Vector2D> circle_points;
+	float old_circle_outline_radius;
+	float old_circle_outline_thickness;
+	std::vector<Vector2D> circle_outline_points;
+	float old_round_dot_radius;
+	std::vector<Vector2D> round_dot_points;
+	float old_round_dot_outline_radius;
+	float old_round_dot_outline_thickness;
+	std::vector<Vector2D> round_dot_outline_points;
 
 public:
 	virtual int Init();

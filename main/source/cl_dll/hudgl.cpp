@@ -52,11 +52,21 @@ void HudGL::line(const Vector2D& start, const Vector2D& end) const {
 	glEnd();
 }
 
-//#ifdef __APPLE__
-////Remove when OSX builds with c++11
-//#else
 void HudGL::circle(const Vector2D& center, const std::vector<Vector2D>& points) const {
-	glBegin(GL_LINE_STRIP);
+	glBegin(GL_TRIANGLE_STRIP);
+
+	for (const Vector2D& point : points)
+		glVertex2f(center.x + point.x, center.y + point.y);
+
+	glVertex2f(center.x + points[0].x, center.y + points[0].y);
+	glVertex2f(center.x + points[1].x, center.y + points[1].y);
+	glEnd();
+}
+
+void HudGL::round_dot(const Vector2D& center, const std::vector<Vector2D>& points) const {
+	glBegin(GL_TRIANGLE_FAN);
+
+	glVertex2f(center.x, center.y);
 
 	for (const Vector2D& point : points)
 		glVertex2f(center.x + point.x, center.y + point.y);
@@ -64,7 +74,6 @@ void HudGL::circle(const Vector2D& center, const std::vector<Vector2D>& points) 
 	glVertex2f(center.x + points[0].x, center.y + points[0].y);
 	glEnd();
 }
-//#endif
 
 void HudGL::rectangle(const Vector2D& corner_a, const Vector2D& corner_b) const {
 	glBegin(GL_QUADS);
@@ -75,9 +84,6 @@ void HudGL::rectangle(const Vector2D& corner_a, const Vector2D& corner_b) const 
 	glEnd();
 }
 
-//#ifdef __APPLE__
-////Remove when OSX builds with c++11
-//#else
 std::vector<Vector2D> HudGL::compute_circle(float radius) {
 	// Maximum allowed distance between the circle and the rendered line segment.
 	const float MAX_ERROR = 0.1f;
@@ -94,4 +100,23 @@ std::vector<Vector2D> HudGL::compute_circle(float radius) {
 
 	return points;
 }
-//#endif
+
+std::vector<Vector2D> HudGL::compute_circle(float radius, float thickness) {
+	// Maximum allowed distance between the circle and the rendered line segment.
+	const float MAX_ERROR = 0.1f;
+	const unsigned segment_count =
+		static_cast<unsigned>(std::ceil(M_PI / std::acos((radius - MAX_ERROR) / radius)));
+	const unsigned point_count = segment_count * 2;
+	float half_thickness = thickness * 0.5f;
+
+	std::vector<Vector2D> points;
+	points.reserve(point_count);
+
+	for (unsigned i = 0; i < segment_count; ++i) {
+		float angle = static_cast<float>(M_PI * 2 * i / segment_count);
+		points.emplace_back((radius + half_thickness) * std::cos(angle), (radius + half_thickness) * std::sin(angle));
+		points.emplace_back((radius - half_thickness) * std::cos(angle), (radius - half_thickness) * std::sin(angle));
+	}
+
+	return points;
+}

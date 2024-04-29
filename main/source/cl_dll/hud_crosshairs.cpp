@@ -31,6 +31,7 @@ int CHudCrosshairs::Init()
 	cl_cross_dot_alpha = CVAR_CREATE("cl_cross_dot_alpha", "", FCVAR_ARCHIVE);
 	cl_cross_dot_outline = CVAR_CREATE("cl_cross_dot_outline", "0", FCVAR_ARCHIVE);
 	cl_cross_dot_outline_alpha = CVAR_CREATE("cl_cross_dot_outline_alpha", "", FCVAR_ARCHIVE);
+	cl_cross_dot_round = CVAR_CREATE("cl_cross_dot_round", "0", FCVAR_ARCHIVE);
 	cl_cross_line_top = CVAR_CREATE("cl_cross_line_top", "1", FCVAR_ARCHIVE);
 	cl_cross_line_bottom = CVAR_CREATE("cl_cross_line_bottom", "1", FCVAR_ARCHIVE);
 	cl_cross_line_left = CVAR_CREATE("cl_cross_line_left", "1", FCVAR_ARCHIVE);
@@ -77,7 +78,7 @@ int CHudCrosshairs::Draw(float time)
 	if (cl_cross_scaling->value != 0)
 	{
 		// Scale from 1080 Y res, as it's what the default crosshairs are designed for, but don't scale when resolution is close to 1080, as it looks bad.
-		const float screenscale = ScreenHeight() / 1080.0f; //ScreenHeight() * 0.000926f
+		const float screenscale = ScreenHeight() / 1080; //ScreenHeight() * 0.000926f
 		// Lowering scale looks like junk, don't bother.
 		//if (screenscale < 0.75f)
 		//{
@@ -197,10 +198,27 @@ int CHudCrosshairs::Draw(float time)
 
 		gl.color(0, 0, 0, dotoutalpha);
 
-		float size = min(cl_cross_dot_size->value * scalar, ScreenHeight() * 0.2f) + (dotout * 2.0f);
-		Vector2D offset = Vector2D(size / 2.0f, size / 2.0f);
+		float size = min(cl_cross_dot_size->value * scalar, ScreenHeight() * 0.2f);
+		
+		if (cl_cross_dot_round->value)
+		{
+			size *= 0.5f;
+			if (old_round_dot_outline_radius != size || old_round_dot_outline_thickness != dotout) {
+				// Recompute the circle points.
+				round_dot_outline_points = HudGL::compute_circle(size + (dotout * 0.5f), dotout);
+				old_round_dot_outline_radius = size;
+				old_round_dot_outline_thickness = dotout;
+			}
 
-		gl.rectangle(center - offset, center + offset);
+			gl.circle(center, round_dot_outline_points);
+		}
+		else
+		{
+			//TOFIX - Not a true outline, will be seen behind transparent dots
+			size += dotout * 2.0f;
+			Vector2D offset = Vector2D(size / 2.0f, size / 2.0f);
+			gl.rectangle(center - offset, center + offset);
+		}
 	}
 
 	float circleout;
@@ -225,22 +243,26 @@ int CHudCrosshairs::Draw(float time)
 
 		auto radius = cl_cross_circle_radius->value * scalar;
 
+		float thickness;
+
 		if (!circleoutinner)
 		{
 			radius += cl_cross_circle_thickness->value * scalar * 0.5f;
-			gl.line_width(circleout);
+			thickness = circleout;
 		}
 		else
 		{
-			gl.line_width(cl_cross_circle_thickness->value * scalar + (circleout * 2.0f));
+			//TOFIX - Not a true outline, will be seen behind transparent circles
+			thickness = cl_cross_circle_thickness->value * scalar + (circleout * 2.0f);
 		}
 
-		if (old_circle_radius != radius) {
+		if (old_circle_outline_radius != radius || old_circle_outline_thickness != thickness) {
 			// Recompute the circle points.
-			circle_points = HudGL::compute_circle(radius);
-			old_circle_radius = radius;
+			circle_outline_points = HudGL::compute_circle(radius, thickness);
+			old_circle_outline_radius = radius;
+			old_circle_outline_thickness = thickness;
 		}
-		gl.circle(center, circle_points);
+		gl.circle(center, circle_outline_points);
 	}
 
 	gl.color(r, g, b, alpha);
@@ -298,14 +320,15 @@ int CHudCrosshairs::Draw(float time)
 		{
 			gl.color(r, g, b, circlealpha);
 		}
-		
-		gl.line_width(cl_cross_circle_thickness->value * scalar);
 
 		float radius = cl_cross_circle_radius->value * scalar;
-		if (old_circle_radius != radius) {
+		float thickness = cl_cross_circle_thickness->value * scalar;
+		if (old_circle_radius != radius || old_circle_thickness != thickness) {
 			// Recompute the circle points.
-			circle_points = HudGL::compute_circle(radius);
+			circle_points = HudGL::compute_circle(radius, thickness);
 			old_circle_radius = radius;
+			old_circle_thickness = thickness;
+			gEngfuncs.Con_Printf("radius:%f thickness:%f\n", radius, thickness);
 		}
 
 		gl.circle(center, circle_points);
@@ -332,7 +355,21 @@ int CHudCrosshairs::Draw(float time)
 		float size = min(cl_cross_dot_size->value * scalar, ScreenHeight() * 0.2f);
 		Vector2D offset = Vector2D(size / 2.0f, size / 2.0f);
 
-		gl.rectangle(center - offset, center + offset);
+		if (cl_cross_dot_round->value)
+		{
+			size *= 0.5f;
+			if (old_round_dot_radius != size) {
+				// Recompute the circle points.
+				round_dot_points = HudGL::compute_circle(size);
+				old_round_dot_radius = size;
+			}
+
+			gl.round_dot(center, round_dot_points);
+		}
+		else
+		{
+			gl.rectangle(center - offset, center + offset);
+		}
 	}
 
 	return 0;
