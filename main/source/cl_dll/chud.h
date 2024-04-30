@@ -25,7 +25,7 @@ private:
 	unsigned int m_iConHeight;
 	float m_flOffsetX;
 	float m_flOffsetY;
-	byte m_bIsWidescreen;
+	bool m_bIsWidescreen;
 
 public:
 
