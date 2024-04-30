@@ -114,6 +114,7 @@ MOD_OBJS = \
 	$(NS_MOD_OBJ_DIR)/AvHAIPlayer.o \
 	$(NS_MOD_OBJ_DIR)/AvHAIPlayerManager.o \
 	$(NS_MOD_OBJ_DIR)/AvHAIPlayerUtil.o \
+	$(NS_MOD_OBJ_DIR)/AvHAISoundQueue.o \
 	$(NS_MOD_OBJ_DIR)/AvHAITactical.o \
 	$(NS_MOD_OBJ_DIR)/AvHAITask.o \
 	$(NS_MOD_OBJ_DIR)/AvHAIWeaponHelper.o \
