@@ -328,7 +328,6 @@ int CHudCrosshairs::Draw(float time)
 			circle_points = HudGL::compute_circle(radius, thickness);
 			old_circle_radius = radius;
 			old_circle_thickness = thickness;
-			gEngfuncs.Con_Printf("radius:%f thickness:%f\n", radius, thickness);
 		}
 
 		gl.circle(center, circle_points);

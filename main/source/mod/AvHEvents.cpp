@@ -3626,7 +3626,6 @@ void EV_WeaponAnimation(struct event_args_s* inArgs)
 	{
 		int theAnimation = max(inArgs->iparam2, 0);
 		// 2024 - Set this here to be checked in weapons think later to force animations if needed since event playback doesn't always work.
-		gEngfuncs.Con_Printf("setanim %d\n", theAnimation);
 		HUD_SetWeaponAnim(theAnimation);
 		gEngfuncs.pEventAPI->EV_WeaponAnimation(theAnimation, 2);
 	}
