@@ -66,6 +66,8 @@ edict_t* LastSeenLerkTeamB = nullptr; // Track who went lerk on team B last time
 float LastSeenLerkTeamATime = 0.0f;
 float LastSeenLerkTeamBTime = 0.0f;
 
+vector<AvHAISquad> ActiveSquads;
+
 std::vector<AvHAIBuildableStructure> AITAC_FindAllDeployables(const Vector& Location, const DeployableSearchFilter* Filter)
 {
 	std::vector<AvHAIBuildableStructure> Result;
@@ -2562,7 +2564,7 @@ void AITAC_OnStructureCreated(AvHAIBuildableStructure* NewStructure)
 	{
 		NavHint* ThisHint = (*it);
 
-		if (vDist2DSq(NewStructure->edict->v.origin, ThisHint->Position) < sqrf(32.0f) && fabsf(NewStructure->Location.z - ThisHint->Position.z) < 50.0f)
+		if (vDist2DSq(NewStructure->edict->v.origin, ThisHint->Position) < sqrf(64.0f) && fabsf(NewStructure->Location.z - ThisHint->Position.z) < 50.0f)
 		{
 			ThisHint->OccupyingBuilding = NewStructure->edict;
 		}
@@ -2801,6 +2803,8 @@ void AITAC_ClearMapAIData(bool bInitialMapLoad)
 	{
 		Hives.clear();
 	}
+
+	AITAC_ClearSquads();
 
 	MarineDroppedItemMap.clear();
 	TeamAStructureMap.clear();
@@ -4266,6 +4270,27 @@ bool AITAC_ShouldBotBeCautious(AvHAIPlayer* pBot)
 
 	int NumEnemiesAtDestination = AITAC_GetNumPlayersOnTeamWithLOS(EnemyTeam, CurrentPathNode.Location, UTIL_MetresToGoldSrcUnits(50.0f), pBot->Edict);
 
+	if (NumEnemiesAtDestination <= 1)
+	{
+		DeployableSearchFilter TurretFilter;
+		TurretFilter.DeployableTeam = EnemyTeam;
+		TurretFilter.DeployableTypes = (STRUCTURE_MARINE_TURRET | STRUCTURE_ALIEN_OFFENCECHAMBER);
+		TurretFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+		TurretFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+		TurretFilter.MaxSearchRadius = BALANCE_VAR(kTurretRange);
+
+		vector<AvHAIBuildableStructure> Turrets = AITAC_FindAllDeployables(CurrentPathNode.Location, &TurretFilter);
+
+		for (auto it = Turrets.begin(); it != Turrets.end(); it++)
+		{
+			if (UTIL_QuickTrace(pBot->Edict, GetPlayerTopOfCollisionHull(it->edict), CurrentPathNode.Location))
+			{
+				NumEnemiesAtDestination++;
+			}
+		}
+
+	}
+
 	if (NumEnemiesAtDestination > 1)
 	{
 		return (vDist2DSq(pBot->Edict->v.origin, CurrentPathNode.Location) < sqrf(UTIL_MetresToGoldSrcUnits(5.0f)));
@@ -5403,4 +5428,200 @@ Vector AITAC_GetRandomBuildHintInLocation(const unsigned int StructureType, cons
 	}
 
 	return Result;
+}
+
+bool AITAC_IsBotPursuingSquadObjective(AvHAIPlayer* pBot, AvHAISquad* Squad)
+{
+	// Bot is dead, no longer playing, or otherwise incapacitated
+	if (!IsPlayerActiveInGame(pBot->Edict) || pBot->Player->GetTeam() != Squad->SquadTeam) { return false; } 
+	
+	// Bot no longer has this squad's objective as its primary task
+	if (pBot->PrimaryBotTask.TaskType != Squad->SquadObjective || pBot->PrimaryBotTask.TaskTarget != Squad->SquadTarget) { return false; }
+
+	// Bot is focused on the job at hand
+	if (!pBot->CurrentTask || pBot->CurrentTask == &pBot->PrimaryBotTask) { return true; }
+
+	// Bot isn't currently pursuing squad objective, so check if it's doing something in the vicinity
+	Vector TaskLocation = (!FNullEnt(pBot->CurrentTask->TaskTarget)) ? pBot->CurrentTask->TaskTarget->v.origin : pBot->CurrentTask->TaskLocation;
+
+	return vDist2DSq(TaskLocation, Squad->SquadTarget->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(10.0f));
+}
+
+void AITAC_ManageSquads()
+{
+	for (auto it = ActiveSquads.begin(); it != ActiveSquads.end();)
+	{
+		for (auto pIt = it->SquadMembers.begin(); pIt != it->SquadMembers.end();)
+		{
+			AvHAIPlayer* ThisPlayer = (*pIt);
+			if (!AITAC_IsBotPursuingSquadObjective(ThisPlayer, &(*it)))
+			{
+				pIt = it->SquadMembers.erase(pIt);
+			}
+			else
+			{
+				pIt++;
+			}
+		}
+
+		if (it->SquadMembers.size() == 0)
+		{
+			it = ActiveSquads.erase(it);
+		}
+		else
+		{
+			it++;
+		}
+	}
+}
+
+void AITAC_UpdateSquads()
+{
+	AITAC_ManageSquads();
+
+	for (auto it = ActiveSquads.begin(); it != ActiveSquads.end(); it++)
+	{
+		if (it->SquadMembers.size() > 1)
+		{
+			if (vIsZero(it->SquadGatherLocation))
+			{
+				vector<bot_path_node> TravelPath;
+
+				dtStatus PathFindResult = FindPathClosestToPoint(GetBaseNavProfile(ONOS_BASE_NAV_PROFILE), AITAC_GetTeamStartingLocation(it->SquadTeam), UTIL_GetEntityGroundLocation(it->SquadTarget), TravelPath, UTIL_MetresToGoldSrcUnits(20.0f));
+
+				if (dtStatusSucceed(PathFindResult))
+				{
+					for (auto pIt = TravelPath.rbegin(); pIt != TravelPath.rend(); pIt++)
+					{
+						if (pIt->area != SAMPLE_POLYAREA_GROUND || pIt->flag != SAMPLE_POLYFLAGS_WALK) { continue; }
+
+						if (UTIL_QuickTrace(nullptr, pIt->Location, it->SquadTarget->v.origin)) { continue; }
+
+						if (vDist2DSq(pIt->Location, it->SquadTarget->v.origin) > sqrf(UTIL_MetresToGoldSrcUnits(20.0f)))
+						{
+							DeployableSearchFilter EnemyStuff;
+							EnemyStuff.DeployableTeam = AIMGR_GetEnemyTeam(it->SquadTeam);
+							EnemyStuff.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+							EnemyStuff.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
+
+							if (AITAC_DeployableExistsAtLocation(pIt->Location, &EnemyStuff))
+							{
+								continue;
+							}
+
+							it->SquadGatherLocation = pIt->Location;
+							break;
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			it->SquadGatherLocation = ZERO_VECTOR;
+		}
+
+		if (!it->bExecuteObjective && !vIsZero(it->SquadGatherLocation))
+		{
+			bool bAllHaveGathered = true;
+
+			for (auto playerIt = it->SquadMembers.begin(); playerIt != it->SquadMembers.end(); playerIt++)
+			{
+				AvHAIPlayer* ThisBot = (*playerIt);
+
+				if (vDist2DSq(ThisBot->Edict->v.origin, it->SquadGatherLocation) > sqrf(UTIL_MetresToGoldSrcUnits(5.0f)))
+				{
+					bAllHaveGathered = false;
+				}
+			}
+
+			if (bAllHaveGathered)
+			{
+				it->bExecuteObjective = true;
+			}
+		}
+	}
+}
+
+AvHAISquad* AITAC_GetSquadForObjective(AvHAIPlayer* pBot, edict_t* TaskTarget, BotTaskType ObjectiveType)
+{
+	AvHAISquad* JoinSquad = nullptr;
+
+	for (auto it = ActiveSquads.begin(); it != ActiveSquads.end(); it++)
+	{
+		if (it->SquadTeam == pBot->Player->GetTeam() && it->SquadTarget == TaskTarget && it->SquadObjective == ObjectiveType)
+		{
+			auto element = std::find(it->SquadMembers.begin(), it->SquadMembers.end(), pBot);
+
+			if (element != it->SquadMembers.end())
+			{
+				return &(*it);
+			}
+			else
+			{
+				if (!JoinSquad && !it->bExecuteObjective)
+				{
+					JoinSquad = &(*it);
+				}
+			}
+		}
+	}
+
+	if (JoinSquad)
+	{
+		JoinSquad->SquadMembers.push_back(pBot);
+		return JoinSquad; 
+	}
+
+	AvHAISquad NewSquad;
+	NewSquad.SquadTeam = pBot->Player->GetTeam();
+	NewSquad.SquadTarget = TaskTarget;
+	NewSquad.SquadObjective = ObjectiveType;
+	NewSquad.bExecuteObjective = false;
+	NewSquad.SquadGatherLocation = ZERO_VECTOR;
+
+	ActiveSquads.push_back(NewSquad);
+
+	return nullptr;
+}
+
+void AITAC_ClearSquads()
+{
+	ActiveSquads.clear();
+}
+
+Vector AITAC_GetGatherLocationForSquad(AvHAISquad* Squad)
+{
+	if (!Squad || FNullEnt(Squad->SquadTarget)) { return ZERO_VECTOR; }
+
+	vector<bot_path_node> TravelPath;
+
+	dtStatus PathFindResult = FindPathClosestToPoint(GetBaseNavProfile(ONOS_BASE_NAV_PROFILE), AITAC_GetTeamStartingLocation(Squad->SquadTeam), UTIL_GetEntityGroundLocation(Squad->SquadTarget), TravelPath, UTIL_MetresToGoldSrcUnits(20.0f));
+
+	if (dtStatusSucceed(PathFindResult))
+	{
+		for (auto pIt = TravelPath.rend(); pIt != TravelPath.rbegin(); pIt++)
+		{
+			if (pIt->area != SAMPLE_POLYAREA_GROUND || pIt->flag != SAMPLE_POLYFLAGS_WALK) { continue; }
+
+			if (UTIL_QuickTrace(nullptr, pIt->Location, Squad->SquadTarget->v.origin)) { continue; }
+
+			if (vDist2DSq(pIt->Location, Squad->SquadTarget->v.origin) > sqrf(UTIL_MetresToGoldSrcUnits(20.0f)))
+			{
+				DeployableSearchFilter EnemyStuff;
+				EnemyStuff.DeployableTeam = AIMGR_GetEnemyTeam(Squad->SquadTeam);
+				EnemyStuff.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+				EnemyStuff.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
+
+				if (AITAC_DeployableExistsAtLocation(pIt->Location, &EnemyStuff))
+				{
+					continue;
+				}
+
+				return pIt->Location;
+			}
+		}
+	}
+
+	return ZERO_VECTOR;
 }

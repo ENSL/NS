@@ -45,6 +45,7 @@ bool AITASK_IsEvolveTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 
 bool AITASK_IsReinforceStructureTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 bool AITASK_IsMarineSecureHiveTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
+bool AITASK_IsAlienSecureHiveTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 
 bool AITASK_IsAlienGetHealthTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 bool AITASK_IsAlienHealTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
@@ -92,6 +93,9 @@ void BotProgressWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 void AIPlayerBuildStructure(AvHAIPlayer* pBot, edict_t* BuildTarget);
 
 void MarineProgressSecureHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
+
+// Clear all enemy structures
+void AlienProgressSecureHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 
 void AlienProgressGetHealthTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);
 void AlienProgressHealTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task);

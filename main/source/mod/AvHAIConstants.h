@@ -323,7 +323,7 @@ typedef struct _BOT_MSG
 	bool bIsTeamSay = false; // Is this a team-only message?
 } bot_msg;
 
-typedef struct _BOT_GUARD_INFO
+typedef struct _AVH_AI_GUARD_INFO
 {
 	Vector GuardLocation = g_vecZero; // What position are we guarding?
 	Vector GuardStandPosition = g_vecZero; // Where the bot should stand to guard position (moves around a bit)
@@ -414,7 +414,8 @@ typedef enum
 	TASK_TOUCH,
 	TASK_REINFORCE_STRUCTURE,
 	TASK_SECURE_HIVE,
-	TASK_PLACE_MINE
+	TASK_PLACE_MINE,
+	TASK_ATTACK_BASE
 }
 BotTaskType;
 
@@ -809,7 +810,24 @@ typedef struct AVH_AI_PLAYER
 
 	float HearingThreshold = 0.0f; // How loud does a sound need to be before the bot detects it? This is set when hearing a sound so that louder sounds drown out quieter ones, and decrements quickly
 
+	int DebugValue = 0; // Used for debugging the bot
+
 } AvHAIPlayer;
+
+typedef struct _AVH_AI_SQUAD
+{
+	AvHTeamNumber SquadTeam = TEAM_IND; // Which team this squad is for
+	vector<AvHAIPlayer*> SquadMembers; // Which bots are assigned to this
+	Vector SquadGatherLocation = g_vecZero; // Where should the squad gather before attempting the objective?
+	edict_t* SquadTarget = nullptr; // The target of the objective
+	BotTaskType SquadObjective = TASK_NONE; // What to do with the objective
+	bool bExecuteObjective = false; // Are we at the gather or execute phase?
+
+	bool IsValid()
+	{
+		return (SquadMembers.size() > 0 && !FNullEnt(SquadTarget));
+	}
+} AvHAISquad;
 
 
 #endif

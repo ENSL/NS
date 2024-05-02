@@ -54,6 +54,10 @@ bool bBotsEnabled = false;
 
 float CurrentFrameDelta = 0.01f;
 
+#ifdef BOTDEBUG
+edict_t* DebugBots[MAX_PLAYERS];
+#endif
+
 AvHAICommanderMode AIMGR_GetCommanderMode()
 {
 	if (avh_botcommandermode.value == 1)
@@ -599,6 +603,7 @@ void AIMGR_UpdateAIPlayers()
 		}
 
 		AIMGR_ProcessPendingSounds();
+		AITAC_UpdateSquads();
 	}
 	
 	int NumCommanders = AIMGR_GetNumAICommanders();
@@ -889,7 +894,11 @@ void AIMGR_ResetRound()
 {
 	if (!AIMGR_IsBotEnabled()) { return; } // Do nothing if we're not using bots, as the data will be cleared out via AIMGR_OnBotDisabled()
 
-	AITAC_ClearMapAIData(false);	
+	AITAC_ClearMapAIData(false);
+
+#ifdef BOTDEBUG
+	memset(DebugBots, 0, sizeof(DebugBots));
+#endif
 
 	// AI Players would be 0 if the round is being reset because a new game is starting. If the round is reset
 	// from a console command, or tournament mode readying up etc, then bot logic is unaffected
@@ -1084,6 +1093,16 @@ AvHAIPlayer* AIMGR_GetBotRefFromPlayer(AvHPlayer* PlayerRef)
 	return nullptr;
 }
 
+AvHAIPlayer* AIMGR_GetBotRefFromEdict(edict_t* PlayerEdict)
+{
+	for (auto BotIt = ActiveAIPlayers.begin(); BotIt != ActiveAIPlayers.end(); BotIt++)
+	{
+		if (BotIt->Edict == PlayerEdict) { return &(*BotIt); }
+	}
+
+	return nullptr;
+}
+
 AvHTeamNumber AIMGR_GetEnemyTeam(const AvHTeamNumber FriendlyTeam)
 {
 	AvHTeamNumber TeamANumber = GetGameRules()->GetTeamANumber();
@@ -1259,11 +1278,14 @@ AvHAIPlayer* AIMGR_GetDebugAIPlayer()
 	return DebugAIPlayer;
 }
 
-void AIMGR_SetDebugAIPlayer(edict_t* AIPlayer)
+void AIMGR_SetDebugAIPlayer(edict_t* SpectatingPlayer, edict_t* AIPlayer)
 {
+#ifdef BOTDEBUG
+	int PlayerIndex = ENTINDEX(SpectatingPlayer) - 1;
+
 	if (FNullEnt(AIPlayer))
 	{
-		DebugAIPlayer = nullptr;
+		DebugBots[PlayerIndex] = nullptr;
 		return;
 	}
 
@@ -1271,12 +1293,13 @@ void AIMGR_SetDebugAIPlayer(edict_t* AIPlayer)
 	{
 		if (it->Edict == AIPlayer)
 		{
-			DebugAIPlayer = &(*it);
+			DebugBots[PlayerIndex] = it->Edict;
 			return;
 		}
 	}
 
-	DebugAIPlayer = nullptr;
+	DebugBots[PlayerIndex] = nullptr;
+#endif
 }
 
 void AIMGR_ReceiveCommanderRequest(AvHTeamNumber Team, edict_t* Requestor, const char* Request)

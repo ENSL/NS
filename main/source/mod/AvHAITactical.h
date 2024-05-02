@@ -204,4 +204,10 @@ edict_t* AITAC_GetLastSeenLerkForTeam(AvHTeamNumber Team, float& LastSeenTime);
 bool AITAC_IsCompletedStructureOfTypeNearLocation(AvHTeamNumber Team, unsigned int StructureType, Vector SearchLocation, float SearchRadius);
 bool AITAC_IsStructureOfTypeNearLocation(AvHTeamNumber Team, unsigned int StructureType, Vector SearchLocation, float SearchRadius);
 
+void AITAC_UpdateSquads();
+void AITAC_ManageSquads();
+void AITAC_ClearSquads();
+AvHAISquad* AITAC_GetSquadForObjective(AvHAIPlayer* pBot, edict_t* TaskTarget, BotTaskType ObjectiveType);
+Vector AITAC_GetGatherLocationForSquad(AvHAISquad* Squad);
+
 #endif

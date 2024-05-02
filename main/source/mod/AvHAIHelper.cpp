@@ -302,12 +302,12 @@ bool GetNearestMapLocationAtPoint(vec3_t SearchLocation, string& outLocation)
 	return theSuccess;
 }
 
-void AIDEBUG_DrawBotPath(AvHAIPlayer* pBot, float DrawTime)
+void AIDEBUG_DrawBotPath(edict_t* OutputPlayer, AvHAIPlayer* pBot, float DrawTime)
 {
-	AIDEBUG_DrawPath(pBot->BotNavInfo.CurrentPath, DrawTime);
+	AIDEBUG_DrawPath(OutputPlayer, pBot->BotNavInfo.CurrentPath, DrawTime);
 }
 
-void AIDEBUG_DrawPath(vector<bot_path_node>& path, float DrawTime)
+void AIDEBUG_DrawPath(edict_t* OutputPlayer, vector<bot_path_node>& path, float DrawTime)
 {
 	if (path.size() == 0) { return; }
 
@@ -320,28 +320,28 @@ void AIDEBUG_DrawPath(vector<bot_path_node>& path, float DrawTime)
 		{
 		case SAMPLE_POLYFLAGS_WELD:
 		case SAMPLE_POLYFLAGS_DOOR:
-			UTIL_DrawLine(INDEXENT(1), FromLoc, ToLoc, DrawTime, 255, 0, 0);
+			UTIL_DrawLine(OutputPlayer, FromLoc, ToLoc, DrawTime, 255, 0, 0);
 			break;
 		case SAMPLE_POLYFLAGS_JUMP:
 		case SAMPLE_POLYFLAGS_DUCKJUMP:
-			UTIL_DrawLine(INDEXENT(1), FromLoc, ToLoc, DrawTime, 255, 255, 0);
+			UTIL_DrawLine(OutputPlayer, FromLoc, ToLoc, DrawTime, 255, 255, 0);
 			break;
 		case SAMPLE_POLYFLAGS_LADDER:
 		case SAMPLE_POLYFLAGS_LIFT:
-			UTIL_DrawLine(INDEXENT(1), FromLoc, ToLoc, DrawTime, 0, 0, 255);
+			UTIL_DrawLine(OutputPlayer, FromLoc, ToLoc, DrawTime, 0, 0, 255);
 			break;
 		case SAMPLE_POLYFLAGS_WALLCLIMB:
-			UTIL_DrawLine(INDEXENT(1), FromLoc, ToLoc, DrawTime, 0, 128, 0);
+			UTIL_DrawLine(OutputPlayer, FromLoc, ToLoc, DrawTime, 0, 128, 0);
 			break;
 		case SAMPLE_POLYFLAGS_BLOCKED:
-			UTIL_DrawLine(INDEXENT(1), FromLoc, ToLoc, DrawTime, 128, 128, 128);
+			UTIL_DrawLine(OutputPlayer, FromLoc, ToLoc, DrawTime, 128, 128, 128);
 			break;
 		case SAMPLE_POLYFLAGS_TEAM1PHASEGATE:
 		case SAMPLE_POLYFLAGS_TEAM2PHASEGATE:
-			UTIL_DrawLine(INDEXENT(1), FromLoc, ToLoc, DrawTime, 255, 128, 128);
+			UTIL_DrawLine(OutputPlayer, FromLoc, ToLoc, DrawTime, 255, 128, 128);
 			break;
 		default:
-			UTIL_DrawLine(INDEXENT(1), FromLoc, ToLoc, DrawTime);
+			UTIL_DrawLine(OutputPlayer, FromLoc, ToLoc, DrawTime);
 			break;
 		}
 	}
@@ -525,32 +525,29 @@ void UTIL_DrawHUDText(edict_t* pEntity, char channel, float x, float y, unsigned
 {
 	if (FNullEnt(pEntity)) { return; }
 
-	float FrameDelta = AIMGR_GetFrameDelta();
-	FrameDelta *= 256.0f;
+	float delta = AIMGR_GetFrameDelta();
 
-	short Duration = (short)roundf(FrameDelta);
+	// TODO: Be able to turn these off as a preference
+	hudtextparms_t	theTextParms;
 
-	MESSAGE_BEGIN(MSG_ONE_UNRELIABLE, SVC_TEMPENTITY, NULL, pEntity);
-	WRITE_BYTE(TE_TEXTMESSAGE);
-	WRITE_BYTE(channel); // channel
-	WRITE_SHORT((int)(x * 8192.0f)); // x coordinates * 8192
-	WRITE_SHORT((int)(y * 8192.0f)); // y coordinates * 8192
-	WRITE_BYTE(0); // effect (fade in/out)
-	WRITE_BYTE(r); // initial RED
-	WRITE_BYTE(g); // initial GREEN
-	WRITE_BYTE(b); // initial BLUE
-	WRITE_BYTE(1); // initial ALPHA
-	WRITE_BYTE(r); // effect RED
-	WRITE_BYTE(g); // effect GREEN
-	WRITE_BYTE(b); // effect BLUE
-	WRITE_BYTE(1); // effect ALPHA
-	WRITE_SHORT(1); // fade-in time in seconds * 256
-	WRITE_SHORT(Duration); // fade-out time in seconds * 256
-	WRITE_SHORT(Duration); // hold time in seconds * 256
-	WRITE_STRING(string);//string); // send the string
-	MESSAGE_END(); // end
+	// Init text parms
+	theTextParms.x = x;
+	theTextParms.y = y;
+	theTextParms.effect = 0;
+	theTextParms.r1 = 240;
+	theTextParms.g1 = 240;
+	theTextParms.b1 = 240;
+	theTextParms.a1 = 128;
+	theTextParms.r2 = 240;
+	theTextParms.g2 = 240;
+	theTextParms.b2 = 240;
+	theTextParms.a2 = 128;
+	theTextParms.fadeinTime = .0f;
+	theTextParms.fadeoutTime = .0f;
+	theTextParms.holdTime = 0.2f;
+	theTextParms.channel = channel;
 
-	return;
+	UTIL_HudMessage(CBaseEntity::Instance(pEntity), theTextParms, string);
 }
 
 void UTIL_ClearLocalizations()
@@ -682,6 +679,8 @@ char* UTIL_TaskTypeToChar(const BotTaskType TaskType)
 		return "Touch Trigger";
 	case TASK_WELD:
 		return "Weld Target";
+	case TASK_ATTACK_BASE:
+		return "Attack Enemy Base";
 	default:
 		return "None";
 	}

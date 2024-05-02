@@ -78,6 +78,8 @@ bool IsPlayerInReadyRoom(const edict_t* Player)
 
 bool IsPlayerActiveInGame(const edict_t* Player)
 {
+	if (FNullEnt(Player)) { return false; }
+
 	return !IsPlayerInReadyRoom(Player) && Player->v.team != 0 && !IsPlayerSpectator(Player) && !IsPlayerDead(Player) && !IsPlayerBeingDigested(Player) && !IsPlayerCommander(Player);
 }
 

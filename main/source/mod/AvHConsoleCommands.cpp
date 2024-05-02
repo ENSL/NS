@@ -1416,21 +1416,23 @@ BOOL AvHGamerules::ClientCommand( CBasePlayer *pPlayer, const char *pcmd )
             theSuccess = true;
         }
     }
+#ifdef BOTDEBUG
 	else if (FStrEq(pcmd, "bot_setdebugaiplayer"))
 	{
 		CBaseEntity* SpectatedPlayer = theAvHPlayer->GetSpectatingEntity();
 
 		if (SpectatedPlayer)
 		{
-			AIMGR_SetDebugAIPlayer(SpectatedPlayer->edict());
+			AIMGR_SetDebugAIPlayer(theAvHPlayer->edict(), SpectatedPlayer->edict());
 		}
 		else
 		{
-			AIMGR_SetDebugAIPlayer(nullptr);
+			AIMGR_SetDebugAIPlayer(theAvHPlayer->edict(), nullptr);
 		}
 
 		theSuccess = true;
 	}
+#endif
 	else if (FStrEq(pcmd, "bot_cometome"))
 	{
 		vector<AvHAIPlayer*> AIPlayers = AIMGR_GetAllAIPlayers();

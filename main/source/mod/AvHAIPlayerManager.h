@@ -86,6 +86,7 @@ void AIMGR_ReloadNavigationData();
 AvHAIPlayer* AIMGR_GetAICommander(AvHTeamNumber Team);
 
 AvHAIPlayer* AIMGR_GetBotRefFromPlayer(AvHPlayer* PlayerRef);
+AvHAIPlayer* AIMGR_GetBotRefFromEdict(edict_t* PlayerEdict);
 
 AvHTeamNumber AIMGR_GetEnemyTeam(const AvHTeamNumber FriendlyTeam);
 AvHClassType AIMGR_GetEnemyTeamType(const AvHTeamNumber FriendlyTeam);
@@ -108,7 +109,7 @@ vector<AvHPlayer*> AIMGR_GetNonAIPlayersOnTeam(AvHTeamNumber Team);
 void AIMGR_ClearBotData();
 
 AvHAIPlayer* AIMGR_GetDebugAIPlayer();
-void AIMGR_SetDebugAIPlayer(edict_t* AIPlayer);
+void AIMGR_SetDebugAIPlayer(edict_t* SpectatingPlayer, edict_t* AIPlayer);
 
 void AIMGR_ReceiveCommanderRequest(AvHTeamNumber Team, edict_t* Requestor, const char* Request);
 

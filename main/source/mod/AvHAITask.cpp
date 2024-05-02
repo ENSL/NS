@@ -392,9 +392,11 @@ bool AITASK_IsTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		}
 		else
 		{
-			return false;
+			return AITASK_IsAlienSecureHiveTaskStillValid(pBot, Task);
 		}
 	}
+	case TASK_ATTACK_BASE:
+		return true;
 	case TASK_DEFEND:
 		return AITASK_IsDefendTaskStillValid(pBot, Task);
 	case TASK_WELD:
@@ -935,6 +937,28 @@ bool AITASK_IsReinforceStructureTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTas
 	EnemyStuff.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
 
 	return AITAC_DeployableExistsAtLocation(Task->TaskTarget->v.origin, &EnemyStuff);
+}
+
+bool AITASK_IsAlienSecureHiveTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
+{
+	if (!Task || FNullEnt(Task->TaskTarget) || !IsPlayerAlien(pBot->Edict)) { return false; }
+
+	AvHAIHiveDefinition* HiveToSecure = AITAC_GetHiveFromEdict(Task->TaskTarget);
+
+	if (!HiveToSecure) { return false; }
+
+	if (HiveToSecure->Status != HIVE_STATUS_UNBUILT && HiveToSecure->OwningTeam != pBot->Player->GetTeam()) { return true; }
+
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+
+	DeployableSearchFilter EnemyStuff;
+	EnemyStuff.DeployableTypes = SEARCH_ALL_STRUCTURES;
+	EnemyStuff.DeployableTeam = AIMGR_GetEnemyTeam(BotTeam);
+	EnemyStuff.ReachabilityTeam = BotTeam;
+	EnemyStuff.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+	EnemyStuff.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
+
+	return AITAC_DeployableExistsAtLocation(HiveToSecure->FloorLocation, &EnemyStuff);
 }
 
 bool AITASK_IsMarineSecureHiveTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
@@ -2530,6 +2554,10 @@ void BotProgressTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		{
 			MarineProgressSecureHiveTask(pBot, Task);
 		}
+		else
+		{
+			AlienProgressSecureHiveTask(pBot, Task);
+		}
 	}
 	break;
 	default:
@@ -2617,6 +2645,121 @@ void BotProgressWeldTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	return;
 }
 
+void AlienProgressSecureHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
+{
+	const AvHAIHiveDefinition* Hive = AITAC_GetHiveFromEdict(Task->TaskTarget);
+
+	if (!Hive) { return; }
+
+	AvHAISquad* ActiveSquad = AITAC_GetSquadForObjective(pBot, Task->TaskTarget, Task->TaskType);
+
+	if (ActiveSquad && !ActiveSquad->bExecuteObjective && !vIsZero(ActiveSquad->SquadGatherLocation))
+	{
+		BotGuardLocation(pBot, ActiveSquad->SquadGatherLocation);
+		return;
+	}
+
+	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
+
+	bool bEnemyIsMarines = AIMGR_GetTeamType(EnemyTeam) == AVH_CLASS_TYPE_MARINE;
+	// Don't prioritise electrified structures if we're skulk or lerk
+	bool bAvoidElectrified = (pBot->Player->GetUser3() == AVH_USER3_ALIEN_PLAYER1 || pBot->Player->GetUser3() == AVH_USER3_ALIEN_PLAYER3);
+
+	DeployableSearchFilter EnemyStuffFilter;
+	EnemyStuffFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
+	EnemyStuffFilter.DeployableTeam = EnemyTeam;
+	EnemyStuffFilter.ReachabilityTeam = BotTeam;
+	EnemyStuffFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+	EnemyStuffFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+	if (bEnemyIsMarines)
+	{
+		EnemyStuffFilter.DeployableTypes = STRUCTURE_MARINE_PHASEGATE;
+
+		AvHAIBuildableStructure PhaseGate = AITAC_FindClosestDeployableToLocation(Hive->FloorLocation, &EnemyStuffFilter);
+
+		if (PhaseGate.IsValid())
+		{
+			if (bAvoidElectrified)
+			{
+				EnemyStuffFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
+				EnemyStuffFilter.IncludeStatusFlags = STRUCTURE_STATUS_ELECTRIFIED;
+				EnemyStuffFilter.MaxSearchRadius = BALANCE_VAR(kElectricalRange);
+
+				AvHAIBuildableStructure ElectrifiedStructure = AITAC_FindClosestDeployableToLocation(PhaseGate.Location, &EnemyStuffFilter);
+
+				if (ElectrifiedStructure.IsValid())
+				{
+					BotAlienAttackNonPlayerTarget(pBot, ElectrifiedStructure.edict);
+					return;
+				}
+			}
+
+			BotAlienAttackNonPlayerTarget(pBot, PhaseGate.edict);
+			return;
+		}
+
+		EnemyStuffFilter.DeployableTypes = (STRUCTURE_MARINE_TURRETFACTORY | STRUCTURE_MARINE_ADVTURRETFACTORY);
+		EnemyStuffFilter.IncludeStatusFlags = STRUCTURE_STATUS_NONE;
+		EnemyStuffFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
+
+		AvHAIBuildableStructure TF = AITAC_FindClosestDeployableToLocation(Hive->FloorLocation, &EnemyStuffFilter);
+
+		if (TF.IsValid())
+		{
+			BotAlienAttackNonPlayerTarget(pBot, TF.edict);
+			return;
+		}
+
+		EnemyStuffFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
+
+		AvHAIBuildableStructure EnemyStructure = AITAC_FindClosestDeployableToLocation(Hive->FloorLocation, &EnemyStuffFilter);
+
+		if (EnemyStructure.IsValid())
+		{
+			BotAlienAttackNonPlayerTarget(pBot, EnemyStructure.edict);
+			return;
+		}
+	}
+	else
+	{
+		EnemyStuffFilter.DeployableTypes = STRUCTURE_ALIEN_OFFENCECHAMBER;
+
+		AvHAIBuildableStructure EnemyOC = AITAC_FindClosestDeployableToLocation(Hive->FloorLocation, &EnemyStuffFilter);
+
+		if (EnemyOC.IsValid())
+		{
+			BotAlienAttackNonPlayerTarget(pBot, EnemyOC.edict);
+			return;
+		}
+
+		if (Hive->Status == HIVE_STATUS_BUILT && Hive->OwningTeam != BotTeam)
+		{
+			BotAlienAttackNonPlayerTarget(pBot, Hive->HiveEdict);
+			return;
+		}
+
+		EnemyStuffFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
+
+		AvHAIBuildableStructure AnyEnemyStructure = AITAC_FindClosestDeployableToLocation(Hive->FloorLocation, &EnemyStuffFilter);
+
+		if (AnyEnemyStructure.IsValid())
+		{
+			BotAlienAttackNonPlayerTarget(pBot, AnyEnemyStructure.edict);
+			return;
+		}
+
+		if (Hive->Status != HIVE_STATUS_UNBUILT && Hive->OwningTeam != BotTeam)
+		{
+			BotAlienAttackNonPlayerTarget(pBot, Hive->HiveEdict);
+			return;
+		}
+	}
+
+	BotGuardLocation(pBot, Hive->FloorLocation);
+}
+
 void MarineProgressSecureHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 {
 	const AvHAIHiveDefinition* Hive = AITAC_GetHiveFromEdict(Task->TaskTarget);
@@ -2624,6 +2767,7 @@ void MarineProgressSecureHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	if (!Hive) { return; }
 
 	AvHTeamNumber BotTeam = pBot->Player->GetTeam();
+	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
 
 	DeployableSearchFilter StructureFilter;
 	StructureFilter.DeployableTypes = SEARCH_ALL_MARINE_STRUCTURES;
@@ -2703,7 +2847,7 @@ void MarineProgressSecureHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		DeployableSearchFilter EnemyStructures;
 		EnemyStructures.DeployableTypes = SEARCH_ALL_STRUCTURES;
 		EnemyStructures.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
-		EnemyStructures.DeployableTeam = AIMGR_GetEnemyTeam(BotTeam);
+		EnemyStructures.DeployableTeam = EnemyTeam;
 		EnemyStructures.ReachabilityTeam = BotTeam;
 		EnemyStructures.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
 
@@ -2927,7 +3071,6 @@ void AITASK_GenerateGuardWatchPoints(AvHAIPlayer* pBot, const Vector& GuardLocat
 
 	vector<bot_path_node> path;
 	path.clear();
-
 	
 	vector<AvHAIHiveDefinition*> AllHives = AITAC_GetAllHives();
 
