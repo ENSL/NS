@@ -43,6 +43,7 @@ WeaponsResource gWR;
 int g_weaponselect = 0;
 
 extern bool gCanMove;
+extern cvar_t* cl_weaponcfgs;
 
 void IN_AttackDownForced(void);
 void IN_AttackUpForced(void);
@@ -87,6 +88,9 @@ void WeaponsResource::Reset( void )
 	iOldWeaponBits = 0;
 	memset( rgSlots, 0, sizeof(WEAPON*)*MAX_WEAPON_SLOTS*MAX_WEAPON_POSITIONS );
 	memset( riAmmo, 0, sizeof(int)*MAX_AMMO_TYPES );
+	crossLastWeapId = 0;
+	lastSpecXhair = 0;
+	lastPlayMode = 0;
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -588,6 +592,64 @@ void WeaponsResource :: SelectSlot( int iSlot, int fAdvance, int iDirection )
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+void WeaponsResource::SetWeaponConfig (WEAPON* weapon, int specXhair)
+{
+	int newPlayMode = gHUD.GetPlayMode();
+
+	if (gHUD.GetCurrentWeaponID() != crossLastWeapId || (newPlayMode == PLAYMODE_READYROOM && newPlayMode != lastPlayMode) || (specXhair != lastSpecXhair && !weapon))
+	{
+		crossLastWeapId = gHUD.GetCurrentWeaponID();
+		lastPlayMode = newPlayMode;
+		lastSpecXhair = specXhair;
+
+		gEngfuncs.Con_Printf("changing weapon cfg\n");
+
+		char weapCfg[128];
+
+		if (cl_weaponcfgs->value == 1.0f)
+		{
+			ClientCmd("exec weaponcfgs/default.cfg");
+			if (!weapon || newPlayMode == PLAYMODE_READYROOM)
+			{
+				if (specXhair == 1)
+				{
+					ClientCmd("exec weaponcfgs/spectate.cfg");
+				}
+				else
+				{
+					ClientCmd("exec weaponcfgs/noweapon.cfg");
+				}
+			}
+			else
+			{
+				snprintf(weapCfg, 128, "exec weaponcfgs/%s.cfg", weapon->szName);
+				ClientCmd(weapCfg);
+			}
+		}
+		else if (cl_weaponcfgs->value == 2.0f)
+		{
+			if (!weapon || newPlayMode == PLAYMODE_READYROOM)
+			{
+				if (specXhair == 1)
+				{
+					ClientCmd("exec weaponcfgs/nsdefaults/spectate.cfg");
+				}
+				else
+				{
+					ClientCmd("exec weaponcfgs/nsdefaults/noweapon.cfg");
+				}
+			}
+			else
+			{
+				snprintf(weapCfg, 128, "exec weaponcfgs/nsdefaults/%s.cfg", weapon->szName);
+				ClientCmd(weapCfg);
+			}
+		}
+	}
+}
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 int giBucketHeight, giBucketWidth, giABHeight, giABWidth; // Ammo Bar width and height
 cvar_t* hud_ammo_x;
 cvar_t* hud_ammo_y;
@@ -765,38 +827,7 @@ void CHudAmmo::Think(void)
 		}
 	}
 
-	if (gHUD.GetCurrentWeaponID() != m_crossLastWeapId)
-	{
-		m_crossLastWeapId = gHUD.GetCurrentWeaponID();
-		const float wCfgCvar = CVAR_GET_FLOAT("cl_weaponcfgs");
-		char weapCfg[128];
-
-		if (wCfgCvar == 1.0f)
-		{
-			ClientCmd("exec weaponcfgs/default.cfg");
-			if (!currentWeapon)
-			{
-				ClientCmd("exec weaponcfgs/noweapon.cfg");
-			}
-			else 
-			{
-				snprintf(weapCfg, 128, "exec weaponcfgs/%s.cfg", currentWeapon->szName);
-				ClientCmd(weapCfg);
-			}
-		}
-		else if (wCfgCvar == 2.0f)
-		{
-			if (!currentWeapon)
-			{
-				ClientCmd("exec weaponcfgs/nsdefaults/noweapon.cfg");
-			}
-			else
-			{
-				snprintf(weapCfg, 128, "exec weaponcfgs/nsdefaults/%s.cfg", currentWeapon->szName);
-				ClientCmd(weapCfg);
-			}
-		}
-	}
+	gWR.SetWeaponConfig(currentWeapon, false);
 
 	if (!gpActiveSel)
 		return;

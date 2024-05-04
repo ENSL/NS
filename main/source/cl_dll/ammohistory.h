@@ -67,6 +67,7 @@ public:
 	void	SetValidWeapon( void );
 	void	SetCurrentWeapon( WEAPON* wp );
 	void	SelectSlot( int iSlot, int fAdvance, int iDirection );
+	void	SetWeaponConfig(WEAPON* weapon, int specXhair = 0);
 
 	friend CHudAmmo; //for iOldWeaponBits access
 private:
@@ -78,6 +79,9 @@ private:
 
 	int		riAmmo[MAX_AMMO_TYPES];									// current ammo counts
 	int		iOldWeaponBits;
+	int		crossLastWeapId;
+	int		lastSpecXhair;
+	int		lastPlayMode;
 };
 
 extern WeaponsResource gWR;

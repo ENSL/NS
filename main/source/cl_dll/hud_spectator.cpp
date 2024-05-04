@@ -12,6 +12,7 @@
 #include "vgui_TeamFortressViewport.h"
 #include "vgui_SpectatorPanel.h"
 #include "common/hltv.h"
+#include "ammohistory.h"
 
 #include "pm_shared/pm_shared.h"
 #include "pm_shared/pm_defs.h"
@@ -1117,11 +1118,15 @@ void CHudSpectator::SetMode(int iNewMainMode)
                 m_crosshairRect.bottom = 24;
                 
                 gHUD.SetCurrentCrosshair( m_hCrosshair, m_crosshairRect, 255, 255, 255 );
+
+				gWR.SetWeaponConfig(nullptr, 1);
             }
             else
             {
                 memset( &m_crosshairRect,0,sizeof(m_crosshairRect) );
                 gHUD.SetCurrentCrosshair( 0, m_crosshairRect, 0, 0, 0 );
+
+				gWR.SetWeaponConfig(nullptr, -1);
             } 
             
             //char string[128];
@@ -1885,11 +1890,15 @@ void CHudSpectator::CheckSettings()
 		m_crosshairRect.bottom = 24;
 					
 		gHUD.SetCurrentCrosshair( m_hCrosshair, m_crosshairRect, 255, 255, 255 );
+		
+		gWR.SetWeaponConfig(nullptr, 1);
 	}
 	else
 	{
 		memset( &m_crosshairRect,0,sizeof(m_crosshairRect) );
 		gHUD.SetCurrentCrosshair( 0, m_crosshairRect, 0, 0, 0 );
+
+		gWR.SetWeaponConfig(nullptr, -1);
 	} 
 
     // Removed by mmcguire.
