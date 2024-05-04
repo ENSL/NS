@@ -12,6 +12,7 @@
 #include "vgui_TeamFortressViewport.h"
 #include "vgui_SpectatorPanel.h"
 #include "common/hltv.h"
+#include "AvHServerVariables.h"
 #include "ammohistory.h"
 
 #include "pm_shared/pm_shared.h"
@@ -493,7 +494,7 @@ int CHudSpectator::Draw(float flTime)
 
 bool CHudSpectator::IsInOverviewMode() const
 {
-    return g_iUser1 && m_overviewMode && gHUD.GetIsNSMode();
+    return g_iUser1 && m_overviewMode && gHUD.GetIsNSMode() /*&& g_iUser1 != OBS_ROAMING*/;
 }
 
 void CHudSpectator::SetOverviewMode(bool overviewMode)
@@ -868,7 +869,7 @@ void CHudSpectator::HandleButtonsDown( int ButtonPressed )
 
 		AvHPlayMode CurrPlayMode = gHUD.GetPlayMode();
 
-		float FreeSpecMode = gHUD.GetServerVariableFloat("mp_freespectatormode");
+		float FreeSpecMode = gHUD.GetServerVariableFloat(kvFreeSpectatorMode);
 		if (FreeSpecMode == 0 || (FreeSpecMode == 1 && gHUD.GetPlayMode() != PLAYMODE_OBSERVER))
 		{
 			while (theNewMainMode == OBS_CHASE_FREE || theNewMainMode == OBS_ROAMING)
@@ -1025,8 +1026,8 @@ void CHudSpectator::SetMode(int iNewMainMode)
 
 	if (NewMode == OBS_CHASE_FREE || NewMode == OBS_ROAMING)
 	{
-		float FreeSpecMode = gHUD.GetServerVariableFloat("mp_freespectatormode");
-		if (FreeSpecMode == 0 || (FreeSpecMode == 1 && gHUD.GetPlayMode() != PLAYMODE_OBSERVER))
+		float FreeSpecMode = gHUD.GetServerVariableFloat(kvFreeSpectatorMode);
+		if ((FreeSpecMode == 0 || (FreeSpecMode == 1.0f && gHUD.GetPlayMode() != PLAYMODE_OBSERVER)) && !gEngfuncs.IsSpectateOnly())
 		{
 			if (g_iUser1 != OBS_CHASE_FREE && g_iUser1 != OBS_ROAMING)
 			{
@@ -1899,7 +1900,7 @@ void CHudSpectator::CheckSettings()
 		gHUD.SetCurrentCrosshair( 0, m_crosshairRect, 0, 0, 0 );
 
 		gWR.SetWeaponConfig(nullptr, -1);
-	} 
+	}
 
     // Removed by mmcguire.
     /*

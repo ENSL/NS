@@ -1693,6 +1693,11 @@ void CBasePlayer::StartObserver( Vector vecPosition, Vector vecViewAngle )
 	// pev->flags = FL_CLIENT | FL_SPECTATOR;	// Should we set Spectator flag? Or is it reserver for people connecting with spectator 1?
 	pev->deadflag = DEAD_RESPAWNABLE;
 	
+	if (this->pev->playerclass != PLAYMODE_OBSERVER)
+	{
+		pev->health = 0; // Set dead status and block free look movement in pmove.
+	}
+	
 	// Tell the physics code that this player's now in observer mode
 	Observer_SetMode(OBS_IN_EYE);
 	Observer_SpectatePlayer(this->GetDefaultSpectatingTarget());

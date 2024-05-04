@@ -129,6 +129,8 @@ void IN_ResetMouse( void );
 extern CMenuPanel *CMessageWindowPanel_Create( const char *szMOTD, const char *szTitle, int iShadeFullscreen, int iRemoveMe, int x, int y, int wide, int tall );
 extern float * GetClientColor( int clientIndex );
 
+extern AvHPieMenuHandler gPieMenuHandler;
+
 using namespace vgui;
 
 
@@ -1604,6 +1606,8 @@ void TeamFortressViewport::UpdateSpectatorPanel()
 			gHUD.m_TextMessage.MsgFunc_TextMsg( NULL, strlen( tempString ) + 1, tempString );
             */
 		}
+
+		gViewPort->UpdateCursorState();
 		
 		sprintf(bottomText,"#Spec_Mode%d", g_iUser1 );
 		sprintf(helpString2,"#Spec_Mode%d", g_iUser1 );
@@ -2216,7 +2220,8 @@ void TeamFortressViewport::UpdateOnPlayerInfo()
 void TeamFortressViewport::UpdateCursorState()
 {
 
-    if (gHUD.GetInTopDownMode() || m_pSpectatorPanel->isVisible() || GetClientVoiceMgr()->IsInSquelchMode())
+	if (gHUD.GetInTopDownMode() || GetClientVoiceMgr()->IsInSquelchMode() || /*gPieMenuHandler.GetIsPieMenuOpen() ||*/
+		(m_pSpectatorPanel->isVisible() && (g_iUser1 == OBS_CHASE_LOCKED || g_iUser1 == OBS_IN_EYE)))
     {
         gHUD.GetManager().SetMouseVisibility(true);
     }

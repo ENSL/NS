@@ -295,7 +295,7 @@ void CBasePlayer::Observer_SetMode( int iMode )
 		NewMode = OBS_IN_EYE; // now it is
 
     // if we are not roaming, we need a valid target to track
-	if ( (NewMode != OBS_ROAMING) && (m_hObserverTarget == NULL) )
+	if (NewMode != OBS_ROAMING)
 	{
 		Observer_FindNextPlayer();
 
@@ -313,6 +313,11 @@ void CBasePlayer::Observer_SetMode( int iMode )
 	if (NewMode == OBS_ROAMING)
 	{
 		pev->iuser2 = 0;
+
+		if (!theIsObserving)
+		{
+			pev->health = 0; // Set dead status and block free look movement in pmove.
+		}
 	}		
 	else
 	{

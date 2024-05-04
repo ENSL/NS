@@ -5561,7 +5561,7 @@ void AvHHud::UpdatePieMenuControl()
     }
 
     // If we're dead, make sure the popup menu is closed
-    if(!this->GetIsAlive(false))
+    if(!this->GetIsAlive(false) && gPieMenuHandler.GetIsPieMenuOpen())
     {
         gPieMenuHandler.ClosePieMenu();
     }
