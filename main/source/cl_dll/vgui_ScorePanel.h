@@ -102,7 +102,7 @@ private:
 
 	unsigned int	m_iIconFrame;
 	unsigned int	m_iLastFrameIncrementTime;
-	int				oldteam;
+	int				m_iPlayerTeam;
 
 public:
 	

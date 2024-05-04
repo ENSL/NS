@@ -148,6 +148,7 @@ cvar_t	*cl_mutemenu;
 cvar_t	*cl_weaponcfgs;
 cvar_t	*cl_pistoltrigger;
 cvar_t	*cl_cmcancellast;
+cvar_t	*cl_teamcfgs;
 
 /*
 ===============================================================================
@@ -1760,6 +1761,7 @@ void InitInput (void)
 	cl_weaponcfgs		= gEngfuncs.pfnRegisterVariable ("cl_weaponcfgs", "1", FCVAR_ARCHIVE);
 	cl_pistoltrigger	= gEngfuncs.pfnRegisterVariable ("cl_pistoltrigger", "1", FCVAR_ARCHIVE);
 	cl_cmcancellast		= gEngfuncs.pfnRegisterVariable("cl_cmcancellast", "0", FCVAR_ARCHIVE);
+	cl_teamcfgs			= gEngfuncs.pfnRegisterVariable("cl_teamcfgs", "1", FCVAR_ARCHIVE);
 
 	gEngfuncs.pfnRegisterVariable("cl_placebo", "0", 0); // Junk command for options menu dividers.
 

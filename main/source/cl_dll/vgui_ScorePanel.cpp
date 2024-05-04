@@ -91,6 +91,8 @@ extra_player_info_t  g_PlayerExtraInfo[MAX_PLAYERS+1];   // additional player in
 team_info_t			 g_TeamInfo[MAX_TEAMS+1];
 int					 g_IsSpectator[MAX_PLAYERS+1];
 
+extern cvar_t* cl_teamcfgs;
+
 int HUD_IsGame( const char *game );
 int EV_TFC_IsAllyTeam( int iTeam1, int iTeam2 );
 
@@ -599,10 +601,14 @@ void ScorePanel::SortTeams()
 		SortActivePlayers(kAlien2Team);
 		SortActivePlayers(kMarine2Team);
 
-		if (oldteam != gHUD.GetHUDTeam())
+		if (m_iPlayerTeam != gHUD.GetHUDTeam())
 		{
-			ClientCmd("exec alienofficial.cfg\n");
-			oldteam = gHUD.GetHUDTeam();
+			m_iPlayerTeam = gHUD.GetHUDTeam();
+
+			if ((cl_teamcfgs->value == 1.0f && gHUD.GetPlayMode() == PLAYMODE_PLAYING) || cl_teamcfgs->value >= 2.0f)
+			{
+				ClientCmd("exec alienofficial.cfg\n");
+			}
 		}
 	}
 	else {
@@ -611,10 +617,14 @@ void ScorePanel::SortTeams()
 		SortActivePlayers(kMarine2Team);
 		SortActivePlayers(kAlien2Team);
 
-		if (oldteam != gHUD.GetHUDTeam())
+		if (m_iPlayerTeam != gHUD.GetHUDTeam())
 		{
-			ClientCmd("exec marineofficial.cfg\n");
-			oldteam = gHUD.GetHUDTeam();
+			m_iPlayerTeam = gHUD.GetHUDTeam();
+
+			if ((cl_teamcfgs->value == 1.0f && gHUD.GetPlayMode() == PLAYMODE_PLAYING) || cl_teamcfgs->value >= 2.0f)
+			{
+				ClientCmd("exec marineofficial.cfg\n");
+			}
 		}
 	}
 
