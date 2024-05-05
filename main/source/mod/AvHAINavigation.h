@@ -517,5 +517,7 @@ bool NAV_IsMovementTaskStillValid(AvHAIPlayer* pBot);
 vector<NavHint*> NAV_GetHintsOfType(unsigned int HintType, bool bUnoccupiedOnly = false);
 vector<NavHint*> NAV_GetHintsOfTypeInRadius(unsigned int HintType, Vector SearchLocation, float Radius, bool bUnoccupiedOnly = false);
 
+void RefineFlightPath(vector<bot_path_node>& InputPath, vector<bot_path_node>& RefinedPath);
+
 #endif // BOT_NAVIGATION_H
 

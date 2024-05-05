@@ -39,12 +39,7 @@ float NextCommanderAllowedTimeTeamB = 0.0f;
 
 extern int m_spriteTexture;
 
-Vector DebugVector1 = ZERO_VECTOR;
-Vector DebugVector2 = ZERO_VECTOR;
-
 AvHAIPlayer* DebugAIPlayer = nullptr;
-
-vector<bot_path_node> DebugPath;
 
 bool bPlayerSpawned = false;
 
@@ -56,6 +51,9 @@ float CurrentFrameDelta = 0.01f;
 
 #ifdef BOTDEBUG
 edict_t* DebugBots[MAX_PLAYERS];
+Vector DebugVector1 = ZERO_VECTOR;
+Vector DebugVector2 = ZERO_VECTOR;
+vector<bot_path_node> DebugPath;
 #endif
 
 AvHAICommanderMode AIMGR_GetCommanderMode()
@@ -1422,6 +1420,13 @@ void AIMGR_UpdateAISystem()
 
 			AIMGR_UpdateAIMapData();
 		}
+
+#ifdef BOTDEBUG
+		if (DebugPath.size() > 0)
+		{
+			AIDEBUG_DrawPath(INDEXENT(1), DebugPath);
+		}
+#endif
 
 		AIMGR_UpdateAIPlayers();
 	}

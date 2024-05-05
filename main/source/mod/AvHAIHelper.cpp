@@ -26,7 +26,7 @@ bool UTIL_QuickTrace(const edict_t* pEdict, const Vector& start, const Vector& e
 	TraceResult hit;
 	edict_t* IgnoreEdict = (!FNullEnt(pEdict)) ? pEdict->v.pContainingEntity : NULL;
 	UTIL_TraceLine(start, end, ignore_monsters, ignore_glass, IgnoreEdict, &hit);
-	return (hit.flFraction >= 1.0f && !hit.fAllSolid && (bAllowStartSolid || !hit.fStartSolid));
+	return (hit.flFraction >= 1.0f && hit.fAllSolid == 0 && (bAllowStartSolid || hit.fStartSolid == 0));
 }
 
 bool UTIL_QuickHullTrace(const edict_t* pEdict, const Vector& start, const Vector& end, bool bAllowStartSolid)
@@ -36,7 +36,7 @@ bool UTIL_QuickHullTrace(const edict_t* pEdict, const Vector& start, const Vecto
 	TraceResult hit;
 	UTIL_TraceHull(start, end, ignore_monsters, hullNum, IgnoreEdict, &hit);
 
-	return (hit.flFraction >= 1.0f && !hit.fAllSolid && (bAllowStartSolid || !hit.fStartSolid));
+	return (hit.flFraction >= 1.0f && hit.fAllSolid == 0 && (bAllowStartSolid || hit.fStartSolid == 0));
 }
 
 bool UTIL_QuickHullTrace(const edict_t* pEdict, const Vector& start, const Vector& end, int hullNum, bool bAllowStartSolid)
@@ -45,7 +45,7 @@ bool UTIL_QuickHullTrace(const edict_t* pEdict, const Vector& start, const Vecto
 	edict_t* IgnoreEdict = (!FNullEnt(pEdict)) ? pEdict->v.pContainingEntity : NULL;
 	UTIL_TraceHull(start, end, ignore_monsters, hullNum, IgnoreEdict, &hit);
 
-	return (hit.flFraction >= 1.0f && !hit.fAllSolid && (bAllowStartSolid || !hit.fStartSolid));
+	return (hit.flFraction >= 1.0f && hit.fAllSolid == 0 && (bAllowStartSolid || hit.fStartSolid == 0));
 }
 
 edict_t* UTIL_TraceEntity(const edict_t* pEdict, const Vector& start, const Vector& end)
@@ -331,7 +331,8 @@ void AIDEBUG_DrawPath(edict_t* OutputPlayer, vector<bot_path_node>& path, float 
 			UTIL_DrawLine(OutputPlayer, FromLoc, ToLoc, DrawTime, 0, 0, 255);
 			break;
 		case SAMPLE_POLYFLAGS_WALLCLIMB:
-			UTIL_DrawLine(OutputPlayer, FromLoc, ToLoc, DrawTime, 0, 128, 0);
+			UTIL_DrawLine(OutputPlayer, FromLoc, Vector(FromLoc.x, FromLoc.y, it->requiredZ), DrawTime, 0, 128, 0);
+			UTIL_DrawLine(OutputPlayer, Vector(FromLoc.x, FromLoc.y, it->requiredZ), ToLoc, DrawTime, 0, 128, 0);
 			break;
 		case SAMPLE_POLYFLAGS_BLOCKED:
 			UTIL_DrawLine(OutputPlayer, FromLoc, ToLoc, DrawTime, 128, 128, 128);
@@ -410,7 +411,7 @@ void UTIL_DrawLine(edict_t* pEntity, Vector start, Vector end, float drawTimeSec
 {
 	if (FNullEnt(pEntity) || pEntity->free) { return; }
 
-	int timeTenthSeconds = (int)floorf(drawTimeSeconds * 10.0f);
+	int timeTenthSeconds = (int)ceilf(drawTimeSeconds * 10.0f);
 	timeTenthSeconds = fmaxf(timeTenthSeconds, 1);
 
 	MESSAGE_BEGIN(MSG_ONE, SVC_TEMPENTITY, NULL, pEntity);

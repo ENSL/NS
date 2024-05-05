@@ -52,6 +52,10 @@ extern bool bNavMeshModified;
 
 bool bTileCacheUpToDate = false;
 
+#ifdef BOTDEBUG
+extern vector<bot_path_node> DebugPath;
+#endif
+
 struct NavMeshSetHeader
 {
 	int magic;
@@ -1590,6 +1594,8 @@ dtStatus FindFlightPathToPoint(const nav_profile &NavProfile, Vector FromLocatio
 		return DT_FAILURE;
 	}
 
+	vector<bot_path_node> BaseFlightPath;
+
 	Vector FromFloorLocation = AdjustPointForPathfinding(FromLocation);
 	Vector ToFloorLocation = AdjustPointForPathfinding(ToLocation);
 
@@ -1657,7 +1663,7 @@ dtStatus FindFlightPathToPoint(const nav_profile &NavProfile, Vector FromLocatio
 		return DT_FAILURE; // couldn't find a path
 	}
 
-	path.clear();
+	BaseFlightPath.clear();
 
 	//vector<bot_path_node> InitialPath;
 	//InitialPath.clear();
@@ -1681,7 +1687,7 @@ dtStatus FindFlightPathToPoint(const nav_profile &NavProfile, Vector FromLocatio
 	for (int nVert = 0; nVert < nVertCount; nVert++)
 	{
 		Vector NextPathPoint = g_vecZero;
-		Vector PrevPoint = (path.size() > 0) ? path.back().Location : FromLocation;
+		Vector PrevPoint = (BaseFlightPath.size() > 0) ? BaseFlightPath.back().Location : FromLocation;
 
 		// The path point output by Detour uses the OpenGL, right-handed coordinate system. Convert to Goldsrc coordinates
 		NextPathPoint.x = StraightPath[nIndex++];
@@ -1727,7 +1733,7 @@ dtStatus FindFlightPathToPoint(const nav_profile &NavProfile, Vector FromLocatio
 
 				PrevPoint = NextPathNode.Location;
 
-				path.push_back(NextPathNode);
+				BaseFlightPath.push_back(NextPathNode);
 
 			}
 
@@ -1738,7 +1744,7 @@ dtStatus FindFlightPathToPoint(const nav_profile &NavProfile, Vector FromLocatio
 
 			PrevPoint = NextPathNode.Location;
 
-			path.push_back(NextPathNode);
+			BaseFlightPath.push_back(NextPathNode);
 		}
 		else if (CurrFlags == SAMPLE_POLYFLAGS_FALL)
 		{
@@ -1751,7 +1757,7 @@ dtStatus FindFlightPathToPoint(const nav_profile &NavProfile, Vector FromLocatio
 
 			PrevPoint = NextPathNode.Location;
 
-			path.push_back(NextPathNode);
+			BaseFlightPath.push_back(NextPathNode);
 		}
 		else if (CurrFlags == SAMPLE_POLYFLAGS_LADDER)
 		{
@@ -1764,14 +1770,14 @@ dtStatus FindFlightPathToPoint(const nav_profile &NavProfile, Vector FromLocatio
 
 			PrevPoint = NextPathNode.Location;
 
-			path.push_back(NextPathNode);
+			BaseFlightPath.push_back(NextPathNode);
 		}
 
 		NextPathNode.requiredZ = NextPathPoint.z;
 		NextPathNode.Location = NextPathPoint;
 		NextPathNode.FromLocation = PrevPoint;
 
-		path.push_back(NextPathNode);
+		BaseFlightPath.push_back(NextPathNode);
 
 		CurrArea = ThisArea;
 		CurrFlags = ThisFlags;
@@ -1786,8 +1792,11 @@ dtStatus FindFlightPathToPoint(const nav_profile &NavProfile, Vector FromLocatio
 	FinalInitialPathNode.poly = 0;
 	FinalInitialPathNode.requiredZ = ToLocation.z;
 
-	path.push_back(FinalInitialPathNode);
+	BaseFlightPath.push_back(FinalInitialPathNode);
 
+	path.clear();
+
+	RefineFlightPath(BaseFlightPath, path);
 
 	return DT_SUCCESS;
 }
@@ -1808,7 +1817,7 @@ Vector UTIL_FindHighestSuccessfulTracePoint(const Vector TraceFrom, const Vector
 	{
 		if (!UTIL_QuickTrace(nullptr, TargetPoint, CurrentTarget)) { return CurrentHighest; }
 
-		if (!UTIL_QuickHullTrace(nullptr, OriginTrace, CurrentTarget, head_hull))
+		if (!UTIL_QuickHullTrace(nullptr, OriginTrace, CurrentTarget, head_hull, false))
 		{
 			if (bFoundInitialPoint) { break; }
 		}
@@ -2235,7 +2244,7 @@ dtStatus FindPathClosestToPoint(AvHAIPlayer* pBot, const BotMoveStyle MoveStyle,
 		{
 			int HullNum = GetPlayerHullIndex(pBot->Edict, false);
 			Vector FromLocation = (path.size() > 0) ? path.back().Location : pBot->CurrentFloorPosition;
-			float NewRequiredZ = UTIL_FindZHeightForWallClimb(FromLocation, NextPathNode.Location, HullNum);
+			float NewRequiredZ = UTIL_FindZHeightForWallClimb(FromLocation, NextPathNode.Location, head_hull);
 			NextPathNode.requiredZ = fmaxf(NewRequiredZ, NextPathNode.Location.z);
 
 			if (CurrFlags == SAMPLE_POLYFLAGS_LADDER)
@@ -4769,10 +4778,8 @@ void BlinkClimbMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector End
 	if (GetPlayerCurrentWeapon(pBot->Player) != WEAPON_FADE_BLINK) { return; }
 
 	// Only blink if we're below the target climb height
-	if (pEdict->v.origin.z < RequiredClimbHeight + 4.0f)
+	if (pEdict->v.origin.z < RequiredClimbHeight + 4.0f && !UTIL_QuickHullTrace(pBot->Edict, pBot->Edict->v.origin, Vector(EndPoint.x, EndPoint.y, pBot->Edict->v.origin.z)))
 	{
-		float HeightToClimb = (fabsf(pEdict->v.origin.z - RequiredClimbHeight));
-
 		Vector CurrVelocity = UTIL_GetVectorNormal2D(pBot->Edict->v.velocity);
 
 		float Dot = UTIL_GetDotProduct2D(MoveDir, CurrVelocity);
@@ -4798,19 +4805,32 @@ void BlinkClimbMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector End
 			pBot->Edict->v.velocity = NewVelocity;
 		}
 
-		float ZDiff = fabs(pEdict->v.origin.z - (RequiredClimbHeight + 72.0f));
+		float ZDiff = fabs(pEdict->v.origin.z - (RequiredClimbHeight + 16.0f));
 
 		// We don't want to blast off like a rocket, so only apply enough blink until our upwards velocity is enough to carry us to the desired height
 		float DesiredZVelocity = sqrtf(2.0f * GOLDSRC_GRAVITY * (ZDiff + 10.0f));
 
-		if (pBot->Edict->v.velocity.z < DesiredZVelocity || pBot->Edict->v.velocity.z < 300.0f)
+		if (pBot->Edict->v.velocity.z < DesiredZVelocity)
 		{
+			bool bHasHeadroom = UTIL_QuickHullTrace(pBot->Edict, pBot->Edict->v.origin, pBot->Edict->v.origin + Vector(0.0f, 0.0f, 4.0f));
 			// We're going to cheat and give the bot the necessary energy to make the move. Better the fade cheats a bit than gets stuck somewhere
 			if (GetPlayerEnergy(pBot->Edict) < 0.1f)
 			{
 				pBot->Player->Energize(0.1f);
 			}
-			BotMoveLookAt(pBot, EndPoint + Vector(0.0f, 0.0f, 100.0f));
+
+			if (!bHasHeadroom || pBot->Edict->v.origin.z >= RequiredClimbHeight)
+			{
+				Vector LookPoint = EndPoint;
+				LookPoint.z = pBot->CurrentEyePosition.z + 5.0f;
+				BotMoveLookAt(pBot, LookPoint);
+			}
+			else
+			{
+				BotMoveLookAt(pBot, EndPoint + Vector(0.0f, 0.0f, 100.0f));
+			}
+
+			
 			pBot->Button |= IN_ATTACK2;
 		}
 		else
@@ -6697,22 +6717,15 @@ void SkipAheadInFlightPath(AvHAIPlayer* pBot)
 	}
 }
 
-LerkFlightBehaviour BotFlightWalkMove(AvHAIPlayer* pBot, Vector FromLocation, Vector ToLocation)
+LerkFlightBehaviour BotFlightWalkMove(AvHAIPlayer* pBot, Vector FromLocation, Vector ToLocation, SamplePolyFlags MoveFlag, SamplePolyAreas MoveArea)
 {
 	Vector LookLocation = ToLocation;
 
 	Vector ClosestPointOnLine = vClosestPointOnLine(FromLocation, ToLocation, pBot->Edict->v.origin);
 
-	if (fabs(pBot->Edict->v.origin.z - ClosestPointOnLine.z) > 8.0f)
+	if (!pBot->BotNavInfo.IsOnGround && MoveArea != SAMPLE_POLYAREA_CROUCH)
 	{
-		if (pBot->Edict->v.origin.z > ClosestPointOnLine.z)
-		{
-			LookLocation.z -= 32.0f;
-		}
-		else
-		{
-			LookLocation.z += 32.0f;
-		}
+		pBot->Edict->v.origin = ClosestPointOnLine;
 	}
 
 	BotMoveLookAt(pBot, LookLocation);
@@ -6785,6 +6798,12 @@ LerkFlightBehaviour BotFlightClimbMove(AvHAIPlayer* pBot, Vector FromLocation, V
 	}
 
 	Vector ClosestPointOnLine = vClosestPointOnLine(FromLocation, ToLocation, pBot->Edict->v.origin);
+
+	if (pBot->Edict->v.origin.z > RequiredZ)
+	{
+		pBot->Edict->v.origin = ClosestPointOnLine;
+	}
+
 	float DistFromLine = vDist2DSq(pBot->Edict->v.origin, ClosestPointOnLine);
 
 	Vector ThisMoveDir = MoveDir;
@@ -6862,40 +6881,24 @@ void BotFollowFlightPath(AvHAIPlayer* pBot, bool bAllowSkip)
 		return;
 	}
 
-	SamplePolyAreas NextArea = SAMPLE_POLYAREA_GROUND;
-	SamplePolyFlags NextFlags = SAMPLE_POLYFLAGS_DISABLED;
+	bool bShouldSkipAhead = (CurrentPathPoint->flag != SAMPLE_POLYFLAGS_WALLCLIMB && CurrentPathPoint->flag != SAMPLE_POLYFLAGS_FALL);
 
-	if (next(CurrentPathPoint) != BotNavInfo->CurrentPath.end())
+	if (bAllowSkip && bShouldSkipAhead)
 	{
-		NextArea = (SamplePolyAreas)next(CurrentPathPoint)->area;
-		NextFlags = (SamplePolyFlags)next(CurrentPathPoint)->flag;
-	}
+		std::vector<bot_path_node>::iterator NextPathPoint = next(CurrentPathPoint);
 
-	bool bShouldSkipAhead = bAllowSkip && (CurrentPathPoint->area == SAMPLE_POLYAREA_GROUND && CurrentPathPoint->flag == SAMPLE_POLYFLAGS_WALK);
-
-	if (bShouldSkipAhead)
-	{
-		SkipAheadInFlightPath(pBot);
-		CurrentPathPoint = (BotNavInfo->CurrentPath.begin() + BotNavInfo->CurrentPathPoint);
-	}
-
-	ClosestPointToPath = vClosestPointOnLine(CurrentPathPoint->FromLocation, CurrentPathPoint->Location, pEdict->v.origin);
-
-	if (bAllowSkip)
-	{
-		bool bStrayedOffPath = vDist3DSq(pBot->Edict->v.origin, ClosestPointToPath) > sqrf(GetPlayerRadius(pBot->Edict) * 3.0f);
-		bool bNoDirectRoute = false;
-		
-		if ((CurrentPathPoint->area == SAMPLE_POLYAREA_GROUND || CurrentPathPoint->area == SAMPLE_POLYAREA_CROUCH) && CurrentPathPoint->flag == SAMPLE_POLYFLAGS_WALK)
+		if (NextPathPoint != pBot->BotNavInfo.CurrentPath.end())
 		{
-			bNoDirectRoute = !UTIL_QuickHullTrace(pBot->Edict, pBot->Edict->v.origin, CurrentPathPoint->Location, false);
-		}
+			if (UTIL_QuickHullTrace(pBot->Edict, pBot->Edict->v.origin, NextPathPoint->Location, head_hull, false))
+			{
+				CurrentPathPoint->Location = pBot->Edict->v.origin;
+				NextPathPoint->FromLocation = pBot->Edict->v.origin;
+				NextPathPoint->flag = SAMPLE_POLYFLAGS_WALK;
 
-		if (bStrayedOffPath || bNoDirectRoute)
-		{
-			MoveDirectlyTo(pBot, CurrentPathPoint->Location);
-			ClearBotPath(pBot);			
-			return;
+				BotNavInfo->CurrentPathPoint++;
+				ClearBotStuck(pBot);
+				CurrentPathPoint = (BotNavInfo->CurrentPath.begin() + BotNavInfo->CurrentPathPoint);
+			}
 		}
 	}
 
@@ -6917,7 +6920,7 @@ void BotFollowFlightPath(AvHAIPlayer* pBot, bool bAllowSkip)
 			FlightBehaviour = BotFlightFallMove(pBot, CurrentPathPoint->FromLocation, CurrentPathPoint->Location);
 			break;
 		default:
-			FlightBehaviour = BotFlightWalkMove(pBot, CurrentPathPoint->FromLocation, CurrentPathPoint->Location);
+			FlightBehaviour = BotFlightWalkMove(pBot, CurrentPathPoint->FromLocation, CurrentPathPoint->Location, (SamplePolyFlags)CurrentPathPoint->flag, (SamplePolyAreas)CurrentPathPoint->area);
 			break;
 
 	}
@@ -7649,7 +7652,7 @@ float UTIL_FindZHeightForWallClimb(const Vector ClimbStart, const Vector ClimbEn
 
 	if (hit.fAllSolid || hit.fStartSolid || hit.flFraction < 1.0f)
 	{
-		StartTrace.z = hit.vecEndPos.z + 18.0f;
+		StartTrace.z = hit.vecEndPos.z + 12.0f;
 	}
 
 	Vector EndTrace = ClimbStart;
@@ -9551,4 +9554,92 @@ vector<NavHint*> NAV_GetHintsOfTypeInRadius(unsigned int HintType, Vector Search
 
 	return Result;
 
+}
+
+void RefineFlightPath(vector<bot_path_node>& InputPath, vector<bot_path_node>& RefinedPath)
+{
+	RefinedPath.clear();
+
+	if (InputPath.size() == 0) { return; }
+
+	if (InputPath.size() == 1)
+	{
+		RefinedPath.push_back(InputPath.front());
+		return;
+	}
+
+	Vector PrevLoc = InputPath.front().FromLocation;
+
+	for (auto it = InputPath.begin(); it != InputPath.end(); it++)
+	{
+		Vector NextLocation = (next(it) != InputPath.end()) ? it->Location : ZERO_VECTOR;
+
+		Vector Dir = UTIL_GetVectorNormal(it->Location - PrevLoc);
+		
+		float Dist = vDist3D(PrevLoc, it->Location);
+		float StepSize = Dist * 0.1f;
+		int CurrStep = 0;
+
+		bool bSkippedAhead = false;
+
+		int CurrIndex = distance(InputPath.begin(), it);
+		int IndicesLeft = InputPath.size() - CurrIndex - 1;
+
+		vector<bot_path_node>::iterator StartIterator = (it + imini(5, IndicesLeft));
+
+		if (StartIterator == InputPath.end())
+		{
+			StartIterator = prev(InputPath.end());
+		}
+
+		for (auto nIt = StartIterator; nIt != next(it) && nIt != it; nIt--)
+		{
+			Vector TracePoint = ZERO_VECTOR;
+			Vector TraceFrom = PrevLoc;
+			CurrStep = 0;
+
+			while (vIsZero(TracePoint) && CurrStep < 10)
+			{
+				TraceFrom = (PrevLoc + Vector(0.0f, 0.0f, 10.0f)) + (Dir * (StepSize * CurrStep));
+
+				TracePoint = UTIL_FindHighestSuccessfulTracePoint(TraceFrom, nIt->FromLocation, nIt->Location, 5.0f, 50.0f, 200.0f);
+
+				CurrStep++;
+			}
+
+			if (!vIsZero(TracePoint))
+			{
+				bot_path_node StubNode = (*it);
+				StubNode.FromLocation = PrevLoc;
+				StubNode.Location = TraceFrom;
+				PrevLoc = StubNode.Location;
+				RefinedPath.push_back(StubNode);
+
+				bot_path_node NewNode = (*it);
+				NewNode.FromLocation = PrevLoc;
+				NewNode.Location = TracePoint;
+				PrevLoc = NewNode.Location;
+				RefinedPath.push_back(NewNode);
+				bSkippedAhead = true;
+
+				it = prev(nIt);
+
+				it->FromLocation = TracePoint;
+
+				break;
+			}
+		}
+
+		if (!bSkippedAhead)
+		{
+			bot_path_node NewNode = (*it);
+			NewNode.FromLocation = PrevLoc;
+			PrevLoc = NewNode.Location;
+			RefinedPath.push_back(NewNode);
+
+			continue;
+		}
+
+
+	}
 }

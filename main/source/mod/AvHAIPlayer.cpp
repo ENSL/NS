@@ -4445,16 +4445,23 @@ bool AIPlayerMustFinishCurrentTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (!AITASK_IsTaskStillValid(pBot, Task)) { return false; }
 
+	// We're a gorge
 	if (GetPlayerActiveClass(pBot->Player) == AVH_USER3_ALIEN_PLAYER2)
 	{
 		AvHTeamNumber BotTeam = pBot->Player->GetTeam();
-
+		
+		// If we just tried placing a structure, then let it play out first
 		if (Task->ActiveBuildInfo.BuildStatus == BUILD_ATTEMPT_PENDING) { return true; }
 
-		// If we're already capping a node, are at the node and there is an unfinished tower on there, then finish the job and don't move on yet
+		// We went gorge specifically to drop a res tower. Don't quit if we've already placed the tower and need to finish construction,
+		// or we have almost enough resources to place the tower
 		if (Task->TaskType == TASK_CAP_RESNODE && vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation) < sqrf(UTIL_MetresToGoldSrcUnits(10.0f)))
 		{
-			return true;
+			const AvHAIResourceNode* ResNode = AITAC_GetNearestResourceNodeToLocation(Task->TaskLocation);
+
+			if (ResNode && ResNode->OwningTeam == pBot->Player->GetTeam()) { return true; }
+
+			return (pBot->Player->GetResources() >= (BALANCE_VAR(kResourceTowerCost) * 0.65f));
 		}
 	}
 
@@ -4469,9 +4476,9 @@ void AIPlayerNSAlienThink(AvHAIPlayer* pBot)
 		if (AlienCombatThink(pBot)) { return; }
 	}
 	
-	if (AIPlayerMustFinishCurrentTask(pBot, pBot->CurrentTask))
+	if (AIPlayerMustFinishCurrentTask(pBot, &pBot->PrimaryBotTask))
 	{
-		BotProgressTask(pBot, pBot->CurrentTask);
+		BotProgressTask(pBot, &pBot->PrimaryBotTask);
 		return;
 	}
 
