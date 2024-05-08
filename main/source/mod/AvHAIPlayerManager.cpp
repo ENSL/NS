@@ -39,8 +39,6 @@ float NextCommanderAllowedTimeTeamB = 0.0f;
 
 extern int m_spriteTexture;
 
-AvHAIPlayer* DebugAIPlayer = nullptr;
-
 bool bPlayerSpawned = false;
 
 float CountdownStartedTime = 0.0f;
@@ -50,6 +48,7 @@ bool bBotsEnabled = false;
 float CurrentFrameDelta = 0.01f;
 
 #ifdef BOTDEBUG
+AvHAIPlayer* DebugAIPlayer = nullptr;
 edict_t* DebugBots[MAX_PLAYERS];
 Vector DebugVector1 = ZERO_VECTOR;
 Vector DebugVector2 = ZERO_VECTOR;
@@ -517,6 +516,7 @@ byte BotThrottledMsec(AvHAIPlayer* inAIPlayer, float CurrentTime)
 	return (byte)newmsec;
 }
 
+#ifdef BOTDEBUG
 void AIDEBUG_SetDebugVector1(const Vector NewVector)
 {
 	DebugVector1 = NewVector;
@@ -543,6 +543,14 @@ void AIDEBUG_TestPathFind()
 
 	DEBUG_TestFindPath(GetBaseNavProfile(SKULK_BASE_NAV_PROFILE), DebugVector1, DebugVector2, DebugPath, 60.0f);
 }
+
+void AIDEBUG_TestFlightPathFind(Vector FromLoc, Vector ToLoc)
+{
+	if (vIsZero(FromLoc) || vIsZero(ToLoc)) { return; }
+
+	FindFlightPathToPoint(GetBaseNavProfile(SKULK_BASE_NAV_PROFILE), FromLoc, ToLoc, DebugPath, 60.0f);
+}
+#endif
 
 void AIMGR_UpdateAIPlayers()
 {
@@ -1271,6 +1279,7 @@ void AIMGR_BotPrecache()
 	m_spriteTexture = PRECACHE_MODEL("sprites/zbeam6.spr");
 }
 
+#ifdef BOTDEBUG
 AvHAIPlayer* AIMGR_GetDebugAIPlayer()
 {
 	return DebugAIPlayer;
@@ -1278,7 +1287,7 @@ AvHAIPlayer* AIMGR_GetDebugAIPlayer()
 
 void AIMGR_SetDebugAIPlayer(edict_t* SpectatingPlayer, edict_t* AIPlayer)
 {
-#ifdef BOTDEBUG
+
 	int PlayerIndex = ENTINDEX(SpectatingPlayer) - 1;
 
 	if (FNullEnt(AIPlayer))
@@ -1297,8 +1306,8 @@ void AIMGR_SetDebugAIPlayer(edict_t* SpectatingPlayer, edict_t* AIPlayer)
 	}
 
 	DebugBots[PlayerIndex] = nullptr;
-#endif
 }
+#endif
 
 void AIMGR_ReceiveCommanderRequest(AvHTeamNumber Team, edict_t* Requestor, const char* Request)
 {

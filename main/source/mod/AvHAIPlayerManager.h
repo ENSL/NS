@@ -60,11 +60,14 @@ AvHAICommanderMode AIMGR_GetCommanderMode();
 void AIMGR_SetCommanderAllowedTime(AvHTeamNumber Team, float NewValue);
 float AIMGR_GetCommanderAllowedTime(AvHTeamNumber Team);
 
+#ifdef BOTDEBUG
 Vector AIDEBUG_GetDebugVector1();
 Vector AIDEBUG_GetDebugVector2();
 void AIDEBUG_SetDebugVector1(const Vector NewVector);
 void AIDEBUG_SetDebugVector2(const Vector NewVector);
 void AIDEBUG_TestPathFind();
+void AIDEBUG_TestFlightPathFind(Vector FromLoc, Vector ToLoc);
+#endif
 
 int AIMGR_GetNumAIPlayersOnTeam(AvHTeamNumber Team);
 int AIMGR_GetNumHumanPlayersOnTeam(AvHTeamNumber Team);
