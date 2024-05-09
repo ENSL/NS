@@ -1961,7 +1961,14 @@ void BotProgressEvolveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 			if (vIsZero(Task->TaskLocation))
 			{
-				Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[ONOS_BASE_NAV_PROFILE], pBot->Edict->v.origin, UTIL_MetresToGoldSrcUnits(5.0f));
+				Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[ONOS_BASE_NAV_PROFILE], pBot->Edict->v.origin, UTIL_MetresToGoldSrcUnits(10.0f));
+			}
+
+			Vector FinalEvolveLocation = FindClosestNavigablePointToDestination(BaseNavProfiles[ONOS_BASE_NAV_PROFILE], pBot->CurrentFloorPosition, Task->TaskLocation, 60.0f);
+
+			if (!vIsZero(FinalEvolveLocation))
+			{
+				Task->TaskLocation = FinalEvolveLocation;
 			}
 
 			Task->TaskStartedTime = 0.0f;
@@ -1971,6 +1978,18 @@ void BotProgressEvolveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 
 	if (!vIsZero(Task->TaskLocation))
 	{
+		if (vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation) < sqrf(UTIL_MetresToGoldSrcUnits(10.0f)))
+		{
+			if (!UTIL_PointIsReachable(BaseNavProfiles[ONOS_BASE_NAV_PROFILE], pBot->CurrentFloorPosition, Task->TaskLocation, 60.0f))
+			{
+				Vector FinalEvolveLocation = FindClosestNavigablePointToDestination(BaseNavProfiles[ONOS_BASE_NAV_PROFILE], pBot->CurrentFloorPosition, Task->TaskLocation, 60.0f);
+
+				if (!vIsZero(FinalEvolveLocation))
+				{
+					Task->TaskLocation = FinalEvolveLocation;
+				}
+			}
+		}
 
 		if (vDist2DSq(pBot->Edict->v.origin, Task->TaskLocation) > sqrf(32.0f))
 		{
@@ -1987,7 +2006,13 @@ void BotProgressEvolveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	{
 		if (FNullEnt(Task->TaskTarget))
 		{
-			Task->TaskLocation = pBot->Edict->v.origin;
+			Task->TaskLocation = FindClosestNavigablePointToDestination(BaseNavProfiles[ONOS_BASE_NAV_PROFILE], AITAC_GetTeamStartingLocation(pBot->Player->GetTeam()), UTIL_GetEntityGroundLocation(Task->TaskTarget), UTIL_MetresToGoldSrcUnits(10.0f));
+
+			if (vIsZero(Task->TaskLocation))
+			{
+				Task->TaskLocation = pBot->CurrentFloorPosition;
+			}
+
 			return;
 		}
 		else
@@ -1999,19 +2024,11 @@ void BotProgressEvolveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 			}
 			else
 			{
-				Task->TaskLocation = FindClosestNavigablePointToDestination(BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE], pBot->Edict->v.origin, UTIL_GetEntityGroundLocation(Task->TaskTarget), UTIL_MetresToGoldSrcUnits(10.0f));
+				Task->TaskLocation = FindClosestNavigablePointToDestination(BaseNavProfiles[ONOS_BASE_NAV_PROFILE], pBot->CurrentFloorPosition, UTIL_GetEntityGroundLocation(Task->TaskTarget), UTIL_MetresToGoldSrcUnits(10.0f));
 
 				if (vIsZero(Task->TaskLocation))
 				{
-					Task->TaskLocation = pBot->Edict->v.origin;
-				}
-
-				Vector FinalEvolveLoc = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE], Task->TaskLocation, UTIL_MetresToGoldSrcUnits(5.0f));
-
-				if (!vIsZero(FinalEvolveLoc))
-				{
-					Task->TaskLocation = FinalEvolveLoc;
-					return;
+					Task->TaskLocation = UTIL_GetRandomPointOnNavmeshInRadius(BaseNavProfiles[STRUCTURE_BASE_NAV_PROFILE], Task->TaskLocation, UTIL_MetresToGoldSrcUnits(5.0f));
 				}
 			}
 		}
