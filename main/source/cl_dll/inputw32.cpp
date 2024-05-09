@@ -35,6 +35,7 @@
 
 // use IN_SetVisibleMouse to set:
 int	g_iVisibleMouse = 0;
+int g_iVguiSideMouseRelease = 0;
 
 extern cl_enginefunc_t gEngfuncs;
 
@@ -534,8 +535,9 @@ IN_MouseEvent
 void CL_DLLEXPORT IN_MouseEvent (int mstate)
 {
 	int		i;
+	g_iVguiSideMouseRelease = 0;
 
-	if ( iMouseInUse || g_iVisibleMouse )
+	if ( iMouseInUse /*|| g_iVisibleMouse */) // Mouse button processing when the cursor is visible moved to HUD_Key_Event.
 		return;
 
 	// perform button actions
@@ -551,9 +553,16 @@ void CL_DLLEXPORT IN_MouseEvent (int mstate)
 			(mouse_oldbuttonstate & (1<<i)) )
 		{
 			gEngfuncs.Key_Event (K_MOUSE1 + i, 0);
+
+			// HACK: When in VGUI mode the mouse4 and mouse5 release events don't show up in HUD_Key_Event for some reason.
+			// This is needed in edge cases while commanding where a side mouse button is pressed before left click, then released before left click is released.
+			if (i >= 3)
+			{
+				g_iVguiSideMouseRelease = K_MOUSE1 + i;
+			}
 		}
-	}	
-	
+	}
+
 	mouse_oldbuttonstate = mstate;
 }
 

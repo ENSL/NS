@@ -6,6 +6,7 @@
 #include "AvHScrollPanel.h"
 #include "AvHActionButtons.h"
 #include "ui/UIUtil.h"
+//#include "keydefs.h"
 
 int AvHScrollHandler::sScrollX = 0;
 int AvHScrollHandler::sScrollY = 0;
@@ -19,6 +20,9 @@ int AvHScrollHandler::sLastMouseUpY = 0;
 bool AvHScrollHandler::sMouseOneDown = false;
 bool AvHScrollHandler::sMouseTwoDown = false;
 int AvHScrollHandler::sKeyDown = 0;
+
+extern int g_iVguiSideMouse;
+extern int g_iVguiSideMouseRelease;
 
 AvHScrollHandler::AvHScrollHandler()
 {
@@ -218,7 +222,7 @@ void AvHScrollHandler::keyPressed(KeyCode inKeyCode, Panel* panel)
 void AvHScrollHandler::mousePressed(MouseCode code, Panel* panel)
 {
 	// store this
-	if(code == vgui::MOUSE_LEFT)
+	if(code == vgui::MOUSE_LEFT && !g_iVguiSideMouse)
 	{
 		sMouseOneDown = true;
 	}
@@ -226,12 +230,28 @@ void AvHScrollHandler::mousePressed(MouseCode code, Panel* panel)
 	{
 		sMouseTwoDown = true;
 	}
+	//// TO DO: Custom bind cvars for comm side mouse buttons.
+	//else if (code == MOUSE_MIDDLE)
+	//{
+	//	this->mLastTechPressed = ;
+	//	this->mTechNodePressed = true;
+	//}
+	//else if (code == vgui::MOUSE_LEFT && g_iVguiSideMouse == K_MOUSE4)
+	//{
+	//	this->mLastTechPressed = ;
+	//	this->mTechNodePressed = true;
+	//}
+	//else if (code == vgui::MOUSE_LEFT && g_iVguiSideMouse == K_MOUSE5)
+	//{
+	//	this->mLastTechPressed = ;
+	//	this->mTechNodePressed = true;
+	//}
 }
 
 void AvHScrollHandler::mouseReleased(MouseCode code, Panel* panel)
 {
 	// store this
-	if(code == vgui::MOUSE_LEFT)
+	if(code == vgui::MOUSE_LEFT && !g_iVguiSideMouse && !g_iVguiSideMouseRelease)
 	{
 		sMouseOneDown = false;
 	}

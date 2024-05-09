@@ -65,6 +65,10 @@
 #include "AvHTechImpulsePanel.h"
 #include "AvHCommandConstants.h"
 #include "../util/STLUtil.h"
+//#include "keydefs.h"
+
+extern int g_iVguiSideMouse;
+extern int g_iVguiSideMouseRelease;
 
 AvHCommanderModeHandler::AvHCommanderModeHandler()
 {
@@ -758,7 +762,7 @@ void AvHCommanderModeHandler::mousePressed(MouseCode code, Panel* inPanel)
     // if the cursor is no longer on the panel.
     App::getInstance()->setMouseCapture(inPanel);
 
-	if(code == MOUSE_LEFT)
+	if(code == MOUSE_LEFT && !g_iVguiSideMouse)
 	{
 		this->mMouseOneDown = true;
 
@@ -795,6 +799,22 @@ void AvHCommanderModeHandler::mousePressed(MouseCode code, Panel* inPanel)
 			//this->DefaultOrderToLastMousePosition(theHierarchy);
 		}
 	}
+	//// TO DO: Custom bind cvars for comm side mouse buttons.
+	//else if (code == MOUSE_MIDDLE)
+	//{
+	//	this->mLastTechPressed = ;
+	//	this->mTechNodePressed = true;
+	//}
+	//else if (code == vgui::MOUSE_LEFT && g_iVguiSideMouse == K_MOUSE4)
+	//{
+	//	this->mLastTechPressed = ;
+	//	this->mTechNodePressed = true;
+	//}
+	//else if (code == vgui::MOUSE_LEFT && g_iVguiSideMouse == K_MOUSE5)
+	//{
+	//	this->mLastTechPressed = ;
+	//	this->mTechNodePressed = true;
+	//}
 }
 
 void AvHCommanderModeHandler::mouseDoublePressed(MouseCode code, Panel* inPanel)
@@ -856,7 +876,7 @@ void AvHCommanderModeHandler::mouseReleased(MouseCode code, Panel* inPanel)
 
     App::getInstance()->setMouseCapture(NULL);
 
-    if(code == MOUSE_LEFT)
+    if(code == MOUSE_LEFT && !g_iVguiSideMouse && !g_iVguiSideMouseRelease)
 	{
 
         if (GetIsPointInPanel(inPanel, mLastMouseX, mLastMouseY))

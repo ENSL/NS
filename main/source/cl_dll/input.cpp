@@ -109,6 +109,9 @@ int	in_cancel	= 0;
 
 bool pistolHandlerDown = false;
 
+extern int g_iVisibleMouse;
+int g_iVguiSideMouse;
+
 cvar_t	*m_pitch;
 cvar_t	*m_yaw;
 cvar_t	*m_forward;
@@ -567,6 +570,38 @@ Return 1 to allow engine to process the key, otherwise, act on it as needed
 int CL_DLLEXPORT HUD_Key_Event( int down, int keynum, const char *pszCurrentBinding )
 {
 //    RecClKeyEvent(down, keynum, pszCurrentBinding);
+	
+	// 2024 - Check mouse button presses when the cursor is visible to fix issues with VGUI registering mouse4/5 as left click. Previously these were blocked in inputw32.
+	// Also note that g_iVguiSideMouseRelease is set in inputw32, because for some reason side mouse button releases in VGUI mode don't get sent here.
+	if (g_iVisibleMouse && (keynum >= K_MOUSE1 && keynum <= K_MOUSE5))
+	{
+		//gEngfuncs.Con_Printf("mouse event keynum:%d down:%d\n", keynum, down);
+
+		switch (keynum)
+		{
+		case K_MOUSE1:
+		case K_MOUSE2:
+			g_iVguiSideMouse = 0;
+			return 0;
+		case K_MOUSE3:
+			g_iVguiSideMouse = 0;
+			// Allow mouse3 binds while commanding since commander VGUI currently doesn't use it.
+			if (!gHUD.GetInTopDownMode())
+			{
+				return 0;
+			}
+			break;
+		case K_MOUSE4:
+		case K_MOUSE5:
+			g_iVguiSideMouse = keynum;
+
+			if (!gHUD.GetInTopDownMode())
+			{
+				return 0;
+			}
+			break;
+		}
+	}
 
 	// Check to see if the event has any outlawed commands in it.
 	float theBlockScripts = gHUD.GetServerVariableFloat(kvBlockScripts);
@@ -1194,6 +1229,11 @@ void CL_DLLEXPORT CL_CreateMove ( float frametime, struct usercmd_s *cmd, int ac
                         theProcessedMove = true;
                         theIsSendingSpecialEvent = true;
                     }
+					else
+					{
+						// Clear the impulse so it doesn't execute once leaving the chair.
+						in_impulse = 0;
+					}
                 }
 
 				if(!theProcessedMove && gHUD.GetAndClearSelectionEvent(theMouseNormPos, theTechEvent))
