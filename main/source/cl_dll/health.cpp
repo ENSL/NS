@@ -340,7 +340,7 @@ int CHudHealth::Draw(float flTime)
 
 		gHUD.DrawHudFill(x, y, iWidth, iHeight, r ,g , b, a, m_fHealthScale);
 
-		gHUD.m_Battery.m_iAnchorX = x + + iWidth + HealthWidth / 2;
+		gHUD.m_Battery.m_iAnchorX = x + iWidth + HealthWidth / 2;
 		gHUD.m_Battery.m_iAnchorY = initialY;
 	}
 

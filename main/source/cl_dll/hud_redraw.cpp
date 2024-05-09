@@ -577,10 +577,18 @@ int CHud::DrawHudNumber(int x, int y, int iFlags, int iNumber, int r, int g, int
 
 	if (iNumber > 0)
 	{
+		// Draw 1000's
+		if (iNumber >= 1000)
+		{
+			k = iNumber / 1000;
+			DrawHudSpriteIndex(m_HUD_number_0 + k, x, y, r, g, b, a, scale, alignment);
+			x += iWidth;
+		}
+
 		// SPR_Draw 100's
 		if (iNumber >= 100)
 		{
-			k = iNumber / 100;
+			k = (iNumber % 1000) / 100;
 			DrawHudSpriteIndex(m_HUD_number_0 + k, x, y, r, g, b, a, scale, alignment);
 			x += iWidth;
 		}

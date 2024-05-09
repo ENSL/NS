@@ -154,6 +154,7 @@ int CHudBattery::Draw(float flTime)
 	}
 
 	x += (m_prc1->right - m_prc1->left) * gHUD.m_Health.m_fHealthScale;
+	x += ((gHUD.GetSpriteRect(gHUD.m_HUD_number_0).right - gHUD.GetSpriteRect(gHUD.m_HUD_number_0).left) / 2) * gHUD.m_Health.m_fHealthScale;
 	x = gHUD.DrawHudNumber(x, y, DHN_3DIGITS | DHN_DRAWZERO, m_iBat, r, g, b, 255, gHUD.m_Health.m_fHealthScale, CHud::a_southwest);
 
 	return 1;
