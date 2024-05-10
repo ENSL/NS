@@ -602,8 +602,6 @@ void WeaponsResource::SetWeaponConfig (WEAPON* weapon, int specXhair)
 		lastPlayMode = newPlayMode;
 		lastSpecXhair = specXhair;
 
-		gEngfuncs.Con_Printf("changing weapon cfg\n");
-
 		char weapCfg[128];
 
 		if (cl_weaponcfgs->value == 1.0f)
