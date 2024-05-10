@@ -2413,24 +2413,26 @@ AvHAIBuildableStructure* AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 
 	std::unordered_map<int, AvHAIBuildableStructure>& BuildingMap = ((AvHTeamNumber)BuildingEdict->v.team == TeamANumber) ? TeamAStructureMap : TeamBStructureMap;
 
+	AvHAIBuildableStructure* StructureRef = &BuildingMap[EntIndex];
+
 	if (StructureType == STRUCTURE_MARINE_DEPLOYEDMINE)
 	{
-		BuildingMap[EntIndex].StructureType = StructureType;
-		if (BuildingMap[EntIndex].LastSeen == 0)
+		StructureRef->StructureType = StructureType;
+		if (StructureRef->LastSeen == 0)
 		{
-			BuildingMap[EntIndex].Location = BuildingEdict->v.origin;
-			BuildingMap[EntIndex].edict = BuildingEdict;
-			BuildingMap[EntIndex].healthPercent = 1.0f;
-			BuildingMap[EntIndex].EntityRef = nullptr;
-			BuildingMap[EntIndex].StructureStatusFlags = STRUCTURE_STATUS_COMPLETED;
-			BuildingMap[EntIndex].TeamAReachabilityFlags = (AI_REACHABILITY_ALL & ~(AI_REACHABILITY_UNREACHABLE));
-			BuildingMap[EntIndex].TeamBReachabilityFlags = (AI_REACHABILITY_ALL & ~(AI_REACHABILITY_UNREACHABLE));
+			StructureRef->Location = BuildingEdict->v.origin;
+			StructureRef->edict = BuildingEdict;
+			StructureRef->healthPercent = 1.0f;
+			StructureRef->EntityRef = nullptr;
+			StructureRef->StructureStatusFlags = STRUCTURE_STATUS_COMPLETED;
+			StructureRef->TeamAReachabilityFlags = (AI_REACHABILITY_ALL & ~(AI_REACHABILITY_UNREACHABLE));
+			StructureRef->TeamBReachabilityFlags = (AI_REACHABILITY_ALL & ~(AI_REACHABILITY_UNREACHABLE));
 			AITAC_OnStructureCreated(&BuildingMap[EntIndex]);
 		}
 
-		BuildingMap[EntIndex].LastSeen = StructureRefreshFrame;
+		StructureRef->LastSeen = StructureRefreshFrame;
 
-		return &BuildingMap[EntIndex];
+		return StructureRef;
 	}
 
 	AvHBaseBuildable* BaseBuildable = dynamic_cast<AvHBaseBuildable*>(Structure);
@@ -2440,27 +2442,27 @@ AvHAIBuildableStructure* AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 		return nullptr; 
 	}
 
-	BuildingMap[EntIndex].StructureType = StructureType;
+	StructureRef->StructureType = StructureType;
 
 	// This is the first time we've seen this structure, so it must be new
-	if (BuildingMap[EntIndex].LastSeen == 0)
+	if (StructureRef->LastSeen == 0)
 	{
-		BuildingMap[EntIndex].EntityRef = BaseBuildable;
-		BuildingMap[EntIndex].edict = BuildingEdict;
+		StructureRef->EntityRef = BaseBuildable;
+		StructureRef->edict = BuildingEdict;
 
-		BuildingMap[EntIndex].OffMeshConnections.clear();
-		BuildingMap[EntIndex].Obstacles.clear();
+		StructureRef->OffMeshConnections.clear();
+		StructureRef->Obstacles.clear();
 
-		BuildingMap[EntIndex].Location = g_vecZero; // We set this just below after calculating reachability
+		StructureRef->Location = g_vecZero; // We set this just below after calculating reachability
 
 		AITAC_OnStructureCreated(&BuildingMap[EntIndex]);
 	}
 
-	if (vIsZero(BuildingMap[EntIndex].Location) || !vEquals(BaseBuildable->pev->origin, BuildingMap[EntIndex].Location, 5.0f))
+	if (vIsZero(StructureRef->Location) || !vEquals(BaseBuildable->pev->origin, StructureRef->Location, 5.0f))
 	{
 		AITAC_RefreshReachabilityForStructure(&BuildingMap[EntIndex]);
 
-		BuildingMap[EntIndex].Location = BaseBuildable->pev->origin;
+		StructureRef->Location = BaseBuildable->pev->origin;
 	}
 
 	unsigned int NewFlags = STRUCTURE_STATUS_NONE;
@@ -2471,7 +2473,7 @@ AvHAIBuildableStructure* AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 
 	if (BaseBuildable->GetIsBuilt())
 	{
-		if (!(BuildingMap[EntIndex].StructureStatusFlags & STRUCTURE_STATUS_COMPLETED))
+		if (!(StructureRef->StructureStatusFlags & STRUCTURE_STATUS_COMPLETED))
 		{
 			bJustCompleted = true;
 		}
@@ -2490,7 +2492,7 @@ AvHAIBuildableStructure* AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 
 	if (BaseBuildable->GetIsRecycling())
 	{
-		if (!(BuildingMap[EntIndex].StructureStatusFlags & STRUCTURE_STATUS_RECYCLING))
+		if (!(StructureRef->StructureStatusFlags & STRUCTURE_STATUS_RECYCLING))
 		{
 			bJustRecycled = true;
 		}
@@ -2514,25 +2516,25 @@ AvHAIBuildableStructure* AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 
 	float NewHealthPercent = (BuildingEdict->v.health / BuildingEdict->v.max_health);
 
-	if (NewHealthPercent < BuildingMap[EntIndex].healthPercent)
+	if (NewHealthPercent < StructureRef->healthPercent)
 	{
-		BuildingMap[EntIndex].lastDamagedTime = gpGlobals->time;
+		StructureRef->lastDamagedTime = gpGlobals->time;
 	}
 
-	BuildingMap[EntIndex].healthPercent = NewHealthPercent;
+	StructureRef->healthPercent = NewHealthPercent;
 
-	if (BuildingMap[EntIndex].healthPercent < 0.99f && BaseBuildable->GetIsBuilt())
+	if (StructureRef->healthPercent < 0.99f && BaseBuildable->GetIsBuilt())
 	{
 		NewFlags |= STRUCTURE_STATUS_DAMAGED;
 	}
 
-	if (gpGlobals->time - BuildingMap[EntIndex].lastDamagedTime < 10.0f)
+	if (gpGlobals->time - StructureRef->lastDamagedTime < 10.0f)
 	{
 		NewFlags |= STRUCTURE_STATUS_UNDERATTACK;
 	}
 
-	BuildingMap[EntIndex].StructureStatusFlags = NewFlags;
-	BuildingMap[EntIndex].LastSeen = StructureRefreshFrame;
+	StructureRef->StructureStatusFlags = NewFlags;
+	StructureRef->LastSeen = StructureRefreshFrame;
 
 	if (bJustCompleted)
 	{
@@ -2544,7 +2546,76 @@ AvHAIBuildableStructure* AITAC_UpdateBuildableStructure(CBaseEntity* Structure)
 		AITAC_OnStructureBeginRecycling(&BuildingMap[EntIndex]);
 	}
 
-	return &BuildingMap[EntIndex];
+	if (StructureRef->Purpose == STRUCTURE_PURPOSE_NONE)
+	{
+		AvHTeamNumber StructureTeam = (AvHTeamNumber)StructureRef->edict->v.team;
+
+		if (AIMGR_GetTeamType(StructureTeam) == AVH_CLASS_TYPE_MARINE)
+		{
+			switch (StructureRef->StructureType)
+			{
+				case STRUCTURE_MARINE_COMMCHAIR:
+				case STRUCTURE_MARINE_INFANTRYPORTAL:
+				case STRUCTURE_MARINE_ARMSLAB:
+				case STRUCTURE_MARINE_PROTOTYPELAB:
+					StructureRef->Purpose = STRUCTURE_PURPOSE_BASE;
+					break;
+				case STRUCTURE_MARINE_RESTOWER:
+					StructureRef->Purpose = STRUCTURE_PURPOSE_GENERAL;
+					break;
+				case STRUCTURE_MARINE_TURRET:
+					StructureRef->Purpose = STRUCTURE_PURPOSE_FORTIFY;
+					break;
+				case STRUCTURE_MARINE_SIEGETURRET:
+					StructureRef->Purpose = STRUCTURE_PURPOSE_SIEGE;
+					break;
+				default:
+				{
+					Vector TeamStart = AITAC_GetTeamStartingLocation(StructureTeam);
+
+					if (vDist2DSq(StructureRef->Location, TeamStart) < sqrf(UTIL_MetresToGoldSrcUnits(15.0f)))
+					{
+						StructureRef->Purpose = STRUCTURE_PURPOSE_BASE;
+					}
+					else
+					{
+						AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(StructureTeam);
+
+						const AvHAIHiveDefinition* NearestHive = AITAC_GetHiveNearestLocation(StructureRef->Location);
+
+						if (NearestHive)
+						{
+							if (NearestHive->Status == HIVE_STATUS_UNBUILT && vDist2DSq(NearestHive->FloorLocation, StructureRef->Location) < sqrf(UTIL_MetresToGoldSrcUnits(10.0f)))
+							{
+								StructureRef->Purpose = STRUCTURE_PURPOSE_FORTIFY;
+							}
+							else if (NearestHive->Status != HIVE_STATUS_UNBUILT && vDist2DSq(NearestHive->FloorLocation, StructureRef->Location) < sqrf(UTIL_MetresToGoldSrcUnits(25.0f)))
+							{
+								StructureRef->Purpose = STRUCTURE_PURPOSE_SIEGE;
+							}
+							else
+							{
+								StructureRef->Purpose = STRUCTURE_PURPOSE_GENERAL;
+							}
+						}
+						else
+						{
+							StructureRef->Purpose = STRUCTURE_PURPOSE_GENERAL;
+						}
+					}
+
+				}
+				break;
+
+			}
+		}
+		else
+		{
+			StructureRef->Purpose = STRUCTURE_PURPOSE_GENERAL;
+		}
+	}
+
+	return StructureRef;
 
 }
 

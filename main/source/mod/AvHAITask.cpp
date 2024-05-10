@@ -877,7 +877,7 @@ bool AITASK_IsReinforceStructureTaskStillValid(AvHAIPlayer* pBot, AvHAIPlayerTas
 
 	DeployableSearchFilter StructureFilter;
 	StructureFilter.DeployableTypes = STRUCTURE_ALIEN_OFFENCECHAMBER | ALIEN_BUILD_DEFENSE_CHAMBER | ALIEN_BUILD_MOVEMENT_CHAMBER | ALIEN_BUILD_SENSORY_CHAMBER;
-	StructureFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
+	StructureFilter.MaxSearchRadius = (IsEdictHive(Task->TaskTarget)) ? UTIL_MetresToGoldSrcUnits(10.0f) : UTIL_MetresToGoldSrcUnits(5.0f);
 	StructureFilter.DeployableTeam = pBot->Player->GetTeam();
 
 	vector<AvHAIBuildableStructure> AllNearbyStructures = AITAC_FindAllDeployables(Task->TaskTarget->v.origin, &StructureFilter);
@@ -1339,7 +1339,7 @@ void BotProgressReinforceStructureTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 	Vector ReinforceLocation = UTIL_ProjectPointToNavmesh(UTIL_GetEntityGroundLocation(Task->TaskTarget), pBot->BotNavInfo.NavProfile);
 	float SearchRadius = UTIL_MetresToGoldSrcUnits(5.0f);
 
-	if (Task->StructureType == STRUCTURE_ALIEN_HIVE)
+	if (IsEdictHive(Task->TaskTarget))
 	{
 		AvHAIHiveDefinition* HiveToReinforce = AITAC_GetHiveFromEdict(Task->TaskTarget);
 
@@ -2834,6 +2834,12 @@ void MarineProgressSecureHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 		return;
 	}
 
+	if (Hive->Status != HIVE_STATUS_UNBUILT && Hive->OwningTeam != BotTeam)
+	{
+		BotAttackNonPlayerTarget(pBot, Hive->HiveEdict);
+		return;
+	}
+
 	const AvHAIResourceNode* ResNode = Hive->HiveResNodeRef;
 
 	if (ResNode && ResNode->bIsOccupied)
@@ -2876,6 +2882,7 @@ void MarineProgressSecureHiveTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 			return;
 		}
 	}
+
 
 	BotGuardLocation(pBot, Task->TaskLocation);
 	

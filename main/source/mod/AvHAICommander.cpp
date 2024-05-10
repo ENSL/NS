@@ -1065,7 +1065,7 @@ bool AICOMM_CheckForNextBuildAction(AvHAIPlayer* pBot)
 
 	if (HiveUnderSiege)
 	{
-		bool bAlreadyScanning = AITAC_ItemExistsInLocation(HiveUnderSiege->Location, DEPLOYABLE_ITEM_SCAN, pBot->Player->GetTeam(), AI_REACHABILITY_NONE, 0.0f, UTIL_MetresToGoldSrcUnits(5.0f), false);
+		bool bAlreadyScanning = AITAC_ItemExistsInLocation(HiveUnderSiege->Location, DEPLOYABLE_ITEM_SCAN, TEAM_IND, AI_REACHABILITY_NONE, 0.0f, UTIL_MetresToGoldSrcUnits(10.0f), false);
 
 		if (!bAlreadyScanning)
 		{

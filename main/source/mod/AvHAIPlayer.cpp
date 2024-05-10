@@ -1865,82 +1865,12 @@ void EndBotFrame(AvHAIPlayer* pBot)
 
 void CustomThink(AvHAIPlayer* pBot)
 {
-	// Test Combat Stuff
-	//DEBUG_PrintCombatInfo(INDEXENT(1), pBot);
+	AITASK_BotUpdateAndClearTasks(pBot);
 
-	pBot->CurrentEnemy = BotGetNextEnemyTarget(pBot);
-
-	if (pBot->CurrentEnemy > -1)
+	if (pBot->PrimaryBotTask.TaskType != TASK_NONE && !vIsZero(pBot->PrimaryBotTask.TaskLocation))
 	{
-		if (IsPlayerMarine(pBot->Edict))
-		{
-			MarineCombatThink(pBot);
-		}
-		else
-		{
-			AlienCombatThink(pBot);
-		}
+		MoveDirectlyTo(pBot, pBot->PrimaryBotTask.TaskLocation);
 	}
-	else
-	{
-		if (AITAC_ShouldBotBeCautious(pBot))
-		{
-			MoveTo(pBot, AITAC_GetTeamStartingLocation(AIMGR_GetEnemyTeam(pBot->Player->GetTeam())), MOVESTYLE_AMBUSH);
-		}
-		else
-		{
-			MoveTo(pBot, AITAC_GetTeamStartingLocation(AIMGR_GetEnemyTeam(pBot->Player->GetTeam())), MOVESTYLE_NORMAL);
-		}
-		
-	}
-
-	/*AITASK_BotUpdateAndClearTasks(pBot);
-
-	if (pBot->PrimaryBotTask.TaskType != TASK_SECURE_HIVE)
-	{
-		AvHTeamNumber BotTeam = pBot->Player->GetTeam();
-		AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
-
-		AvHAIHiveDefinition* HiveToClear = nullptr;
-		float MinDist = 0.0f;
-
-		vector<AvHAIHiveDefinition*> Hives = AITAC_GetAllHives();
-
-		for (auto it = Hives.begin(); it != Hives.end(); it++)
-		{
-			AvHAIHiveDefinition* ThisHive = (*it);
-
-			if (ThisHive->Status == HIVE_STATUS_UNBUILT)
-			{
-				DeployableSearchFilter EnemyStuffFilter;
-				EnemyStuffFilter.DeployableTeam = EnemyTeam;
-				EnemyStuffFilter.DeployableTypes = SEARCH_ALL_STRUCTURES;
-				EnemyStuffFilter.ReachabilityTeam = BotTeam;
-				EnemyStuffFilter.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
-				EnemyStuffFilter.MaxSearchRadius = UTIL_MetresToGoldSrcUnits(15.0f);
-
-				if (AITAC_DeployableExistsAtLocation(ThisHive->FloorLocation, &EnemyStuffFilter))
-				{
-					float ThisDist = vDist2DSq(pBot->Edict->v.origin, ThisHive->FloorLocation);
-
-					if (!HiveToClear || ThisDist < MinDist)
-					{
-						HiveToClear = ThisHive;
-						MinDist = ThisDist;
-					}
-				}
-			}
-		}
-
-		if (HiveToClear)
-		{
-			AITASK_SetSecureHiveTask(pBot, &pBot->PrimaryBotTask, HiveToClear->HiveEdict, HiveToClear->FloorLocation, true);
-		}
-	}
-	else
-	{
-		BotProgressTask(pBot, &pBot->PrimaryBotTask);
-	}*/
 }
 
 void DroneThink(AvHAIPlayer* pBot)
@@ -4462,6 +4392,21 @@ bool AIPlayerMustFinishCurrentTask(AvHAIPlayer* pBot, AvHAIPlayerTask* Task)
 			if (ResNode && ResNode->OwningTeam == pBot->Player->GetTeam()) { return true; }
 
 			return (pBot->Player->GetResources() >= (BALANCE_VAR(kResourceTowerCost) * 0.65f));
+		}
+
+		if (Task->TaskType == TASK_REINFORCE_STRUCTURE && vDist2DSq(pBot->Edict->v.origin, Task->TaskTarget->v.origin) < sqrf(UTIL_MetresToGoldSrcUnits(10.0f)))
+		{
+			float SearchRadius = (IsEdictHive(Task->TaskTarget)) ? UTIL_MetresToGoldSrcUnits(10.0f) : UTIL_MetresToGoldSrcUnits(5.0f);
+
+			DeployableSearchFilter UnfinishedStructures;
+			UnfinishedStructures.DeployableTeam = BotTeam;
+			UnfinishedStructures.DeployableTypes = SEARCH_ALL_STRUCTURES;
+			UnfinishedStructures.ReachabilityTeam = BotTeam;
+			UnfinishedStructures.ReachabilityFlags = pBot->BotNavInfo.NavProfile.ReachabilityFlag;
+			UnfinishedStructures.MaxSearchRadius = SearchRadius;
+			UnfinishedStructures.ExcludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+
+			return (AITAC_DeployableExistsAtLocation(Task->TaskTarget->v.origin, &UnfinishedStructures));
 		}
 	}
 
@@ -7639,7 +7584,7 @@ bool SkulkCombatThink(AvHAIPlayer* pBot)
 				bot_path_node CurrentPathNode = pBot->BotNavInfo.CurrentPath[pBot->BotNavInfo.CurrentPathPoint];
 
 				// EVASIVE MANOEUVRES! Only do this if we're running along the floor and aren't approaching a path point (so we don't stray off the path)
-				if (CurrentPathNode.flag == SAMPLE_POLYFLAGS_WALK && vDist2DSq(pBot->Edict->v.origin, CurrentPathNode.Location) > sqrf(50.0f))
+				if (TrackedEnemyRef->bHasLOS && CurrentPathNode.flag == SAMPLE_POLYFLAGS_WALK && vDist2DSq(pBot->Edict->v.origin, CurrentPathNode.Location) > sqrf(50.0f))
 				{
 					Vector RightDir = UTIL_GetCrossProduct(pBot->desiredMovementDir, UP_VECTOR);
 
@@ -7790,16 +7735,20 @@ bool GorgeCombatThink(AvHAIPlayer* pBot)
 				Vector EnemyOrientation = UTIL_GetVectorNormal2D(pBot->desiredMovementDir);
 				Vector RightDir = UTIL_GetCrossProduct(EnemyOrientation, UP_VECTOR);
 
-				pBot->desiredMovementDir = (pBot->BotNavInfo.bZig) ? UTIL_GetVectorNormal2D(pBot->desiredMovementDir + RightDir) : UTIL_GetVectorNormal2D(pBot->desiredMovementDir - RightDir);
-
-				// Let's get ziggy with it
-				if (gpGlobals->time > pBot->BotNavInfo.NextZigTime)
+				if (TrackedEnemyRef->bHasLOS)
 				{
-					pBot->BotNavInfo.bZig = !pBot->BotNavInfo.bZig;
-					pBot->BotNavInfo.NextZigTime = gpGlobals->time + frandrange(0.5f, 1.0f);
-				}
 
-				BotMovementInputs(pBot);
+					pBot->desiredMovementDir = (pBot->BotNavInfo.bZig) ? UTIL_GetVectorNormal2D(pBot->desiredMovementDir + RightDir) : UTIL_GetVectorNormal2D(pBot->desiredMovementDir - RightDir);
+
+					// Let's get ziggy with it
+					if (gpGlobals->time > pBot->BotNavInfo.NextZigTime)
+					{
+						pBot->BotNavInfo.bZig = !pBot->BotNavInfo.bZig;
+						pBot->BotNavInfo.NextZigTime = gpGlobals->time + frandrange(0.5f, 1.0f);
+					}
+
+					BotMovementInputs(pBot);
+				}
 
 				return true;
 			}
@@ -7859,19 +7808,22 @@ bool GorgeCombatThink(AvHAIPlayer* pBot)
 
 				}
 
-				Vector EnemyOrientation = UTIL_GetVectorNormal2D(pBot->desiredMovementDir);
-				Vector RightDir = UTIL_GetCrossProduct(EnemyOrientation, UP_VECTOR);
-
-				pBot->desiredMovementDir = (pBot->BotNavInfo.bZig) ? UTIL_GetVectorNormal2D(pBot->desiredMovementDir + RightDir) : UTIL_GetVectorNormal2D(pBot->desiredMovementDir - RightDir);
-
-				// Let's get ziggy with it
-				if (gpGlobals->time > pBot->BotNavInfo.NextZigTime)
+				if (TrackedEnemyRef->bHasLOS)
 				{
-					pBot->BotNavInfo.bZig = !pBot->BotNavInfo.bZig;
-					pBot->BotNavInfo.NextZigTime = gpGlobals->time + frandrange(0.5f, 1.0f);
-				}
+					Vector EnemyOrientation = UTIL_GetVectorNormal2D(pBot->desiredMovementDir);
+					Vector RightDir = UTIL_GetCrossProduct(EnemyOrientation, UP_VECTOR);
 
-				BotMovementInputs(pBot);
+					pBot->desiredMovementDir = (pBot->BotNavInfo.bZig) ? UTIL_GetVectorNormal2D(pBot->desiredMovementDir + RightDir) : UTIL_GetVectorNormal2D(pBot->desiredMovementDir - RightDir);
+
+					// Let's get ziggy with it
+					if (gpGlobals->time > pBot->BotNavInfo.NextZigTime)
+					{
+						pBot->BotNavInfo.bZig = !pBot->BotNavInfo.bZig;
+						pBot->BotNavInfo.NextZigTime = gpGlobals->time + frandrange(0.5f, 1.0f);
+					}
+
+					BotMovementInputs(pBot);
+				}
 
 				return true;
 			}
@@ -7882,19 +7834,23 @@ bool GorgeCombatThink(AvHAIPlayer* pBot)
 					BotShootTarget(pBot, WEAPON_GORGE_SPIT, CurrentEnemy);
 				}
 
-				Vector EnemyOrientation = UTIL_GetVectorNormal2D(pBot->desiredMovementDir);
-				Vector RightDir = UTIL_GetCrossProduct(EnemyOrientation, UP_VECTOR);
-
-				pBot->desiredMovementDir = (pBot->BotNavInfo.bZig) ? UTIL_GetVectorNormal2D(pBot->desiredMovementDir + RightDir) : UTIL_GetVectorNormal2D(pBot->desiredMovementDir - RightDir);
-
-				// Let's get ziggy with it
-				if (gpGlobals->time > pBot->BotNavInfo.NextZigTime)
+				if (TrackedEnemyRef->bHasLOS)
 				{
-					pBot->BotNavInfo.bZig = !pBot->BotNavInfo.bZig;
-					pBot->BotNavInfo.NextZigTime = gpGlobals->time + frandrange(0.5f, 1.0f);
-				}
 
-				BotMovementInputs(pBot);
+					Vector EnemyOrientation = UTIL_GetVectorNormal2D(pBot->desiredMovementDir);
+					Vector RightDir = UTIL_GetCrossProduct(EnemyOrientation, UP_VECTOR);
+
+					pBot->desiredMovementDir = (pBot->BotNavInfo.bZig) ? UTIL_GetVectorNormal2D(pBot->desiredMovementDir + RightDir) : UTIL_GetVectorNormal2D(pBot->desiredMovementDir - RightDir);
+
+					// Let's get ziggy with it
+					if (gpGlobals->time > pBot->BotNavInfo.NextZigTime)
+					{
+						pBot->BotNavInfo.bZig = !pBot->BotNavInfo.bZig;
+						pBot->BotNavInfo.NextZigTime = gpGlobals->time + frandrange(0.5f, 1.0f);
+					}
+
+					BotMovementInputs(pBot);
+				}
 			}
 
 		}

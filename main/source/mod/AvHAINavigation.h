@@ -253,6 +253,7 @@ void FallMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint)
 void LadderMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint, float RequiredClimbHeight, unsigned char NextArea);
 
 // Called by NewMove, determines the movement direction and inputs required to climb a wall to reach endpoint
+LerkFlightBehaviour BotFlightClimbMove(AvHAIPlayer* pBot, Vector FromLocation, Vector ToLocation, float RequiredZ);
 void WallClimbMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint, float RequiredClimbHeight);
 void BlinkClimbMove(AvHAIPlayer* pBot, const Vector StartPoint, const Vector EndPoint, float RequiredClimbHeight);
 // Called by NewMove, determines the movement direction and inputs required to use a phase gate to reach end point
@@ -395,10 +396,10 @@ float UTIL_PointIsDirectlyReachable_DEBUG(const Vector start, const Vector targe
 	Determines if the bot can walk directly between the two points.
 	Ignores map geometry, so will return true even if stairs are in the way, provided the bot can walk up/down them unobstructed
 */
-bool UTIL_PointIsDirectlyReachable(const AvHAIPlayer* pBot, const Vector targetPoint);
-bool UTIL_PointIsDirectlyReachable(const AvHAIPlayer* pBot, const Vector start, const Vector target);
-bool UTIL_PointIsDirectlyReachable(const Vector start, const Vector target);
-bool UTIL_PointIsDirectlyReachable(const nav_profile& NavProfile, const Vector start, const Vector target);
+bool UTIL_PointIsDirectlyReachable(const AvHAIPlayer* pBot, const Vector targetPoint, const float MaxDist = max_ai_use_reach);
+bool UTIL_PointIsDirectlyReachable(const AvHAIPlayer* pBot, const Vector start, const Vector target, const float MaxDist = max_ai_use_reach);
+bool UTIL_PointIsDirectlyReachable(const Vector start, const Vector target, const float MaxDist = max_ai_use_reach);
+bool UTIL_PointIsDirectlyReachable(const nav_profile& NavProfile, const Vector start, const Vector target, const float MaxDist = max_ai_use_reach);
 
 // Will trace along the nav mesh from start to target and return true if the trace reaches within MaxAcceptableDistance
 bool UTIL_TraceNav(const nav_profile& NavProfile, const Vector start, const Vector target, const float MaxAcceptableDistance);

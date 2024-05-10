@@ -354,7 +354,7 @@ typedef struct _AVH_AI_BUILDABLE_STRUCTURE
 	vector<AvHAIOffMeshConnection> OffMeshConnections; // References to any off-mesh connections this structure is associated with
 	Vector LastSuccessfulCommanderLocation = g_vecZero; // Tracks the last commander view location where it successfully placed or selected the building
 	Vector LastSuccessfulCommanderAngle = g_vecZero; // Tracks the last commander input angle ("click" location) used to successfully place or select building
-	StructurePurpose Purpose = STRUCTURE_PURPOSE_GENERAL;
+	StructurePurpose Purpose = STRUCTURE_PURPOSE_NONE;
 	bool bReachabilityMarkedDirty = false; // If true, reachability flags will be recalculated for this structure
 
 	bool IsValid() { return !FNullEnt(edict) && !edict->free && !(edict->v.flags & EF_NODRAW) && edict->v.deadflag == DEAD_NO; }

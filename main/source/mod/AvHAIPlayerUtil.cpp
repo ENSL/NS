@@ -246,6 +246,16 @@ float GetPlayerRadius(const edict_t* Player)
 	}
 }
 
+bool CanPlayerClimb(const edict_t* Player)
+{
+	return IsPlayerSkulk(Player) || IsPlayerFade(Player) || IsPlayerLerk(Player) || PlayerHasJetpack(Player);
+}
+
+float GetPlayerMaxJumpHeight(const edict_t* Player)
+{
+	return (CanPlayerCrouch(Player) ? max_player_crouchjump_height : max_player_normaljump_height);
+}
+
 bool CanPlayerCrouch(const edict_t* Player)
 {
 	if (FNullEnt(Player) || Player->free || !IsEdictPlayer(Player)) { return false; }
@@ -610,7 +620,7 @@ bool PlayerHasHeavyArmour(const edict_t* Player)
 	return (Player->v.iuser4 & MASK_UPGRADE_13);
 }
 
-bool PlayerHasJetpack(edict_t* Player)
+bool PlayerHasJetpack(const edict_t* Player)
 {
 	if (!IsPlayerMarine(Player)) { return false; }
 	return (Player->v.iuser4 & MASK_UPGRADE_7);

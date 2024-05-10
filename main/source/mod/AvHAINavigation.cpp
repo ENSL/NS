@@ -2429,7 +2429,7 @@ bool HasBotCompletedWalkMove(const AvHAIPlayer* pBot, Vector MoveStart, Vector M
 
 	if (NextMoveFlag != SAMPLE_POLYFLAGS_DISABLED)
 	{
-		bNextPointReachable = UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, NextMoveDestination);
+		bNextPointReachable = UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, NextMoveDestination, GetPlayerRadius(pBot->Edict));
 	}
 
 	return vPointOverlaps3D(MoveEnd, pBot->Edict->v.absmin, pBot->Edict->v.absmax) || (bNextPointReachable && vDist2DSq(pBot->Edict->v.origin, MoveEnd) < sqrf(GetPlayerRadius(pBot->Edict) * 2.0f));
@@ -2448,11 +2448,11 @@ bool HasBotCompletedLadderMove(const AvHAIPlayer* pBot, Vector MoveStart, Vector
 	{
 		if (pBot->BotNavInfo.IsOnGround)
 		{
-			if (UTIL_PointIsDirectlyReachable(pBot->CollisionHullBottomLocation, NextMoveDestination)) { return true; }
+			if (UTIL_PointIsDirectlyReachable(pBot->CollisionHullBottomLocation, NextMoveDestination, GetPlayerRadius(pBot->Edict))) { return true; }
 		}
 		else
 		{
-			if (vDist2DSq(pBot->Edict->v.origin, MoveEnd) < sqrf(GetPlayerRadius(pBot->Edict)) && UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, NextMoveDestination)) { return true; }
+			if (vDist2DSq(pBot->Edict->v.origin, MoveEnd) < sqrf(GetPlayerRadius(pBot->Edict)) && UTIL_PointIsDirectlyReachable(pBot->CurrentFloorPosition, NextMoveDestination, GetPlayerRadius(pBot->Edict))) { return true; }
 		}		
 
 	}
@@ -2628,7 +2628,7 @@ void CheckAndHandleDoorObstruction(AvHAIPlayer* pBot)
 	}
 
 	// If we're blocked by a door that's open, and its wait time isn't infinite (i.e. it will close shortly) then just wait it out
-	if (BlockingDoor->m_toggle_state == TS_AT_TOP && BlockingDoor->m_flWait >= 0.0f)
+	if (BlockingDoor->m_toggle_state == TS_AT_TOP && BlockingDoor->m_flWait > 0.0f)
 	{
 		// Wait for the door to start closing
 		if (vDist2DSq(pBot->Edict->v.origin, NearestPoint) < sqrf(UTIL_MetresToGoldSrcUnits(1.5f)))
@@ -5049,7 +5049,8 @@ void MoveDirectlyTo(AvHAIPlayer* pBot, const Vector Destination)
 
 	if (vIsZero(Destination)) { return; }
 
-	Vector CurrentPos = (pBot->BotNavInfo.IsOnGround) ? pBot->Edict->v.origin : pBot->CurrentFloorPosition;
+	Vector CurrentPos = (pBot->BotNavInfo.IsOnGround) ? pBot->Edict->v.origin : pBot->CurrentFloorPosition + GetPlayerOriginOffsetFromFloor(pBot->Edict, false);
+	CurrentPos.z += 18.0f;
 
 	const Vector vForward = UTIL_GetVectorNormal2D(Destination - CurrentPos);
 	// Same goes for the right vector, might not be the same as the bot's right
@@ -5059,11 +5060,18 @@ void MoveDirectlyTo(AvHAIPlayer* pBot, const Vector Destination)
 
 	Vector stTrcLft = CurrentPos - (vRight * PlayerRadius);
 	Vector stTrcRt = CurrentPos + (vRight * PlayerRadius);
-	Vector endTrcLft = stTrcLft + (vForward * 24.0f);
-	Vector endTrcRt = stTrcRt + (vForward * 24.0f);
+	Vector endTrcLft = stTrcLft + (vForward * (PlayerRadius * 1.5f));
+	Vector endTrcRt = stTrcRt + (vForward * (PlayerRadius * 1.5f));
 
-	const bool bumpLeft = !UTIL_PointIsDirectlyReachable(pBot->BotNavInfo.NavProfile, stTrcLft, endTrcLft);
-	const bool bumpRight = !UTIL_PointIsDirectlyReachable(pBot->BotNavInfo.NavProfile, stTrcRt, endTrcRt);
+	TraceResult hit;
+
+	UTIL_TraceHull(stTrcLft, endTrcLft, ignore_monsters, head_hull, pBot->Edict->v.pContainingEntity, &hit);
+
+	const bool bumpLeft = (hit.flFraction < 1.0f || hit.fAllSolid > 0 || hit.fStartSolid > 0);
+
+	UTIL_TraceHull(stTrcRt, endTrcRt, ignore_monsters, head_hull, pBot->Edict->v.pContainingEntity, &hit);
+
+	const bool bumpRight = (hit.flFraction < 1.0f || hit.fAllSolid > 0 || hit.fStartSolid > 0);
 
 	pBot->desiredMovementDir = vForward;
 
@@ -5077,19 +5085,89 @@ void MoveDirectlyTo(AvHAIPlayer* pBot, const Vector Destination)
 	}
 	else if (bumpLeft && bumpRight)
 	{
-		stTrcLft.z = pBot->Edict->v.origin.z;
-		stTrcRt.z = pBot->Edict->v.origin.z;
-		endTrcLft.z = pBot->Edict->v.origin.z;
-		endTrcRt.z = pBot->Edict->v.origin.z;
+		float MaxScaleHeight = CanPlayerClimb(pBot->Edict) ? 200.0f : GetPlayerMaxJumpHeight(pBot->Edict);
+		if (pBot->Edict->v.iuser3 == AVH_USER3_ALIEN_PLAYER2) { MaxScaleHeight = 44.0f; }
 
-		if (!UTIL_QuickTrace(pBot->Edict, stTrcLft, endTrcLft))
+		float JumpHeight = 0.0f;
+
+		bool bFoundJumpHeight = false;
+
+		Vector StartTrace = pBot->CurrentFloorPosition;
+		Vector EndTrace = StartTrace + (vForward * 50.0f);
+		EndTrace.z = StartTrace.z;
+
+		TraceResult JumpTestHit;
+
+		while (JumpHeight < MaxScaleHeight && !bFoundJumpHeight)
 		{
-			pBot->desiredMovementDir = pBot->desiredMovementDir + vRight;
+			UTIL_TraceHull(StartTrace, EndTrace, ignore_monsters, head_hull, pBot->Edict->v.pContainingEntity, &JumpTestHit);
+
+			if (JumpTestHit.flFraction >= 1.0f && !JumpTestHit.fAllSolid)
+			{
+				bFoundJumpHeight = true;
+				break;
+			}
+
+			JumpHeight += 5.0f;
+
+			StartTrace.z += 5.0f;
+			EndTrace.z += 5.0f;
+		}
+
+		if (JumpHeight <= MaxScaleHeight)
+		{
+			if (JumpHeight <= GetPlayerMaxJumpHeight(pBot->Edict))
+			{
+				BotJump(pBot);
+			}
+			else
+			{
+				switch (pBot->Edict->v.iuser3)
+				{
+					case AVH_USER3_ALIEN_PLAYER3:
+					{
+						LerkFlightBehaviour FlightBehaviour = BotFlightClimbMove(pBot, pBot->CurrentFloorPosition, EndTrace, pBot->Edict->v.origin.z + JumpHeight);
+
+						if (FlightBehaviour == FLIGHT_GLIDE)
+						{
+							pBot->Button |= IN_JUMP;
+						}
+						else if (FlightBehaviour == FLIGHT_FLAP)
+						{
+							if (gpGlobals->time - pBot->BotNavInfo.LastFlapTime > 0.2f)
+							{
+								pBot->Button |= IN_JUMP;
+								pBot->BotNavInfo.LastFlapTime = gpGlobals->time;
+							}
+						}
+					}
+					break;
+					case AVH_USER3_ALIEN_PLAYER4:
+						BlinkClimbMove(pBot, pBot->CurrentFloorPosition, EndTrace, pBot->Edict->v.origin.z + JumpHeight);
+						break;
+					default:
+						WallClimbMove(pBot, pBot->CurrentFloorPosition, EndTrace, pBot->Edict->v.origin.z + JumpHeight);
+						break;
+				}
+			}
 		}
 		else
 		{
-			pBot->desiredMovementDir = pBot->desiredMovementDir - vRight;
+			stTrcLft.z = pBot->Edict->v.origin.z;
+			stTrcRt.z = pBot->Edict->v.origin.z;
+			endTrcLft.z = pBot->Edict->v.origin.z;
+			endTrcRt.z = pBot->Edict->v.origin.z;
+
+			if (!UTIL_QuickTrace(pBot->Edict, stTrcLft, endTrcLft))
+			{
+				pBot->desiredMovementDir = pBot->desiredMovementDir + vRight;
+			}
+			else
+			{
+				pBot->desiredMovementDir = pBot->desiredMovementDir - vRight;
+			}
 		}
+		
 	}
 
 	float DistFromDestination = vDist2DSq(pBot->Edict->v.origin, Destination);
@@ -5114,7 +5192,7 @@ void MoveDirectlyTo(AvHAIPlayer* pBot, const Vector Destination)
 }
 
 
-bool UTIL_PointIsDirectlyReachable(const AvHAIPlayer* pBot, const Vector targetPoint)
+bool UTIL_PointIsDirectlyReachable(const AvHAIPlayer* pBot, const Vector targetPoint, const float MaxDist)
 {
 	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(pBot->BotNavInfo.NavProfile);
 	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(pBot->BotNavInfo.NavProfile);
@@ -5160,7 +5238,24 @@ bool UTIL_PointIsDirectlyReachable(const AvHAIPlayer* pBot, const Vector targetP
 
 	m_navQuery->raycast(StartPoly, StartNearest, EndNearest, m_navFilter, &hitDist, HitNormal, PolyPath, &pathCount, MAX_AI_PATH_SIZE);
 
-	if (hitDist < 1.0f) { return false; }
+	if (hitDist < 1.0f)
+	{
+		if (pathCount == 0) { return false; }
+
+		float epos[3];
+		dtVcopy(epos, EndNearest);
+
+		m_navQuery->closestPointOnPoly(PolyPath[pathCount - 1], EndNearest, epos, 0);
+
+		if (dtVdistSqr(EndNearest, epos) > sqrf(MaxDist))
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
 
 	if (EndPoly == PolyPath[pathCount - 1]) { return true; }
 
@@ -5174,7 +5269,7 @@ bool UTIL_PointIsDirectlyReachable(const AvHAIPlayer* pBot, const Vector targetP
 
 }
 
-bool UTIL_PointIsDirectlyReachable(const AvHAIPlayer* pBot, const Vector start, const Vector target)
+bool UTIL_PointIsDirectlyReachable(const AvHAIPlayer* pBot, const Vector start, const Vector target, const float MaxDist)
 {
 	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(pBot->BotNavInfo.NavProfile);
 	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(pBot->BotNavInfo.NavProfile);
@@ -5217,7 +5312,24 @@ bool UTIL_PointIsDirectlyReachable(const AvHAIPlayer* pBot, const Vector start, 
 
 	m_navQuery->raycast(StartPoly, StartNearest, EndNearest, m_navFilter, &hitDist, HitNormal, PolyPath, &pathCount, MAX_AI_PATH_SIZE);
 
-	if (hitDist < 1.0f) { return false; }
+	if (hitDist < 1.0f)
+	{
+		if (pathCount == 0) { return false; }
+
+		float epos[3];
+		dtVcopy(epos, EndNearest);
+
+		m_navQuery->closestPointOnPoly(PolyPath[pathCount - 1], EndNearest, epos, 0);
+
+		if (dtVdistSqr(EndNearest, epos) > sqrf(MaxDist))
+		{
+			return false;
+		}
+		else
+		{
+			return true;
+		}
+	}
 
 	if (EndPoly == PolyPath[pathCount - 1]) { return true; }
 
@@ -5252,7 +5364,7 @@ const dtTileCache* UTIL_GetTileCacheForProfile(const nav_profile& NavProfile)
 	return NavMeshes[NavProfile.NavMeshIndex].tileCache;
 }
 
-bool UTIL_PointIsDirectlyReachable(const nav_profile &NavProfile, const Vector start, const Vector target)
+bool UTIL_PointIsDirectlyReachable(const nav_profile &NavProfile, const Vector start, const Vector target, const float MaxDist)
 {
 	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(NavProfile);
 	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(NavProfile);
@@ -5273,7 +5385,6 @@ bool UTIL_PointIsDirectlyReachable(const nav_profile &NavProfile, const Vector s
 
 	dtPolyRef PolyPath[MAX_PATH_POLY];
 	int pathCount = 0;
-
 
 	dtStatus FoundStartPoly = m_navQuery->findNearestPoly(pStartPos, pReachableExtents, m_navFilter, &StartPoly, StartNearest);
 
@@ -5303,7 +5414,7 @@ bool UTIL_PointIsDirectlyReachable(const nav_profile &NavProfile, const Vector s
 
 		m_navQuery->closestPointOnPoly(PolyPath[pathCount - 1], EndNearest, epos, 0);
 
-		if (dtVdistSqr(EndNearest, epos) > sqrf(max_ai_use_reach))
+		if (dtVdistSqr(EndNearest, epos) > sqrf(MaxDist))
 		{
 			return false;
 		}
@@ -5481,7 +5592,7 @@ void UTIL_TraceNavLine(const nav_profile &NavProfile, const Vector Start, const 
 	HitResult->TraceEndPoint = HitLocation;
 }
 
-bool UTIL_PointIsDirectlyReachable(const Vector start, const Vector target)
+bool UTIL_PointIsDirectlyReachable(const Vector start, const Vector target, const float MaxDist)
 {
 	const dtNavMeshQuery* m_navQuery = UTIL_GetNavMeshQueryForProfile(BaseNavProfiles[ALL_NAV_PROFILE]);
 	const dtNavMesh* m_navMesh = UTIL_GetNavMeshForProfile(BaseNavProfiles[ALL_NAV_PROFILE]);
@@ -5532,7 +5643,7 @@ bool UTIL_PointIsDirectlyReachable(const Vector start, const Vector target)
 
 		m_navQuery->closestPointOnPoly(PolyPath[pathCount - 1], EndNearest, epos, 0);
 
-		if (dtVdistSqr(EndNearest, epos) > sqrf(max_ai_use_reach))
+		if (dtVdistSqr(EndNearest, epos) > sqrf(MaxDist))
 		{
 			return false;
 		}
@@ -7778,7 +7889,7 @@ float UTIL_FindZHeightForWallClimb(const Vector ClimbStart, const Vector ClimbEn
 			testCount++;
 		}
 
-		if (hit.flFraction >= 1.0f && !hit.fStartSolid)
+		if (hit.flFraction >= 1.0f && !hit.fStartSolid && !hit.fAllSolid)
 		{
 			if (UTIL_QuickHullTrace(nullptr, EndTrace, EndTrace + Vector(0.0f, 0.0f, 8.0f), false))
 			{
@@ -8216,7 +8327,10 @@ bool UTIL_IsTriggerLinkedToDoor(CBaseEntity* TriggerEntity, vector<CBaseEntity*>
 
 	if (ToggleRef && ToggleRef->pev->target)
 	{
-		CBaseEntity* TargetEntity = UTIL_FindEntityByTargetname(NULL, STRING(ToggleRef->pev->target));
+		const char* TargetEntityName = STRING(ToggleRef->pev->target);
+		CBaseEntity* TargetEntity = UTIL_FindEntityByTargetname(NULL, TargetEntityName);
+
+		if (!TargetEntity) { return false; }
 
 		const char* TestTriggerTargetname = STRING(TriggerEntity->pev->targetname);
 		const char* ThisTriggerTarget = STRING(TargetEntity->pev->target);
