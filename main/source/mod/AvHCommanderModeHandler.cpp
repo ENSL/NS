@@ -799,7 +799,7 @@ void AvHCommanderModeHandler::mousePressed(MouseCode code, Panel* inPanel)
 			//this->DefaultOrderToLastMousePosition(theHierarchy);
 		}
 	}
-	//// TO DO: Custom bind cvars for comm side mouse buttons.
+	//// TODO: Custom bind cvars for comm side mouse buttons.
 	//else if (code == MOUSE_MIDDLE)
 	//{
 	//	this->mLastTechPressed = ;

@@ -116,7 +116,7 @@ void CPostProcessShader::DrawShader()
 	if (cl_postprocess->value <= 0 || cl_intensity->value <= 0)
 		return;
 
-	// TO DO: Check NPOT texture support and shader support for older systems. HL might already check NPOT for FBO mode.
+	// TODO: Check NPOT texture support and shader support for older systems. HL might already check NPOT for FBO mode.
 
 	const int error1 = glGetError();
 	if (error1 != 0)
