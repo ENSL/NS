@@ -323,6 +323,62 @@ DESCRIPTION INFO_OPTIONS
 		{ BOOL }
 		{ "1" }
 	}
+
+	"hud_health_scale"
+	{
+		"Health size scale"
+		{ NUMBER 0.000000 3.000000 }
+		{ "1.000000" }
+	}
+
+	"hud_health_alphamin"
+	{
+		"Health minimum opacity (0-255)"
+		{ NUMBER 0.000000 255.000000 }
+		{ "128.000000" }
+	}
+
+	"hud_health_x"
+	{
+		"Health screen position X (0-1, 0 is default)"
+		{ NUMBER 0.000000 1.000000 }
+		{ "0.000000" }
+	}
+
+	"hud_health_y"
+	{
+		"Health screen position Y (0-1, 0 is default)"
+		{ NUMBER 0.000000 1.000000 }
+		{ "0.000000" }
+	}
+
+	"hud_ammo_scale"
+	{
+		"Ammo size scale"
+		{ NUMBER 0.000000 3.000000 }
+		{ "1.000000" }
+	}
+
+	"hud_ammo_alphamin"
+	{
+		"Ammo minimum opacity (0-255)"
+		{ NUMBER 0.000000 255.000000 }
+		{ "128.000000" }
+	}
+
+	"hud_ammo_x"
+	{
+		"Ammo screen position X (0-1, 0 is default)"
+		{ NUMBER 0.000000 1.000000 }
+		{ "0.000000" }
+	}
+
+	"hud_ammo_y"
+	{
+		"Ammo screen position Y (0-1, 0 is default)"
+		{ NUMBER 0.000000 1.000000 }
+		{ "0.000000" }
+	}
 	
 	"cl_placebo"
 	{
@@ -507,6 +563,13 @@ DESCRIPTION INFO_OPTIONS
 		"Cross right line"
 		{ BOOL }
 		{ "1" }
+	}
+
+	"cl_cross_dot_round"
+	{
+		"Dot is rounded"
+		{ BOOL }
+		{ "0" }
 	}
 
 	"cl_cross_dot_size"
