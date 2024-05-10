@@ -575,8 +575,6 @@ int CL_DLLEXPORT HUD_Key_Event( int down, int keynum, const char *pszCurrentBind
 	// Also note that g_iVguiSideMouseRelease is set in inputw32, because for some reason side mouse button releases in VGUI mode don't get sent here.
 	if (g_iVisibleMouse && (keynum >= K_MOUSE1 && keynum <= K_MOUSE5))
 	{
-		//gEngfuncs.Con_Printf("mouse event keynum:%d down:%d\n", keynum, down);
-
 		switch (keynum)
 		{
 		case K_MOUSE1:
