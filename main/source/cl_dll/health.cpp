@@ -312,6 +312,9 @@ int CHudHealth::Draw(float flTime)
 		}
 		else
 		{
+			//TODO: Inset position for ultrawide monitors.
+			//if (gHUD.GetWidth() > (gHUD.GetHeight() * 1.78f)){}
+
 			x = CrossWidth / 2;
 		}
 		int initialY = gHUD.GetHeight();

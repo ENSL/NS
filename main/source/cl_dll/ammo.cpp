@@ -1400,6 +1400,9 @@ int CHudAmmo::Draw(float flTime)
 			int initialX = gHUD.GetWidth();
 			if (hud_ammo_x && hud_ammo_x->value != 0.0f)
 			{
+				//TODO: Inset position for ultrawide monitors.
+				//if (gHUD.GetWidth() > (gHUD.GetHeight() * 1.78f)){}
+
 				initialX *= min(max(0.0f, hud_ammo_x->value), 1.0f);
 			}
 
