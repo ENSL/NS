@@ -9,6 +9,7 @@
 #include "AvHAIHelper.h"
 #include "AvHAIPlayerManager.h"
 #include "AvHAIConfig.h"
+#include "AvHAIMarineBuildOrderManager.h"
 
 #include "AvHSharedUtil.h"
 #include "AvHServerUtil.h"
@@ -588,6 +589,42 @@ void AICOMM_UpdatePlayerOrders(AvHAIPlayer* pBot)
 	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(BotTeam);
 	
 	int NumPlayersOnTeam = AITAC_GetNumActivePlayersOnTeam(pBot->Player->GetTeam());
+
+	// Do the Shotgun rush here
+	if (AIBO_BuildOrderIsShotgunRush() && AIMGR_GetMatchLength() < 180)
+	{
+		DeployableSearchFilter ArmouryFilter;
+		ArmouryFilter.DeployableTypes = (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY);
+		ArmouryFilter.DeployableTeam = BotTeam;
+		ArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+		AvHAIBuildableStructure NearestArmoury = AITAC_FindClosestDeployableToLocation(AITAC_GetTeamStartingLocation(BotTeam), &ArmouryFilter);
+		Vector CommChairLocation = AITAC_GetCommChairLocation(BotTeam);	
+		const AvHAIHiveDefinition* HiveToAttack = AITAC_GetActiveHiveNearestLocation(EnemyTeam, CommChairLocation);
+
+		// Order all players to stay in base until 80% of them have a shotgun or some time has passed.
+		int NumPlayers = AIMGR_GetNumPlayersOnTeam(BotTeam);
+		int NumShotguns = AITAC_GetNumWeaponsInPlay(BotTeam, WEAPON_MARINE_SHOTGUN);
+
+		if (NumShotguns < 0.8 * NumPlayers && AIMGR_GetMatchLength() < 30)
+		{
+			Vector MoveLocation = (NearestArmoury.IsValid()) ? NearestArmoury.Location : CommChairLocation;
+			edict_t* GuyToBuildBase = AICOMM_GetPlayerWithoutSpecificOrderNearestLocation(pBot, HiveToAttack->Location, ORDERPURPOSE_BUILD_MAINBASE);
+			AICOMM_AssignNewPlayerOrder(pBot, GuyToBuildBase, MoveLocation, ORDERPURPOSE_BUILD_MAINBASE);
+			return;
+		}
+		// Send all players to attack the hive
+		if (HiveToAttack)
+		{
+			edict_t* HiveAttacker = AICOMM_GetPlayerWithoutSpecificOrderNearestLocation(pBot, CommChairLocation, ORDERPURPOSE_SIEGE_HIVE);
+			if (HiveAttacker && !FNullEnt(HiveAttacker))
+			{
+				// AICOMM_AssignNewPlayerOrder(pBot, HiveAttacker, HiveToAttack->Location, ORDERPURPOSE_SIEGE_HIVE); <~~ why does this crash?
+				AICOMM_IssueSecureHiveOrder(pBot, HiveAttacker, HiveToAttack);
+			}
+		}
+		return;
+	}
 
 	for (auto it = pBot->Bases.begin(); it != pBot->Bases.end(); it++)
 	{
@@ -1435,6 +1472,35 @@ bool AICOMM_CheckForNextSupplyAction(AvHAIPlayer* pBot)
 {
 	AvHTeamNumber CommanderTeam = pBot->Player->GetTeam();
 
+	// Even morer firsterer: Are we doing a shotgun rush? If so, drop a shotgun for everyone who doesn't have one yet
+	if (AIBO_BuildOrderIsShotgunRush() && AIMGR_GetMatchLength() < 120)
+	{
+		// As long as we have enough resources, drop a shotgun for everyone who doesn't have one yet
+		if (pBot->Player->GetResources() >= BALANCE_VAR(kShotgunCost))
+		{
+			int NumPlayers = AIMGR_GetNumPlayersOnTeam(CommanderTeam);
+			int NumShotguns = AITAC_GetNumWeaponsInPlay(CommanderTeam, WEAPON_MARINE_SHOTGUN);
+			if (NumShotguns < NumPlayers)
+			{
+				DeployableSearchFilter ArmouryFilter;
+				ArmouryFilter.DeployableTypes = (STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY);
+				ArmouryFilter.DeployableTeam = CommanderTeam;
+				ArmouryFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+				ArmouryFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+				AvHAIBuildableStructure NearestArmoury = AITAC_FindClosestDeployableToLocation(AITAC_GetTeamStartingLocation(CommanderTeam), &ArmouryFilter);
+
+				if (NearestArmoury.IsValid())
+				{
+					Vector DeployLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(MARINE_BASE_NAV_PROFILE), NearestArmoury.Location, UTIL_MetresToGoldSrcUnits(3.0f));
+					bool bSuccess = AICOMM_DeployItem(pBot, DEPLOYABLE_ITEM_SHOTGUN, DeployLocation);
+
+					return bSuccess;
+				}
+			}
+		}
+	}
+
 	// First thing: if our base is damaged and there's nobody able to weld, drop a welder so we don't let the base die
 	bool bBaseIsDamaged = false;
 
@@ -1801,6 +1867,8 @@ bool AICOMM_CheckForNextResearchAction(AvHAIPlayer* pBot)
 
 	}
 
+	// We will look at the structures we can research from first, then the ones we can build
+
 
 	DeployableSearchFilter StructureFilter;
 	StructureFilter.DeployableTeam = CommanderTeam;
@@ -1808,138 +1876,92 @@ bool AICOMM_CheckForNextResearchAction(AvHAIPlayer* pBot)
 	StructureFilter.ReachabilityFlags = AI_REACHABILITY_MARINE;
 	StructureFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
 
-	if (AITAC_MarineResearchIsAvailable(CommanderTeam, RESEARCH_GRENADES))
+	// Let's put the new logic here. We iterate over the build order just like when building the main base.
+	if (!AIBO_CurrentBuildOrder)
 	{
-		StructureFilter.DeployableTypes = STRUCTURE_MARINE_ARMOURY | STRUCTURE_MARINE_ADVARMOURY;
-		StructureFilter.ExcludeStatusFlags |= STRUCTURE_STATUS_RESEARCHING;
-
-		AvHAIBuildableStructure Armoury = AITAC_FindClosestDeployableToLocation(AITAC_GetTeamStartingLocation(CommanderTeam), &StructureFilter);
-
-		if (Armoury.IsValid())
-		{
-			bool bSuccess = AICOMM_ResearchTech(pBot, &Armoury, RESEARCH_GRENADES);
-
-			if (bSuccess) { return true; }
-
-			return pBot->Player->GetResources() < (BALANCE_VAR(kGrenadesResearchCost) * 1.5f);
-		}
+		g_engfuncs.pfnServerPrint("Trying to research tech but no current build order set.\n");
+		return false;
 	}
 
-	StructureFilter.DeployableTypes = STRUCTURE_MARINE_ARMSLAB;
-	StructureFilter.ExcludeStatusFlags |= STRUCTURE_STATUS_RESEARCHING;
-
-	AvHAIBuildableStructure ArmsLab = AITAC_FindClosestDeployableToLocation(AITAC_GetTeamStartingLocation(CommanderTeam), &StructureFilter);
-
-	if (AITAC_MarineResearchIsAvailable(CommanderTeam, RESEARCH_ARMOR_ONE))
+	// This exact check exists twice in this file.
+	// Perhaps we should move it to a function in AvHAIMarineBuildOrderManager?
+	// Note to future me: Do that! With love your past self.
+	for (auto& NextBuildOrderEntry : AIBO_CurrentBuildOrder->BuildOrder)
 	{
-		if (ArmsLab.IsValid())
+		if (NextBuildOrderEntry.BuildOrderType != BUILD_ORDER_UPGRADE) { continue; }
+		if (NextBuildOrderEntry.UpgradeToResearch == TECH_NULL) { continue; }
+
+		// Check the conditions defined in the build order
+		bool conditionOne = NextBuildOrderEntry.BuildConditionOne == CONDITION_NONE ? true : false;
+		bool conditionTwo = NextBuildOrderEntry.BuildConditionTwo == CONDITION_NONE ? true : false;;
+		bool connective = false;
+
+		if (NextBuildOrderEntry.BuildConditionOne == STRUCTURE_EXISTS)
 		{
-			bool bSuccess = AICOMM_ResearchTech(pBot, &ArmsLab, RESEARCH_ARMOR_ONE);
+			DeployableSearchFilter RequiredStructuresFilter;
+			RequiredStructuresFilter.DeployableTeam = CommanderTeam;
+			RequiredStructuresFilter.DeployableTypes = NextBuildOrderEntry.StructureRequiredOne;
+			RequiredStructuresFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+			RequiredStructuresFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
 
-			if (bSuccess) { return true; }
+			vector <AvHAIBuildableStructure> FoundStructures = AITAC_FindAllDeployables(ZERO_VECTOR, &RequiredStructuresFilter);
+			conditionOne = FoundStructures.size() == 0 ? false : true;
+		}
+		if (NextBuildOrderEntry.BuildConditionOne == UPGRADE_EXISTS)
+		{
+			conditionOne = (NextBuildOrderEntry.UpgradeRequiredOne == TECH_NULL || !AITAC_ResearchIsComplete(CommanderTeam, NextBuildOrderEntry.UpgradeRequiredOne)) ? false : true;
+		}
+		if (NextBuildOrderEntry.BuildConditionOne == TIME_ELAPSED)
+		{
+			conditionOne = AIMGR_GetMatchLength() < NextBuildOrderEntry.TimeLimitInSecondsOne ? false : true;
+		}
 
-			return pBot->Player->GetResources() < (BALANCE_VAR(kArmorOneResearchCost) * 1.5f);
+		if (NextBuildOrderEntry.BuildConditionTwo == STRUCTURE_EXISTS)
+		{
+			DeployableSearchFilter RequiredStructuresFilter;
+			RequiredStructuresFilter.DeployableTeam = CommanderTeam;
+			RequiredStructuresFilter.DeployableTypes = NextBuildOrderEntry.StructureRequiredTwo;
+			RequiredStructuresFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+			RequiredStructuresFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+			vector <AvHAIBuildableStructure> FoundStructures = AITAC_FindAllDeployables(ZERO_VECTOR, &RequiredStructuresFilter);
+			conditionTwo = FoundStructures.size() == 0 ? false : true;
+		}
+		if (NextBuildOrderEntry.BuildConditionTwo == UPGRADE_EXISTS)
+		{
+			conditionTwo = (NextBuildOrderEntry.UpgradeRequiredTwo == TECH_NULL || !AITAC_ResearchIsComplete(CommanderTeam, NextBuildOrderEntry.UpgradeRequiredTwo)) ? false : true;
+		}
+		if (NextBuildOrderEntry.BuildConditionTwo == TIME_ELAPSED)
+		{
+
+			conditionTwo = AIMGR_GetMatchLength() < NextBuildOrderEntry.TimeLimitInSecondsTwo ? false : true;
+		}
+
+		if (NextBuildOrderEntry.Connective == AND)
+		{
+			connective = conditionOne && conditionTwo;
+		}
+		if (NextBuildOrderEntry.Connective == OR)
+		{
+			connective = conditionOne || conditionTwo;
+		}
+
+		if (!connective) { continue; }
+		// Done checking the conditions
+
+		if (AITAC_MarineResearchIsAvailable(CommanderTeam,AIBO_MapTechIDToMessageID(NextBuildOrderEntry.UpgradeToResearch)))
+		{
+			StructureFilter.DeployableTypes = AIBO_MapTechToRequiredStructure(NextBuildOrderEntry.UpgradeToResearch);
+			StructureFilter.ExcludeStatusFlags |= STRUCTURE_STATUS_RESEARCHING;
+			AvHAIBuildableStructure NearestStructure = AITAC_FindClosestDeployableToLocation(AITAC_GetTeamStartingLocation(CommanderTeam), &StructureFilter);
+			if (NearestStructure.IsValid())
+			{
+				bool bSuccess = AICOMM_ResearchTech(pBot, &NearestStructure, AIBO_MapTechIDToMessageID(NextBuildOrderEntry.UpgradeToResearch));
+				if (bSuccess) { return true; }
+				return pBot->Player->GetResources() < (AIBO_GetResearchCost(NextBuildOrderEntry.UpgradeToResearch) * 1.5f);
+			}
 		}
 	}
-
-	if (AITAC_MarineResearchIsAvailable(CommanderTeam, RESEARCH_WEAPONS_ONE))
-	{
-		if (ArmsLab.IsValid())
-		{
-			bool bSuccess = AICOMM_ResearchTech(pBot, &ArmsLab, RESEARCH_WEAPONS_ONE);
-
-			if (bSuccess) { return true; }
-
-			return pBot->Player->GetResources() < (BALANCE_VAR(kWeaponsOneResearchCost) * 1.5f);
-		}
-	}
-
-	StructureFilter.DeployableTypes = STRUCTURE_MARINE_OBSERVATORY;
-	StructureFilter.ExcludeStatusFlags |= STRUCTURE_STATUS_RESEARCHING;
-
-	AvHAIBuildableStructure Observatory = AITAC_FindClosestDeployableToLocation(AITAC_GetTeamStartingLocation(CommanderTeam), &StructureFilter);
-
-	if (AITAC_MarineResearchIsAvailable(CommanderTeam, RESEARCH_PHASETECH))
-	{
-		if (Observatory.IsValid())
-		{
-			bool bSuccess = AICOMM_ResearchTech(pBot, &Observatory, RESEARCH_PHASETECH);
-
-			if (bSuccess) { return true; }
-
-			return pBot->Player->GetResources() < (BALANCE_VAR(kPhaseTechResearchCost) * 1.5f);
-		}
-	}
-
-	if (AITAC_MarineResearchIsAvailable(CommanderTeam, RESEARCH_MOTIONTRACK))
-	{
-		if (Observatory.IsValid())
-		{
-			return AICOMM_ResearchTech(pBot, &Observatory, RESEARCH_MOTIONTRACK);
-		}
-	}
-
-	if (AITAC_MarineResearchIsAvailable(CommanderTeam, RESEARCH_ARMOR_TWO))
-	{
-		if (ArmsLab.IsValid())
-		{
-			return AICOMM_ResearchTech(pBot, &ArmsLab, RESEARCH_ARMOR_TWO);
-		}
-	}
-
-	if (AITAC_MarineResearchIsAvailable(CommanderTeam, RESEARCH_WEAPONS_TWO))
-	{
-		if (ArmsLab.IsValid())
-		{
-			return AICOMM_ResearchTech(pBot, &ArmsLab, RESEARCH_WEAPONS_TWO);
-		}
-	}
-
-	if (AITAC_MarineResearchIsAvailable(CommanderTeam, RESEARCH_CATALYSTS))
-	{
-		if (ArmsLab.IsValid())
-		{
-			return AICOMM_ResearchTech(pBot, &ArmsLab, RESEARCH_CATALYSTS);
-		}
-	}
-
-	StructureFilter.DeployableTypes = STRUCTURE_MARINE_PROTOTYPELAB;
-	StructureFilter.ExcludeStatusFlags |= STRUCTURE_STATUS_RESEARCHING;
-
-	AvHAIBuildableStructure ProtoLab = AITAC_FindClosestDeployableToLocation(AITAC_GetTeamStartingLocation(CommanderTeam), &StructureFilter);
-
-	if (AITAC_MarineResearchIsAvailable(CommanderTeam, RESEARCH_HEAVYARMOR))
-	{
-		if (ProtoLab.IsValid())
-		{
-			return AICOMM_ResearchTech(pBot, &ProtoLab, RESEARCH_HEAVYARMOR);
-		}
-	}
-
-	if (AITAC_MarineResearchIsAvailable(CommanderTeam, RESEARCH_JETPACKS))
-	{
-		if (ProtoLab.IsValid())
-		{
-			return AICOMM_ResearchTech(pBot, &ProtoLab, RESEARCH_JETPACKS);
-		}
-	}
-
-	if (AITAC_MarineResearchIsAvailable(CommanderTeam, RESEARCH_ARMOR_THREE))
-	{
-		if (ArmsLab.IsValid())
-		{
-			return AICOMM_ResearchTech(pBot, &ArmsLab, RESEARCH_ARMOR_THREE);
-		}
-	}
-
-	if (AITAC_MarineResearchIsAvailable(CommanderTeam, RESEARCH_WEAPONS_THREE))
-	{
-		if (ArmsLab.IsValid())
-		{
-			return AICOMM_ResearchTech(pBot, &ArmsLab, RESEARCH_WEAPONS_THREE);
-		}
-	}
-
 	return false;
 }
 
@@ -3272,6 +3294,19 @@ void AICOMM_CommanderThink(AvHAIPlayer* pBot)
 		}
 	}
 
+	if (!BuildMessageAnnounced)
+	{
+		BuildMessageAnnounced = true;
+		if (AIBO_CurrentBuildOrder)
+		{
+			std::string BuildOrderMessage = GetBuildOrderMessage();
+			char BuildOrderMessageBuffer[256];
+			strncpy(BuildOrderMessageBuffer, BuildOrderMessage.c_str(), sizeof(BuildOrderMessageBuffer) - 1);
+			BuildOrderMessageBuffer[sizeof(BuildOrderMessageBuffer) - 1] = '\0';
+			BotSay(pBot, false, 0.5f, BuildOrderMessageBuffer);
+		}
+	}
+
 	// Thanks to EterniumDev (Alien) for the suggestion to have the commander jump out and build if nobody is around to help
 	if (AICOMM_ShouldCommanderLeaveChair(pBot))
 	{
@@ -4325,6 +4360,7 @@ void AICOMM_ReceiveChatRequest(AvHAIPlayer* Commander, edict_t* Requestor, const
 bool AICOMM_ShouldCommanderRelocate(AvHAIPlayer* pBot)
 {
 	if (!CONFIG_IsRelocationAllowed()) { return false; }
+	if (!AIBO_BuildOrderIsShotgunRush()) { return false; }
 
 	AvHTeamNumber Team = pBot->Player->GetTeam();
 	AvHTeamNumber EnemyTeam = AIMGR_GetEnemyTeam(Team);
@@ -4557,7 +4593,7 @@ bool AICOMM_BuildOutMainBase(AvHAIPlayer* pBot, AvHAIMarineBase* BaseToBuildOut)
 
 	if (NumIncomplete > 0)
 	{
-		int NumBuilders = AITAC_GetNumPlayersOfTeamInArea(pBot->Player->GetTeam(), BaseToBuildOut->BaseLocation, UTIL_MetresToGoldSrcUnits(10.0f), false, nullptr, AVH_USER3_COMMANDER_PLAYER);
+		int NumBuilders = AITAC_GetNumPlayersOfTeamInArea(BotTeam, BaseToBuildOut->BaseLocation, UTIL_MetresToGoldSrcUnits(10.0f), false, nullptr, AVH_USER3_COMMANDER_PLAYER);
 
 		// Don't spam too many structures
 		if (NumIncomplete > NumBuilders) { return false; }
@@ -4607,7 +4643,14 @@ bool AICOMM_BuildOutMainBase(AvHAIPlayer* pBot, AvHAIMarineBase* BaseToBuildOut)
 
 	if (!CommChair.IsCompleted()) { return false; }
 
-	if (NumInfPortals < DesiredInfPortals)
+	if (!AIBO_CurrentBuildOrder)
+	{
+		g_engfuncs.pfnServerPrint("Trying to build the main base but no current build order set.\n");
+		return false;
+	}
+
+	// Build the initial infantry portals
+	if (NumInfPortals < AIBO_CurrentBuildOrder->InitialInfantryPortalCount)
 	{
 		if (pBot->Player->GetResources() < BALANCE_VAR(kInfantryPortalCost)) { return true; }
 
@@ -4648,168 +4691,157 @@ bool AICOMM_BuildOutMainBase(AvHAIPlayer* pBot, AvHAIMarineBase* BaseToBuildOut)
 		return pBot->Player->GetResources() <= (BALANCE_VAR(kInfantryPortalCost) * 1.5f);
 	}
 
-	if (!Armoury.IsValid())
+	for (auto& NextBuildOrderEntry : AIBO_CurrentBuildOrder->BuildOrder)
 	{
-		if (pBot->Player->GetResources() < BALANCE_VAR(kArmoryCost)) { return true; }
 
-		Vector BuildLocation = AITAC_GetRandomBuildHintInLocation(STRUCTURE_MARINE_ARMOURY, BaseToBuildOut->BaseLocation, UTIL_MetresToGoldSrcUnits(20.0f));
+		if (NextBuildOrderEntry.BuildOrderType != BUILD_ORDER_STRUCTURE) { continue; }
+		if (NextBuildOrderEntry.StructureToBuild == STRUCTURE_NONE) { continue; }
 
-		if (!vIsZero(BuildLocation))
+		if (NextBuildOrderEntry.StructureToBuild == STRUCTURE_MARINE_RESTOWER)
 		{
-			bool bSuccess = AICOMM_AddStructureToBase(pBot, STRUCTURE_MARINE_ARMOURY, BuildLocation, BaseToBuildOut);
+			if (AICOMM_ShouldCommanderPrioritiseNodes(pBot) && pBot->Player->GetResources() < 30) { return false; }
+			continue;
+		}
+
+		AvHAIBuildableStructure Structure;
+		int StructureCost = 0;
+
+		switch (NextBuildOrderEntry.StructureToBuild)
+		{
+		case STRUCTURE_MARINE_COMMCHAIR:
+			Structure = CommChair;
+			StructureCost = BALANCE_VAR(kCommandStationCost);
+			break;
+		case STRUCTURE_MARINE_ARMSLAB:
+			Structure = ArmsLab;
+			StructureCost = BALANCE_VAR(kArmsLabCost);
+			break;
+		case STRUCTURE_MARINE_PROTOTYPELAB:
+			Structure = ProtoLab;
+			StructureCost = BALANCE_VAR(kPrototypeLabCost);
+			break;
+		case STRUCTURE_MARINE_PHASEGATE:
+			Structure = PhaseGate;
+			StructureCost = BALANCE_VAR(kPhaseGateCost);
+			break;
+		case STRUCTURE_MARINE_ARMOURY:
+			Structure = Armoury;
+			StructureCost = BALANCE_VAR(kArmoryCost);
+			break;
+		case STRUCTURE_MARINE_ADVARMOURY:
+			Structure = Armoury;
+			StructureCost = BALANCE_VAR(kArmoryUpgradeCost);	
+			break;
+		case STRUCTURE_MARINE_TURRETFACTORY:
+			Structure = TurretFactory;
+			StructureCost = BALANCE_VAR(kTurretFactoryCost);
+			break;
+		case STRUCTURE_MARINE_OBSERVATORY:
+			Structure = Observatory;
+			StructureCost = BALANCE_VAR(kObservatoryCost);
+			break;
+		case STRUCTURE_MARINE_INFANTRYPORTAL:
+			if (NumInfPortals >= DesiredInfPortals) { continue; }
+			StructureCost = BALANCE_VAR(kInfantryPortalCost);
+			break;
+		case STRUCTURE_MARINE_TURRET:
+			if (NumTurrets >= 5) { continue; }
+			StructureCost = BALANCE_VAR(kSentryCost);
+			break;
+		default:
+			break;
+		}
+
+		if (NextBuildOrderEntry.StructureToBuild == STRUCTURE_MARINE_ADVARMOURY && Armoury.StructureType == STRUCTURE_MARINE_ADVARMOURY) { continue; }
+		if (Structure.IsValid() && NextBuildOrderEntry.StructureToBuild != STRUCTURE_MARINE_ADVARMOURY) { continue; }
+		if (NextBuildOrderEntry.StructureToBuild == STRUCTURE_MARINE_INFANTRYPORTAL && NumInfPortals >= DesiredInfPortals) { continue; }
+		if (NextBuildOrderEntry.StructureToBuild == STRUCTURE_MARINE_TURRET && (!TurretFactory.IsValid() || !TurretFactory.IsCompleted()) ) { continue; }
+		if (NextBuildOrderEntry.StructureToBuild == STRUCTURE_MARINE_TURRET && NumTurrets >= 5) { continue; }
+
+		if (pBot->Player->GetResources() < StructureCost) { return true; }
+
+		// Check all the conditions for this entry
+		bool conditionOne = NextBuildOrderEntry.BuildConditionOne == CONDITION_NONE ? true : false;
+		bool conditionTwo = NextBuildOrderEntry.BuildConditionTwo == CONDITION_NONE ? true : false;;
+		bool connective = false;
+
+		if (NextBuildOrderEntry.BuildConditionOne == STRUCTURE_EXISTS)
+		{
+			DeployableSearchFilter RequiredStructuresFilter;
+			RequiredStructuresFilter.DeployableTeam = BotTeam;
+			RequiredStructuresFilter.DeployableTypes = NextBuildOrderEntry.StructureRequiredOne;
+			RequiredStructuresFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+			RequiredStructuresFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+			vector <AvHAIBuildableStructure> FoundStructures = AITAC_FindAllDeployables(ZERO_VECTOR, &RequiredStructuresFilter);
+			conditionOne = FoundStructures.size() == 0 ? false : true;
+		}
+		if (NextBuildOrderEntry.BuildConditionOne == UPGRADE_EXISTS)
+		{
+			conditionOne = (NextBuildOrderEntry.UpgradeRequiredOne == TECH_NULL || !AITAC_ResearchIsComplete(BotTeam, NextBuildOrderEntry.UpgradeRequiredOne)) ? false : true;
+		}
+		if (NextBuildOrderEntry.BuildConditionOne == TIME_ELAPSED)
+		{
+			conditionOne = AIMGR_GetMatchLength() < NextBuildOrderEntry.TimeLimitInSecondsOne ? false : true;
+		}
+
+		if (NextBuildOrderEntry.BuildConditionTwo == STRUCTURE_EXISTS)
+		{
+			DeployableSearchFilter RequiredStructuresFilter;
+			RequiredStructuresFilter.DeployableTeam = BotTeam;
+			RequiredStructuresFilter.DeployableTypes = NextBuildOrderEntry.StructureRequiredTwo;
+			RequiredStructuresFilter.IncludeStatusFlags = STRUCTURE_STATUS_COMPLETED;
+			RequiredStructuresFilter.ExcludeStatusFlags = STRUCTURE_STATUS_RECYCLING;
+
+			vector <AvHAIBuildableStructure> FoundStructures = AITAC_FindAllDeployables(ZERO_VECTOR, &RequiredStructuresFilter);
+			conditionTwo = FoundStructures.size() == 0 ? false : true;
+		}
+		if (NextBuildOrderEntry.BuildConditionTwo == UPGRADE_EXISTS)
+		{
+			conditionTwo = (NextBuildOrderEntry.UpgradeRequiredTwo == TECH_NULL || !AITAC_ResearchIsComplete(BotTeam, NextBuildOrderEntry.UpgradeRequiredTwo)) ? false : true;
+		}
+		if (NextBuildOrderEntry.BuildConditionTwo == TIME_ELAPSED)
+		{
+
+			conditionTwo = AIMGR_GetMatchLength() < NextBuildOrderEntry.TimeLimitInSecondsTwo ? false : true;
+		}
+
+		if (NextBuildOrderEntry.Connective == AND)
+		{
+			connective = conditionOne && conditionTwo;
+		}
+		if (NextBuildOrderEntry.Connective == OR)
+		{
+			connective = conditionOne || conditionTwo;
+		}
+
+		if (!connective) { continue; }
+		// Done checking the conditions
+
+		// Maybe upgrade the armoury to the advanced armoury
+		if (NextBuildOrderEntry.StructureToBuild == STRUCTURE_MARINE_ADVARMOURY)
+		{
+			if (Armoury.StructureType == STRUCTURE_MARINE_ADVARMOURY) { return false;  }
+			if (pBot->Player->GetResources() < BALANCE_VAR(kArmoryUpgradeCost)) { return true; }
+
+			bool bSuccess = AICOMM_UpgradeStructure(pBot, &Armoury);
 
 			if (bSuccess) { return true; }
+
+			return pBot->Player->GetResources() <= (BALANCE_VAR(kArmoryUpgradeCost) * 1.5f);
 		}
 
-		int NumAttempts = 0;
-
-		while (NumAttempts < 5)
+		if (!connective)
 		{
-			BuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), CommChair.Location, UTIL_MetresToGoldSrcUnits(5.0f));
-
-			if (!vIsZero(BuildLocation))
-			{
-				bool bSuccess = AICOMM_AddStructureToBase(pBot, STRUCTURE_MARINE_ARMOURY, BuildLocation, BaseToBuildOut);
-
-				if (bSuccess) { return true; }
-			}
-
-			BuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(ONOS_BASE_NAV_PROFILE), CommChair.Location, UTIL_MetresToGoldSrcUnits(10.0f));
-
-			if (!vIsZero(BuildLocation))
-			{
-				bool bSuccess = AICOMM_AddStructureToBase(pBot, STRUCTURE_MARINE_ARMOURY, BuildLocation, BaseToBuildOut);
-
-				if (bSuccess) { return true; }
-			}
-
-			NumAttempts++;
+			std::string debugMessage = "We are trying to build " + std::to_string(NextBuildOrderEntry.StructureToBuild) + " even though we shouldn't.";
+			g_engfuncs.pfnServerPrint(debugMessage.c_str());
 		}
 
-		return pBot->Player->GetResources() <= (BALANCE_VAR(kInfantryPortalCost) * 1.5f);
-	}
-
-	if (!TurretFactory.IsValid())
-	{
-		if (pBot->Player->GetResources() < BALANCE_VAR(kTurretFactoryCost)) { return true; }
-
-		Vector BuildLocation = AITAC_GetRandomBuildHintInLocation(STRUCTURE_MARINE_TURRETFACTORY, BaseToBuildOut->BaseLocation, UTIL_MetresToGoldSrcUnits(20.0f));
+		Vector BuildLocation = AITAC_GetRandomBuildHintInLocation(NextBuildOrderEntry.StructureToBuild, BaseToBuildOut->BaseLocation, UTIL_MetresToGoldSrcUnits(20.0f));
 
 		if (!vIsZero(BuildLocation))
 		{
-			bool bSuccess = AICOMM_AddStructureToBase(pBot, STRUCTURE_MARINE_TURRETFACTORY, BuildLocation, BaseToBuildOut);
-
-			if (bSuccess) { return true; }
-		}
-
-		if (NumTurrets > 0)
-		{
-			Vector Centroid = ZERO_VECTOR;
-
-			for (auto tLocs = TurretLocations.begin(); tLocs != TurretLocations.end(); tLocs++)
-			{
-				Centroid = Centroid + *tLocs;
-			}
-
-			Centroid = Centroid / TurretLocations.size();
-
-			if (!vIsZero(Centroid))
-			{
-				Vector CentroidBuildLocation = UTIL_ProjectPointToNavmesh(Centroid, GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE));
-
-				if (!vIsZero(CentroidBuildLocation))
-				{
-					bool bSuccess = AICOMM_AddStructureToBase(pBot, STRUCTURE_MARINE_TURRETFACTORY, CentroidBuildLocation, BaseToBuildOut);
-
-					if (bSuccess) { return true; }
-				}
-			}
-		}
-
-		int NumAttempts = 0;
-
-		while (NumAttempts < 5)
-		{
-			BuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), CommChair.Location, UTIL_MetresToGoldSrcUnits(10.0f));
-
-			if (!vIsZero(BuildLocation))
-			{
-				bool bSuccess = AICOMM_AddStructureToBase(pBot, STRUCTURE_MARINE_TURRETFACTORY, BuildLocation, BaseToBuildOut);
-
-				if (bSuccess) { return true; }
-			}
-
-			BuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(ONOS_BASE_NAV_PROFILE), CommChair.Location, UTIL_MetresToGoldSrcUnits(10.0f));
-
-			if (!vIsZero(BuildLocation))
-			{
-				bool bSuccess = AICOMM_AddStructureToBase(pBot, STRUCTURE_MARINE_TURRETFACTORY, BuildLocation, BaseToBuildOut);
-
-				if (bSuccess) { return true; }
-			}
-
-			NumAttempts++;
-		}
-
-		return pBot->Player->GetResources() <= (BALANCE_VAR(kTurretFactoryCost) * 1.5f);
-	}
-
-	if (!TurretFactory.IsCompleted()) { return false; }
-
-	if (NumTurrets < 5)
-	{
-		if (pBot->Player->GetResources() < BALANCE_VAR(kSentryCost)) { return true; }
-
-		Vector BuildLocation = AITAC_GetRandomBuildHintInLocation(STRUCTURE_MARINE_TURRET, TurretFactory.Location, BALANCE_VAR(kTurretFactoryBuildDistance));
-
-		if (!vIsZero(BuildLocation))
-		{
-			bool bSuccess = AICOMM_AddStructureToBase(pBot, STRUCTURE_MARINE_TURRET, BuildLocation, BaseToBuildOut);
-
-			if (bSuccess) { return true; }
-		}
-
-		int NumAttempts = 0;
-
-		while (NumAttempts < 5)
-		{
-			Vector BuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), TurretFactory.Location, BALANCE_VAR(kTurretFactoryBuildDistance) * 0.8f);
-
-			if (!vIsZero(BuildLocation))
-			{
-				bool bSuccess = AICOMM_AddStructureToBase(pBot, STRUCTURE_MARINE_TURRET, BuildLocation, BaseToBuildOut);
-
-				if (bSuccess) { return true; }
-			}
-
-			BuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(ONOS_BASE_NAV_PROFILE), TurretFactory.Location, BALANCE_VAR(kTurretFactoryBuildDistance) * 0.8f);
-
-			if (!vIsZero(BuildLocation))
-			{
-				bool bSuccess = AICOMM_AddStructureToBase(pBot, STRUCTURE_MARINE_TURRET, BuildLocation, BaseToBuildOut);
-
-				if (bSuccess) { return true; }
-			}
-
-			NumAttempts++;
-		}
-
-		return pBot->Player->GetResources() <= (BALANCE_VAR(kSentryCost) * 1.5f);
-	}
-
-	if (!Armoury.IsCompleted()) { return false; }
-
-	if (AICOMM_ShouldCommanderPrioritiseNodes(pBot) && pBot->Player->GetResources() < 30) { return false; }
-
-	if (!ArmsLab.IsValid())
-	{
-		if (pBot->Player->GetResources() < BALANCE_VAR(kArmsLabCost)) { return true; }
-
-		Vector BuildLocation = AITAC_GetRandomBuildHintInLocation(STRUCTURE_MARINE_ARMSLAB, BaseToBuildOut->BaseLocation, UTIL_MetresToGoldSrcUnits(20.0f));
-
-		if (!vIsZero(BuildLocation))
-		{
-			bool bSuccess = AICOMM_AddStructureToBase(pBot, STRUCTURE_MARINE_ARMSLAB, BuildLocation, BaseToBuildOut);
+			bool bSuccess = AICOMM_AddStructureToBase(pBot, NextBuildOrderEntry.StructureToBuild, BuildLocation, BaseToBuildOut);
 
 			if (bSuccess) { return true; }
 		}
@@ -4822,7 +4854,7 @@ bool AICOMM_BuildOutMainBase(AvHAIPlayer* pBot, AvHAIMarineBase* BaseToBuildOut)
 
 			if (!vIsZero(BuildLocation))
 			{
-				bool bSuccess = AICOMM_AddStructureToBase(pBot, STRUCTURE_MARINE_ARMSLAB, BuildLocation, BaseToBuildOut);
+				bool bSuccess = AICOMM_AddStructureToBase(pBot, NextBuildOrderEntry.StructureToBuild, BuildLocation, BaseToBuildOut);
 
 				if (bSuccess) { return true; }
 			}
@@ -4831,7 +4863,7 @@ bool AICOMM_BuildOutMainBase(AvHAIPlayer* pBot, AvHAIMarineBase* BaseToBuildOut)
 
 			if (!vIsZero(BuildLocation))
 			{
-				bool bSuccess = AICOMM_AddStructureToBase(pBot, STRUCTURE_MARINE_ARMSLAB, BuildLocation, BaseToBuildOut);
+				bool bSuccess = AICOMM_AddStructureToBase(pBot, NextBuildOrderEntry.StructureToBuild, BuildLocation, BaseToBuildOut);
 
 				if (bSuccess) { return true; }
 			}
@@ -4839,145 +4871,8 @@ bool AICOMM_BuildOutMainBase(AvHAIPlayer* pBot, AvHAIMarineBase* BaseToBuildOut)
 			NumAttempts++;
 		}
 
-		return pBot->Player->GetResources() <= (BALANCE_VAR(kArmsLabCost) * 1.5f);
+		return pBot->Player->GetResources() <= (StructureCost * 1.5f);
 	}
-
-	if (!Observatory.IsValid())
-	{
-		if (pBot->Player->GetResources() < BALANCE_VAR(kObservatoryCost)) { return true; }
-
-		Vector BuildLocation = AITAC_GetRandomBuildHintInLocation(STRUCTURE_MARINE_OBSERVATORY, BaseToBuildOut->BaseLocation, UTIL_MetresToGoldSrcUnits(20.0f));
-
-		if (!vIsZero(BuildLocation))
-		{
-			bool bSuccess = AICOMM_AddStructureToBase(pBot, STRUCTURE_MARINE_OBSERVATORY, BuildLocation, BaseToBuildOut);
-
-			if (bSuccess) { return true; }
-		}
-
-		int NumAttempts = 0;
-
-		while (NumAttempts < 5)
-		{
-			BuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), CommChair.Location, UTIL_MetresToGoldSrcUnits(10.0f));
-
-			if (!vIsZero(BuildLocation))
-			{
-				bool bSuccess = AICOMM_AddStructureToBase(pBot, STRUCTURE_MARINE_OBSERVATORY, BuildLocation, BaseToBuildOut);
-
-				if (bSuccess) { return true; }
-			}
-
-			BuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(ONOS_BASE_NAV_PROFILE), CommChair.Location, UTIL_MetresToGoldSrcUnits(10.0f));
-
-			if (!vIsZero(BuildLocation))
-			{
-				bool bSuccess = AICOMM_AddStructureToBase(pBot, STRUCTURE_MARINE_OBSERVATORY, BuildLocation, BaseToBuildOut);
-
-				if (bSuccess) { return true; }
-			}
-
-			NumAttempts++;
-		}
-
-		return pBot->Player->GetResources() <= (BALANCE_VAR(kObservatoryCost) * 1.5f);
-	}
-
-	if (!AITAC_ResearchIsComplete(BotTeam, TECH_RESEARCH_PHASETECH)) { return false; }
-
-	if (!PhaseGate.IsValid())
-	{
-		if (pBot->Player->GetResources() < BALANCE_VAR(kPhaseGateCost)) { return true; }
-
-		Vector BuildLocation = AITAC_GetRandomBuildHintInLocation(STRUCTURE_MARINE_PHASEGATE, BaseToBuildOut->BaseLocation, UTIL_MetresToGoldSrcUnits(20.0f));
-
-		if (!vIsZero(BuildLocation))
-		{
-			bool bSuccess = AICOMM_AddStructureToBase(pBot, STRUCTURE_MARINE_PHASEGATE, BuildLocation, BaseToBuildOut);
-
-			if (bSuccess) { return true; }
-		}
-
-		int NumAttempts = 0;
-
-		while (NumAttempts < 5)
-		{
-			BuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), CommChair.Location, UTIL_MetresToGoldSrcUnits(10.0f));
-
-			if (!vIsZero(BuildLocation))
-			{
-				bool bSuccess = AICOMM_AddStructureToBase(pBot, STRUCTURE_MARINE_PHASEGATE, BuildLocation, BaseToBuildOut);
-
-				if (bSuccess) { return true; }
-			}
-
-			BuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(ONOS_BASE_NAV_PROFILE), CommChair.Location, UTIL_MetresToGoldSrcUnits(10.0f));
-
-			if (!vIsZero(BuildLocation))
-			{
-				bool bSuccess = AICOMM_AddStructureToBase(pBot, STRUCTURE_MARINE_PHASEGATE, BuildLocation, BaseToBuildOut);
-
-				if (bSuccess) { return true; }
-			}
-
-			NumAttempts++;
-		}
-
-		return pBot->Player->GetResources() <= (BALANCE_VAR(kPhaseGateCost) * 1.5f);
-	}
-
-	if (Armoury.StructureType != STRUCTURE_MARINE_ADVARMOURY)
-	{
-		if (pBot->Player->GetResources() < BALANCE_VAR(kArmoryUpgradeCost)) { return true; }
-
-		bool bSuccess = AICOMM_UpgradeStructure(pBot, &Armoury);
-
-		if (bSuccess) { return true; }
-
-		return pBot->Player->GetResources() <= (BALANCE_VAR(kArmoryUpgradeCost) * 1.5f);
-	}
-
-	if (!ProtoLab.IsValid())
-	{
-		if (pBot->Player->GetResources() < BALANCE_VAR(kPrototypeLabCost)) { return true; }
-
-		Vector BuildLocation = AITAC_GetRandomBuildHintInLocation(STRUCTURE_MARINE_PROTOTYPELAB, BaseToBuildOut->BaseLocation, UTIL_MetresToGoldSrcUnits(20.0f));
-
-		if (!vIsZero(BuildLocation))
-		{
-			bool bSuccess = AICOMM_AddStructureToBase(pBot, STRUCTURE_MARINE_PROTOTYPELAB, BuildLocation, BaseToBuildOut);
-
-			if (bSuccess) { return true; }
-		}
-
-		int NumAttempts = 0;
-
-		while (NumAttempts < 5)
-		{
-			BuildLocation = UTIL_GetRandomPointOnNavmeshInRadiusIgnoreReachability(GetBaseNavProfile(STRUCTURE_BASE_NAV_PROFILE), Armoury.Location, UTIL_MetresToGoldSrcUnits(5.0f));
-
-			if (!vIsZero(BuildLocation))
-			{
-				bool bSuccess = AICOMM_AddStructureToBase(pBot, STRUCTURE_MARINE_PROTOTYPELAB, BuildLocation, BaseToBuildOut);
-
-				if (bSuccess) { return true; }
-			}
-
-			BuildLocation = UTIL_GetRandomPointOnNavmeshInRadius(GetBaseNavProfile(ONOS_BASE_NAV_PROFILE), CommChair.Location, UTIL_MetresToGoldSrcUnits(10.0f));
-
-			if (!vIsZero(BuildLocation))
-			{
-				bool bSuccess = AICOMM_AddStructureToBase(pBot, STRUCTURE_MARINE_PROTOTYPELAB, BuildLocation, BaseToBuildOut);
-
-				if (bSuccess) { return true; }
-			}
-
-			NumAttempts++;
-		}
-
-		return pBot->Player->GetResources() <= (BALANCE_VAR(kPrototypeLabCost) * 1.5f);
-	}
-
 	return false;
 }
 
