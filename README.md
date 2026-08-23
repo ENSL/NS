@@ -4,23 +4,21 @@ An updated build of the game [Natural Selection] for Windows and Linux focused o
 
 ## Downloads
 
-The **[Natural Selection Launcher](https://github.com/ENSL/NaturalLauncher/releases/)** (Windows) can install, update, or repair the game.
-
 **[Manual installation](https://github.com/ENSL/NS/releases)** (Windows / Linux)
 
-As the game is a Half-Life mod, Steam and Half-Life installations are required to play the game. After installing, restart steam.
+The **[Natural Selection Launcher](https://github.com/ENSL/NaturalLauncher/releases/)** (Windows) can install, update, or repair the game.
 
-A fresh install of NS comes with updated config files containing everything you need to get playing on the standard settings most players prefer. Customization options are built into the advanced options menu, like the Nine Legends competitive UI option. For further customization, team and weapon specific config files are also now available.
+Steam and Half-Life installations are required to play the game. After installing, restart steam.
 
 ## Game not working? Troubleshooting tips
 
-If the game doesn't load, check the following:
-1. Restart steam after installation to be able to play the game.
-1. If you recieve a "could not load library" error for the client.dll, please install the **[latest Microsoft Visual C++ Redistributable package](https://aka.ms/vs/17/release/vc_redist.x86.exe)**.
-1. Make sure you have verified Half-Life's integrity. Click [here](https://support.steampowered.com/kb_article.php?ref=2037-QEUH-3335) for detailed instructions.
+If the game doesn't load or it crashes, check the following:
+1. Install the **[latest Microsoft Visual C++ Redistributable package](https://aka.ms/vc14/vc_redist.x86.exe)**.
+1. Restart steam after installation to see it in your library.
+1. Set the "Video Renderer" in Options to "OpenGL". "Software" will not work.
+1. Make sure you have [verified Half-Life's integrity](https://support.steampowered.com/kb_article.php?ref=2037-QEUH-3335).
 1. Check if Half-Life works for you.
-1. Make sure you have a clean install. Go to the half-life directory (eg. `c:\Program Files\Steam\steamapps\common\Half-Life`) and remove or rename the ``ns`` folder, then try installing NS.
-1. Make sure you don't have any additional command line options for NS.
+1. Make sure you have a clean install. Go to the half-life directory (eg. `C:\Program Files\Steam\steamapps\common\Half-Life`) and remove or rename the ``ns`` folder, then try installing NS.
 1. For more help, ask on #help in [the community discord](https://discord.gg/ZUSSBUA)
 
 For Linux:
@@ -36,7 +34,7 @@ Update highlights:
 - Widescreen support
 - AI upscaled model textures can be turned on with the "Use High Definition models" HL video option 
 - Many FPS-dependent bugs fixed, including jetpack acceleration, so the game can now be fairly played at 200+ FPS
-- Quake-style queued jumping to make bunnyhopping more accessible (server adjustable via sv_jumpmode)
+- Quake-style queued jumping to make bunnyhopping more accessible
 - The shotgun and grenade launcher have been reworked to fix reload bugs and animate better
 - The "pistol script" is now a standard feature as a toggleable binary trigger
 - Weapon reloads are now predicted on the client
@@ -68,6 +66,8 @@ How to set up a dedicated [Natural Selection] server with [HLDS]:
       ```cmd
      hlds.exe -console -game ns +map ns_eclipse +sv_secure 1 +port 27015 +hostname "Natural Selection" +maxplayers 32
       ```
+
+`+sys_tickrate 500` can be added to improve responsiveness, but with increased CPU usage.
 
 If you are behind a NAT(Router) make sure to open at least those ports: 
 - 27015 UDP (game transmission, pings) 
