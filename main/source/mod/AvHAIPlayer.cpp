@@ -3,7 +3,6 @@
 #include "AvHAIPlayerUtil.h"
 #include "AvHAIHelper.h"
 #include "AvHAIMath.h"
-#include "AvHAIHelper.h"
 #include "AvHAINavigation.h"
 #include "AvHAIWeaponHelper.h"
 #include "AvHAITactical.h"

@@ -1,0 +1,185 @@
+# Marine Build orders
+
+# The Bot Commander tries to build the main base according to the listed order.
+# At the start of a map a build order is selected randomly accounting for the weights.
+# A higher weight means the build order is more likely to be chosen.
+# The weights don't have to sum up to 1. E.g. "6" would be a valid weight.
+# "ResourceTower" means that the Bot Commander prioritizes getting Res-Towers before building anything further down the list.
+# So nothing below the "ResourceTower" will be done when the Bot Commander wants to prioritize rez nodes.
+
+# You can modify these or create your own build orders.
+# Careful! It is possible to soft-lock the Bot Commander's build order. E.g. by putting the Armslab before Armoury.
+
+# Possible Structure names: InfantryPortal, Armoury, TurretFactory, Turrets, ResourceTower, Armslab, Observatory, Phasegate, AdvancedArmoury, Protolab
+# Possible Upgrade names: Grenades,ArmorOne, WeaponsOne, PhaseTech, MotionTracking, ArmorTwo, WeaponsTwo, Catalysts, HeavyArmor, Jetpacks, ArmorThree, WeaponsThree
+
+# Entry syntax: entry=["Structure"/"Upgrade"],[[structure name]/[upgrade name]],[["StructureExists"]/["UpgradeExists"]/["TimeElapsed"]],[[structure name]/[upgrade name][number]],["and"/"or"],[["StructureExists"]/["UpgradeExists"]/["TimeElapsed"]],[[structure name]/[upgrade name][number]]
+
+# Example: entry=structure,Armslab,StructureExists,Armoury,and,TimeElapsed,60
+# Meaning: Try to build an armslab if an armoury exists and the current game is going on for at least 60 seconds.
+
+# A build order does not change the Bot Commander's ability to build things it can not usually build.
+# All the usual rules and requirements still apply.
+
+
+BuildOrderStart
+name=Balanced
+weight=0.2
+initialIPs=1
+entry=structure,Armoury,none,none,and,none,none
+entry=structure,TurretFactory,TimeElapsed,180,and,none,none
+entry=structure,Turrets,none,none,and,none,none
+entry=structure,ResourceTower,StructureExists,Armoury,and,none,none
+entry=structure,InfantryPortal,StructureExists,TurretFactory,or,TimeElapsed,180
+entry=structure,Armslab,StructureExists,TurretFactory,or,TimeElapsed,200
+entry=structure,Observatory,StructureExists,Armslab,and,none,none
+entry=structure,Phasegate,StructureExists,Observatory,and,none,none
+entry=structure,AdvancedArmoury,StructureExists,Phasegate,and,none,none
+entry=structure,Protolab,StructureExists,AdvancedArmoury,and,none,none
+entry=upgrade,Grenades,none,none,and,none,none
+entry=upgrade,ArmorOne,none,none,and,none,none
+entry=upgrade,WeaponsOne,none,none,and,none,none
+entry=upgrade,PhaseTech,none,none,and,none,none
+entry=upgrade,MotionTracking,none,none,and,none,none
+entry=upgrade,ArmorTwo,none,none,and,none,none
+entry=upgrade,WeaponsTwo,none,none,and,none,none
+entry=upgrade,Catalysts,none,none,and,none,none
+entry=upgrade,HeavyArmor,none,none,and,none,none
+entry=upgrade,Jetpacks,none,none,and,none,none
+entry=upgrade,ArmorThree,none,none,and,none,none
+entry=upgrade,WeaponsThree,none,none,and,none,none
+BuildOrderEnd
+
+BuildOrderStart
+name=Aggressive Resources
+weight=0.2
+initialIPs=1
+entry=structure,Armoury,none,none,and,none,none
+entry=structure,ResourceTower,none,none,and,none,none
+entry=structure,Armslab,StructureExists,Armoury,and,TimeElapsed,60
+entry=structure,InfantryPortal,StructureExists,Armslab,or,TimeElapsed,90
+entry=structure,Observatory,UpgradeExists,ArmorOne,and,UpgradeExists,WeaponsOne
+entry=structure,Phasegate,StructureExists,Observatory,and,none,none
+entry=structure,AdvancedArmoury,StructureExists,Phasegate,or,TimeElapsed,600
+entry=structure,Protolab,StructureExists,AdvancedArmoury,or,TimeElapsed,660
+entry=upgrade,Grenades,TimeElapsed,90,and,none,none
+entry=upgrade,ArmorOne,UpgradeExists,WeaponsOne,and,none,none
+entry=upgrade,WeaponsOne,none,none,and,none,none
+entry=upgrade,PhaseTech,none,none,and,none,none
+entry=upgrade,MotionTracking,none,none,and,none,none
+entry=upgrade,ArmorTwo,UpgradeExists,WeaponsTwo,and,none,none
+entry=upgrade,WeaponsTwo,none,none,and,none,none
+entry=upgrade,Catalysts,none,none,and,none,none
+entry=upgrade,HeavyArmor,none,none,and,none,none
+entry=upgrade,Jetpacks,none,none,and,none,none
+entry=upgrade,ArmorThree,UpgradeExists,WeaponsThree,and,none,none
+entry=upgrade,WeaponsThree,none,none,and,none,none
+BuildOrderEnd
+
+BuildOrderStart
+name=Fast Phasegate
+weight=0.2
+initialIPs=1
+entry=structure,Armoury,none,none,and,none,none
+entry=structure,Observatory,none,none,and,none,none
+entry=structure,Phasegate,none,none,and,none,none
+entry=structure,ResourceTower,none,none,and,none,none
+entry=structure,InfantryPortal,StructureExists,Phasegate,or,TimeElapsed,100
+entry=structure,Armslab,UpgradeExists,PhaseTech,and,none,none
+entry=structure,AdvancedArmoury,UpgradeExists,ArmorOne,and,UpgradeExists,WeaponsTwo
+entry=structure,Protolab,UpgradeExists,ArmorTwo,and,UpgradeExists,WeaponsTwo
+entry=upgrade,Grenades,UpgradeExists,PhaseTech,and,none,none
+entry=upgrade,ArmorOne,UpgradeExists,Grenades,and,none,none
+entry=upgrade,WeaponsOne,UpgradeExists,ArmorOne,and,none,none
+entry=upgrade,PhaseTech,none,none,and,none,none
+entry=upgrade,MotionTracking,UpgradeExists,PhaseTech,and,none,none
+entry=upgrade,ArmorTwo,UpgradeExists,WeaponsTwo,and,none,none
+entry=upgrade,WeaponsTwo,UpgradeExists,WeaponsOne,and,none,none
+entry=upgrade,Catalysts,UpgradeExists,WeaponsTwo,and,none,none
+entry=upgrade,HeavyArmor,UpgradeExists,WeaponsTwo,and,none,none
+entry=upgrade,Jetpacks,UpgradeExists,HeavyArmor,and,none,none
+entry=upgrade,ArmorThree,UpgradeExists,WeaponsThree,and,none,none
+entry=upgrade,WeaponsThree,UpgradeExists,HeavyArmor,and,none,none
+BuildOrderEnd
+
+BuildOrderStart
+name=Turtle
+weight=0.1
+initialIPs=1
+entry=structure,Armoury,none,none,and,none,none
+entry=structure,TurretFactory,none,none,and,none,none
+entry=structure,Turrets,none,none,and,none,none
+entry=structure,InfantryPortal,StructureExists,TurretFactory,and,none,none
+entry=structure,Observatory,StructureExists,TurretFactory,and,none,none
+entry=structure,Armslab,StructureExists,Observatory,and,none,none
+entry=structure,AdvancedArmoury,none,none,and,none,none
+entry=structure,Protolab,StructureExists,AdvancedArmoury,and,none,none
+entry=structure,ResourceTower,none,none,and,none,none
+entry=structure,Phasegate,StructureExists,Protolab,and,none,none
+entry=upgrade,Grenades,none,none,and,none,none
+entry=upgrade,ArmorOne,none,none,and,none,none
+entry=upgrade,WeaponsOne,none,none,and,none,none
+entry=upgrade,PhaseTech,none,none,and,none,none
+entry=upgrade,MotionTracking,none,none,and,none,none
+entry=upgrade,ArmorTwo,none,none,and,none,none
+entry=upgrade,WeaponsTwo,none,none,and,none,none
+entry=upgrade,Catalysts,none,none,and,none,none
+entry=upgrade,HeavyArmor,none,none,and,none,none
+entry=upgrade,Jetpacks,UpgradeExists,HeavyArmor,and,none,none
+entry=upgrade,ArmorThree,none,none,and,none,none
+entry=upgrade,WeaponsThree,none,none,and,none,none
+BuildOrderEnd
+
+BuildOrderStart
+name=Shotgun Rush
+weight=0.1
+initialIPs=0
+entry=structure,Armoury,none,none,and,none,none
+entry=structure,ResourceTower,TimeElapsed,160,and,none,none
+entry=structure,InfantryPortal,TimeElapsed,120,and,none,none
+entry=structure,Armslab,TimeElapsed,200,and,none,none
+entry=structure,Observatory,StructureExists,Armslab,and,none,none
+entry=structure,Phasegate,StructureExists,Observatory,and,none,none
+entry=structure,AdvancedArmoury,StructureExists,Phasegate,and,none,none
+entry=structure,Protolab,StructureExists,AdvancedArmoury,and,none,none
+entry=upgrade,Grenades,none,none,and,none,none
+entry=upgrade,ArmorOne,none,none,and,none,none
+entry=upgrade,WeaponsOne,none,none,and,none,none
+entry=upgrade,PhaseTech,none,none,and,none,none
+entry=upgrade,MotionTracking,none,none,and,none,none
+entry=upgrade,ArmorTwo,none,none,and,none,none
+entry=upgrade,WeaponsTwo,none,none,and,none,none
+entry=upgrade,Catalysts,none,none,and,none,none
+entry=upgrade,HeavyArmor,none,none,and,none,none
+entry=upgrade,Jetpacks,UpgradeExists,HeavyArmor,and,none,none
+entry=upgrade,ArmorThree,none,none,and,none,none
+entry=upgrade,WeaponsThree,none,none,and,none,none
+BuildOrderEnd
+
+BuildOrderStart
+name=Tech Rush
+weight=0.2
+initialIPs=1
+entry=structure,Armoury,none,none,and,none,none
+entry=structure,Armslab,none,none,and,none,none
+entry=structure,ResourceTower,none,none,and,none,none
+entry=structure,Observatory,UpgradeExists,ArmorOne,or,UpgradeExists,WeaponsOne
+entry=structure,InfantryPortal,StructureExists,Observatory,and,TimeElapsed,180
+entry=structure,Phasegate,StructureExists,Observatory,and,none,none
+entry=structure,AdvancedArmoury,UpgradeExists,ArmorTwo,or,UpgradeExists,WeaponsTwo
+entry=structure,Protolab,UpgradeExists,armortwo,and,UpgradeExists,weaponstwo
+entry=structure,TurretFactory,TimeElapsed,900,or,UpgradeExists,WeaponsThree
+entry=structure,Turrets,StructureExists,TurretFactory,and,none,none
+entry=upgrade,Grenades,UpgradeExists,ArmorOne,or,UpgradeExists,WeaponsOne
+entry=upgrade,ArmorOne,none,none,and,none,none
+entry=upgrade,WeaponsOne,none,none,and,none,none
+entry=upgrade,PhaseTech,UpgradeExists,ArmorOne,or,UpgradeExists,WeaponsOne
+entry=upgrade,MotionTracking,UpgradeExists,ArmorOne,or,UpgradeExists,WeaponsOne
+entry=upgrade,ArmorTwo,none,none,and,none,none
+entry=upgrade,WeaponsTwo,none,none,and,none,none
+entry=upgrade,Catalysts,UpgradeExists,ArmorTwo,or,UpgradeExists,WeaponsTwo
+entry=upgrade,HeavyArmor,UpgradeExists,ArmorThree,or,UpgradeExists,WeaponsThree
+entry=upgrade,Jetpacks,UpgradeExists,ArmorThree,or,UpgradeExists,WeaponsThree
+entry=upgrade,ArmorThree,none,none,and,none,none
+entry=upgrade,WeaponsThree,none,none,and,none,none
+BuildOrderEnd

@@ -110,6 +110,8 @@ bot_drawtempobstacles    Will draw nearby temporary obstacles affecting the nav 
 
 The bot system uses a modified version of the Detour library from [recastnavigation](https://github.com/recastnavigation/recastnavigation).
 
+Evobot now supports configurable build orders for the marine commander. The build orders are defined in the `marine_build_orders.txt` file.
+
 Other bot plugins:
 * [RCbot](http://rcbot.bots-united.com/)
 * [Whichbot](https://whichbot.sourceforge.net/)
