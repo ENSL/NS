@@ -4387,7 +4387,7 @@ void AvHHud::InitializeDemoRecording()
 	
 	int theSelectedSize = sizeof(int) + (int)this->mSelected.size()*sizeof(EntityInfo);
 
-	int theTotalSize = theUpgradesSize + theGammaSize + theGammaAltSize + theResourcesSizes + theCommanderSize + theHiveInfoSize + theCurrentPieMenuControlSize + theSelectedSize;
+	int theTotalSize = theUpgradesSize + theGammaSize + theGammaAltSize + theResourcesSizes + theCommanderSize + theHiveInfoSize + theResearchInfoSize + theCurrentPieMenuControlSize + theSelectedSize;
 
 	// New a char array of this size
 	int theCounter = 0;
